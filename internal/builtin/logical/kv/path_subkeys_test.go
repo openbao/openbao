@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 // TestVersionedKV_Subkeys_NotFound verifies that a nil logical.Response is
@@ -444,9 +445,7 @@ func TestVersionedKV_Subkeys_VersionDeleted(t *testing.T) {
 
 	if rawRespBody, ok := resp.Data[logical.HTTPRawBody]; ok {
 		err = json.Unmarshal([]byte(rawRespBody.(string)), &respBody)
-		if err != nil {
-			t.Fatalf("Failed to unmarshal response body: %v", err)
-		}
+		require.NoError(t, err)
 	}
 
 	respDataRaw, ok := respBody["data"]
@@ -542,9 +541,7 @@ func TestVersionedKV_Subkeys_VersionDestroyed(t *testing.T) {
 
 	if rawRespBody, ok := resp.Data[logical.HTTPRawBody]; ok {
 		err = json.Unmarshal([]byte(rawRespBody.(string)), &respBody)
-		if err != nil {
-			t.Fatalf("Failed to unmarshal response body: %v", err)
-		}
+		require.NoError(t, err)
 	}
 
 	respDataRaw, ok := respBody["data"]

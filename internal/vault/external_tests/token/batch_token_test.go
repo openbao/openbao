@@ -14,6 +14,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/builtin/credential/approle"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBatchTokens(t *testing.T) {
@@ -41,34 +42,26 @@ func TestBatchTokens(t *testing.T) {
 	err = client.Sys().Mount("kv", &api.MountInput{
 		Type: "kv",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("kv/foo", map[string]any{
 		"foo": "bar",
 		"ttl": "5m",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Write the test policy
 	err = client.Sys().PutPolicy("test", `
 path "kv/*" {
 	capabilities = ["read"]
 }`)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Mount the auth backend
 	err = client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
 		Type: "approle",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Tune the mount
 	if err = client.Sys().TuneMount("auth/approle", api.MountConfigInput{
@@ -82,15 +75,11 @@ path "kv/*" {
 	_, err = client.Logical().Write("auth/approle/role/test", map[string]any{
 		"policies": "test",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Get role_id
 	resp, err := client.Logical().Read("auth/approle/role/test/role-id")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for fetching the role-id")
 	}
@@ -98,9 +87,7 @@ path "kv/*" {
 
 	// Get secret_id
 	resp, err = client.Logical().Write("auth/approle/role/test/secret-id", map[string]any{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for fetching the secret-id")
 	}
@@ -117,17 +104,13 @@ path "kv/*" {
 		_, err = client.Logical().Write("auth/approle/role/test", map[string]any{
 			"token_type": roleType,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		resp, err = client.Logical().Write("auth/approle/login", map[string]any{
 			"role_id":   roleID,
 			"secret_id": secretID,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil {
 			t.Fatal("expected a response for login")
 		}
@@ -162,9 +145,7 @@ path "kv/*" {
 
 	client.SetToken(finalToken)
 	resp, err = client.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.Data["foo"].(string) != "bar" {
 		t.Fatal("bad")
 	}
@@ -183,9 +164,7 @@ path "kv/*" {
 	for range 3 {
 		time.Sleep(time.Second)
 		resp, err = client.Sys().Renew(leaseID, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp.LeaseDuration >= lastDuration {
 			t.Fatal("expected duration to go down")
 		}
@@ -227,34 +206,26 @@ func TestBatchToken_ParentLeaseRevoke(t *testing.T) {
 	err = client.Sys().Mount("kv", &api.MountInput{
 		Type: "kv",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("kv/foo", map[string]any{
 		"foo": "bar",
 		"ttl": "5m",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Write the test policy
 	err = client.Sys().PutPolicy("test", `
 path "kv/*" {
 	capabilities = ["read"]
 }`)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a second root token
 	secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 		Policies: []string{"root"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	rootToken2 := secret.Auth.ClientToken
 
 	// Use this new token to create a batch token
@@ -263,24 +234,18 @@ path "kv/*" {
 		Policies: []string{"test"},
 		Type:     "batch",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	batchToken := secret.Auth.ClientToken
 	client.SetToken(batchToken)
 	_, err = client.Auth().Token().LookupSelf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Auth.ClientToken[0:vault.TokenPrefixLength] != consts.BatchTokenPrefix {
 		t.Fatal(secret.Auth.ClientToken)
 	}
 
 	// Get a lease with the batch token
 	resp, err := client.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.Data["foo"].(string) != "bar" {
 		t.Fatal("bad")
 	}
@@ -293,16 +258,12 @@ path "kv/*" {
 	_, err = client.Logical().Write("sys/leases/lookup", map[string]any{
 		"lease_id": leaseID,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Revoke the parent
 	client.SetToken(rootToken2)
 	err = client.Auth().Token().RevokeSelf("")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	time.Sleep(1 * time.Second)
 
@@ -343,21 +304,15 @@ func TestTokenStore_Roles_Batch(t *testing.T) {
 			"bound_cidrs": []string{},
 			"token_type":  "service",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		secret, err = client.Auth().Token().CreateWithRole(&api.TokenCreateRequest{
 			Policies: []string{"default"},
 			Type:     "batch",
 		}, "testrole")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		client.SetToken(secret.Auth.ClientToken)
 		_, err = client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret.Auth.ClientToken[0:vault.TokenPrefixLength] != consts.ServiceTokenPrefix {
 			t.Fatal(secret.Auth.ClientToken)
 		}
@@ -386,21 +341,15 @@ func TestTokenStore_Roles_Batch(t *testing.T) {
 			"orphan":     true,
 			"renewable":  false,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		secret, err = client.Auth().Token().CreateWithRole(&api.TokenCreateRequest{
 			Policies: []string{"default"},
 			Type:     "service",
 		}, "testrole")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		client.SetToken(secret.Auth.ClientToken)
 		_, err = client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret.Auth.ClientToken[0:vault.TokenPrefixLength] != consts.BatchTokenPrefix {
 			t.Fatal(secret.Auth.ClientToken)
 		}
@@ -412,22 +361,16 @@ func TestTokenStore_Roles_Batch(t *testing.T) {
 		_, err = client.Logical().Write("auth/token/roles/testrole", map[string]any{
 			"token_type": "default-service",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		// Client specifies batch
 		secret, err = client.Auth().Token().CreateWithRole(&api.TokenCreateRequest{
 			Policies: []string{"default"},
 			Type:     "batch",
 		}, "testrole")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		client.SetToken(secret.Auth.ClientToken)
 		_, err = client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret.Auth.ClientToken[0:vault.TokenPrefixLength] != consts.BatchTokenPrefix {
 			t.Fatal(secret.Auth.ClientToken)
 		}
@@ -437,14 +380,10 @@ func TestTokenStore_Roles_Batch(t *testing.T) {
 			Policies: []string{"default"},
 			Type:     "service",
 		}, "testrole")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		client.SetToken(secret.Auth.ClientToken)
 		_, err = client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret.Auth.ClientToken[0:vault.TokenPrefixLength] != consts.ServiceTokenPrefix {
 			t.Fatal(secret.Auth.ClientToken)
 		}
@@ -453,14 +392,10 @@ func TestTokenStore_Roles_Batch(t *testing.T) {
 		secret, err = client.Auth().Token().CreateWithRole(&api.TokenCreateRequest{
 			Policies: []string{"default"},
 		}, "testrole")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		client.SetToken(secret.Auth.ClientToken)
 		_, err = client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret.Auth.ClientToken[0:vault.TokenPrefixLength] != consts.ServiceTokenPrefix {
 			t.Fatal(secret.Auth.ClientToken)
 		}
@@ -472,22 +407,16 @@ func TestTokenStore_Roles_Batch(t *testing.T) {
 		_, err = client.Logical().Write("auth/token/roles/testrole", map[string]any{
 			"token_type": "default-batch",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		// Client specifies batch
 		secret, err = client.Auth().Token().CreateWithRole(&api.TokenCreateRequest{
 			Policies: []string{"default"},
 			Type:     "batch",
 		}, "testrole")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		client.SetToken(secret.Auth.ClientToken)
 		_, err = client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret.Auth.ClientToken[0:vault.TokenPrefixLength] != consts.BatchTokenPrefix {
 			t.Fatal(secret.Auth.ClientToken)
 		}
@@ -497,14 +426,10 @@ func TestTokenStore_Roles_Batch(t *testing.T) {
 			Policies: []string{"default"},
 			Type:     "service",
 		}, "testrole")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		client.SetToken(secret.Auth.ClientToken)
 		_, err = client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret.Auth.ClientToken[0:vault.TokenPrefixLength] != consts.ServiceTokenPrefix {
 			t.Fatal(secret.Auth.ClientToken)
 		}
@@ -513,14 +438,10 @@ func TestTokenStore_Roles_Batch(t *testing.T) {
 		secret, err = client.Auth().Token().CreateWithRole(&api.TokenCreateRequest{
 			Policies: []string{"default"},
 		}, "testrole")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		client.SetToken(secret.Auth.ClientToken)
 		_, err = client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret.Auth.ClientToken[0:vault.TokenPrefixLength] != consts.BatchTokenPrefix {
 			t.Fatal(secret.Auth.ClientToken)
 		}

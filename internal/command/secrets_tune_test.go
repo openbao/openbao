@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
+	"github.com/stretchr/testify/require"
 )
 
 func testSecretsTuneCommand(tb testing.TB) (*cli.MockUi, *SecretsTuneCommand) {
@@ -93,9 +94,7 @@ func TestSecretsTuneCommand_Run(t *testing.T) {
 
 		// confirm default max_versions
 		mounts, err := client.Sys().ListMounts()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		mountInfo, ok := mounts["kv/"]
 		if !ok {
@@ -128,9 +127,7 @@ func TestSecretsTuneCommand_Run(t *testing.T) {
 		}
 
 		mounts, err = client.Sys().ListMounts()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		mountInfo, ok = mounts["kv/"]
 		if !ok {
@@ -167,9 +164,7 @@ func TestSecretsTuneCommand_Run(t *testing.T) {
 			}
 
 			mounts, err := client.Sys().ListMounts()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			mountInfo, ok := mounts["mount_tune_integration/"]
 			if !ok {
 				t.Fatal("expected mount to exist")
@@ -205,9 +200,7 @@ func TestSecretsTuneCommand_Run(t *testing.T) {
 			}
 
 			mounts, err = client.Sys().ListMounts()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			mountInfo, ok = mounts["mount_tune_integration/"]
 			if !ok {
@@ -274,9 +267,7 @@ func TestSecretsTuneCommand_Run(t *testing.T) {
 				}
 
 				mounts, err := client.Sys().ListMounts()
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				mountInfo, ok := mounts["mount_tune_integration/"]
 				if !ok {
@@ -317,9 +308,7 @@ func TestSecretsTuneCommand_Run(t *testing.T) {
 				}
 
 				mounts, err := client.Sys().ListMounts()
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				mountInfo, ok := mounts["mount_tune_integration/"]
 				if !ok {

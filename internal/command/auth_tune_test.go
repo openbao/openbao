@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
+	"github.com/stretchr/testify/require"
 )
 
 func testAuthTuneCommand(tb testing.TB) (*cli.MockUi, *AuthTuneCommand) {
@@ -93,9 +94,7 @@ func TestAuthTuneCommand_Run(t *testing.T) {
 			}
 
 			auths, err := client.Sys().ListAuth()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			mountInfo, ok := auths["my-auth/"]
 			if !ok {
 				t.Fatalf("expected mount to exist: %#v", auths)
@@ -131,9 +130,7 @@ func TestAuthTuneCommand_Run(t *testing.T) {
 			}
 
 			auths, err = client.Sys().ListAuth()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			mountInfo, ok = auths["my-auth/"]
 			if !ok {
@@ -200,9 +197,7 @@ func TestAuthTuneCommand_Run(t *testing.T) {
 				}
 
 				auths, err := client.Sys().ListAuth()
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				mountInfo, ok := auths["my-auth/"]
 				if !ok {
@@ -243,9 +238,7 @@ func TestAuthTuneCommand_Run(t *testing.T) {
 				}
 
 				auths, err := client.Sys().ListAuth()
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				mountInfo, ok := auths["my-auth/"]
 				if !ok {

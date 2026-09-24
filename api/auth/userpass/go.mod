@@ -4,7 +4,10 @@ go 1.26.0
 
 replace github.com/openbao/openbao/api/v2 => ../../
 
-require github.com/openbao/openbao/api/v2 v2.1.0
+require (
+	github.com/openbao/openbao/api/v2 v2.1.0
+	github.com/stretchr/testify v1.12.1
+)
 
 require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
@@ -20,6 +23,7 @@ require (
 	github.com/hashicorp/hcl v1.0.1-vault-7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 	golang.org/x/time v0.15.0 // indirect

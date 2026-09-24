@@ -13,6 +13,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/builtin/credential/approle"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIdentityStore_EntityDisabled(t *testing.T) {
@@ -36,32 +37,24 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 	err := client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
 		Type: "approle",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Tune the mount
 	err = client.Sys().TuneMount("auth/approle", api.MountConfigInput{
 		DefaultLeaseTTL: "5m",
 		MaxLeaseTTL:     "5m",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create role
 	_, err = client.Logical().Write("auth/approle/role/role-period", map[string]any{
 		"period": "5m",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Get role_id
 	resp, err := client.Logical().Read("auth/approle/role/role-period/role-id")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for fetching the role-id")
 	}
@@ -69,9 +62,7 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 
 	// Get secret_id
 	resp, err = client.Logical().Write("auth/approle/role/role-period/secret-id", map[string]any{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for fetching the secret-id")
 	}
@@ -82,9 +73,7 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 		"role_id":   roleID,
 		"secret_id": secretID,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for login")
 	}
@@ -99,9 +88,7 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 
 	client.SetToken(roleToken)
 	resp, err = client.Auth().Token().LookupSelf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for token lookup")
 	}
@@ -118,9 +105,7 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 	_, err = client.Logical().Write("identity/entity/id/"+entityID, map[string]any{
 		"disabled": true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// This call should now fail
 	client.SetToken(roleToken)
@@ -149,15 +134,11 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 	_, err = client.Logical().Write("identity/entity/id/"+entityID, map[string]any{
 		"disabled": false,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	client.SetToken(roleToken)
 	_, err = client.Auth().Token().LookupSelf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Getting a new token should now work again too
 	client.SetToken("")
@@ -165,9 +146,7 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 		"role_id":   roleID,
 		"secret_id": secretID,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for login")
 	}
@@ -200,32 +179,24 @@ func TestIdentityStore_EntityPoliciesInInitialAuth(t *testing.T) {
 	err := client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
 		Type: "approle",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Tune the mount
 	err = client.Sys().TuneMount("auth/approle", api.MountConfigInput{
 		DefaultLeaseTTL: "5m",
 		MaxLeaseTTL:     "5m",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create role
 	_, err = client.Logical().Write("auth/approle/role/role-period", map[string]any{
 		"period": "5m",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Get role_id
 	resp, err := client.Logical().Read("auth/approle/role/role-period/role-id")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for fetching the role-id")
 	}
@@ -233,9 +204,7 @@ func TestIdentityStore_EntityPoliciesInInitialAuth(t *testing.T) {
 
 	// Get secret_id
 	resp, err = client.Logical().Write("auth/approle/role/role-period/secret-id", map[string]any{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for fetching the secret-id")
 	}
@@ -246,9 +215,7 @@ func TestIdentityStore_EntityPoliciesInInitialAuth(t *testing.T) {
 		"role_id":   roleID,
 		"secret_id": secretID,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for login")
 	}
@@ -271,9 +238,7 @@ func TestIdentityStore_EntityPoliciesInInitialAuth(t *testing.T) {
 	// Check policies
 	client.SetToken(resp.Auth.ClientToken)
 	resp, err = client.Auth().Token().LookupSelf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for token lookup")
 	}
@@ -306,9 +271,7 @@ func TestIdentityStore_EntityPoliciesInInitialAuth(t *testing.T) {
 	_, err = client.Logical().Write("identity/entity/id/"+entityID, map[string]any{
 		"policies": []string{"foo", "bar"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Reauthenticate to get a token with updated policies
 	client.SetToken("")
@@ -316,9 +279,7 @@ func TestIdentityStore_EntityPoliciesInInitialAuth(t *testing.T) {
 		"role_id":   roleID,
 		"secret_id": secretID,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for login")
 	}
@@ -342,9 +303,7 @@ func TestIdentityStore_EntityPoliciesInInitialAuth(t *testing.T) {
 	// policies were encoded on the token but all were looked up successfully
 	client.SetToken(resp.Auth.ClientToken)
 	resp, err = client.Auth().Token().LookupSelf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for token lookup")
 	}

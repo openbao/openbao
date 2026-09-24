@@ -18,6 +18,7 @@ import (
 	be "github.com/openbao/openbao/v2/internal/vault/backend"
 	ident "github.com/openbao/openbao/v2/internal/vault/identity"
 	"github.com/openbao/openbao/v2/internal/vault/routing"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCoreMetrics_KvSecretGauge(t *testing.T) {
@@ -54,9 +55,7 @@ func TestCoreMetrics_KvSecretGauge(t *testing.T) {
 			Options: map[string]string{"version": tm.Version},
 		}
 		err := core.mount(ctx, me)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 	}
 
 	v1secrets := []string{
@@ -83,9 +82,7 @@ func TestCoreMetrics_KvSecretGauge(t *testing.T) {
 		req.Data["foo"] = "bar"
 		req.ClientToken = root
 		resp, err := core.HandleRequest(ctx, req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if resp != nil {
 			t.Fatalf("bad: %#v", resp)
 		}
@@ -112,9 +109,7 @@ func TestCoreMetrics_KvSecretGauge(t *testing.T) {
 	}
 
 	values, err := core.kvSecretGaugeCollector(ctx)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(values) != len(testMounts) {
 		t.Errorf("Got %v values but expected %v mounts", len(values), len(testMounts))
 	}
@@ -171,9 +166,7 @@ func TestCoreMetrics_KvSecretGauge_BadPath(t *testing.T) {
 	}
 	ctx := namespace.RootContext(t.Context())
 	err := core.mount(ctx, me)
-	if err != nil {
-		t.Fatalf("mount error: %v", err)
-	}
+	require.NoError(t, err)
 
 	// I don't think there's any remaining way to create a zero-length
 	// key via the API, so we'll fake it by talking to the storage layer directly.
@@ -182,14 +175,10 @@ func TestCoreMetrics_KvSecretGauge_BadPath(t *testing.T) {
 		Value: []byte{1},
 	}
 	err = core.barrier.Put(ctx, fake_entry)
-	if err != nil {
-		t.Fatalf("put error: %v", err)
-	}
+	require.NoError(t, err)
 
 	values, err := core.kvSecretGaugeCollector(ctx)
-	if err != nil {
-		t.Fatalf("collector error: %v", err)
-	}
+	require.NoError(t, err)
 	t.Logf("Values: %v", values)
 	found := false
 	var count float32 = -1
@@ -289,9 +278,7 @@ func testCoreMetricsEntityGauges(t *testing.T, ctx context.Context, is *ident.Id
 	}
 
 	entity, _, err := is.CreateOrFetchEntity(ctx, alias1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a second alias for the same entity
 	registerReq := &logical.Request{
@@ -309,9 +296,7 @@ func testCoreMetricsEntityGauges(t *testing.T, ctx context.Context, is *ident.Id
 	}
 
 	glv, err := core.entityGaugeCollector(ctx)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	if len(glv) != 1 {
 		t.Fatalf("Wrong number of gauges %v, expected %v", len(glv), 1)
@@ -327,9 +312,7 @@ func testCoreMetricsEntityGauges(t *testing.T, ctx context.Context, is *ident.Id
 		})
 
 	glv, err = core.entityGaugeCollectorByMount(ctx)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	if len(glv) != 2 {
 		t.Fatalf("Wrong number of gauges %v, expected %v", len(glv), 1)

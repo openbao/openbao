@@ -104,9 +104,7 @@ server {
 
 	imageName := "vault_pki_nginx_integration"
 	suffix, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("error generating unique suffix: %v", err)
-	}
+	require.NoError(t, err)
 	imageTag := suffix
 
 	runner, err := docker.NewServiceRunner(docker.RunOptions{
@@ -120,18 +118,14 @@ server {
 			}
 		},
 	})
-	if err != nil {
-		t.Fatalf("Could not provision docker service runner: %s", err)
-	}
+	require.NoError(t, err)
 
 	ctx := t.Context()
 	output, err := runner.BuildImage(ctx, containerfile, bCtx,
 		docker.BuildRemove(true), docker.BuildForceRemove(true),
 		docker.BuildPullParent(true),
 		docker.BuildTags([]string{imageName + ":" + imageTag}))
-	if err != nil {
-		t.Fatalf("Could not build new image: %v", err)
-	}
+	require.NoError(t, err)
 
 	t.Logf("Image build output: %v", string(output))
 
@@ -140,17 +134,13 @@ server {
 		time.Sleep(5 * time.Second)
 		return docker.NewServiceHostPort(host, port), nil
 	})
-	if err != nil {
-		t.Fatalf("Could not start nginx container: %v", err)
-	}
+	require.NoError(t, err)
 
 	// We also need to find the network address of this node, and return
 	// the non-local address associated with it so that we can spawn the
 	// client command on the correct network/port.
 	networks, err := runner.GetNetworkAndAddresses(svc.Container.ID)
-	if err != nil {
-		t.Fatalf("Could not interrogate container for addresses: %v", err)
-	}
+	require.NoError(t, err)
 
 	var networkName string
 	var networkAddr string
@@ -200,18 +190,14 @@ RUN apt update && DEBIAN_FRONTEND="noninteractive" apt install -y curl wget wget
 			}
 		},
 	})
-	if err != nil {
-		t.Fatalf("Could not provision docker service runner: %s", err)
-	}
+	require.NoError(t, err)
 
 	ctx := t.Context()
 	output, err := cwRunner.BuildImage(ctx, containerfile, bCtx,
 		docker.BuildRemove(true), docker.BuildForceRemove(true),
 		docker.BuildPullParent(true),
 		docker.BuildTags([]string{imageName + ":" + imageTag}))
-	if err != nil {
-		t.Fatalf("Could not build new image: %v", err)
-	}
+	require.NoError(t, err)
 
 	t.Logf("Image build output: %v", string(output))
 }
@@ -231,9 +217,7 @@ func CheckWithClients(t *testing.T, network string, address string, url string, 
 	// threads.
 	ctx := t.Context()
 	result, err := cwRunner.Start(ctx, true, false)
-	if err != nil {
-		t.Fatalf("Could not start golang container for wget/curl checks: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Commands to run after potentially writing the certificate. We
 	// might augment these if the certificate exists.
@@ -264,9 +248,7 @@ func CheckWithClients(t *testing.T, network string, address string, url string, 
 		t.Logf("Running client connection command: %v", cmd)
 
 		stdout, stderr, retcode, err := cwRunner.RunCmdWithOutput(ctx, result.Container.ID, cmd)
-		if err != nil {
-			t.Fatalf("Could not run command (%v) in container: %v", cmd, err)
-		}
+		require.NoErrorf(t, err, "Could not run command (%v) in container: %v", cmd, err)
 
 		if len(stderr) != 0 {
 			t.Logf("Got stderr from command (%v):\n%v\n", cmd, string(stderr))
@@ -294,9 +276,7 @@ func CheckDeltaCRL(t *testing.T, network string, address string, url string, roo
 	// threads.
 	ctx := t.Context()
 	result, err := cwRunner.Start(ctx, true, false)
-	if err != nil {
-		t.Fatalf("Could not start golang container for wget2 delta CRL checks: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Commands to run after potentially writing the certificate. We
 	// might augment these if the certificate exists.
@@ -319,9 +299,7 @@ func CheckDeltaCRL(t *testing.T, network string, address string, url string, roo
 		t.Logf("Running client connection command: %v", cmd)
 
 		stdout, stderr, retcode, err := cwRunner.RunCmdWithOutput(ctx, result.Container.ID, cmd)
-		if err != nil {
-			t.Fatalf("Could not run command (%v) in container: %v", cmd, err)
-		}
+		require.NoErrorf(t, err, "Could not run command (%v) in container: %v", cmd, err)
 
 		if len(stderr) != 0 {
 			t.Logf("Got stderr from command (%v):\n%v\n", cmd, string(stderr))
@@ -397,9 +375,7 @@ func CheckWithGo(t *testing.T, rootCert string, clientCert string, clientChain [
 
 	defer clientResp.Body.Close() //nolint:errcheck
 	body, err := io.ReadAll(clientResp.Body)
-	if err != nil {
-		t.Fatalf("failed to get read response body: %v", err)
-	}
+	require.NoError(t, err)
 	if !strings.Contains(string(body), expected) {
 		t.Fatalf("expected body to contain (%v) but was:\n%v", expected, string(body))
 	}

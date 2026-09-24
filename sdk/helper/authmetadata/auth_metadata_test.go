@@ -11,6 +11,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 var testFields = &Fields{
@@ -111,9 +112,7 @@ func TestMarshalJSON(t *testing.T) {
 	h := NewHandler(&Fields{})
 	h.authMetadata = []string{"fizz", "buzz"}
 	b, err := h.MarshalJSON()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if string(b) != `{"auth_metadata":["fizz","buzz"]}` {
 		t.Fatal(`expected {"auth_metadata":["fizz","buzz"]}`)
 	}

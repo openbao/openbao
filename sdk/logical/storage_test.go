@@ -34,9 +34,7 @@ func TestScanView(t *testing.T) {
 	err := ScanView(t.Context(), s, func(path string) {
 		keys = append(keys, path)
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if diff := deep.Equal(keys, keyList); diff != nil {
 		t.Fatal(diff)
@@ -68,9 +66,7 @@ func TestScanViewPaginated(t *testing.T) {
 	err := ScanViewWithLogger(t.Context(), s, nil, func(path string) {
 		keys = append(keys, path)
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if diff := deep.Equal(keys, keyList); diff != nil {
 		t.Fatal(diff)
@@ -86,9 +82,7 @@ func TestScanViewPaginated(t *testing.T) {
 			keys = append(keys, path)
 			return true, nil
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		trimmedExpected := make([]string, 0)
 		for _, path := range keyList[len(keyList)-3:] {
@@ -104,9 +98,7 @@ func TestCollectKeys(t *testing.T) {
 	s := prepKeyStorage(t)
 
 	keys, err := CollectKeys(t.Context(), s)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if diff := deep.Equal(keys, keyList); diff != nil {
 		t.Fatal(diff)
@@ -117,9 +109,7 @@ func TestCollectKeysPrefix(t *testing.T) {
 	s := prepKeyStorage(t)
 
 	keys, err := CollectKeysWithPrefix(t.Context(), s, "foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	exp := []string{
 		"foo",

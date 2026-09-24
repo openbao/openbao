@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/cli"
+	"github.com/stretchr/testify/require"
 )
 
 func testOperatorSealCommand(tb testing.TB) (*cli.MockUi, *OperatorSealCommand) {
@@ -85,9 +86,7 @@ func TestOperatorSealCommand_Run(t *testing.T) {
 		}
 
 		sealStatus, err := client.Sys().SealStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !sealStatus.Sealed {
 			t.Error("expected to be sealed")
 		}

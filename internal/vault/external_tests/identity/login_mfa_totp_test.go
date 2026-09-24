@@ -22,20 +22,17 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func doTwoPhaseLogin(t *testing.T, client *api.Client, totpCodePath, methodID, username string, expectedEntityID string) {
 	totpPasscode := testhelpers.GetTOTPCodeFromEngine(t, client, totpCodePath)
 
 	upMethod, err := upAuth.NewUserpassAuth(username, &upAuth.Password{FromString: "testpassword"})
-	if err != nil {
-		t.Fatalf("failed to create UserpassAuth: %v", err)
-	}
+	require.NoError(t, err)
 
 	mfaSecret, err := client.Auth().MFALogin(t.Context(), upMethod)
-	if err != nil {
-		t.Fatalf("failed to login with userpass auth method: %v", err)
-	}
+	require.NoError(t, err)
 
 	secret, err := client.Auth().MFAValidate(
 		t.Context(),
@@ -44,9 +41,7 @@ func doTwoPhaseLogin(t *testing.T, client *api.Client, totpCodePath, methodID, u
 			methodID: []string{totpPasscode},
 		},
 	)
-	if err != nil {
-		t.Fatalf("MFA validation failed: %v", err)
-	}
+	require.NoError(t, err)
 
 	if secret == nil || secret.Auth == nil || secret.Auth.ClientToken == "" {
 		t.Fatalf("MFA validation failed to return a ClientToken in secret: %v", secret)
@@ -57,9 +52,7 @@ func doTwoPhaseLogin(t *testing.T, client *api.Client, totpCodePath, methodID, u
 	// Redo the test, ensuring that the TOTP cannot be reused. This validates
 	// against HCSEC-2025-19 / CVE-2025-6015.
 	mfaSecret, err = client.Auth().MFALogin(t.Context(), upMethod)
-	if err != nil {
-		t.Fatalf("failed to initiate second login with userpass auth method: %v", err)
-	}
+	require.NoError(t, err)
 
 	secret, err = client.Auth().MFAValidate(
 		t.Context(),
@@ -74,14 +67,10 @@ func doTwoPhaseLogin(t *testing.T, client *api.Client, totpCodePath, methodID, u
 
 	// Validate the original token actually works and is persisted.
 	userClient2, err := client.Clone()
-	if err != nil {
-		t.Fatalf("Failed to clone client for lookup validation")
-	}
+	require.NoErrorf(t, err, "Failed to clone client for lookup validation")
 	userClient2.SetToken(clientToken)
 	secret, err = userClient2.Logical().ReadWithContext(t.Context(), "auth/token/lookup-self")
-	if err != nil {
-		t.Fatalf("failed to lookup userpass authenticated token: %v", err)
-	}
+	require.NoError(t, err)
 
 	entityIDCheck := secret.Data["entity_id"].(string)
 	if entityIDCheck != expectedEntityID {
@@ -170,9 +159,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 		secret, err := userClient1.Logical().WriteWithContext(t.Context(), "auth/token/lookup", map[string]any{
 			"token": userpassToken,
 		})
-		if err != nil {
-			t.Fatalf("failed to lookup userpass authenticated token: %v", err)
-		}
+		require.NoError(t, err)
 
 		entityIDCheck := secret.Data["entity_id"].(string)
 		if entityIDCheck != entityID1 {
@@ -243,9 +230,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	secret, err = userClient1.Logical().WriteWithContext(t.Context(), userpassPath, map[string]any{
 		"password": "testpassword",
 	})
-	if err != nil {
-		t.Fatalf("MFA failed: %v", err)
-	}
+	require.NoError(t, err)
 
 	if len(secret.Warnings) == 0 || !strings.Contains(strings.Join(secret.Warnings, ""), "A login request was issued that is subject to MFA validation") {
 		t.Fatal("first phase of login did not have a warning")
@@ -302,9 +287,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	secret, err = userClient1.Logical().WriteWithContext(t.Context(), userpassPath, map[string]any{
 		"password": "testpassword",
 	})
-	if err != nil {
-		t.Fatalf("MFA failed: %v", err)
-	}
+	require.NoError(t, err)
 
 	methodIdentifier = totpConfig["method_name"].(string)
 	mfaReqID = secret.Auth.MFARequirement.MFARequestID
@@ -329,9 +312,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	secret, err = userClient1.Logical().WriteWithContext(t.Context(), userpassPath, map[string]any{
 		"password": "testpassword",
 	})
-	if err != nil {
-		t.Fatalf("MFA failed: %v", err)
-	}
+	require.NoError(t, err)
 
 	if secret.Auth == nil || secret.Auth.MFARequirement == nil {
 		t.Fatal("two phase login returned nil MFARequirement")
@@ -354,9 +335,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	secret, err = userClient1.Logical().WriteWithContext(t.Context(), userpassPath, map[string]any{
 		"password": "testpassword",
 	})
-	if err != nil {
-		t.Fatalf("MFA failed: %v", err)
-	}
+	require.NoError(t, err)
 
 	var maxErr error
 	// We should get the max validation attempts error message exactly at
@@ -396,7 +375,5 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 		"entity_id": entityID1,
 		"method_id": methodID,
 	})
-	if err != nil {
-		t.Fatalf("failed to destroy the MFA secret: %s", err)
-	}
+	require.NoError(t, err)
 }

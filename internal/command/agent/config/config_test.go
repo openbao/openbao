@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-test/deep"
 	ctconfig "github.com/openbao/openbao-template/config"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
 
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared"
@@ -19,9 +20,7 @@ import (
 
 func TestLoadConfigFile_AgentCache(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-cache.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -119,9 +118,7 @@ func TestLoadConfigFile_AgentCache(t *testing.T) {
 	}
 
 	config, err = LoadConfigFile("./test-fixtures/config-cache-embedded-type.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	expected.Vault.TLSSkipVerifyRaw = any(true)
 
 	config.Prune()
@@ -132,9 +129,7 @@ func TestLoadConfigFile_AgentCache(t *testing.T) {
 
 func TestLoadConfigDir_AgentCache(t *testing.T) {
 	config, err := LoadConfig("./test-fixtures/config-dir-cache/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -232,13 +227,9 @@ func TestLoadConfigDir_AgentCache(t *testing.T) {
 	}
 
 	config, err = LoadConfigFile("./test-fixtures/config-dir-cache/config-cache1.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config2, err := LoadConfigFile("./test-fixtures/config-dir-cache/config-cache2.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	mergedConfig := config.Merge(config2)
 
@@ -250,9 +241,7 @@ func TestLoadConfigDir_AgentCache(t *testing.T) {
 
 func TestLoadConfigDir_AutoAuthAndListener(t *testing.T) {
 	config, err := LoadConfig("./test-fixtures/config-dir-auto-auth-and-listener/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -295,13 +284,9 @@ func TestLoadConfigDir_AutoAuthAndListener(t *testing.T) {
 	}
 
 	config, err = LoadConfigFile("./test-fixtures/config-dir-auto-auth-and-listener/config1.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config2, err := LoadConfigFile("./test-fixtures/config-dir-auto-auth-and-listener/config2.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	mergedConfig := config.Merge(config2)
 
@@ -313,9 +298,7 @@ func TestLoadConfigDir_AutoAuthAndListener(t *testing.T) {
 
 func TestLoadConfigDir_VaultBlock(t *testing.T) {
 	config, err := LoadConfig("./test-fixtures/config-dir-vault-block/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -361,13 +344,9 @@ func TestLoadConfigDir_VaultBlock(t *testing.T) {
 	}
 
 	config, err = LoadConfigFile("./test-fixtures/config-dir-vault-block/config1.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config2, err := LoadConfigFile("./test-fixtures/config-dir-vault-block/config2.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	mergedConfig := config.Merge(config2)
 
@@ -379,9 +358,7 @@ func TestLoadConfigDir_VaultBlock(t *testing.T) {
 
 func TestLoadConfigFile_AgentCache_NoListeners(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-cache-no-listeners.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -460,9 +437,7 @@ func TestLoadConfigFile(t *testing.T) {
 	}()
 
 	config, err := LoadConfigFile("./test-fixtures/config.hcl")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -510,9 +485,7 @@ func TestLoadConfigFile(t *testing.T) {
 	}
 
 	config, err = LoadConfigFile("./test-fixtures/config-embedded-type.hcl")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
@@ -522,9 +495,7 @@ func TestLoadConfigFile(t *testing.T) {
 
 func TestLoadConfigFile_Method_Wrapping(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-method-wrapping.hcl")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -560,9 +531,7 @@ func TestLoadConfigFile_Method_Wrapping(t *testing.T) {
 
 func TestLoadConfigFile_Method_InitialBackoff(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-method-initial-backoff.hcl")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -599,9 +568,7 @@ func TestLoadConfigFile_Method_InitialBackoff(t *testing.T) {
 
 func TestLoadConfigFile_Method_ExitOnErr(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-method-exit-on-err.hcl")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -638,9 +605,7 @@ func TestLoadConfigFile_Method_ExitOnErr(t *testing.T) {
 
 func TestLoadConfigFile_AgentCache_NoAutoAuth(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-cache-no-auto_auth.hcl")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		Cache: &Cache{},
@@ -666,9 +631,7 @@ func TestLoadConfigFile_AgentCache_NoAutoAuth(t *testing.T) {
 
 func TestLoadConfigFile_Bad_AgentCache_InconsisentAutoAuth(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/bad-config-cache-inconsistent-auto_auth.hcl")
-	if err != nil {
-		t.Fatalf("LoadConfigFile should not return an error for this config, err: %v", err)
-	}
+	require.NoError(t, err)
 	if config == nil {
 		t.Fatal("config was nil")
 	}
@@ -680,9 +643,7 @@ func TestLoadConfigFile_Bad_AgentCache_InconsisentAutoAuth(t *testing.T) {
 
 func TestLoadConfigFile_Bad_AgentCache_ForceAutoAuthNoMethod(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/bad-config-cache-force-token-no-auth-method.hcl")
-	if err != nil {
-		t.Fatalf("LoadConfigFile should not return an error for this config, err: %v", err)
-	}
+	require.NoError(t, err)
 	if config == nil {
 		t.Fatal("config was nil")
 	}
@@ -694,9 +655,7 @@ func TestLoadConfigFile_Bad_AgentCache_ForceAutoAuthNoMethod(t *testing.T) {
 
 func TestLoadConfigFile_Bad_AgentCache_NoListeners(t *testing.T) {
 	_, err := LoadConfigFile("./test-fixtures/bad-config-cache-no-listeners.hcl")
-	if err != nil {
-		t.Fatal("LoadConfigFile should return an error for this config")
-	}
+	require.NoError(t, err)
 }
 
 func TestLoadConfigFile_Bad_AutoAuth_Wrapped_Multiple_Sinks(t *testing.T) {
@@ -708,9 +667,7 @@ func TestLoadConfigFile_Bad_AutoAuth_Wrapped_Multiple_Sinks(t *testing.T) {
 
 func TestLoadConfigFile_Bad_AutoAuth_Nosinks_Nocache_Notemplates(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/bad-config-auto_auth-nosinks-nocache-notemplates.hcl")
-	if err != nil {
-		t.Fatalf("LoadConfigFile should not return an error for this config, err: %v", err)
-	}
+	require.NoError(t, err)
 	if config == nil {
 		t.Fatal("config was nil")
 	}
@@ -729,9 +686,7 @@ func TestLoadConfigFile_Bad_AutoAuth_Both_Wrapping_Types(t *testing.T) {
 
 func TestLoadConfigFile_Bad_AgentCache_AutoAuth_Method_wrapping(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/bad-config-cache-auto_auth-method-wrapping.hcl")
-	if err != nil {
-		t.Fatalf("LoadConfigFile should not return an error for this config, err: %v", err)
-	}
+	require.NoError(t, err)
 	if config == nil {
 		t.Fatal("config was nil")
 	}
@@ -743,9 +698,7 @@ func TestLoadConfigFile_Bad_AgentCache_AutoAuth_Method_wrapping(t *testing.T) {
 
 func TestLoadConfigFile_Bad_APIProxy_And_Cache_Same_Config(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/bad-config-api_proxy-cache.hcl")
-	if err != nil {
-		t.Fatalf("LoadConfigFile should not return an error for this config, err: %v", err)
-	}
+	require.NoError(t, err)
 	if config == nil {
 		t.Fatal("config was nil")
 	}
@@ -757,9 +710,7 @@ func TestLoadConfigFile_Bad_APIProxy_And_Cache_Same_Config(t *testing.T) {
 
 func TestLoadConfigFile_AgentCache_AutoAuth_NoSink(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-cache-auto_auth-no-sink.hcl")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -802,9 +753,7 @@ func TestLoadConfigFile_AgentCache_AutoAuth_NoSink(t *testing.T) {
 
 func TestLoadConfigFile_AgentCache_AutoAuth_Force(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-cache-auto_auth-force.hcl")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -847,9 +796,7 @@ func TestLoadConfigFile_AgentCache_AutoAuth_Force(t *testing.T) {
 
 func TestLoadConfigFile_AgentCache_AutoAuth_True(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-cache-auto_auth-true.hcl")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -892,9 +839,7 @@ func TestLoadConfigFile_AgentCache_AutoAuth_True(t *testing.T) {
 
 func TestLoadConfigFile_Agent_AutoAuth_APIProxyAllConfig(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-api_proxy-auto_auth-all-api_proxy-config.hcl")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -933,9 +878,7 @@ func TestLoadConfigFile_Agent_AutoAuth_APIProxyAllConfig(t *testing.T) {
 
 func TestLoadConfigFile_AgentCache_AutoAuth_False(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-cache-auto_auth-false.hcl")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -985,9 +928,7 @@ func TestLoadConfigFile_AgentCache_AutoAuth_False(t *testing.T) {
 
 func TestLoadConfigFile_AgentCache_Persist(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-cache-persist-false.hcl")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		Cache: &Cache{
@@ -1049,9 +990,7 @@ func TestLoadConfigFile_TemplateConfig(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			config, err := LoadConfigFile(tc.fixturePath)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			expected := &Config{
 				SharedConfig: &configutil.SharedConfig{},
@@ -1148,9 +1087,7 @@ func TestLoadConfigFile_Template(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			config, err := LoadConfigFile(tc.fixturePath)
-			if err != nil {
-				t.Fatalf("err: %s", err)
-			}
+			require.NoError(t, err)
 
 			expected := &Config{
 				SharedConfig: &configutil.SharedConfig{
@@ -1254,9 +1191,7 @@ func TestLoadConfigFile_Template_NoSinks(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			config, err := LoadConfigFile(tc.fixturePath)
-			if err != nil {
-				t.Fatalf("err: %s", err)
-			}
+			require.NoError(t, err)
 
 			expected := &Config{
 				SharedConfig: &configutil.SharedConfig{
@@ -1288,9 +1223,7 @@ func TestLoadConfigFile_Template_NoSinks(t *testing.T) {
 // permitted in vault agent configuration with template(s)
 func TestLoadConfigFile_Template_WithCache(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-template-with-cache.hcl")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -1323,9 +1256,7 @@ func TestLoadConfigFile_Template_WithCache(t *testing.T) {
 
 func TestLoadConfigFile_Vault_Retry(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-vault-retry.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -1368,9 +1299,7 @@ func TestLoadConfigFile_Vault_Retry(t *testing.T) {
 
 func TestLoadConfigFile_Vault_Retry_Empty(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-vault-retry-empty.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -1413,9 +1342,7 @@ func TestLoadConfigFile_Vault_Retry_Empty(t *testing.T) {
 
 func TestLoadConfigFile_Disable_Idle_Conns_All(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-disable-idle-connections-all.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -1462,9 +1389,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_All(t *testing.T) {
 
 func TestLoadConfigFile_Disable_Idle_Conns_Auto_Auth(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-disable-idle-connections-auto-auth.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -1511,9 +1436,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_Auto_Auth(t *testing.T) {
 
 func TestLoadConfigFile_Disable_Idle_Conns_Templating(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-disable-idle-connections-templating.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -1560,9 +1483,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_Templating(t *testing.T) {
 
 func TestLoadConfigFile_Disable_Idle_Conns_Caching(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-disable-idle-connections-caching.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -1609,9 +1530,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_Caching(t *testing.T) {
 
 func TestLoadConfigFile_Disable_Idle_Conns_Proxying(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-disable-idle-connections-proxying.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -1658,9 +1577,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_Proxying(t *testing.T) {
 
 func TestLoadConfigFile_Disable_Idle_Conns_Empty(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-disable-idle-connections-empty.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -1709,13 +1626,9 @@ func TestLoadConfigFile_Disable_Idle_Conns_Env(t *testing.T) {
 	err := os.Setenv(DisableIdleConnsEnv, "auto-auth,caching,templating")
 	defer os.Unsetenv(DisableIdleConnsEnv)
 
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config, err := LoadConfigFile("./test-fixtures/config-disable-idle-connections-empty.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -1769,9 +1682,7 @@ func TestLoadConfigFile_Bad_Value_Disable_Idle_Conns(t *testing.T) {
 
 func TestLoadConfigFile_Disable_Keep_Alives_All(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-disable-keep-alives-all.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -1818,9 +1729,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_All(t *testing.T) {
 
 func TestLoadConfigFile_Disable_Keep_Alives_Auto_Auth(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-disable-keep-alives-auto-auth.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -1867,9 +1776,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_Auto_Auth(t *testing.T) {
 
 func TestLoadConfigFile_Disable_Keep_Alives_Templating(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-disable-keep-alives-templating.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -1916,9 +1823,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_Templating(t *testing.T) {
 
 func TestLoadConfigFile_Disable_Keep_Alives_Caching(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-disable-keep-alives-caching.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -1965,9 +1870,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_Caching(t *testing.T) {
 
 func TestLoadConfigFile_Disable_Keep_Alives_Proxying(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-disable-keep-alives-proxying.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -2014,9 +1917,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_Proxying(t *testing.T) {
 
 func TestLoadConfigFile_Disable_Keep_Alives_Empty(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-disable-keep-alives-empty.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -2065,13 +1966,9 @@ func TestLoadConfigFile_Disable_Keep_Alives_Env(t *testing.T) {
 	err := os.Setenv(DisableKeepAlivesEnv, "auto-auth,caching,templating")
 	defer os.Unsetenv(DisableKeepAlivesEnv)
 
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config, err := LoadConfigFile("./test-fixtures/config-disable-keep-alives-empty.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -2126,9 +2023,7 @@ func TestLoadConfigFile_Bad_Value_Disable_Keep_Alives(t *testing.T) {
 // TestLoadConfigFile_EnvTemplates_Simple loads and validates an env_template config
 func TestLoadConfigFile_EnvTemplates_Simple(t *testing.T) {
 	cfg, err := LoadConfigFile("./test-fixtures/config-env-templates-simple.hcl")
-	if err != nil {
-		t.Fatalf("error loading config file: %s", err)
-	}
+	require.NoError(t, err)
 
 	if err := cfg.ValidateConfig(); err != nil {
 		t.Fatalf("validation error: %s", err)
@@ -2149,9 +2044,7 @@ func TestLoadConfigFile_EnvTemplates_Simple(t *testing.T) {
 // TestLoadConfigFile_EnvTemplates_Complex loads and validates an env_template config
 func TestLoadConfigFile_EnvTemplates_Complex(t *testing.T) {
 	cfg, err := LoadConfigFile("./test-fixtures/config-env-templates-complex.hcl")
-	if err != nil {
-		t.Fatalf("error loading config file: %s", err)
-	}
+	require.NoError(t, err)
 
 	if err := cfg.ValidateConfig(); err != nil {
 		t.Fatalf("validation error: %s", err)
@@ -2182,9 +2075,7 @@ func TestLoadConfigFile_EnvTemplates_Complex(t *testing.T) {
 // env_template config with "source" instead of "contents"
 func TestLoadConfigFile_EnvTemplates_WithSource(t *testing.T) {
 	cfg, err := LoadConfigFile("./test-fixtures/config-env-templates-with-source.hcl")
-	if err != nil {
-		t.Fatalf("error loading config file: %s", err)
-	}
+	require.NoError(t, err)
 
 	if err := cfg.ValidateConfig(); err != nil {
 		t.Fatalf("validation error: %s", err)
@@ -2210,9 +2101,7 @@ func TestLoadConfigFile_EnvTemplates_ExecInvalidSignal(t *testing.T) {
 // TestLoadConfigFile_EnvTemplates_ExecSimple validates the exec section with default parameters
 func TestLoadConfigFile_EnvTemplates_ExecSimple(t *testing.T) {
 	cfg, err := LoadConfigFile("./test-fixtures/config-env-templates-simple.hcl")
-	if err != nil {
-		t.Fatalf("error loading config file: %s", err)
-	}
+	require.NoError(t, err)
 
 	if err := cfg.ValidateConfig(); err != nil {
 		t.Fatalf("validation error: %s", err)
@@ -2236,9 +2125,7 @@ func TestLoadConfigFile_EnvTemplates_ExecSimple(t *testing.T) {
 // TestLoadConfigFile_EnvTemplates_ExecComplex validates the exec section with non-default parameters
 func TestLoadConfigFile_EnvTemplates_ExecComplex(t *testing.T) {
 	cfg, err := LoadConfigFile("./test-fixtures/config-env-templates-complex.hcl")
-	if err != nil {
-		t.Fatalf("error loading config file: %s", err)
-	}
+	require.NoError(t, err)
 
 	if err := cfg.ValidateConfig(); err != nil {
 		t.Fatalf("validation error: %s", err)
@@ -2261,9 +2148,7 @@ func TestLoadConfigFile_EnvTemplates_ExecComplex(t *testing.T) {
 // errors when "env_template" stanza(s) are specified but "exec" is missing
 func TestLoadConfigFile_Bad_EnvTemplates_MissingExec(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/bad-config-env-templates-missing-exec.hcl")
-	if err != nil {
-		t.Fatalf("error loading config file: %s", err)
-	}
+	require.NoError(t, err)
 
 	if err := config.ValidateConfig(); err == nil {
 		t.Fatal("expected an error from ValidateConfig: exec section is missing")
@@ -2274,9 +2159,7 @@ func TestLoadConfigFile_Bad_EnvTemplates_MissingExec(t *testing.T) {
 // errors when both env_template and api_proxy stanzas are present
 func TestLoadConfigFile_Bad_EnvTemplates_WithProxy(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/bad-config-env-templates-with-proxy.hcl")
-	if err != nil {
-		t.Fatalf("error loading config file: %s", err)
-	}
+	require.NoError(t, err)
 
 	if err := config.ValidateConfig(); err == nil {
 		t.Fatal("expected an error from ValidateConfig: listener / api_proxy are not compatible with env_template")
@@ -2287,9 +2170,7 @@ func TestLoadConfigFile_Bad_EnvTemplates_WithProxy(t *testing.T) {
 // ValidateConfig errors when both env_template and template stanzas are present
 func TestLoadConfigFile_Bad_EnvTemplates_WithFileTemplates(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/bad-config-env-templates-with-file-templates.hcl")
-	if err != nil {
-		t.Fatalf("error loading config file: %s", err)
-	}
+	require.NoError(t, err)
 
 	if err := config.ValidateConfig(); err == nil {
 		t.Fatal("expected an error from ValidateConfig: file template stanza is not compatible with env_template")
@@ -2300,9 +2181,7 @@ func TestLoadConfigFile_Bad_EnvTemplates_WithFileTemplates(t *testing.T) {
 // ValidateConfig errors for disalowed env_template fields
 func TestLoadConfigFile_Bad_EnvTemplates_DisalowedFields(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/bad-config-env-templates-disalowed-fields.hcl")
-	if err != nil {
-		t.Fatalf("error loading config file: %s", err)
-	}
+	require.NoError(t, err)
 
 	if err := config.ValidateConfig(); err == nil {
 		t.Fatal("expected an error from ValidateConfig: disallowed fields specified in env_template")

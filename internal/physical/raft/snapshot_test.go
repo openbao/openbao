@@ -32,19 +32,13 @@ func addPeer(t *testing.T, leader, follower *RaftBackend) {
 	}
 
 	peers, err := leader.Peers(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = follower.Bootstrap(peers)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = follower.SetupCluster(t.Context(), SetupOpts{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	leader.raftTransport.(*raft.InmemTransport).Connect(raft.ServerAddress(follower.NodeID()), follower.raftTransport)
 	follower.raftTransport.(*raft.InmemTransport).Connect(raft.ServerAddress(leader.NodeID()), leader.raftTransport)
@@ -60,9 +54,7 @@ func TestRaft_Snapshot_Loading(t *testing.T) {
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	readCloser, writeCloser := io.Pipe()
@@ -77,9 +69,7 @@ func TestRaft_Snapshot_Loading(t *testing.T) {
 
 	// Compute the hash
 	size1, err := io.Copy(stateHash, metaReadCloser)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	computed1 := stateHash.Sum(nil)
 
@@ -88,9 +78,7 @@ func TestRaft_Snapshot_Loading(t *testing.T) {
 
 	// Compute the hash
 	size2, err := io.Copy(stateHash, readCloser)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	computed2 := stateHash.Sum(nil)
 
@@ -108,9 +96,7 @@ func TestRaft_Snapshot_Loading(t *testing.T) {
 	}
 
 	meta, reader, err := snapFuture.Open()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if meta.Size != size1 {
 		t.Fatal("meta size did not match expected")
 	}
@@ -120,9 +106,7 @@ func TestRaft_Snapshot_Loading(t *testing.T) {
 
 	// Compute the hash
 	size3, err := io.Copy(stateHash, reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	computed3 := stateHash.Sum(nil)
 	if size1 != size3 {
@@ -142,9 +126,7 @@ func TestRaft_Snapshot_Index(t *testing.T) {
 		Key:   "key",
 		Value: []byte("value"),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Get index
 	index, _ := raft.fsm.LatestState()
@@ -161,9 +143,7 @@ func TestRaft_Snapshot_Index(t *testing.T) {
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	// Get index
@@ -182,9 +162,7 @@ func TestRaft_Snapshot_Index(t *testing.T) {
 	}
 
 	meta, reader, err := snapFuture.Open()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	io.Copy(io.Discard, reader)
 
 	if meta.Index != index.Index {
@@ -200,16 +178,12 @@ func TestRaft_Snapshot_Index(t *testing.T) {
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	// Open the same snapshot again
 	meta, reader, err = raft.snapStore.Open(meta.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	io.Copy(io.Discard, reader)
 
 	// Make sure the meta data has updated to the new values
@@ -233,9 +207,7 @@ func TestRaft_Snapshot_Peers(t *testing.T) {
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	// Force a snapshot
@@ -262,9 +234,7 @@ func TestRaft_Snapshot_Peers(t *testing.T) {
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	snapFuture = raft1.raft.Snapshot()
@@ -313,9 +283,7 @@ func TestRaft_Snapshot_Restart(t *testing.T) {
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	// Take a snapshot
@@ -336,9 +304,7 @@ func TestRaft_Snapshot_Restart(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	peers, err := raft2.Peers(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(peers) != 2 {
 		t.Fatal(peers)
 	}
@@ -350,14 +316,10 @@ func TestRaft_Snapshot_Restart(t *testing.T) {
 
 	// Start Raft
 	err = raft1.SetupCluster(t.Context(), SetupOpts{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	peers, err = raft1.Peers(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(peers) != 2 {
 		t.Fatal(peers)
 	}
@@ -458,18 +420,14 @@ func TestRaft_Snapshot_Take_Restore(t *testing.T) {
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	recorder := httptest.NewRecorder()
 	snap := logical.NewHTTPResponseWriter(recorder)
 
 	err := raft1.Snapshot(snap, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Write some more data
 	for i := 100; i < 200; i++ {
@@ -477,38 +435,28 @@ func TestRaft_Snapshot_Take_Restore(t *testing.T) {
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	snapFile, cleanup, metadata, err := raft1.WriteSnapshotToTemp(io.NopCloser(recorder.Body), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer cleanup()
 
 	err = raft1.RestoreSnapshot(t.Context(), metadata, snapFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// make sure we don't have the second batch of writes
 	for i := 100; i < 200; i++ {
 		{
 			value, err := raft1.Get(t.Context(), fmt.Sprintf("key-%d", i))
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if value != nil {
 				t.Fatal("didn't remove data")
 			}
 		}
 		{
 			value, err := raft2.Get(t.Context(), fmt.Sprintf("key-%d", i))
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if value != nil {
 				t.Fatal("didn't remove data")
 			}
@@ -524,9 +472,7 @@ func TestBoltSnapshotStore_CreateSnapshotMissingParentDir(t *testing.T) {
 	parent := t.TempDir()
 
 	dir, err := os.MkdirTemp(parent, "raft")
-	if err != nil {
-		t.Fatalf("err: %v ", err)
-	}
+	require.NoError(t, err)
 
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:  "raft",
@@ -534,31 +480,21 @@ func TestBoltSnapshotStore_CreateSnapshotMissingParentDir(t *testing.T) {
 	})
 
 	snap, err := NewBoltSnapshotStore(dir, logger, nil)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	err = os.RemoveAll(parent)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	_, trans := raft.NewInmemTransport(raft.NewInmemAddr())
 	sink, err := snap.Create(raft.SnapshotVersionMax, 10, 3, raft.Configuration{}, 0, trans)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer sink.Cancel()
 
 	_, err = sink.Write([]byte("test"))
-	if err != nil {
-		t.Fatalf("should not fail when using non existing parent: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Ensure the snapshot file exists
 	_, err = os.Stat(filepath.Join(snap.path, sink.ID()+tmpSuffix, databaseFilename))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestBoltSnapshotStore_Listing(t *testing.T) {
@@ -567,9 +503,7 @@ func TestBoltSnapshotStore_Listing(t *testing.T) {
 	parent := t.TempDir()
 
 	dir, err := os.MkdirTemp(parent, "raft")
-	if err != nil {
-		t.Fatalf("err: %v ", err)
-	}
+	require.NoError(t, err)
 
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:  "raft",
@@ -577,20 +511,14 @@ func TestBoltSnapshotStore_Listing(t *testing.T) {
 	})
 
 	fsm, err := NewFSM(parent, "", logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	snap, err := NewBoltSnapshotStore(dir, logger, fsm)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// FSM has no data, should have empty snapshot list
 	snaps, err := snap.List()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(snaps) != 0 {
 		t.Fatalf("expect 0 snapshots: %v", snaps)
 	}
@@ -602,14 +530,10 @@ func TestBoltSnapshotStore_Listing(t *testing.T) {
 		Configuration:      raft.Configuration{},
 		ConfigurationIndex: 0,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	snaps, err = snap.List()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(snaps) != 1 {
 		t.Fatalf("expect 1 snapshots: %v", snaps)
 	}
@@ -629,9 +553,7 @@ func TestBoltSnapshotStore_CreateInstallSnapshot(t *testing.T) {
 	parent := t.TempDir()
 
 	dir, err := os.MkdirTemp(parent, "raft")
-	if err != nil {
-		t.Fatalf("err: %v ", err)
-	}
+	require.NoError(t, err)
 
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:  "raft",
@@ -639,21 +561,15 @@ func TestBoltSnapshotStore_CreateInstallSnapshot(t *testing.T) {
 	})
 
 	fsm, err := NewFSM(parent, "", logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer fsm.Close()
 
 	snap, err := NewBoltSnapshotStore(dir, logger, fsm)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Check no snapshots
 	snaps, err := snap.List()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(snaps) != 0 {
 		t.Fatalf("did not expect any snapshots: %v", snaps)
 	}
@@ -667,9 +583,7 @@ func TestBoltSnapshotStore_CreateInstallSnapshot(t *testing.T) {
 	})
 	_, trans := raft.NewInmemTransport(raft.NewInmemAddr())
 	sink, err := snap.Create(raft.SnapshotVersionMax, 10, 3, configuration, 2, trans)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	protoWriter := NewDelimitedWriter(sink)
 
@@ -677,45 +591,33 @@ func TestBoltSnapshotStore_CreateInstallSnapshot(t *testing.T) {
 		Key:   "test-key",
 		Value: []byte("test-value"),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = fsm.Put(t.Context(), &physical.Entry{
 		Key:   "test-key1",
 		Value: []byte("test-value1"),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Write to the sink
 	err = protoWriter.WriteMsg(&pb.StorageEntry{
 		Key:   "test-key",
 		Value: []byte("test-value"),
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	err = protoWriter.WriteMsg(&pb.StorageEntry{
 		Key:   "test-key1",
 		Value: []byte("test-value1"),
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Done!
 	err = sink.Close()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Read the snapshot
 	meta, r, err := snap.Open(sink.ID())
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Check the latest
 	if meta.Index != 10 {
@@ -737,14 +639,10 @@ func TestBoltSnapshotStore_CreateInstallSnapshot(t *testing.T) {
 	}
 
 	newFSM, err := NewFSM(filepath.Dir(installer.Filename()), "", logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = compareDBs(t, fsm.getDB(), newFSM.getDB(), true)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Make sure config data is different
 	err = compareDBs(t, fsm.getDB(), newFSM.getDB(), false)
@@ -757,9 +655,7 @@ func TestBoltSnapshotStore_CreateInstallSnapshot(t *testing.T) {
 	}
 
 	err = fsm.Restore(installer)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	for range 2 {
 		latestIndex, latestConfigRaw := fsm.LatestState()
@@ -778,17 +674,13 @@ func TestBoltSnapshotStore_CreateInstallSnapshot(t *testing.T) {
 		}
 
 		v, err := fsm.Get(t.Context(), "test-key")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !bytes.Equal(v.Value, []byte("test-value")) {
 			t.Fatalf("bad: %+v", v)
 		}
 
 		v, err = fsm.Get(t.Context(), "test-key1")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !bytes.Equal(v.Value, []byte("test-value1")) {
 			t.Fatalf("bad: %+v", v)
 		}
@@ -796,9 +688,7 @@ func TestBoltSnapshotStore_CreateInstallSnapshot(t *testing.T) {
 		// Close/Reopen the db and make sure we still match
 		fsm.Close()
 		fsm, err = NewFSM(parent, "", logger)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 }
 
@@ -813,31 +703,21 @@ func TestBoltSnapshotStore_CancelSnapshot(t *testing.T) {
 	})
 
 	snap, err := NewBoltSnapshotStore(dir, logger, nil)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	_, trans := raft.NewInmemTransport(raft.NewInmemAddr())
 	sink, err := snap.Create(raft.SnapshotVersionMax, 10, 3, raft.Configuration{}, 0, trans)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	_, err = sink.Write([]byte("test"))
-	if err != nil {
-		t.Fatalf("should not fail when using non existing parent: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Ensure the snapshot file exists
 	_, err = os.Stat(filepath.Join(snap.path, sink.ID()+tmpSuffix, databaseFilename))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Cancel the snapshot! Should delete
 	err = sink.Cancel()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Ensure the snapshot file does not exist
 	_, err = os.Stat(filepath.Join(snap.path, sink.ID()+tmpSuffix, databaseFilename))
@@ -865,9 +745,7 @@ func TestBoltSnapshotStore_BadPerm(t *testing.T) {
 	// Create a sub dir and remove all permissions
 	var dir2 string
 	dir2, err = os.MkdirTemp(dir1, "badperm")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if err = os.Chmod(dir2, 0o00); err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -895,21 +773,15 @@ func TestBoltSnapshotStore_CloseFailure(t *testing.T) {
 	})
 
 	snap, err := NewBoltSnapshotStore(dir, logger, nil)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	_, trans := raft.NewInmemTransport(raft.NewInmemAddr())
 	sink, err := snap.Create(raft.SnapshotVersionMax, 10, 3, raft.Configuration{}, 0, trans)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// This should stash an error value
 	_, err = sink.Write([]byte("test"))
-	if err != nil {
-		t.Fatalf("should not fail when using non existing parent: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Cancel the snapshot! Should delete
 	err = sink.Close()

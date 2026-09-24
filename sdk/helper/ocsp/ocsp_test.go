@@ -53,18 +53,12 @@ func TestOCSP(t *testing.T) {
 				Timeout:   30 * time.Second,
 			}
 			req, err := http.NewRequest("GET", tgt, bytes.NewReader(nil))
-			if err != nil {
-				t.Fatalf("fail to create a request. err: %v", err)
-			}
+			require.NoError(t, err)
 			res, err := c.Do(req)
-			if err != nil {
-				t.Fatalf("failed to GET contents. err: %v", err)
-			}
+			require.NoError(t, err)
 			defer res.Body.Close() //nolint:errcheck
 			_, err = io.ReadAll(res.Body)
-			if err != nil {
-				t.Fatalf("failed to read content body for %v", tgt)
-			}
+			require.NoErrorf(t, err, "failed to read content body for %v", tgt)
 
 		}
 	}
@@ -134,9 +128,7 @@ func TestUnitEncodeCertIDGood(t *testing.T) {
 				t.Fatalf("no OCSP server is found. cert: %v", subject.Subject)
 			}
 			ocspReq, err := ocsp.CreateRequest(subject, issuer, &ocsp.RequestOptions{})
-			if err != nil {
-				t.Fatalf("failed to create OCSP request. err: %v", err)
-			}
+			require.NoError(t, err)
 			var ost *ocspStatus
 			_, ost = extractCertIDKeyFromRequest(ocspReq)
 			if ost.err != nil {
@@ -144,18 +136,14 @@ func TestUnitEncodeCertIDGood(t *testing.T) {
 			}
 			// better hash. Not sure if the actual OCSP server accepts this, though.
 			ocspReq, err = ocsp.CreateRequest(subject, issuer, &ocsp.RequestOptions{Hash: crypto.SHA512})
-			if err != nil {
-				t.Fatalf("failed to create OCSP request. err: %v", err)
-			}
+			require.NoError(t, err)
 			_, ost = extractCertIDKeyFromRequest(ocspReq)
 			if ost.err != nil {
 				t.Fatalf("failed to extract cert ID from the OCSP request. err: %v", ost.err)
 			}
 			// tweaked request binary
 			ocspReq, err = ocsp.CreateRequest(subject, issuer, &ocsp.RequestOptions{Hash: crypto.SHA512})
-			if err != nil {
-				t.Fatalf("failed to create OCSP request. err: %v", err)
-			}
+			require.NoError(t, err)
 			ocspReq[10] = 0 // random change
 			_, ost = extractCertIDKeyFromRequest(ocspReq)
 			if ost.err == nil {
@@ -182,18 +170,14 @@ func TestUnitCheckOCSPResponseCache(t *testing.T) {
 	subject := &x509.Certificate{}
 	issuer := &x509.Certificate{}
 	ost, err := c.checkOCSPResponseCache(&dummyKey, subject, issuer)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if ost.code != ocspMissedCache {
 		t.Fatalf("should have failed. expected: %v, got: %v", ocspMissedCache, ost.code)
 	}
 	// old timestamp
 	c.ocspResponseCache.Add(dummyKey, &ocspCachedResponse{time: float64(1395054952)})
 	ost, err = c.checkOCSPResponseCache(&dummyKey, subject, issuer)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if ost.code != ocspCacheExpired {
 		t.Fatalf("should have failed. expected: %v, got: %v", ocspCacheExpired, ost.code)
 	}
@@ -351,35 +335,27 @@ func TestUnitValidateOCSP(t *testing.T) {
 	ocspRes.NextUpdate = currentTime.Add(2 * time.Hour)
 	ocspRes.Status = ocsp.Revoked
 	ost, err = validateOCSP(ocspRes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if ost.code != ocspStatusRevoked {
 		t.Fatalf("should have failed. expected: %v, got: %v", ocspStatusRevoked, ost.code)
 	}
 	ocspRes.Status = ocsp.Good
 	ost, err = validateOCSP(ocspRes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if ost.code != ocspStatusGood {
 		t.Fatalf("should have success. expected: %v, got: %v", ocspStatusGood, ost.code)
 	}
 	ocspRes.Status = ocsp.Unknown
 	ost, err = validateOCSP(ocspRes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if ost.code != ocspStatusUnknown {
 		t.Fatalf("should have failed. expected: %v, got: %v", ocspStatusUnknown, ost.code)
 	}
 	ocspRes.Status = ocsp.ServerFailed
 	ost, err = validateOCSP(ocspRes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if ost.code != ocspStatusOthers {
 		t.Fatalf("should have failed. expected: %v, got: %v", ocspStatusOthers, ost.code)
 	}

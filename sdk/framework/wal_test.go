@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWAL(t *testing.T) {
@@ -17,33 +18,25 @@ func TestWAL(t *testing.T) {
 
 	// WAL should be empty to start
 	keys, err := ListWAL(ctx, s)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if len(keys) > 0 {
 		t.Fatalf("bad: %#v", keys)
 	}
 
 	// Write an entry to the WAL
 	id, err := PutWAL(ctx, s, "foo", "bar")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	// The key should be in the WAL
 	keys, err = ListWAL(ctx, s)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if !reflect.DeepEqual(keys, []string{id}) {
 		t.Fatalf("bad: %#v", keys)
 	}
 
 	// Should be able to get the value
 	entry, err := GetWAL(ctx, s, id)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if entry.Kind != "foo" {
 		t.Fatalf("bad: %#v", entry)
 	}
@@ -56,9 +49,7 @@ func TestWAL(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 	entry, err = GetWAL(ctx, s, id)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if entry != nil {
 		t.Fatalf("bad: %#v", entry)
 	}

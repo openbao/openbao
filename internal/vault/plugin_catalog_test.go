@@ -20,6 +20,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
 	"github.com/openbao/openbao/v2/internal/builtin/database/postgresql"
 	"github.com/openbao/openbao/v2/internal/helper/versions"
+	"github.com/stretchr/testify/require"
 
 	"github.com/openbao/openbao/v2/internal/helper/builtinplugins"
 )
@@ -27,25 +28,19 @@ import (
 func TestPluginCatalog_CRUD(t *testing.T) {
 	core, _, _ := TestCoreUnsealed(t)
 	tempDir, err := filepath.EvalSymlinks(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	core.pluginCatalog.directory = tempDir
 
 	const pluginName = "mysql-database-plugin"
 
 	// Get builtin plugin
 	p, err := core.pluginCatalog.Get(t.Context(), pluginName, consts.PluginTypeDatabase, "")
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	require.NoError(t, err)
 
 	// Get it again, explicitly specifying builtin version
 	builtinVersion := versions.GetBuiltinVersion(consts.PluginTypeDatabase, pluginName)
 	p2, err := core.pluginCatalog.Get(t.Context(), pluginName, consts.PluginTypeDatabase, builtinVersion)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	require.NoError(t, err)
 
 	expectedBuiltin := &pluginutil.PluginRunner{
 		Name:    pluginName,
@@ -70,29 +65,21 @@ func TestPluginCatalog_CRUD(t *testing.T) {
 
 	// Set a plugin, test overwriting a builtin plugin
 	file, err := os.CreateTemp(tempDir, "temp")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer file.Close()
 
 	command := filepath.Base(file.Name())
 	err = core.pluginCatalog.Set(t.Context(), pluginName, consts.PluginTypeDatabase, "", command, []string{"--test"}, []string{"FOO=BAR"}, []byte{'1'}, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Get the plugin
 	p, err = core.pluginCatalog.Get(t.Context(), pluginName, consts.PluginTypeDatabase, "")
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	require.NoError(t, err)
 
 	// Get it again, explicitly specifying builtin version.
 	// This time it should fail because it was overwritten.
 	p2, err = core.pluginCatalog.Get(t.Context(), pluginName, consts.PluginTypeDatabase, builtinVersion)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	require.NoError(t, err)
 	if p2 != nil {
 		t.Fatalf("expected no result, got: %#v", p2)
 	}
@@ -114,15 +101,11 @@ func TestPluginCatalog_CRUD(t *testing.T) {
 
 	// Delete the plugin
 	err = core.pluginCatalog.Delete(t.Context(), pluginName, consts.PluginTypeDatabase, "")
-	if err != nil {
-		t.Fatalf("unexpected err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Get builtin plugin
 	p, err = core.pluginCatalog.Get(t.Context(), pluginName, consts.PluginTypeDatabase, "")
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	require.NoError(t, err)
 
 	expectedBuiltin = &pluginutil.PluginRunner{
 		Name:    pluginName,
@@ -145,31 +128,23 @@ func TestPluginCatalog_CRUD(t *testing.T) {
 func TestPluginCatalog_VersionedCRUD(t *testing.T) {
 	core, _, _ := TestCoreUnsealed(t)
 	tempDir, err := filepath.EvalSymlinks(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	core.pluginCatalog.directory = tempDir
 
 	// Set a versioned plugin.
 	file, err := os.CreateTemp(tempDir, "temp")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer file.Close()
 
 	const name = "mysql-database-plugin"
 	const version = "1.0.0"
 	command := filepath.Base(file.Name())
 	err = core.pluginCatalog.Set(t.Context(), name, consts.PluginTypeDatabase, version, command, []string{"--test"}, []string{"FOO=BAR"}, []byte{'1'}, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Get the plugin
 	plugin, err := core.pluginCatalog.Get(t.Context(), name, consts.PluginTypeDatabase, version)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	require.NoError(t, err)
 
 	expected := &pluginutil.PluginRunner{
 		Name:    name,
@@ -189,9 +164,7 @@ func TestPluginCatalog_VersionedCRUD(t *testing.T) {
 	// Also get the builtin version to check we can still access that.
 	builtinVersion := versions.GetBuiltinVersion(consts.PluginTypeDatabase, name)
 	plugin, err = core.pluginCatalog.Get(t.Context(), name, consts.PluginTypeDatabase, builtinVersion)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	require.NoError(t, err)
 
 	expected = &pluginutil.PluginRunner{
 		Name:    name,
@@ -202,13 +175,9 @@ func TestPluginCatalog_VersionedCRUD(t *testing.T) {
 
 	// Check by marshalling to JSON to avoid messing with BuiltinFactory function field.
 	expectedBytes, err := json.Marshal(expected)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	actualBytes, err := json.Marshal(plugin)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if string(expectedBytes) != string(actualBytes) {
 		t.Fatalf("expected %s, got %s", string(expectedBytes), string(actualBytes))
 	}
@@ -218,15 +187,11 @@ func TestPluginCatalog_VersionedCRUD(t *testing.T) {
 
 	// Delete the plugin
 	err = core.pluginCatalog.Delete(t.Context(), name, consts.PluginTypeDatabase, version)
-	if err != nil {
-		t.Fatalf("unexpected err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Get plugin - should fail
 	plugin, err = core.pluginCatalog.Get(t.Context(), name, consts.PluginTypeDatabase, version)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if plugin != nil {
 		t.Fatalf("expected no plugin with this version to be in the catalog, but found %+v", plugin)
 	}
@@ -235,9 +200,7 @@ func TestPluginCatalog_VersionedCRUD(t *testing.T) {
 func TestPluginCatalog_ListVersionedPlugins(t *testing.T) {
 	core, _, _ := TestCoreUnsealed(t)
 	tempDir, err := filepath.EvalSymlinks(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	core.pluginCatalog.directory = tempDir
 
 	// Get builtin plugins and sort them
@@ -246,9 +209,7 @@ func TestPluginCatalog_ListVersionedPlugins(t *testing.T) {
 
 	// List only builtin plugins
 	plugins, err := core.pluginCatalog.ListVersionedPlugins(t.Context(), consts.PluginTypeDatabase)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	require.NoError(t, err)
 	sortVersionedPlugins(plugins)
 
 	if len(plugins) != len(builtinKeys) {
@@ -263,9 +224,7 @@ func TestPluginCatalog_ListVersionedPlugins(t *testing.T) {
 
 	// Set a plugin, test overwriting a builtin plugin
 	file, err := os.CreateTemp(tempDir, "temp")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer file.Close()
 
 	command := filepath.Base(file.Name())
@@ -280,9 +239,7 @@ func TestPluginCatalog_ListVersionedPlugins(t *testing.T) {
 		[]byte{'1'},
 		false,
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Set another plugin, with version information
 	err = core.pluginCatalog.Set(
@@ -296,15 +253,11 @@ func TestPluginCatalog_ListVersionedPlugins(t *testing.T) {
 		[]byte{'1'},
 		false,
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// List the plugins
 	plugins, err = core.pluginCatalog.ListVersionedPlugins(t.Context(), consts.PluginTypeDatabase)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	require.NoError(t, err)
 	sortVersionedPlugins(plugins)
 
 	// plugins has a test-added plugin called "aaaaaaa" that is not built in
@@ -351,15 +304,11 @@ func TestPluginCatalog_ListVersionedPlugins(t *testing.T) {
 func TestPluginCatalog_ListHandlesPluginNamesWithSlashes(t *testing.T) {
 	core, _, _ := TestCoreUnsealed(t)
 	tempDir, err := filepath.EvalSymlinks(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	core.pluginCatalog.directory = tempDir
 
 	file, err := os.CreateTemp(tempDir, "temp")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer file.Close()
 	command := filepath.Base(file.Name())
 	ctx := t.Context()
@@ -389,15 +338,11 @@ func TestPluginCatalog_ListHandlesPluginNamesWithSlashes(t *testing.T) {
 	}
 	for _, entry := range pluginsToRegister {
 		err = core.pluginCatalog.Set(ctx, entry.Name, consts.PluginTypeCredential, entry.Version, command, nil, nil, nil, false)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	plugins, err := core.pluginCatalog.ListVersionedPlugins(ctx, consts.PluginTypeCredential)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	for _, expected := range pluginsToRegister {
 		found := false
@@ -417,9 +362,7 @@ func TestPluginCatalog_ListHandlesPluginNamesWithSlashes(t *testing.T) {
 func TestPluginCatalog_NewPluginClient(t *testing.T) {
 	core, _, _ := TestCoreUnsealed(t)
 	tempDir, err := filepath.EvalSymlinks(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	core.pluginCatalog.directory = tempDir
 
 	if extPlugins := len(core.pluginCatalog.externalPlugins); extPlugins != 0 {
@@ -439,16 +382,12 @@ func TestPluginCatalog_NewPluginClient(t *testing.T) {
 		t.Helper()
 		ctx := t.Context()
 		plugin, err := core.pluginCatalog.Get(ctx, pluginName, pluginType, "")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if plugin == nil {
 			t.Fatal("did not find " + pluginName)
 		}
 		key, err := makeExternalPluginsKey(plugin)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		return key
 	}
 
@@ -529,9 +468,7 @@ func TestPluginCatalog_MakeExternalPluginsKey_Comparable(t *testing.T) {
 	var keys []externalPluginsKey
 	for _, plugin := range plugins {
 		key, err := makeExternalPluginsKey(&plugin)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		keys = append(keys, key)
 	}
 
@@ -558,9 +495,7 @@ func TestPluginCatalog_PluginMain_Userpass(t *testing.T) {
 			TLSProviderFunc:    tlsProviderFunc,
 		},
 	)
-	if err != nil {
-		t.Fatalf("Failed to initialize userpass: %s", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestPluginCatalog_PluginMain_UserpassMultiplexed(t *testing.T) {
@@ -581,9 +516,7 @@ func TestPluginCatalog_PluginMain_UserpassMultiplexed(t *testing.T) {
 			TLSProviderFunc:    tlsProviderFunc,
 		},
 	)
-	if err != nil {
-		t.Fatalf("Failed to initialize userpass: %s", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestPluginCatalog_PluginMain_Postgres(t *testing.T) {
@@ -592,9 +525,7 @@ func TestPluginCatalog_PluginMain_Postgres(t *testing.T) {
 	}
 
 	dbType, err := postgresql.New()
-	if err != nil {
-		t.Fatalf("Failed to initialize postgres: %s", err)
-	}
+	require.NoError(t, err)
 
 	v5.Serve(dbType.(v5.Database))
 }

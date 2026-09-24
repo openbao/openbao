@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/vault"
 	"github.com/openbao/openbao/v2/internal/version"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSystemBackend_InternalUIResultantACL(t *testing.T) {
@@ -33,9 +34,7 @@ func TestSystemBackend_InternalUIResultantACL(t *testing.T) {
 	resp, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 		Policies: []string{"default"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("nil response")
 	}
@@ -49,9 +48,7 @@ func TestSystemBackend_InternalUIResultantACL(t *testing.T) {
 	client.SetToken(resp.Auth.ClientToken)
 
 	resp, err = client.Logical().Read("sys/internal/ui/resultant-acl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("nil response")
 	}
@@ -144,13 +141,9 @@ func TestSystemBackend_InternalUIResultantACL(t *testing.T) {
 func TestSystemBackend_HAStatus(t *testing.T) {
 	logger := logging.NewVaultLogger(hclog.Trace)
 	inm, err := inmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	inmha, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	conf := &vault.CoreConfig{
 		Physical:   inm,
@@ -167,9 +160,7 @@ func TestSystemBackend_HAStatus(t *testing.T) {
 		// Use standby deliberately to make sure it forwards
 		client := cluster.Cores[1].Client
 		resp, err := client.Sys().HAStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if len(resp.Nodes) != len(cluster.Cores) {
 			return fmt.Errorf("expected %d nodes, got %d", len(cluster.Cores), len(resp.Nodes))

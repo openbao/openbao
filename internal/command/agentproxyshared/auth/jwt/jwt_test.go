@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared/auth"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIngressToken(t *testing.T) {
@@ -26,21 +27,13 @@ func TestIngressToken(t *testing.T) {
 	setupTestDir := func() string {
 		testDir := t.TempDir()
 		err := os.WriteFile(path.Join(testDir, file), []byte("test"), 0o644)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		_, err = os.Create(path.Join(testDir, empty))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		err = os.Mkdir(path.Join(testDir, dir), 0o755)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		err = os.Symlink(path.Join(testDir, file), path.Join(testDir, symlinked))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		return testDir
 	}
@@ -120,9 +113,7 @@ func TestDeleteAfterReading(t *testing.T) {
 		rootDir := t.TempDir()
 		tokenPath := path.Join(rootDir, "token")
 		err := os.WriteFile(tokenPath, []byte("test"), 0o644)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		config := &auth.AuthConfig{
 			Config: map[string]any{
@@ -136,9 +127,7 @@ func TestDeleteAfterReading(t *testing.T) {
 		}
 
 		jwtAuth, err := NewJWTAuthMethod(config)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		jwtAuth.(*jwtMethod).ingressToken()
 
@@ -147,9 +136,7 @@ func TestDeleteAfterReading(t *testing.T) {
 				t.Fatal(err)
 			}
 		} else {
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}
 }
@@ -194,14 +181,10 @@ func TestDeleteAfterReadingSymlink(t *testing.T) {
 		rootDir := t.TempDir()
 		tokenPath := path.Join(rootDir, "token")
 		err := os.WriteFile(tokenPath, []byte("test"), 0o644)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		symlink, err := os.CreateTemp("", "auth.jwt.symlink.test.")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		symlinkName := symlink.Name()
 		symlink.Close()
 		os.Remove(symlinkName)
@@ -220,9 +203,7 @@ func TestDeleteAfterReadingSymlink(t *testing.T) {
 		config.Config["remove_jwt_follows_symlinks"] = tc.removeJWTFollowsSymlinks
 
 		jwtAuth, err := NewJWTAuthMethod(config)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		jwtAuth.(*jwtMethod).ingressToken()
 
@@ -235,9 +216,7 @@ func TestDeleteAfterReadingSymlink(t *testing.T) {
 				t.Fatal(err)
 			}
 		} else {
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}
 }

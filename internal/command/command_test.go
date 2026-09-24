@@ -143,9 +143,7 @@ func testVaultServerAllBackends(tb testing.TB) (*api.Client, func()) {
 func testVaultServerAutoUnseal(tb testing.TB) (*api.Client, []string, func()) {
 	testSeal, _ := seal.NewTestSeal(nil)
 	autoSeal, err := vault.NewAutoSeal(testSeal)
-	if err != nil {
-		tb.Fatal("unable to create autoseal", err)
-	}
+	require.NoError(tb, err)
 	return testVaultServerUnsealWithKVVersionWithSeal(tb, "1", autoSeal)
 }
 
@@ -210,9 +208,7 @@ func testVaultServerCoreConfig(tb testing.TB, coreConfig *vault.CoreConfig) (*ap
 func testVaultServerUnauthedEndpointsEnabledWithAutoseal(tb testing.TB) (*api.Client, []string, func()) {
 	testSeal, _ := seal.NewTestSeal(nil)
 	autoSeal, err := vault.NewAutoSeal(testSeal)
-	if err != nil {
-		tb.Fatal("unable to create autoseal", err)
-	}
+	require.NoError(tb, err)
 
 	return testVaultServerCoreConfigWithOpts(tb, &vault.CoreConfig{
 		DisableCache:       true,
@@ -292,9 +288,7 @@ func testVaultServerUninit(tb testing.TB) (*api.Client, func()) {
 	tb.Helper()
 
 	inm, err := inmem.NewInmem(nil, defaultVaultLogger)
-	if err != nil {
-		tb.Fatal(err)
-	}
+	require.NoError(tb, err)
 
 	core, err := vault.NewCore(&vault.CoreConfig{
 		DisableCache:       true,
@@ -305,18 +299,14 @@ func testVaultServerUninit(tb testing.TB) (*api.Client, func()) {
 		LogicalBackends:    defaultVaultLogicalBackends,
 		BuiltinRegistry:    builtinplugins.Registry,
 	})
-	if err != nil {
-		tb.Fatal(err)
-	}
+	require.NoError(tb, err)
 
 	ln, addr := vaulthttp.TestServer(tb, core)
 
 	client, err := api.NewClient(&api.Config{
 		Address: addr,
 	})
-	if err != nil {
-		tb.Fatal(err)
-	}
+	require.NoError(tb, err)
 
 	closer := func() {
 		core.Shutdown()
@@ -332,9 +322,7 @@ func testVaultServerBad(tb testing.TB) (*api.Client, func()) {
 	tb.Helper()
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		tb.Fatal(err)
-	}
+	require.NoError(tb, err)
 
 	server := &http.Server{
 		Addr: "127.0.0.1:0",
@@ -356,9 +344,7 @@ func testVaultServerBad(tb testing.TB) (*api.Client, func()) {
 	client, err := api.NewClient(&api.Config{
 		Address: "http://" + listener.Addr().String(),
 	})
-	if err != nil {
-		tb.Fatal(err)
-	}
+	require.NoError(tb, err)
 
 	return client, func() {
 		ctx, done := context.WithTimeout(tb.Context(), 5*time.Second)
@@ -377,9 +363,7 @@ func testTokenAndAccessor(tb testing.TB, client *api.Client) (string, string) {
 		Policies: []string{"default"},
 		TTL:      "30m",
 	})
-	if err != nil {
-		tb.Fatal(err)
-	}
+	require.NoError(tb, err)
 	if secret == nil || secret.Auth == nil || secret.Auth.ClientToken == "" {
 		tb.Fatalf("missing auth data: %#v", secret)
 	}

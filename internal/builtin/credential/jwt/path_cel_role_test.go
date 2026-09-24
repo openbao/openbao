@@ -103,9 +103,7 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 			roleReq.Path = "cel/role"
 			roleReq.Operation = logical.ListOperation
 			roleListResp, err := b.HandleRequest(t.Context(), roleReq)
-			if err != nil {
-				t.Fatalf("bad [%d/%s] unexpected error %v", tcNum, tc.Name, err)
-			}
+			require.NoErrorf(t, err, "bad [%d/%s] unexpected error %v", tcNum, tc.Name, err)
 			foundRoleInList := roleListResp != nil && slices.Contains(roleListResp.Data["keys"].([]string), tc.Name)
 			if tc.ExpectErr {
 				if foundRoleInList {

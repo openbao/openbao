@@ -12,6 +12,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSysHealth_get(t *testing.T) {
@@ -20,9 +21,7 @@ func TestSysHealth_get(t *testing.T) {
 	defer ln.Close()
 
 	resp, err := http.Get(addr + "/v1/sys/health")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	var actual map[string]any
 	expected := map[string]any{
@@ -52,9 +51,7 @@ func TestSysHealth_get(t *testing.T) {
 
 	keys, _ := vault.TestCoreInit(t, core)
 	resp, err = http.Get(addr + "/v1/sys/health")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	actual = map[string]any{}
 	expected = map[string]any{
@@ -88,9 +85,7 @@ func TestSysHealth_get(t *testing.T) {
 		}
 	}
 	resp, err = http.Get(addr + "/v1/sys/health")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	actual = map[string]any{}
 	expected = map[string]any{
@@ -125,13 +120,9 @@ func TestSysHealth_customcodes(t *testing.T) {
 	defer ln.Close()
 
 	queryurl, err := url.Parse(addr + "/v1/sys/health?uninitcode=581&sealedcode=523&activecode=202")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err := http.Get(queryurl.String())
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	var actual map[string]any
 	expected := map[string]any{
@@ -162,9 +153,7 @@ func TestSysHealth_customcodes(t *testing.T) {
 
 	keys, _ := vault.TestCoreInit(t, core)
 	resp, err = http.Get(queryurl.String())
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	actual = map[string]any{}
 	expected = map[string]any{
@@ -199,9 +188,7 @@ func TestSysHealth_customcodes(t *testing.T) {
 		}
 	}
 	resp, err = http.Get(queryurl.String())
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	actual = map[string]any{}
 	expected = map[string]any{
@@ -246,22 +233,16 @@ func TestSysHealth_head(t *testing.T) {
 
 	for _, tt := range testData {
 		queryurl, err := url.Parse(addr + "/v1/sys/health" + tt.uri)
-		if err != nil {
-			t.Fatalf("err on %v: %s", queryurl, err)
-		}
+		require.NoErrorf(t, err, "err on %v: %s", queryurl, err)
 		resp, err := http.Head(queryurl.String())
-		if err != nil {
-			t.Fatalf("err on %v: %s", queryurl, err)
-		}
+		require.NoErrorf(t, err, "err on %v: %s", queryurl, err)
 
 		if resp.StatusCode != tt.code {
 			t.Fatalf("HEAD %v expected code %d, got %d.", queryurl, tt.code, resp.StatusCode)
 		}
 
 		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatalf("err on %v: %s", queryurl, err)
-		}
+		require.NoErrorf(t, err, "err on %v: %s", queryurl, err)
 		if len(data) > 0 {
 			t.Fatalf("HEAD %v expected no body, received \"%v\".", queryurl, data)
 		}

@@ -12,27 +12,20 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func setupLocalFiles(t *testing.T, b logical.Backend) func() {
 	cert, err := os.CreateTemp("", "ca.crt")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	_, err = cert.WriteString(testLocalCACert)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cert.Close()
 
 	token, err := os.CreateTemp("", "token")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	_, err = token.WriteString(testLocalJWT)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	token.Close()
 	b.(*kubeAuthBackend).localCACertReader = newCachingFileReader(cert.Name(), caReloadPeriod, time.Now)
 	b.(*kubeAuthBackend).localSATokenReader = newCachingFileReader(token.Name(), jwtReloadPeriod, time.Now)
@@ -220,9 +213,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	conf, err := b.(*kubeAuthBackend).config(t.Context(), storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(expected, conf) {
 		t.Fatalf("expected did not match actual: expected %#v\n got %#v\n", expected, conf)
@@ -250,9 +241,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	cert, err := certutil.ParsePublicKeyPEM([]byte(testRSACert))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if cert == nil {
 		t.Fatal("expected cert to be non-nil")
 	}
@@ -268,9 +257,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	conf, err = b.(*kubeAuthBackend).config(t.Context(), storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(expected, conf) {
 		t.Fatalf("expected did not match actual: expected %#v\n got %#v\n", expected, conf)
@@ -296,9 +283,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	cert, err = certutil.ParsePublicKeyPEM([]byte(testRSACert))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected = &kubeConfig{
 		PublicKeys:           []crypto.PublicKey{cert},
@@ -310,9 +295,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	conf, err = b.(*kubeAuthBackend).config(t.Context(), storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(expected, conf) {
 		t.Fatalf("expected did not match actual: expected %#v\n got %#v\n", expected, conf)
@@ -338,14 +321,10 @@ func TestConfig(t *testing.T) {
 	}
 
 	cert, err = certutil.ParsePublicKeyPEM([]byte(testRSACert))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	cert2, err := certutil.ParsePublicKeyPEM([]byte(testECCert))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected = &kubeConfig{
 		PublicKeys:           []crypto.PublicKey{cert, cert2},
@@ -357,9 +336,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	conf, err = b.(*kubeAuthBackend).config(t.Context(), storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(expected, conf) {
 		t.Fatalf("expected did not match actual: expected %#v\n got %#v\n", expected, conf)
@@ -385,9 +362,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	cert, err = certutil.ParsePublicKeyPEM([]byte(testRSACert))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if cert == nil {
 		t.Fatal("expected cert to be non-nil")
 	}
@@ -402,9 +377,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	conf, err = b.(*kubeAuthBackend).config(t.Context(), storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(expected, conf) {
 		t.Fatalf("expected did not match actual: expected %#v\n got %#v\n", expected, conf)
@@ -506,9 +479,7 @@ func TestConfig_LocalCaJWT(t *testing.T) {
 			}
 
 			conf, err := b.(*kubeAuthBackend).loadConfig(t.Context(), storage)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			if !reflect.DeepEqual(tc.expected, conf) {
 				t.Fatalf("expected did not match actual: expected %#v\n got %#v\n", tc.expected, conf)

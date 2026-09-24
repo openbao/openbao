@@ -21,6 +21,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/identity"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	ident "github.com/openbao/openbao/v2/internal/vault/identity"
+	"github.com/stretchr/testify/require"
 	"zgo.at/zcache/v2"
 )
 
@@ -836,9 +837,7 @@ func TestOIDC_SignIDToken(t *testing.T) {
 	txn := c.identityStore.Txn(ctx, true)
 	defer txn.Abort()
 	err := c.identityStore.UpsertEntityInTxn(ctx, txn, testEntity, nil, true)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	txn.Commit()
 
 	// Create a test key "test-key"
@@ -921,9 +920,7 @@ func TestOIDC_SignIDToken(t *testing.T) {
 	expectSuccess(t, resp, err)
 	// Convert all supported algorithms to jose.SignatureAlgorithm types
 	parsedToken, err := jwt.ParseSigned(resp.Data["token"].(string), consts.AllowedJWTSignatureAlgorithmsOIDC)
-	if err != nil {
-		t.Fatalf("error parsing token: %s", err.Error())
-	}
+	require.NoErrorf(t, err, "error parsing token: %s", err.Error())
 
 	// Acquire the public parts of the key that signed parsedToken
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
@@ -931,9 +928,7 @@ func TestOIDC_SignIDToken(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Storage:   storage,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	responseJWKS := &jose.JSONWebKeySet{}
 	json.Unmarshal(resp.Data["http_raw_body"].([]byte), responseJWKS)
 
@@ -968,9 +963,7 @@ func TestOIDC_SignIDToken_NilSigningKey(t *testing.T) {
 	txn := c.identityStore.Txn(ctx, true)
 	defer txn.Abort()
 	err := c.identityStore.UpsertEntityInTxn(ctx, txn, testEntity, nil, true)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	txn.Commit()
 
 	// Create a test key "test-key" with a nil SigningKey
@@ -1273,9 +1266,7 @@ func TestOIDC_Config(t *testing.T) {
 				"issuer": iss,
 			},
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil || !resp.IsError() {
 			t.Fatalf("Expected issuer %q to fail but it succeeded.", iss)
 		}
@@ -1306,9 +1297,7 @@ func TestOIDC_pathOIDCKeyExistenceCheck(t *testing.T) {
 			},
 		},
 	)
-	if err != nil {
-		t.Fatalf("Error during existence check on an expected nil entry, err:\n%#v", err)
-	}
+	require.NoError(t, err)
 	if exists {
 		t.Fatalf("Expected existence check to return false but instead returned: %t", exists)
 	}
@@ -1335,9 +1324,7 @@ func TestOIDC_pathOIDCKeyExistenceCheck(t *testing.T) {
 			},
 		},
 	)
-	if err != nil {
-		t.Fatalf("Error during existence check on an expected nil entry, err:\n%#v", err)
-	}
+	require.NoError(t, err)
 	if !exists {
 		t.Fatalf("Expected existence check to return true but instead returned: %t", exists)
 	}
@@ -1366,9 +1353,7 @@ func TestOIDC_pathOIDCRoleExistenceCheck(t *testing.T) {
 			},
 		},
 	)
-	if err != nil {
-		t.Fatalf("Error during existence check on an expected nil entry, err:\n%#v", err)
-	}
+	require.NoError(t, err)
 	if exists {
 		t.Fatalf("Expected existence check to return false but instead returned: %t", exists)
 	}
@@ -1395,9 +1380,7 @@ func TestOIDC_pathOIDCRoleExistenceCheck(t *testing.T) {
 			},
 		},
 	)
-	if err != nil {
-		t.Fatalf("Error during existence check on an expected nil entry, err:\n%#v", err)
-	}
+	require.NoError(t, err)
 	if !exists {
 		t.Fatalf("Expected existence check to return true but instead returned: %t", exists)
 	}
@@ -1490,9 +1473,7 @@ func TestOIDC_Path_Introspect(t *testing.T) {
 	txn := c.identityStore.Txn(ctx, true)
 	defer txn.Abort()
 	err = c.identityStore.UpsertEntityInTxn(ctx, txn, testEntity, nil, true)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	txn.Commit()
 
 	for _, alg := range ident.SupportedAlgs {
@@ -1676,9 +1657,7 @@ func TestOIDC_GetKeysCacheControlHeader(t *testing.T) {
 
 	// get default value
 	header, err := c.identityStore.GetKeysCacheControlHeader(namespace.RootNamespace)
-	if err != nil {
-		t.Fatalf("expected success, got error:\n%v", err)
-	}
+	require.NoError(t, err)
 
 	expectedHeader := ""
 	if header != expectedHeader {
@@ -1692,9 +1671,7 @@ func TestOIDC_GetKeysCacheControlHeader(t *testing.T) {
 	}
 
 	header, err = c.identityStore.GetKeysCacheControlHeader(namespace.RootNamespace)
-	if err != nil {
-		t.Fatalf("expected success, got error:\n%v", err)
-	}
+	require.NoError(t, err)
 
 	expectedNextRun := "max-age=86400"
 	if header != expectedNextRun {
@@ -1709,9 +1686,7 @@ func TestOIDC_GetKeysCacheControlHeader(t *testing.T) {
 	}
 
 	header, err = c.identityStore.GetKeysCacheControlHeader(namespace.RootNamespace)
-	if err != nil {
-		t.Fatalf("expected success, got error:\n%v", err)
-	}
+	require.NoError(t, err)
 
 	if header == "" {
 		t.Fatalf("expected header to be set, got %s", header)
@@ -1719,9 +1694,7 @@ func TestOIDC_GetKeysCacheControlHeader(t *testing.T) {
 
 	maxAgeValue := strings.Split(header, "=")[1]
 	headerVal, err := strconv.Atoi(maxAgeValue)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// headerVal will be a random value between 0 and jwksCacheControlMaxAge (in seconds)
 	if headerVal > durationSeconds {
 		t.Logf("jwksCacheControlMaxAge: %d", int(jwksCacheControlMaxAge))

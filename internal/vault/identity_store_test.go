@@ -92,9 +92,7 @@ func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 
 func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 	err := be.AddTestCredentialBackend("approle", credAppRole.Factory)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	defer be.ClearTestCredentialBackends()
 
 	c, unsealKey, root := TestCoreUnsealed(t)
@@ -108,9 +106,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 	}
 
 	err = c.enableCredential(namespace.RootContext(t.Context()), meGH)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	alias := &identity.Alias{
 		ID:             "alias1",
@@ -132,9 +128,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 	}
 
 	err = c.identityStore.UpsertEntity(namespace.RootContext(t.Context()), entity, nil, true)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	alias2 := &identity.Alias{
 		ID:             "alias2",
@@ -158,9 +152,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 	// Persist the second entity directly without the regular flow. This will skip
 	// merging of these enties.
 	entity2Any, err := anypb.New(entity2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	item := &storagepacker.Item{
 		ID:      entity2.ID,
 		Message: entity2Any,
@@ -178,9 +170,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 	var unsealed bool
 	for i := range 3 {
 		unsealed, err = c.Unseal(unsealKey[i])
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 	if !unsealed {
 		t.Fatal("still sealed")
@@ -199,9 +189,7 @@ func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
 
 	// Create an entity with AppRole alias
 	entity, _, err := is.CreateOrFetchEntity(ctx, alias)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if entity == nil {
 		t.Fatal("expected a non-nil entity")
 	}
@@ -237,13 +225,9 @@ func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
 	_, barr, _ := barrier.MockBarrier(t, logger)
 	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = core.router.Mount(noop, "test/backend/", &routing.MountEntry{Path: "test/backend/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Make the request with the above created token
 	resp, err := core.HandleRequest(ctx, &logical.Request{
@@ -284,9 +268,7 @@ func testIdentityStoreCreateOrFetchEntity(t *testing.T, ctx context.Context, is 
 	}
 
 	entity, _, err := is.CreateOrFetchEntity(ctx, alias)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if entity == nil {
 		t.Fatal("expected a non-nil entity")
 	}
@@ -300,9 +282,7 @@ func testIdentityStoreCreateOrFetchEntity(t *testing.T, ctx context.Context, is 
 	}
 
 	entity, _, err = is.CreateOrFetchEntity(ctx, alias)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if entity == nil {
 		t.Fatal("expected a non-nil entity")
 	}
@@ -335,9 +315,7 @@ func testIdentityStoreCreateOrFetchEntity(t *testing.T, ctx context.Context, is 
 	}
 
 	entity, _, err = is.CreateOrFetchEntity(ctx, alias)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if entity == nil {
 		t.Fatal("expected a non-nil entity")
 	}
@@ -361,9 +339,7 @@ func testIdentityStoreCreateOrFetchEntity(t *testing.T, ctx context.Context, is 
 	}
 
 	entity, _, err = is.CreateOrFetchEntity(ctx, alias)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if entity == nil {
 		t.Fatal("expected a non-nil entity")
 	}
@@ -434,9 +410,7 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 	}
 
 	entity, err := is.EntityByAliasFactors(ctx, approleAccessor, "alias_name", false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if entity == nil {
 		t.Fatal("expected a non-nil entity")
 	}
@@ -562,9 +536,7 @@ func TestIdentityStore_TokenEntityInheritance(t *testing.T) {
 
 func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 	err := be.AddTestCredentialBackend("approle", credAppRole.Factory)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	defer be.ClearTestCredentialBackends()
 
 	c, _, _ := TestCoreUnsealed(t)
@@ -578,9 +550,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 	}
 
 	err = c.enableCredential(namespace.RootContext(t.Context()), meGH)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	alias := &identity.Alias{
 		ID:             "alias1",
@@ -601,9 +571,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 		BucketKey:   c.identityStore.EntityPacker(ctx).BucketKey("entity1"),
 	}
 	err = c.identityStore.UpsertEntity(namespace.RootContext(t.Context()), entity, nil, true)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	alias2 := &identity.Alias{
 		ID:             "alias2",
@@ -625,18 +593,14 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 	}
 
 	err = c.identityStore.UpsertEntity(namespace.RootContext(t.Context()), entity2, nil, true)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	newEntity, _, err := c.identityStore.CreateOrFetchEntity(namespace.RootContext(t.Context()), &logical.Alias{
 		MountAccessor: meGH.Accessor,
 		MountType:     "approle",
 		Name:          "approleuser",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if newEntity == nil {
 		t.Fatal("nil new entity")
 	}
@@ -653,9 +617,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 	}
 
 	newEntity, err = c.identityStore.MemDBEntityByID(ctx, entityToUse, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if newEntity != nil {
 		t.Fatal("got a non-nil entity")
 	}
@@ -678,9 +640,7 @@ func testIdentityStoreWithAppRoleAuth(ctx context.Context, t *testing.T) (*ident
 func testIdentityStoreWithAppRoleAuthRoot(ctx context.Context, t *testing.T) (*ident.IdentityStore, string, *Core, string) {
 	// Add github credential factory to core config
 	err := be.AddTestCredentialBackend("approle", credAppRole.Factory)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	defer be.ClearTestCredentialBackends()
 
@@ -694,9 +654,7 @@ func testIdentityStoreWithAppRoleAuthRoot(ctx context.Context, t *testing.T) (*i
 	}
 
 	err = c.enableCredential(ctx, meGH)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return c.identityStore, meGH.Accessor, c, root
 }
@@ -704,14 +662,10 @@ func testIdentityStoreWithAppRoleAuthRoot(ctx context.Context, t *testing.T) (*i
 func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T, unsafeShared bool) (*ident.IdentityStore, string, string, *Core) {
 	// Setup 2 auth backends, github and userpass
 	err := be.AddTestCredentialBackend("approle", credAppRole.Factory)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	err = be.AddTestCredentialBackend("userpass", credUserpass.Factory)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	defer be.ClearTestCredentialBackends()
 
@@ -732,9 +686,7 @@ func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T,
 	}
 
 	err = c.enableCredential(ctx, githubMe)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	userpassMe := &routing.MountEntry{
 		Table:       routing.CredentialTableType,
@@ -744,9 +696,7 @@ func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T,
 	}
 
 	err = c.enableCredential(ctx, userpassMe)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return c.identityStore, githubMe.Accessor, userpassMe.Accessor, c
 }
@@ -797,9 +747,7 @@ func expectSingleCount(t *testing.T, sink *metrics.InmemSink, keyPrefix string) 
 func TestIdentityStore_NewEntityCounter(t *testing.T) {
 	// Add github credential factory to core config
 	err := be.AddTestCredentialBackend("approle", credAppRole.Factory)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	defer be.ClearTestCredentialBackends()
 
 	c, _, _, sink := TestCoreUnsealedWithMetrics(t)
@@ -813,9 +761,7 @@ func TestIdentityStore_NewEntityCounter(t *testing.T) {
 
 	ctx := namespace.RootContext(t.Context())
 	err = c.enableCredential(ctx, meGH)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	is := c.identityStore
 	approleAccessor := meGH.Accessor
@@ -830,16 +776,12 @@ func TestIdentityStore_NewEntityCounter(t *testing.T) {
 	}
 
 	_, _, err = is.CreateOrFetchEntity(ctx, alias)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expectSingleCount(t, sink, "identity.entity.creation")
 
 	_, _, err = is.CreateOrFetchEntity(ctx, alias)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expectSingleCount(t, sink, "identity.entity.creation")
 }
@@ -904,19 +846,13 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	entry, err := logical.StorageEntryJSON(ident.CaseSensitivityKey, &ident.CaseSensitivity{
 		DisableLowerCasedNames: true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = c.identityStore.View(ctx).Put(ctx, entry)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// check if the value is stored in storage
 	storageEntry, err := c.identityStore.View(ctx).Get(ctx, ident.CaseSensitivityKey)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if storageEntry == nil {
 		t.Fatal("bad: expected a non-nil entry for casesensitivity key")
@@ -930,9 +866,7 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	var unsealed bool
 	for i := range unsealKey {
 		unsealed, err = c.Unseal(unsealKey[i])
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 	if !unsealed {
 		t.Fatal("still sealed")
@@ -940,9 +874,7 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 
 	// check if caseSensitivityKey exists after initialize
 	storageEntry, err = c.identityStore.View(ctx).Get(ctx, ident.CaseSensitivityKey)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if storageEntry != nil {
 		t.Fatal("bad: expected no entry for casesensitivity key")

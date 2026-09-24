@@ -20,6 +20,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared/sink/file"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTokenPreload_UsingAutoAuth(t *testing.T) {
@@ -56,35 +57,25 @@ func TestTokenPreload_UsingAutoAuth(t *testing.T) {
 		"token_max_ttl":  "10s",
 		"policies":       []string{"test-autoauth"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err := client.Logical().Write("auth/approle/role/test1/secret-id", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	secretID1 := resp.Data["secret_id"].(string)
 
 	resp, err = client.Logical().Read("auth/approle/role/test1/role-id")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	roleID1 := resp.Data["role_id"].(string)
 
 	rolef, err := os.CreateTemp("", "auth.role-id.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	role := rolef.Name()
 	rolef.Close() // WriteFile doesn't need it open
 	defer os.Remove(role)
 	t.Logf("input role_id_file_path: %s", role)
 
 	secretf, err := os.CreateTemp("", "auth.secret-id.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	secret := secretf.Name()
 	secretf.Close()
 	defer os.Remove(secret)
@@ -115,9 +106,7 @@ func TestTokenPreload_UsingAutoAuth(t *testing.T) {
 		"explicit-max-ttl": "15s",
 		"policies":         []string{""},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if tokenRespRaw.Auth == nil || tokenRespRaw.Auth.ClientToken == "" {
 		t.Fatal("expected token but got none")
@@ -129,9 +118,7 @@ func TestTokenPreload_UsingAutoAuth(t *testing.T) {
 		MountPath: "auth/approle",
 		Config:    conf,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	ahConfig := &auth.AuthHandlerConfig{
 		Logger: logger.Named("auth.handler"),
@@ -142,9 +129,7 @@ func TestTokenPreload_UsingAutoAuth(t *testing.T) {
 	ah := auth.NewAuthHandler(ahConfig)
 
 	tmpFile, err := os.CreateTemp("", "auth.tokensink.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	tokenSinkFileName := tmpFile.Name()
 	tmpFile.Close()
 	os.Remove(tokenSinkFileName)
@@ -159,9 +144,7 @@ func TestTokenPreload_UsingAutoAuth(t *testing.T) {
 	}
 
 	fs, err := file.NewFileSink(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config.Sink = fs
 
 	ss := sink.NewSinkServer(&sink.SinkServerConfig{
@@ -177,9 +160,7 @@ func TestTokenPreload_UsingAutoAuth(t *testing.T) {
 		select {
 		case <-ctx.Done():
 		case err := <-errCh:
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}()
 
@@ -190,9 +171,7 @@ func TestTokenPreload_UsingAutoAuth(t *testing.T) {
 		select {
 		case <-ctx.Done():
 		case err := <-errCh:
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}()
 
@@ -213,9 +192,7 @@ func TestTokenPreload_UsingAutoAuth(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	authToken, err := readToken(tokenSinkFileName)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if authToken.Token == "" {
 		t.Fatal("expected token but didn't receive it")
@@ -225,9 +202,7 @@ func TestTokenPreload_UsingAutoAuth(t *testing.T) {
 		"token": authToken.Token,
 	}
 	unwrapResp, err := client.Logical().Write("sys/wrapping/unwrap", wrappedToken)
-	if err != nil {
-		t.Fatalf("error unwrapping token: %s", err)
-	}
+	require.NoError(t, err)
 
 	sinkToken, ok := unwrapResp.Data["token"].(string)
 	if !ok {

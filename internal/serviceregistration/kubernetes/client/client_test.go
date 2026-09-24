@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	kubetest "github.com/openbao/openbao/v2/internal/serviceregistration/kubernetes/testing"
+	"github.com/stretchr/testify/require"
 )
 
 func TestClient(t *testing.T) {
@@ -27,9 +28,7 @@ func TestClient(t *testing.T) {
 	}
 
 	client, err := New(hclog.Default())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	e := &env{
 		client:    client,
 		testState: testState,
@@ -47,9 +46,7 @@ type env struct {
 
 func (e *env) TestGetPod(t *testing.T) {
 	pod, err := e.client.GetPod(kubetest.ExpectedNamespace, kubetest.ExpectedPodName)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if pod.Metadata.Name != "shell-demo" {
 		t.Fatalf("expected %q but received %q", "shell-demo", pod.Metadata.Name)
 	}

@@ -41,13 +41,9 @@ initialize "auth" {
 }
 `
 	list, err := parseBlockList(hclStr, "initialize")
-	if err != nil {
-		t.Fatalf("parseBlockList error: %v", err)
-	}
+	require.NoError(t, err)
 	outers, err := ParseOuterConfig("initialize", list)
-	if err != nil {
-		t.Fatalf("ParseOuterConfig returned error: %v", err)
-	}
+	require.NoError(t, err)
 	if len(outers) != 1 {
 		t.Fatalf("expected 1 OuterConfig, got %d", len(outers))
 	}
@@ -85,13 +81,9 @@ initialize "auth" {
 func TestParseOuterConfig_EmptyList(t *testing.T) {
 	hclStr := `other "x" { }`
 	list, err := parseBlockList(hclStr, "initialize")
-	if err != nil {
-		t.Fatalf("parseBlockList error: %v", err)
-	}
+	require.NoError(t, err)
 	outers, err := ParseOuterConfig("initialize", list)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 	if len(outers) != 0 {
 		t.Errorf("expected 0 OuterConfig, got %d", len(outers))
 	}
@@ -104,9 +96,7 @@ initialize {
 }
 `
 	list, err := parseBlockList(hclStr, "initialize")
-	if err != nil {
-		t.Fatalf("parseBlockList error: %v", err)
-	}
+	require.NoError(t, err)
 	_, err = ParseOuterConfig("initialize", list)
 	if err == nil || !strings.Contains(err.Error(), "type must be specified") {
 		t.Fatalf("expected type-specification error, got %v", err)
@@ -137,15 +127,11 @@ request "op1" {
 }
 `
 	file, err := hclutil.ParseConfig([]byte(hclStr))
-	if err != nil {
-		t.Fatalf("failed to parse HCL: %v", err)
-	}
+	require.NoError(t, err)
 	rootList := file.Node.(*ast.ObjectList)
 	items := rootList.Filter("request")
 	reqs, err := ParseRequestConfig(items)
-	if err != nil {
-		t.Fatalf("ParseRequestConfig error: %v", err)
-	}
+	require.NoError(t, err)
 	if len(reqs) != 1 {
 		t.Fatalf("expected 1 RequestConfig, got %d", len(reqs))
 	}
@@ -168,9 +154,7 @@ request {
 }
 `
 	file, err := hclutil.ParseConfig([]byte(hclStr))
-	if err != nil {
-		t.Fatalf("failed to parse HCL: %v", err)
-	}
+	require.NoError(t, err)
 	items := file.Node.(*ast.ObjectList).Filter("request")
 	_, err = ParseRequestConfig(items)
 	if err == nil || !strings.Contains(err.Error(), "type must be specified") {

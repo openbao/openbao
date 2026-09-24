@@ -112,9 +112,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 
 			for _, test := range expected {
 				matched, err := regexp.MatchString(test, authURL)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				if !matched {
 					t.Fatalf("expected to match regex=%s / authURL=%v", test, authURL)
 				}
@@ -137,9 +135,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if !resp.IsError() {
 			t.Fatalf("expected error response, got: %v", resp)
@@ -350,9 +346,7 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 			}
 
 			authURL, err := url.Parse(rawAuthURL)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			qParams := authURL.Query()
 			redirectURI := qParams.Get("redirect_uri")
 			if test.expectedRedirectURI != redirectURI {
@@ -361,9 +355,7 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 
 			state := qParams.Get("state")
 			matchState, err := regexp.MatchString(test.expectedStateRegEx, state)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if !matchState {
 				t.Fatalf("expected state to match regex: %s, %s", test.expectedStateRegEx, state)
 			}
@@ -795,9 +787,7 @@ func TestOIDC_Callback(t *testing.T) {
 				}
 
 				resp, err = b.HandleRequest(t.Context(), req)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 			}
 
 			if callbackMode == "direct" {
@@ -816,9 +806,7 @@ func TestOIDC_Callback(t *testing.T) {
 					},
 				}
 				resp, err = b.HandleRequest(t.Context(), req)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 			}
 
 			if callbackMode != "client" {
@@ -832,9 +820,7 @@ func TestOIDC_Callback(t *testing.T) {
 					},
 				}
 				resp, err = b.HandleRequest(t.Context(), req)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 			}
 
 			expected := &logical.Auth{
@@ -869,9 +855,7 @@ func TestOIDC_Callback(t *testing.T) {
 			}
 			if useBoundCIDRs {
 				sock, err := sockaddr.NewSockAddr("127.0.0.42")
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				expected.BoundCIDRs = []*sockaddr.SockAddrMarshaler{{SockAddr: sock}}
 			}
 
@@ -985,9 +969,7 @@ func TestOIDC_Callback(t *testing.T) {
 			},
 		}
 		resp, err = b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		expected := &logical.Auth{
 			LeaseOptions: logical.LeaseOptions{
@@ -1076,9 +1058,7 @@ func TestOIDC_Callback(t *testing.T) {
 		}
 
 		resp, err = b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !resp.IsError() {
 			t.Fatalf("expected error response, got: %v", resp.Data)
 		}
@@ -1132,9 +1112,7 @@ func TestOIDC_Callback(t *testing.T) {
 		}
 
 		resp, err = b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !resp.IsError() {
 			t.Fatalf("expected error response, got: %v", resp.Data)
 		}
@@ -1151,9 +1129,7 @@ func TestOIDC_Callback(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil || !strings.Contains(resp.Error().Error(), "Expired or missing OAuth state") {
 			t.Fatalf("expected OAuth state error response, got: %#v", resp)
 		}
@@ -1173,9 +1149,7 @@ func TestOIDC_Callback(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil || !strings.Contains(resp.Error().Error(), "Expired or missing OAuth state") {
 			t.Fatalf("expected OAuth state error response, got: %#v", resp)
 		}
@@ -1214,9 +1188,7 @@ func TestOIDC_Callback(t *testing.T) {
 			},
 		}
 		resp, err = b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if resp == nil || !strings.Contains(resp.Error().Error(), "No code or id_token received") {
 			t.Fatalf("expected OAuth core error response, got: %#v", resp)
@@ -1264,9 +1236,7 @@ func TestOIDC_Callback(t *testing.T) {
 			},
 		}
 		resp, err = b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if resp == nil || !strings.Contains(resp.Error().Error(), "cannot fetch token") {
 			t.Fatalf("expected code exchange error response, got: %#v", resp)
@@ -1316,9 +1286,7 @@ func TestOIDC_Callback(t *testing.T) {
 			},
 		}
 		resp, err = b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if resp == nil || !strings.Contains(resp.Error().Error(), "cannot fetch token") {
 			t.Fatalf("expected code exchange error response, got: %#v", resp)
@@ -1362,9 +1330,7 @@ func TestOIDC_Callback(t *testing.T) {
 			},
 		}
 		resp, err = b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if resp == nil || !strings.Contains(resp.Error().Error(), "connection refused") {
 			t.Fatalf("expected code exchange error response, got: %#v", resp)
@@ -1460,9 +1426,7 @@ func TestOIDC_Callback(t *testing.T) {
 			},
 		}
 		resp, err = b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil {
 			t.Fatal("nil response")
 		}
@@ -1553,9 +1517,7 @@ func TestOIDC_Callback(t *testing.T) {
 			}
 
 			resp, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			if test.errExpected != resp.IsError() {
 				t.Fatalf("%s: unexpected error response, expected: %v,  got: %v", name, test.errExpected, resp.Data)
@@ -1604,34 +1566,24 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				"jwks_uri": "%s/certs",
 				"userinfo_endpoint": "%s/userinfo"
 			}`, "%s", o.server.URL)))
-		if err != nil {
-			o.t.Fatal(err)
-		}
+		require.NoError(o.t, err)
 	case "/certs":
 		a := getTestJWKS(o.t, ecdsaPubKey)
 		_, err := w.Write(a)
-		if err != nil {
-			o.t.Fatal(err)
-		}
+		require.NoError(o.t, err)
 	case "/certs_missing":
 		w.WriteHeader(404)
 	case "/certs_invalid":
 		_, err := w.Write([]byte("It's not a keyset!"))
-		if err != nil {
-			o.t.Fatal(err)
-		}
+		require.NoError(o.t, err)
 	case "/device":
 		values := map[string]any{
 			"device_code": o.code,
 		}
 		data, err := json.Marshal(values)
-		if err != nil {
-			o.t.Fatal(err)
-		}
+		require.NoError(o.t, err)
 		_, err = w.Write(data)
-		if err != nil {
-			o.t.Fatal(err)
-		}
+		require.NoError(o.t, err)
 	case "/token":
 		var code string
 		grant_type := r.FormValue("grant_type")
@@ -1672,9 +1624,7 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}`,
 			jwtData,
 			jwtData)
-		if err != nil {
-			o.t.Fatal(err)
-		}
+		require.NoError(o.t, err)
 	case "/userinfo":
 		_, err := w.Write([]byte(`
 			{
@@ -1682,9 +1632,7 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				"color":"red",
 				"temperature":"76"
 			}`))
-		if err != nil {
-			o.t.Fatal(err)
-		}
+		require.NoError(o.t, err)
 
 	default:
 		o.t.Fatalf("unexpected path: %q", r.URL.Path)
@@ -1732,9 +1680,7 @@ func getQueryParam(t *testing.T, inputURL, param string) string {
 	t.Helper()
 
 	m, err := url.ParseQuery(inputURL)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	v, ok := m[param]
 	if !ok {
 		t.Fatalf("query param %q not found", param)
@@ -1754,9 +1700,7 @@ func getTestJWKS(t *testing.T, pubKey string) []byte {
 	input := block.Bytes
 
 	pub, err := x509.ParsePKIXPublicKey(input)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	jwk := jose.JSONWebKey{
 		Key: pub,
 	}
@@ -1765,9 +1709,7 @@ func getTestJWKS(t *testing.T, pubKey string) []byte {
 	}
 
 	data, err := json.Marshal(jwks)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return data
 }
@@ -1811,9 +1753,7 @@ func getBackendAndServer(t *testing.T, boundCIDRs bool, callbackMode string) (lo
 	s.clientSecret = "def"
 
 	cert, err := s.getTLSCert()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Configure backend
 	data := map[string]any{

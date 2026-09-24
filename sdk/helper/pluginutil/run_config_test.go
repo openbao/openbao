@@ -314,9 +314,7 @@ func TestMakeConfig(t *testing.T) {
 			defer cancel()
 
 			config, err := test.rc.makeConfig(ctx)
-			if err != nil {
-				t.Fatalf("no error expected, got: %s", err)
-			}
+			require.NoError(t, err)
 
 			// The following fields are generated, so we just need to check for existence, not specific value
 			// The value must be nilled out before performing a DeepEqual check

@@ -13,6 +13,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGRPCBackendPlugin_impl(t *testing.T) {
@@ -31,9 +32,7 @@ func TestGRPCBackendPlugin_HandleRequest(t *testing.T) {
 			"value": "bar",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.Data["value"] != "bar" {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -85,9 +84,7 @@ func TestGRPCBackendPlugin_HandleExistenceCheck(t *testing.T) {
 		Path:      "kv/foo",
 		Data:      map[string]any{"value": "bar"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if !checkFound {
 		t.Fatal("existence check not found for path 'kv/foo")
 	}
@@ -113,9 +110,7 @@ func TestGRPCBackendPlugin_InvalidateKey(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Path:      "internal",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.Data["value"] == "" {
 		t.Fatalf("bad: %#v, expected non-empty value", resp)
 	}
@@ -126,9 +121,7 @@ func TestGRPCBackendPlugin_InvalidateKey(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Path:      "internal",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.Data["value"] != "" {
 		t.Fatalf("bad: expected empty response data, got %#v", resp)
 	}
@@ -144,9 +137,7 @@ func TestGRPCBackendPlugin_Initialize(t *testing.T) {
 	defer cleanup()
 
 	err := b.Initialize(t.Context(), &logical.InitializationRequest{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestGRPCBackendPlugin_Version(t *testing.T) {
@@ -183,9 +174,7 @@ func testGRPCBackend(t *testing.T) (logical.Backend, func()) {
 
 	// Request the backend
 	raw, err := client.Dispense(BackendPluginName)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b := raw.(logical.Backend)
 
 	err = b.Setup(t.Context(), &logical.BackendConfig{
@@ -196,9 +185,7 @@ func testGRPCBackend(t *testing.T) (logical.Backend, func()) {
 		},
 		StorageView: &logical.InmemStorage{},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return b, cleanup
 }

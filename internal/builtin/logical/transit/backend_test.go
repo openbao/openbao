@@ -1837,12 +1837,12 @@ func testTransit_ReadPublicKeyImported(t *testing.T, keyType string) {
 	generateKeys(t)
 	b, s := createBackendWithStorage(t)
 	keyID, err := uuid.GenerateUUID()
-	require.NoErrorf(t, err, "failed to generate key ID: %s", err)
+	require.NoError(t, err)
 
 	// Get key
 	privateKey := getKey(t, keyType)
 	publicKeyBytes, err := getPublicKey(privateKey, keyType)
-	require.NoErrorf(t, err, "failed to extract the public key: %s", err)
+	require.NoError(t, err)
 
 	// Import key
 	importReq := &logical.Request{
@@ -1880,12 +1880,12 @@ func testTransit_SignWithImportedPublicKey(t *testing.T, keyType string) {
 	generateKeys(t)
 	b, s := createBackendWithStorage(t)
 	keyID, err := uuid.GenerateUUID()
-	require.NoErrorf(t, err, "failed to generate key ID: %s", err)
+	require.NoError(t, err)
 
 	// Get key
 	privateKey := getKey(t, keyType)
 	publicKeyBytes, err := getPublicKey(privateKey, keyType)
-	require.NoErrorf(t, err, "failed to extract the public key: %s", err)
+	require.NoError(t, err)
 
 	// Import key
 	importReq := &logical.Request{
@@ -1920,7 +1920,7 @@ func TestTransit_VerifyWithImportedPublicKey(t *testing.T) {
 	keyType := "rsa-2048"
 	b, s := createBackendWithStorage(t)
 	keyID, err := uuid.GenerateUUID()
-	require.NoErrorf(t, err, "failed to generate key ID: %s", err)
+	require.NoError(t, err)
 
 	// Get key
 	privateKey := getKey(t, keyType)
@@ -1929,7 +1929,7 @@ func TestTransit_VerifyWithImportedPublicKey(t *testing.T) {
 
 	// Retrieve public wrapping key
 	wrappingKey, err := b.getWrappingKey(t.Context(), s)
-	require.NoErrorf(t, err, "failed to retrieve public wrapping key: %s", err)
+	require.NoError(t, err)
 	require.NotNilf(t, wrappingKey, "retrieved public wrapping key is nil")
 
 	privWrappingKey := wrappingKey.Keys[strconv.Itoa(wrappingKey.LatestVersion)].RSAKey
@@ -2009,12 +2009,12 @@ func testTransit_ExportPublicKeyImported(t *testing.T, keyType string) {
 	generateKeys(t)
 	b, s := createBackendWithStorage(t)
 	keyID, err := uuid.GenerateUUID()
-	require.NoErrorf(t, err, "failed to generate key ID: %s", err)
+	require.NoError(t, err)
 
 	// Get key
 	privateKey := getKey(t, keyType)
 	publicKeyBytes, err := getPublicKey(privateKey, keyType)
-	require.NoErrorf(t, err, "failed to extract the public key: %s", err)
+	require.NoError(t, err)
 
 	t.Logf("generated key: %v", string(publicKeyBytes))
 

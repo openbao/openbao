@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRenewer_Renew(t *testing.T) {
@@ -27,16 +28,12 @@ func TestRenewer_Renew(t *testing.T) {
 			}
 
 			secret, err := client.Logical().Read("secret/value")
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			v, err := client.NewLifetimeWatcher(&api.RenewerInput{
 				Secret: secret,
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			go v.Renew()
 			defer v.Stop()
 
@@ -64,16 +61,12 @@ func TestRenewer_Renew(t *testing.T) {
 			secret, err := client.Logical().Write("transit/encrypt/my-app", map[string]any{
 				"plaintext": "Zm9vCg==",
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			v, err := client.NewLifetimeWatcher(&api.RenewerInput{
 				Secret: secret,
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			go v.Renew()
 			defer v.Stop()
 
@@ -97,16 +90,12 @@ func TestRenewer_Renew(t *testing.T) {
 				TTL:            "5s",
 				ExplicitMaxTTL: "10s",
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			v, err := client.NewLifetimeWatcher(&api.RenewerInput{
 				Secret: secret,
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			go v.Renew()
 			defer v.Stop()
 
@@ -118,9 +107,7 @@ func TestRenewer_Renew(t *testing.T) {
 					done = true
 					if renewed {
 						// If we renewed but there's an error, we fail
-						if err != nil {
-							t.Fatalf("renewal failed with an error: %v", err)
-						}
+						require.NoError(t, err)
 					} else {
 						t.Errorf("should have renewed once before returning: %s", err)
 					}

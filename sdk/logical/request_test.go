@@ -80,9 +80,7 @@ func TestRequest_ParseMFAHandlers(t *testing.T) {
 		"my_third_mfa",
 	}
 	err = req.ParseMFAHeaders()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Verify that it is being parsed properly
 	expectedMFACreds = MFACreds{
@@ -107,9 +105,7 @@ func TestRequest_ParseMFAHandlers(t *testing.T) {
 		"my_mfa:day=tuesday",
 	}
 	err = req.ParseMFAHeaders()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expectedMFACreds = MFACreds{
 		"my_mfa": []string{

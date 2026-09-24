@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIdentityTemplating(t *testing.T) {
@@ -92,9 +93,7 @@ func TestIdentityTemplating(t *testing.T) {
 
 	for _, tCase := range tCases {
 		out, err := PopulateIdentityTemplate(tCase.tpl, "test", sysView)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if out != tCase.expected {
 			t.Fatalf("got %q, expected %q", out, tCase.expected)

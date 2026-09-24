@@ -7,14 +7,14 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestRaftFolderPerms(t *testing.T) {
 	// Make sure overpermissive permissions are caught
 	err := os.Mkdir("diagnose", 0o777)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	info, _ := os.Stat("diagnose")
 
@@ -25,9 +25,7 @@ func TestRaftFolderPerms(t *testing.T) {
 	// Create a boltDB formatted file and make sure isDB returns true
 	fullDBPath := "diagnose/" + DatabaseFilename
 	_, err = os.Create(fullDBPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if !HasDB(fullDBPath) {
 		t.Fatal("well-formatted database path is not accepted by DB check function")
 	}
@@ -42,9 +40,7 @@ func TestRaftFolderPerms(t *testing.T) {
 
 	// Make sure underpermissiveness is caught
 	err = os.Chmod("diagnose", 0o100)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	info, _ = os.Stat("diagnose")
 	hasOnlyOwnerRW, errs = CheckFilePerms(info)
 	if hasOnlyOwnerRW {
@@ -56,9 +52,7 @@ func TestRaftFolderPerms(t *testing.T) {
 
 	// Make sure actually setting owner rw returns properly
 	err = os.Chmod("diagnose", 0o600)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	info, _ = os.Stat("diagnose")
 	hasOnlyOwnerRW, errs = CheckFilePerms(info)
 	if errs != nil || !hasOnlyOwnerRW {
@@ -70,9 +64,7 @@ func TestRaftFolderPerms(t *testing.T) {
 
 	// Clean up test diagnose folder
 	err = os.RemoveAll("diagnose")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestRaftStorageQuorum(t *testing.T) {

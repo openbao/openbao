@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 // TestConstructTemplates tests the construcTemplates helper function
@@ -134,9 +136,7 @@ func TestConstructTemplates(t *testing.T) {
 					t.Fatal("an error was expected but the test succeeded")
 				}
 			} else {
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				if !reflect.DeepEqual(tc.expected, templates) {
 					t.Fatalf("unexpected output; want: %v, got: %v", tc.expected, templates)
@@ -257,9 +257,7 @@ exec \{
 					t.Fatal("an error was expected but the test succeeded")
 				}
 			} else {
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				if !tc.expected.MatchString(config.String()) {
 					t.Fatalf("unexpected output; want: %v, got: %v", tc.expected.String(), config.String())

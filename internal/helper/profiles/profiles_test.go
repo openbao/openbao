@@ -82,9 +82,7 @@ func TestNewEngine_Success(t *testing.T) {
 		e.requestHandler = testHandler
 		e.outerBlockName = "outer"
 	})
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
+	require.NoError(t, err)
 	if engine == nil {
 		t.Fatal("expected non-nil engine")
 	}
@@ -208,9 +206,7 @@ func TestProfileEngine_Validate_SuccessSingleBlock(t *testing.T) {
 			e.outerBlockName = "outer"
 		},
 	)
-	if err != nil {
-		t.Fatalf("NewEngine error: %v", err)
-	}
+	require.NoError(t, err)
 	if err := engine.validate(); err != nil {
 		t.Fatalf("validate error: %v", err)
 	}
@@ -239,9 +235,7 @@ func TestValidateOuterBlockUniqueness_OK(t *testing.T) {
 			"one",
 		),
 	)
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestValidateOuterBlockUniqueness_Duplicate(t *testing.T) {
@@ -357,14 +351,10 @@ func Test_Evaluate_Success(t *testing.T) {
 		WithRequestHandler(testHandler),
 		WithOuterBlockName("test"),
 	)
-	if err != nil {
-		t.Fatalf("NewEngine error: %v", err)
-	}
+	require.NoError(t, err)
 
 	err = engine.Evaluate(ctx)
-	if err != nil {
-		t.Fatalf("Evaluate error: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func Test_Evaluate_When(t *testing.T) {
@@ -387,14 +377,10 @@ func Test_Evaluate_When(t *testing.T) {
 		WithRequestHandler(errHandler),
 		WithOuterBlockName("test"),
 	)
-	if err != nil {
-		t.Fatalf("NewEngine error: %v", err)
-	}
+	require.NoError(t, err)
 
 	err = engine.Evaluate(ctx)
-	if err != nil {
-		t.Fatalf("Evaluate error: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func Test_Evaluate_OuterWhen(t *testing.T) {
@@ -417,14 +403,10 @@ func Test_Evaluate_OuterWhen(t *testing.T) {
 		WithRequestHandler(errHandler),
 		WithOuterBlockName("test"),
 	)
-	if err != nil {
-		t.Fatalf("NewEngine error: %v", err)
-	}
+	require.NoError(t, err)
 
 	err = engine.Evaluate(ctx)
-	if err != nil {
-		t.Fatalf("Evaluate error: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestBuildRequest_BasicRequestCreation(t *testing.T) {
@@ -449,9 +431,7 @@ func TestBuildRequest_BasicRequestCreation(t *testing.T) {
 	}
 
 	req, execute, allowFailure, err := engine.buildRequest(t.Context(), hist, 0, outerConfig, 0, requestConfig)
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
+	require.NoError(t, err)
 
 	if req == nil {
 		t.Fatal("expected non-nil request")
@@ -498,9 +478,7 @@ func TestEvaluateField_EvalSourceSuccess(t *testing.T) {
 	field := map[string]any{"eval_source": "b", "eval_type": "string"}
 	var dest string
 	err := engine.evaluateField(t.Context(), hist, field, &dest)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 	if dest != "hello" {
 		t.Errorf("dest = %q; want \"hello\"", dest)
 	}
@@ -534,9 +512,7 @@ func TestEvaluateField_EvalSourceNested(t *testing.T) {
 	}
 	var dest string
 	err := engine.evaluateField(t.Context(), hist, field, &dest)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 	if dest != "hello+world" {
 		t.Errorf("dest = %q; want \"hello+world\"", dest)
 	}
@@ -643,9 +619,7 @@ func TestEvaluateTypedField_HistoryInconsistency(t *testing.T) {
 		Responses: map[string]map[string]map[string]any{"outer": {}},
 	}
 	result, err := eng.evaluateTypedField(t.Context(), hist, nil, "src", "")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 	if result == nil {
 		t.Fatalf("expected non-nil result, got nil")
 	}
@@ -689,9 +663,7 @@ func TestEvaluateTypedField_SuccessConversion(t *testing.T) {
 
 	obj := map[string]any{}
 	result, err := eng.evaluateTypedField(t.Context(), &EvaluationHistory{}, obj, "src", "int")
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
+	require.NoError(t, err)
 	if result != 123 {
 		t.Fatalf("expected 123, got: %v", result)
 	}
@@ -754,9 +726,7 @@ func TestConvertToType_ObjTypeEmpty_ReturnsOriginal(t *testing.T) {
 
 	valInt := 123
 	gotInt, err := engine.convertToType(valInt, "")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 	if gotInt != valInt {
 		t.Errorf("got %v; want original %v", gotInt, valInt)
 	}

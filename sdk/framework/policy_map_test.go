@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPolicyMap(t *testing.T) {
@@ -22,9 +23,7 @@ func TestPolicyMap(t *testing.T) {
 
 	// Read via API
 	actual, err := p.Policies(ctx, s, "foo", "bar")
-	if err != nil {
-		t.Fatalf("bad: %#v", err)
-	}
+	require.NoError(t, err)
 
 	expected := []string{"bar", "baz", "foo"}
 	if !reflect.DeepEqual(actual, expected) {

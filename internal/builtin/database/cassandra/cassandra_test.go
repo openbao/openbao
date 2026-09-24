@@ -64,9 +64,7 @@ func TestInitialize(t *testing.T) {
 		t.Cleanup(cleanup)
 
 		err := db.Close()
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
+		require.NoError(t, err)
 	})
 
 	t.Run("string protocol version", func(t *testing.T) {
@@ -75,9 +73,7 @@ func TestInitialize(t *testing.T) {
 		t.Cleanup(cleanup)
 
 		err := db.Close()
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
+		require.NoError(t, err)
 	})
 }
 

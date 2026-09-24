@@ -45,9 +45,7 @@ func TestAuth_ReadOnlyViewDuringMount(t *testing.T) {
 		Type:  "noop",
 	}
 	err := c.enableCredential(namespace.RootContext(t.Context()), me)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestAuthMountMetrics(t *testing.T) {
@@ -73,9 +71,7 @@ func TestAuthMountMetrics(t *testing.T) {
 		Type:  "noop",
 	}
 	err := c.enableCredential(namespace.RootContext(t.Context()), me)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	mountMetrics = &c.metricsHelper.LoopMetrics.Metrics
 	loadMetric, ok = mountMetrics.Load(mountKeyName)
 	numEntriesMetric = loadMetric.(metricsutil.GaugeMetric)
@@ -130,15 +126,11 @@ func TestCore_DefaultAuthTable(t *testing.T) {
 		MetricsHelper:   metricsutil.NewMetricsHelper(inmemSink, false),
 	}
 	c2, err := NewCore(conf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer c2.Shutdown()
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c2, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("should be unsealed")
 		}
@@ -174,9 +166,7 @@ func TestCore_BuiltinRegistry(t *testing.T) {
 		},
 	} {
 		err := c.enableCredential(namespace.RootContext(t.Context()), me)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 	}
 }
 
@@ -194,9 +184,7 @@ func TestCore_EnableCredential(t *testing.T) {
 		Type:  "noop",
 	}
 	err := c.enableCredential(namespace.RootContext(t.Context()), me)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "auth/foo/bar")
 	if match != "auth/foo/" {
@@ -211,9 +199,7 @@ func TestCore_EnableCredential(t *testing.T) {
 		MetricsHelper:   metricsutil.NewMetricsHelper(inmemSink, false),
 	}
 	c2, err := NewCore(conf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer c2.Shutdown()
 	c2.credentialBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
 		return &be.Noop{
@@ -222,9 +208,7 @@ func TestCore_EnableCredential(t *testing.T) {
 	}
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c2, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("should be unsealed")
 		}
@@ -262,9 +246,7 @@ func TestCore_EnableCredential_aws_ec2(t *testing.T) {
 		Type:  "aws-ec2",
 	}
 	err := c.enableCredential(namespace.RootContext(t.Context()), me)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "auth/foo/bar")
 	if match != "auth/foo/" {
@@ -279,9 +261,7 @@ func TestCore_EnableCredential_aws_ec2(t *testing.T) {
 		MetricsHelper:   metricsutil.NewMetricsHelper(inmemSink, false),
 	}
 	c2, err := NewCore(conf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer c2.Shutdown()
 	c2.credentialBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
 		return &be.Noop{
@@ -290,9 +270,7 @@ func TestCore_EnableCredential_aws_ec2(t *testing.T) {
 	}
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c2, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("should be unsealed")
 		}
@@ -355,17 +333,13 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 
 	// Both should set up successfully
 	err := c.setupCredentials(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(c.auth.Entries) != 2 {
 		t.Fatalf("expected two entries, got %d", len(c.auth.Entries))
 	}
 
 	localEntries, err := c.barrier.List(ctx, coreLocalAuthConfigPath+"/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(localEntries) != 0 {
 		t.Fatalf("expected zero entry in local auth table, got %#v", localEntries)
 	}
@@ -376,17 +350,13 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 	}
 
 	localEntries, err = c.barrier.List(ctx, coreLocalAuthConfigPath+"/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(localEntries) != 1 {
 		t.Fatalf("expected one entry in local auth table, got %#v", localEntries)
 	}
 	for _, localEntry := range localEntries {
 		rawLocal, err := c.barrier.Get(ctx, coreLocalAuthConfigPath+"/"+localEntry)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if rawLocal == nil {
 			t.Fatal("expected non-nil local auth")
 		}
@@ -428,9 +398,7 @@ func TestCore_EnableCredential_twice_409(t *testing.T) {
 		Type:  "noop",
 	}
 	err := c.enableCredential(namespace.RootContext(t.Context()), me)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// 2nd should be a 409 error
 	err2 := c.enableCredential(namespace.RootContext(t.Context()), me)
@@ -476,14 +444,10 @@ func TestCore_DisableCredential(t *testing.T) {
 		Type:  "noop",
 	}
 	err = c.enableCredential(namespace.RootContext(t.Context()), me)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	err = c.disableCredential(namespace.RootContext(t.Context()), "foo")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "auth/foo/bar")
 	if match != "" {
@@ -498,15 +462,11 @@ func TestCore_DisableCredential(t *testing.T) {
 		MetricsHelper:   metricsutil.NewMetricsHelper(inmemSink, false),
 	}
 	c2, err := NewCore(conf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer c2.Shutdown()
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c2, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("should be unsealed")
 		}
@@ -542,9 +502,7 @@ func TestCore_DisableCredential_Cleanup(t *testing.T) {
 		Type:  "noop",
 	}
 	err := c.enableCredential(namespace.RootContext(t.Context()), me)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Store the view
 	view := c.router.MatchingStorageByAPIPath(namespace.RootContext(t.Context()), "auth/foo/")
@@ -569,33 +527,25 @@ func TestCore_DisableCredential_Cleanup(t *testing.T) {
 		Operation: logical.UpdateOperation,
 	}
 	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), r)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp.Auth.ClientToken == "" {
 		t.Fatalf("bad: %#v", resp)
 	}
 
 	// Disable should cleanup
 	err = c.disableCredential(namespace.RootContext(t.Context()), "foo")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Token should be revoked
 	te, err := c.tokenStore.Lookup(namespace.RootContext(t.Context()), resp.Auth.ClientToken)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if te != nil {
 		t.Fatalf("bad: %#v", te)
 	}
 
 	// View should be empty
 	out, err := logical.CollectKeys(t.Context(), view)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(out) != 0 {
 		t.Fatalf("bad: %#v", out)
 	}
@@ -653,9 +603,7 @@ func TestCore_CredentialInitialize(t *testing.T) {
 			Type:  "initable",
 		}
 		err := c.enableCredential(namespace.RootContext(t.Context()), me)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		if !backend.IsInitialized {
 			t.Fatal("backend is not initialized")
@@ -690,9 +638,7 @@ func TestCore_CredentialInitialize(t *testing.T) {
 		}
 
 		err := c.setupCredentials(t.Context())
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// run the postUnseal funcs, so that the backend will be inited
 		for _, f := range c.postUnsealFuncs {
@@ -725,9 +671,7 @@ func TestCore_RemountCredential(t *testing.T) {
 		Type:  "noop",
 	}
 	err := c.enableCredential(namespace.RootContext(t.Context()), me)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "auth/foo/bar")
 	if match != "auth/foo/" {
@@ -735,9 +679,7 @@ func TestCore_RemountCredential(t *testing.T) {
 	}
 
 	err = remountCredentialFromRoot(t.Context(), c, "auth/foo", "auth/bar", true)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	match = c.router.MatchingMount(namespace.RootContext(t.Context()), "auth/bar/baz")
 	if match != "auth/bar/" {
@@ -747,9 +689,7 @@ func TestCore_RemountCredential(t *testing.T) {
 	c.sealInternal()
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("should be unsealed")
 		}
@@ -777,9 +717,7 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 		Type:  "noop",
 	}
 	err := c.enableCredential(namespace.RootContext(t.Context()), me)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Store the view
 	view := c.router.MatchingStorageByAPIPath(namespace.RootContext(t.Context()), "auth/foo/")
@@ -804,33 +742,25 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 		Path:      "auth/foo/login",
 	}
 	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), r)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp.Auth.ClientToken == "" {
 		t.Fatalf("bad: %#v", resp)
 	}
 
 	// Disable should cleanup
 	err = remountCredentialFromRoot(t.Context(), c, "auth/foo", "auth/bar", true)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Token should be revoked
 	te, err := c.tokenStore.Lookup(namespace.RootContext(t.Context()), resp.Auth.ClientToken)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if te != nil {
 		t.Fatalf("bad: %#v", te)
 	}
 
 	// View should be empty
 	out, err := logical.CollectKeys(t.Context(), view)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(out) != 1 && out[0] != "plstokeep" {
 		t.Fatalf("bad: %#v", out)
 	}

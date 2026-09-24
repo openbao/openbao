@@ -89,9 +89,7 @@ func TestDriver(t *testing.T) {
 	if os.Getenv("TEST_VALKEY_TLS") != "" {
 		caCertFile := os.Getenv("CA_CERT_FILE")
 		caCert, err = os.ReadFile(caCertFile)
-		if err != nil {
-			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", caCertFile, err))
-		}
+		require.NoError(t, err)
 	}
 
 	// Spin up valkey
@@ -99,19 +97,13 @@ func TestDriver(t *testing.T) {
 
 	err = createUser(t.Context(), host, port, valkeyTls, caCert, defaultUsername, defaultPassword, "Administrator", "password",
 		aclCat)
-	if err != nil {
-		t.Fatalf("Failed to create Administrator user using 'default' user: %s", err)
-	}
+	require.NoError(t, err)
 	err = createUser(t.Context(), host, port, valkeyTls, caCert, adminUsername, adminPassword, "rotate-root", "rotate-rootpassword",
 		aclCat)
-	if err != nil {
-		t.Fatalf("Failed to create rotate-root test user: %s", err)
-	}
+	require.NoError(t, err)
 	err = createUser(t.Context(), host, port, valkeyTls, caCert, adminUsername, adminPassword, "vault-edu", "password",
 		aclCat)
-	if err != nil {
-		t.Fatalf("Failed to create vault-edu test user: %s", err)
-	}
+	require.NoError(t, err)
 
 	t.Run("Init", func(t *testing.T) { testValkeyDBInitialize_NoTLS(t, host, port) })
 	t.Run("Init", func(t *testing.T) { testValkeyDBInitialize_TLS(t, host, port) })
@@ -145,9 +137,7 @@ func setupValkeyDBInitialize(t *testing.T, connectionDetails map[string]any) (er
 	}
 
 	err = db.Close()
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	return nil
 }
 
@@ -165,9 +155,7 @@ func testValkeyDBInitialize_NoTLS(t *testing.T, host string, port int) {
 		"password": adminPassword,
 	}
 	err := setupValkeyDBInitialize(t, connectionDetails)
-	if err != nil {
-		t.Fatalf("Testing Init() failed: error: %s", err)
-	}
+	require.NoError(t, err)
 }
 
 func testValkeyDBInitialize_TLS(t *testing.T, host string, port int) {
@@ -177,9 +165,7 @@ func testValkeyDBInitialize_TLS(t *testing.T, host string, port int) {
 
 	CACertFile := os.Getenv("CA_CERT_FILE")
 	CACert, err := os.ReadFile(CACertFile)
-	if err != nil {
-		t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-	}
+	require.NoError(t, err)
 
 	t.Log("Testing TLS Init()")
 
@@ -193,9 +179,7 @@ func testValkeyDBInitialize_TLS(t *testing.T, host string, port int) {
 		"insecure_tls": true,
 	}
 	err = setupValkeyDBInitialize(t, connectionDetails)
-	if err != nil {
-		t.Fatalf("Testing TLS Init() failed: error: %s", err)
-	}
+	require.NoError(t, err)
 }
 
 func testValkeyDBInitialize_ConnectionURL(t *testing.T, host string, port int) {
@@ -210,9 +194,7 @@ func testValkeyDBInitialize_ConnectionURL(t *testing.T, host string, port int) {
 		"connection_url": connectionURL,
 	}
 	err := setupValkeyDBInitialize(t, connectionDetails)
-	if err != nil {
-		t.Fatalf("Testing Init() with connection_url failed: error: %s", err)
-	}
+	require.NoError(t, err)
 }
 
 func testValkeyDBCreateUser(t *testing.T, address string, port int) {
@@ -232,9 +214,7 @@ func testValkeyDBCreateUser(t *testing.T, address string, port int) {
 	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
-		if err != nil {
-			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-		}
+		require.NoError(t, err)
 
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
@@ -248,9 +228,7 @@ func testValkeyDBCreateUser(t *testing.T, address string, port int) {
 
 	db := new()
 	_, err := db.Initialize(t.Context(), initReq)
-	if err != nil {
-		t.Fatalf("Failed to initialize database: %s", err)
-	}
+	require.NoError(t, err)
 
 	if !db.Initialized {
 		t.Fatal("Database should be initialized")
@@ -271,9 +249,7 @@ func testValkeyDBCreateUser(t *testing.T, address string, port int) {
 	}
 
 	userResp, err := db.NewUser(t.Context(), createReq)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if err := db.Close(); err != nil {
 		t.Fatalf("failed to close db: %v", err)
@@ -284,14 +260,10 @@ func testValkeyDBCreateUser(t *testing.T, address string, port int) {
 	}
 
 	err = revokeUser(t, userResp.Username, address, port)
-	if err != nil {
-		t.Fatalf("Could not revoke user %q: %v", userResp.Username, err)
-	}
+	require.NoErrorf(t, err, "Could not revoke user %q: %v", userResp.Username, err)
 
 	err = revokeUser(t, userResp.Username, address, port) // revoke again https://openbao.org/docs/plugins/plugin-authors-guide/#revoke-operations-should-ignore-not-found-errors
-	if err != nil {
-		t.Fatalf("Could not revoke non-existing user %q: %v", userResp.Username, err)
-	}
+	require.NoErrorf(t, err, "Could not revoke non-existing user %q: %v", userResp.Username, err)
 }
 
 func testValkeyDBCreateUser_WithCreationStatements(t *testing.T, address string, port int) {
@@ -310,9 +282,7 @@ func testValkeyDBCreateUser_WithCreationStatements(t *testing.T, address string,
 	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
-		if err != nil {
-			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-		}
+		require.NoError(t, err)
 
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
@@ -327,9 +297,7 @@ func testValkeyDBCreateUser_WithCreationStatements(t *testing.T, address string,
 	db := new()
 
 	_, err := db.Initialize(t.Context(), initReq)
-	if err != nil {
-		t.Fatalf("Failed to initialize database: %s", err)
-	}
+	require.NoError(t, err)
 
 	if !db.Initialized {
 		t.Fatal("Database should be initialized")
@@ -355,9 +323,7 @@ func testValkeyDBCreateUser_WithCreationStatements(t *testing.T, address string,
 			t.Fatalf("failed to close DB connection during cleanup: %v", err)
 		}
 	}()
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if err := checkRuleAllowed(t, userResp.Username, password, address, port, "get", []string{"somekey"}); err != nil {
 		t.Fatalf("get command should be allowed with +@read rule, but failed: %s", err)
@@ -368,9 +334,7 @@ func testValkeyDBCreateUser_WithCreationStatements(t *testing.T, address string,
 	}
 
 	err = revokeUser(t, userResp.Username, address, port)
-	if err != nil {
-		t.Fatalf("Could not revoke user: %s", userResp.Username)
-	}
+	require.NoErrorf(t, err, "Could not revoke user: %s", userResp.Username)
 }
 
 func checkCredsExist(t *testing.T, username, password, address string, port int) error {
@@ -390,9 +354,7 @@ func checkCredsExist(t *testing.T, username, password, address string, port int)
 	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
-		if err != nil {
-			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-		}
+		require.NoError(t, err)
 
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
@@ -406,9 +368,7 @@ func checkCredsExist(t *testing.T, username, password, address string, port int)
 
 	db := new()
 	_, err := db.Initialize(t.Context(), initReq)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if !db.Initialized {
 		t.Fatal("Database should be initialized")
@@ -434,9 +394,7 @@ func checkRuleAllowed(t *testing.T, username, password, address string, port int
 	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
-		if err != nil {
-			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-		}
+		require.NoError(t, err)
 
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
@@ -450,9 +408,7 @@ func checkRuleAllowed(t *testing.T, username, password, address string, port int
 
 	db := new()
 	_, err := db.Initialize(t.Context(), initReq)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if !db.Initialized {
 		t.Fatal("Database should be initialized")
@@ -480,9 +436,7 @@ func revokeUser(t *testing.T, username, address string, port int) error {
 	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
-		if err != nil {
-			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-		}
+		require.NoError(t, err)
 
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
@@ -496,9 +450,7 @@ func revokeUser(t *testing.T, username, address string, port int) error {
 
 	db := new()
 	_, err := db.Initialize(t.Context(), initReq)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if !db.Initialized {
 		t.Fatal("Database should be initialized")
@@ -507,9 +459,7 @@ func revokeUser(t *testing.T, username, address string, port int) error {
 	delUserReq := dbplugin.DeleteUserRequest{Username: username}
 
 	_, err = db.DeleteUser(t.Context(), delUserReq)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	return nil
 }
 
@@ -530,9 +480,7 @@ func testValkeyDBCreateUser_DefaultRule(t *testing.T, address string, port int) 
 	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
-		if err != nil {
-			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-		}
+		require.NoError(t, err)
 
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
@@ -546,9 +494,7 @@ func testValkeyDBCreateUser_DefaultRule(t *testing.T, address string, port int) 
 
 	db := new()
 	_, err := db.Initialize(t.Context(), initReq)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if !db.Initialized {
 		t.Fatal("Database should be initialized")
@@ -570,9 +516,7 @@ func testValkeyDBCreateUser_DefaultRule(t *testing.T, address string, port int) 
 	}
 
 	userResp, err := db.NewUser(t.Context(), createReq)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if err := checkCredsExist(t, userResp.Username, password, address, port); err != nil {
 		t.Fatalf("Could not connect with new credentials: %s", err)
@@ -588,9 +532,7 @@ func testValkeyDBCreateUser_DefaultRule(t *testing.T, address string, port int) 
 	}
 
 	err = revokeUser(t, userResp.Username, address, port)
-	if err != nil {
-		t.Fatalf("Could not revoke user: %s", username)
-	}
+	require.NoErrorf(t, err, "Could not revoke user: %s", username)
 
 	db.Close()
 }
@@ -613,9 +555,7 @@ func testValkeyDBCreateUser_plusRole(t *testing.T, address string, port int) {
 	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
-		if err != nil {
-			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-		}
+		require.NoError(t, err)
 
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
@@ -629,9 +569,7 @@ func testValkeyDBCreateUser_plusRole(t *testing.T, address string, port int) {
 
 	db := new()
 	_, err := db.Initialize(t.Context(), initReq)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if !db.Initialized {
 		t.Fatal("Database should be initialized")
@@ -652,9 +590,7 @@ func testValkeyDBCreateUser_plusRole(t *testing.T, address string, port int) {
 	}
 
 	userResp, err := db.NewUser(t.Context(), createReq)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	db.Close()
 
@@ -663,9 +599,7 @@ func testValkeyDBCreateUser_plusRole(t *testing.T, address string, port int) {
 	}
 
 	err = revokeUser(t, userResp.Username, address, port)
-	if err != nil {
-		t.Fatalf("Could not revoke user: %s", userResp.Username)
-	}
+	require.NoErrorf(t, err, "Could not revoke user: %s", userResp.Username)
 }
 
 // g1 & g2 must exist in the database.
@@ -691,9 +625,7 @@ func testValkeyDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
-		if err != nil {
-			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-		}
+		require.NoError(t, err)
 
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
@@ -707,9 +639,7 @@ func testValkeyDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 
 	db := new()
 	_, err := db.Initialize(t.Context(), initReq)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if !db.Initialized {
 		t.Fatal("Database should be initialized")
@@ -730,9 +660,7 @@ func testValkeyDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 	}
 
 	userResp, err := db.NewUser(t.Context(), createReq)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	db.Close()
 
@@ -741,9 +669,7 @@ func testValkeyDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 	}
 
 	err = revokeUser(t, userResp.Username, address, port)
-	if err != nil {
-		t.Fatalf("Could not revoke user: %s", userResp.Username)
-	}
+	require.NoErrorf(t, err, "Could not revoke user: %s", userResp.Username)
 }
 
 func testValkeyDBCreateUser_roleAndGroup(t *testing.T, address string, port int) {
@@ -768,9 +694,7 @@ func testValkeyDBCreateUser_roleAndGroup(t *testing.T, address string, port int)
 	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
-		if err != nil {
-			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-		}
+		require.NoError(t, err)
 
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
@@ -784,9 +708,7 @@ func testValkeyDBCreateUser_roleAndGroup(t *testing.T, address string, port int)
 
 	db := new()
 	_, err := db.Initialize(t.Context(), initReq)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if !db.Initialized {
 		t.Fatal("Database should be initialized")
@@ -807,9 +729,7 @@ func testValkeyDBCreateUser_roleAndGroup(t *testing.T, address string, port int)
 	}
 
 	userResp, err := db.NewUser(t.Context(), createReq)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	db.Close()
 
@@ -818,9 +738,7 @@ func testValkeyDBCreateUser_roleAndGroup(t *testing.T, address string, port int)
 	}
 
 	err = revokeUser(t, userResp.Username, address, port)
-	if err != nil {
-		t.Fatalf("Could not revoke user: %s", userResp.Username)
-	}
+	require.NoErrorf(t, err, "Could not revoke user: %s", userResp.Username)
 }
 
 func testValkeyDBRotateRootCredentials(t *testing.T, address string, port int) {
@@ -840,9 +758,7 @@ func testValkeyDBRotateRootCredentials(t *testing.T, address string, port int) {
 	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
-		if err != nil {
-			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-		}
+		require.NoError(t, err)
 
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
@@ -856,9 +772,7 @@ func testValkeyDBRotateRootCredentials(t *testing.T, address string, port int) {
 
 	db := new()
 	_, err := db.Initialize(t.Context(), initReq)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if !db.Initialized {
 		t.Fatal("Database should be initialized")
@@ -874,9 +788,7 @@ func testValkeyDBRotateRootCredentials(t *testing.T, address string, port int) {
 	}
 
 	_, err = db.UpdateUser(t.Context(), updateReq)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	// defer setting the password back in case the test fails.
 	defer doValkeyDBSetCredentials(t, "rotate-root", "rotate-rootpassword", address, port)
@@ -899,9 +811,7 @@ func doValkeyDBSetCredentials(t *testing.T, username, password, address string, 
 	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
-		if err != nil {
-			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-		}
+		require.NoError(t, err)
 
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
@@ -915,9 +825,7 @@ func doValkeyDBSetCredentials(t *testing.T, username, password, address string, 
 
 	db := new()
 	_, err := db.Initialize(t.Context(), initReq)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if !db.Initialized {
 		t.Fatal("Database should be initialized")
@@ -946,9 +854,7 @@ func doValkeyDBSetCredentials(t *testing.T, username, password, address string, 
 	}
 
 	_, err = db.UpdateUser(t.Context(), updateReq)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	db.Close()
 

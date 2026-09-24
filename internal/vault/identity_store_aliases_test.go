@@ -13,6 +13,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/identity"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	ident "github.com/openbao/openbao/v2/internal/vault/identity"
+	"github.com/stretchr/testify/require"
 )
 
 // Issue 5729
@@ -198,9 +199,7 @@ func TestIdentityStore_AliasSameAliasNames(t *testing.T) {
 
 	// Register another alias with same name
 	resp, err = is.HandleRequest(ctx, aliasReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatal("expected no response since this modification should be idempotent")
 	}
@@ -230,9 +229,7 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 	txn := is.Txn(ctx, true)
 	defer txn.Abort()
 	err = is.MemDBUpsertEntityInTxn(txn, entity)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	txn.Commit()
 
 	alias := &identity.Alias{
@@ -251,24 +248,18 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 	txn = is.Txn(ctx, true)
 	defer txn.Abort()
 	err = is.MemDBUpsertAliasInTxn(txn, alias, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	txn.Commit()
 
 	aliasFetched, err := is.MemDBAliasByID(ctx, "testaliasid", false, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(alias, aliasFetched) {
 		t.Fatalf("bad: mismatched aliases; expected: %#v\n actual: %#v\n", alias, aliasFetched)
 	}
 
 	aliasFetched, err = is.MemDBAliasByFactors(ctx, validateMountResp.MountAccessor, "testaliasname", false, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(alias, aliasFetched) {
 		t.Fatalf("bad: mismatched aliases; expected: %#v\n actual: %#v\n", alias, aliasFetched)
@@ -290,19 +281,13 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 	txn = is.Txn(ctx, true)
 	defer txn.Abort()
 	err = is.MemDBUpsertAliasInTxn(txn, alias2, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = is.MemDBDeleteAliasByIDInTxn(txn, "testaliasid", false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	txn.Commit()
 
 	aliasFetched, err = is.MemDBAliasByID(ctx, "testaliasid", false, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if aliasFetched != nil {
 		t.Fatal("expected a nil alias")
@@ -644,9 +629,7 @@ func TestIdentityStore_AliasMove_DuplicateAccessor(t *testing.T) {
 	aliasReq.Data = updateData
 	aliasReq.Path = "entity-alias/id/" + alias2ID
 	resp, err = is.HandleRequest(ctx, aliasReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected an error as alias on the github accessor exists for testentity1")
@@ -729,9 +712,7 @@ func testIdentityStoreAliasUpdateDuplicateAccessor(t *testing.T, ctx context.Con
 	aliasReq.Data = updateData
 	aliasReq.Path = "entity-alias/id/" + alias2ID
 	resp, err = is.HandleRequest(ctx, aliasReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected an error as an alias on the github accessor already exists for testentity")
@@ -782,9 +763,7 @@ func TestIdentityStore_AliasCreate_DuplicateAccessor(t *testing.T) {
 
 	// This will try to create a new alias with the same accessor and entity
 	resp, err = is.HandleRequest(ctx, aliasReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected an error as alias already exists for this accessor and entity")
 	}
@@ -809,9 +788,7 @@ func TestIdentityStore_AliasUpdate_ByID(t *testing.T) {
 
 	// Try to update an non-existent alias
 	resp, err = is.HandleRequest(ctx, updateReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected an error due to invalid alias id")
 	}
@@ -869,9 +846,7 @@ func TestIdentityStore_AliasUpdate_ByID(t *testing.T) {
 	delete(registerReq.Data, "name")
 
 	resp, err = is.HandleRequest(ctx, registerReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error due to missing alias name")
 	}
@@ -880,9 +855,7 @@ func TestIdentityStore_AliasUpdate_ByID(t *testing.T) {
 	delete(registerReq.Data, "mount_accessor")
 
 	resp, err = is.HandleRequest(ctx, registerReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error due to missing mount accessor")
 	}

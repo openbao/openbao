@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 func testOperatorRekeyCommand(tb testing.TB) (*cli.MockUi, *OperatorRekeyCommand) {
@@ -176,9 +177,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		}
 
 		status, err := client.Sys().GenerateRootStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if status.Started {
 			t.Errorf("expected status to be canceled: %#v", status)
@@ -211,9 +210,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 
 		//nolint:staticcheck // endpoint already marked as deprecated
 		status, err := client.Sys().RekeyStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !status.Started {
 			t.Errorf("expected status to be started: %#v", status)
 		}
@@ -249,9 +246,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 
 		//nolint:staticcheck // endpoint already marked as deprecated
 		status, err := client.Sys().RekeyStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !status.Started {
 			t.Errorf("expected status to be started: %#v", status)
 		}
@@ -272,9 +267,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 			SecretShares:    1,
 			SecretThreshold: 1,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		nonce := status.Nonce
 
 		// Supply the first n-1 recovery keys
@@ -319,21 +312,13 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		// verify that we can perform operations with the recovery key
 		// below we generate a root token using the recovery key
 		rootStatus, err := client.Sys().GenerateRootStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		otp, err := base62.Random(rootStatus.OTPLength)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		genRoot, err := client.Sys().GenerateRootInit(otp, "")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		r, err := client.Sys().GenerateRootUpdate(recoveryKey, genRoot.Nonce)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !r.Complete {
 			t.Fatal("expected root update to be complete")
 		}
@@ -350,9 +335,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 			SecretShares:    1,
 			SecretThreshold: 1,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		nonce := status.Nonce
 
 		// Supply the first n-1 unseal keys
@@ -393,9 +376,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 			t.Fatal(err)
 		}
 		sealStatus, err := client.Sys().Unseal(unsealKey)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if sealStatus.Sealed {
 			t.Errorf("expected vault to be unsealed: %#v", sealStatus)
 		}
@@ -413,9 +394,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 			SecretShares:    1,
 			SecretThreshold: 1,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		nonce := status.Nonce
 
 		// Supply the first n-1 unseal keys
@@ -470,9 +449,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 			t.Fatal(err)
 		}
 		sealStatus, err := client.Sys().Unseal(unsealKey)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if sealStatus.Sealed {
 			t.Errorf("expected vault to be unsealed: %#v", sealStatus)
 		}
@@ -490,9 +467,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 			SecretShares:    1,
 			SecretThreshold: 1,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		nonce := status.Nonce
 		for _, key := range keys[:len(keys)-1] {
 			stdinR, stdinW := io.Pipe()
@@ -548,21 +523,13 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		// verify that we can perform operations with the recovery key
 		// below we generate a root token using the recovery key
 		rootStatus, err := client.Sys().GenerateRootStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		otp, err := base62.Random(rootStatus.OTPLength)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		genRoot, err := client.Sys().GenerateRootInit(otp, "")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		r, err := client.Sys().GenerateRootUpdate(recoveryKey, genRoot.Nonce)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !r.Complete {
 			t.Fatal("expected root update to be complete")
 		}
@@ -593,9 +560,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		// Get the status for the nonce
 		//nolint:staticcheck // endpoint already marked as deprecated
 		status, err := client.Sys().RekeyStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		nonce := status.Nonce
 
 		var combined strings.Builder

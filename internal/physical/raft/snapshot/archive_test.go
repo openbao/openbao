@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/raft"
+	"github.com/stretchr/testify/require"
 )
 
 func TestArchive(t *testing.T) {
@@ -71,9 +72,7 @@ func TestArchive_GoodData(t *testing.T) {
 	}
 	for i, p := range paths {
 		f, err := os.Open(p)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		defer func() {
 			if err := f.Close(); err != nil {
 				t.Fatalf("failed to close: %v", err)
@@ -82,9 +81,7 @@ func TestArchive_GoodData(t *testing.T) {
 
 		var metadata raft.SnapshotMeta
 		err = read(f, &metadata, io.Discard, nil)
-		if err != nil {
-			t.Fatalf("case %d: should've read the snapshot, but didn't: %v", i, err)
-		}
+		require.NoErrorf(t, err, "case %d: should've read the snapshot, but didn't: %v", i, err)
 	}
 }
 
@@ -104,9 +101,7 @@ func TestArchive_BadData(t *testing.T) {
 	}
 	for i, c := range cases {
 		f, err := os.Open(c.Name)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		defer func() {
 			if err := f.Close(); err != nil {
 				t.Fatalf("failed to close: %v", err)

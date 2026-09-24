@@ -9,6 +9,8 @@ import (
 	"io"
 	"net"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 type testListenerConnFn func(net.Listener) (net.Conn, error)
@@ -42,9 +44,7 @@ func testListenerImpl(t *testing.T, ln net.Listener, connFn testListenerConnFn, 
 	}()
 
 	client, err := connFn(ln)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if certName != "" {
 		tlsConn := client.(*tls.Conn)
@@ -94,9 +94,7 @@ func testListenerImpl(t *testing.T, ln net.Listener, connFn testListenerConnFn, 
 
 func TestProfilingUnauthenticatedInFlightAccess(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/unauth_in_flight_access.hcl", nil)
-	if err != nil {
-		t.Fatalf("Error encountered when loading config %+v", err)
-	}
+	require.NoError(t, err)
 	if !config.Listeners[0].InFlightRequestLogging.UnauthenticatedInFlightAccess {
 		t.Fatal("failed to read UnauthenticatedInFlightAccess")
 	}

@@ -92,9 +92,7 @@ func TestSystemConfigCORS(t *testing.T) {
 	req.Data["allowed_origins"] = "http://www.example.com"
 	req.Data["allowed_headers"] = "X-Custom-Header"
 	_, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &logical.Response{
 		Data: map[string]any{
@@ -107,9 +105,7 @@ func TestSystemConfigCORS(t *testing.T) {
 
 	req = logical.TestRequest(t, logical.ReadOperation, "config/cors")
 	actual, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("bad: %#v", actual)
@@ -126,9 +122,7 @@ func TestSystemConfigCORS(t *testing.T) {
 	req.Data["allowed_origins"] = "http://www.example.com"
 	req.Data["allowed_headers"] = "X-Custom-Header"
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	schema.ValidateResponse(
 		t,
 		schema.FindResponseSchema(t, paths, 0, req.Operation),
@@ -138,9 +132,7 @@ func TestSystemConfigCORS(t *testing.T) {
 
 	req = logical.TestRequest(t, logical.ReadOperation, "config/cors")
 	actual, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	schema.ValidateResponse(
 		t,
 		schema.FindResponseSchema(t, paths, 0, req.Operation),
@@ -157,9 +149,7 @@ func TestSystemConfigCORS(t *testing.T) {
 	req.Data["allowed_headers"] = "X-Custom-Header"
 	req.Data["allow_credentials"] = "true"
 	_, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected = &logical.Response{
 		Data: map[string]any{
@@ -172,9 +162,7 @@ func TestSystemConfigCORS(t *testing.T) {
 
 	req = logical.TestRequest(t, logical.ReadOperation, "config/cors")
 	actual, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("bad: %#v", actual)
@@ -188,9 +176,7 @@ func TestSystemConfigCORS(t *testing.T) {
 
 	req = logical.TestRequest(t, logical.DeleteOperation, "config/cors")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	schema.ValidateResponse(
 		t,
 		schema.FindResponseSchema(t, paths, 0, req.Operation),
@@ -200,9 +186,7 @@ func TestSystemConfigCORS(t *testing.T) {
 
 	req = logical.TestRequest(t, logical.ReadOperation, "config/cors")
 	actual, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	schema.ValidateResponse(
 		t,
 		schema.FindResponseSchema(t, paths, 0, req.Operation),
@@ -225,9 +209,7 @@ func TestSystemBackend_mounts(t *testing.T) {
 	b := testSystemBackend(t)
 	req := logical.TestRequest(t, logical.ReadOperation, "mounts")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// We can't know the pointer address ahead of time so simply
 	// copy what's given
@@ -317,9 +299,7 @@ func TestSystemBackend_mounts(t *testing.T) {
 	for name, conf := range exp {
 		req := logical.TestRequest(t, logical.ReadOperation, "mounts/"+name)
 		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if diff := deep.Equal(resp.Data, conf); len(diff) > 0 {
 			t.Fatalf("bad, diff: %#v", diff)
 		}
@@ -350,9 +330,7 @@ func TestSystemBackend_mount(t *testing.T) {
 	}
 
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// validate the response structure for mount named update
 	schema.ValidateResponse(
@@ -364,9 +342,7 @@ func TestSystemBackend_mount(t *testing.T) {
 
 	req = logical.TestRequest(t, logical.ReadOperation, "mounts")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// We can't know the pointer address ahead of time so simply
 	// copy what's given
@@ -485,9 +461,7 @@ func TestSystemBackend_mount_force_no_cache(t *testing.T) {
 	}
 
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -520,9 +494,7 @@ func TestSystemBackend_unmount(t *testing.T) {
 
 	req := logical.TestRequest(t, logical.DeleteOperation, "mounts/secret/")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// validate the response structure for mount named delete
 	schema.ValidateResponse(
@@ -557,9 +529,7 @@ func TestSystemBackend_PathCapabilities(t *testing.T) {
 
 	policy, _ := policy.ParseACLPolicy(namespace.RootNamespace, capabilitiesPolicy)
 	err = core.policyStore.SetPolicy(namespace.RootContext(t.Context()), policy, nil)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	path1 := "foo/bar"
 	path2 := "foo/bar/sample"
@@ -621,9 +591,7 @@ func TestSystemBackend_PathCapabilities(t *testing.T) {
 
 	// Lookup the accessor of the root token
 	te, err := core.tokenStore.Lookup(namespace.RootContext(t.Context()), rootToken)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Check the capabilities using capabilities-accessor endpoint
 	req = &logical.Request{
@@ -708,9 +676,7 @@ func TestSystemBackend_PathCapabilities(t *testing.T) {
 
 	// Lookup the accessor of the non-root token
 	te, err = core.tokenStore.Lookup(namespace.RootContext(t.Context()), "tokenid")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Check the capabilities using a non-root token using
 	// capabilities-accessor endpoint
@@ -751,9 +717,7 @@ func testCapabilities(t *testing.T, endpoint string) {
 	req.Data["path"] = "any_path"
 
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -766,9 +730,7 @@ func testCapabilities(t *testing.T, endpoint string) {
 
 	policy, _ := policy.ParseACLPolicy(namespace.RootNamespace, capabilitiesPolicy)
 	err = core.policyStore.SetPolicy(namespace.RootContext(t.Context()), policy, nil)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	testMakeServiceTokenViaBackend(t, core.tokenStore, rootToken, "tokenid", "", []string{"test"})
 	req = logical.TestRequest(t, logical.UpdateOperation, endpoint)
@@ -780,9 +742,7 @@ func testCapabilities(t *testing.T, endpoint string) {
 	req.Data["path"] = "foo/bar"
 
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -797,9 +757,7 @@ func testCapabilities(t *testing.T, endpoint string) {
 func TestSystemBackend_CapabilitiesAccessor_BC(t *testing.T) {
 	core, b, rootToken := testCoreSystemBackend(t)
 	te, err := core.tokenStore.Lookup(namespace.RootContext(t.Context()), rootToken)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "capabilities-accessor")
 	// Accessor of root token
@@ -807,9 +765,7 @@ func TestSystemBackend_CapabilitiesAccessor_BC(t *testing.T) {
 	req.Data["path"] = "any_path"
 
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -822,25 +778,19 @@ func TestSystemBackend_CapabilitiesAccessor_BC(t *testing.T) {
 
 	policy, _ := policy.ParseACLPolicy(namespace.RootNamespace, capabilitiesPolicy)
 	err = core.policyStore.SetPolicy(namespace.RootContext(t.Context()), policy, nil)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	testMakeServiceTokenViaBackend(t, core.tokenStore, rootToken, "tokenid", "", []string{"test"})
 
 	te, err = core.tokenStore.Lookup(namespace.RootContext(t.Context()), "tokenid")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	req = logical.TestRequest(t, logical.UpdateOperation, "capabilities-accessor")
 	req.Data["accessor"] = te.Accessor
 	req.Data["path"] = "foo/bar"
 
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -854,9 +804,7 @@ func TestSystemBackend_CapabilitiesAccessor_BC(t *testing.T) {
 
 func TestSystemBackend_remount_auth(t *testing.T) {
 	err := be.AddTestCredentialBackend("userpass", credUserpass.Factory)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	c, b, _ := testCoreSystemBackend(t)
 
@@ -867,9 +815,7 @@ func TestSystemBackend_remount_auth(t *testing.T) {
 		Description: "userpass",
 	}
 	err = c.enableCredential(namespace.RootContext(t.Context()), userpassMe)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "auth/userpass1"
@@ -888,9 +834,7 @@ func TestSystemBackend_remount_auth(t *testing.T) {
 	corehelpers.RetryUntil(t, 5*time.Second, func() error {
 		req = logical.TestRequest(t, logical.ReadOperation, fmt.Sprintf("remount/status/%s", resp.Data["migration_id"]))
 		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		// validate the response structure for remount status read
 		schema.ValidateResponse(
@@ -965,9 +909,7 @@ func TestSystemBackend_remount_auth_protected(t *testing.T) {
 
 func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 	err := be.AddTestCredentialBackend("userpass", credUserpass.Factory)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	c, b, _ := testCoreSystemBackend(t)
 
@@ -978,9 +920,7 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 		Description: "userpass",
 	}
 	err = c.enableCredential(namespace.RootContext(t.Context()), userpassMe)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	userpassMe2 := &routing.MountEntry{
 		Table:       routing.CredentialTableType,
@@ -989,9 +929,7 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 		Description: "userpass",
 	}
 	err = c.enableCredential(namespace.RootContext(t.Context()), userpassMe2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "auth/userpass1"
@@ -1023,9 +961,7 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 		Description: "userpass",
 	}
 	err = c.enableCredential(namespace.RootContext(t.Context()), userpassMe3)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	req.Data["to"] = "auth/userpass3/"
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -1049,9 +985,7 @@ func TestSystemBackend_remount(t *testing.T) {
 	corehelpers.RetryUntil(t, 5*time.Second, func() error {
 		req = logical.TestRequest(t, logical.ReadOperation, fmt.Sprintf("remount/status/%s", resp.Data["migration_id"]))
 		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		migrationInfo := resp.Data["migration_info"].(*MountMigrationInfo)
 		if migrationInfo.MigrationStatus != MigrationSuccessStatus.String() {
 			return fmt.Errorf("Expected migration status to be successful, got %q", migrationInfo.MigrationStatus)
@@ -1069,9 +1003,7 @@ func TestSystemBackend_remount_destinationInUse(t *testing.T) {
 		Type:  "generic",
 	}
 	err := c.mount(namespace.RootContext(t.Context()), me)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "secret"
@@ -1102,9 +1034,7 @@ func TestSystemBackend_remount_destinationInUse(t *testing.T) {
 		Type:  "generic",
 	}
 	err = c.mount(namespace.RootContext(t.Context()), me2)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	req.Data["to"] = "foo2/"
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -1224,9 +1154,7 @@ func TestSystemBackend_leases(t *testing.T) {
 	req.Data["foo"] = "bar"
 	req.ClientToken = root
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1235,13 +1163,9 @@ func TestSystemBackend_leases(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "secret/foo")
 	req.ClientToken = root
 	err = core.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Secret.LeaseID == "" {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1250,9 +1174,7 @@ func TestSystemBackend_leases(t *testing.T) {
 	req = logical.TestRequest(t, logical.UpdateOperation, "leases/lookup")
 	req.Data["lease_id"] = resp.Secret.LeaseID
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// validate the response structure for Update
 	schema.ValidateResponse(
@@ -1287,9 +1209,7 @@ func TestSystemBackend_leases_list(t *testing.T) {
 	req.Data["foo"] = "bar"
 	req.ClientToken = root
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1298,13 +1218,9 @@ func TestSystemBackend_leases_list(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "secret/foo")
 	req.ClientToken = root
 	err = core.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Secret.LeaseID == "" {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1312,9 +1228,7 @@ func TestSystemBackend_leases_list(t *testing.T) {
 	// List top level
 	req = logical.TestRequest(t, logical.ListOperation, "leases/lookup/")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// validate the response body for list
 	schema.ValidateResponse(
@@ -1337,9 +1251,7 @@ func TestSystemBackend_leases_list(t *testing.T) {
 	// List lease
 	req = logical.TestRequest(t, logical.ListOperation, "leases/lookup/secret/foo")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Data == nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1355,13 +1267,9 @@ func TestSystemBackend_leases_list(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "secret/foo")
 	req.ClientToken = root
 	err = core.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Secret.LeaseID == "" {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1369,22 +1277,16 @@ func TestSystemBackend_leases_list(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "secret/foo")
 	req.ClientToken = root
 	err = core.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Secret.LeaseID == "" {
 		t.Fatalf("bad: %#v", resp)
 	}
 
 	req = logical.TestRequest(t, logical.ListOperation, "leases/lookup/secret/foo")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Data == nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1401,9 +1303,7 @@ func TestSystemBackend_leases_list(t *testing.T) {
 	req.Data["foo"] = "bar"
 	req.ClientToken = root
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1412,22 +1312,16 @@ func TestSystemBackend_leases_list(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "secret/bar")
 	req.ClientToken = root
 	err = core.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Secret.LeaseID == "" {
 		t.Fatalf("bad: %#v", resp)
 	}
 
 	req = logical.TestRequest(t, logical.ListOperation, "leases/lookup/secret")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Data == nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1452,9 +1346,7 @@ func TestSystemBackend_renew(t *testing.T) {
 	req.Data["foo"] = "bar"
 	req.ClientToken = root
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1463,13 +1355,9 @@ func TestSystemBackend_renew(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "secret/foo")
 	req.ClientToken = root
 	err = core.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Secret.LeaseID == "" {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1500,9 +1388,7 @@ func TestSystemBackend_renew(t *testing.T) {
 	req.Data["ttl"] = "180s"
 	req.ClientToken = root
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1511,13 +1397,9 @@ func TestSystemBackend_renew(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "secret/foo")
 	req.ClientToken = root
 	err = core.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Secret.LeaseID == "" {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1525,9 +1407,7 @@ func TestSystemBackend_renew(t *testing.T) {
 	// Attempt renew
 	req2 = logical.TestRequest(t, logical.UpdateOperation, "leases/renew/"+resp.Secret.LeaseID)
 	resp2, err = b.HandleRequest(namespace.RootContext(t.Context()), req2)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp2.IsError() {
 		t.Fatal("got an error")
 	}
@@ -1542,9 +1422,7 @@ func TestSystemBackend_renew(t *testing.T) {
 	req2 = logical.TestRequest(t, logical.UpdateOperation, "leases/renew")
 	req2.Data["lease_id"] = resp.Secret.LeaseID
 	resp2, err = b.HandleRequest(namespace.RootContext(t.Context()), req2)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp2.IsError() {
 		t.Fatal("got an error")
 	}
@@ -1559,9 +1437,7 @@ func TestSystemBackend_renew(t *testing.T) {
 	req2 = logical.TestRequest(t, logical.UpdateOperation, "leases/renew")
 	req2.Data["lease_id"] = resp.Secret.LeaseID
 	resp2, err = b.HandleRequest(namespace.RootContext(t.Context()), req2)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp2.IsError() {
 		t.Fatal("got an error")
 	}
@@ -1632,9 +1508,7 @@ func TestSystemBackend_revoke(t *testing.T) {
 	req.Data["lease"] = "1h"
 	req.ClientToken = root
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1643,13 +1517,9 @@ func TestSystemBackend_revoke(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "secret/foo")
 	req.ClientToken = root
 	err = core.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Secret.LeaseID == "" {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1657,9 +1527,7 @@ func TestSystemBackend_revoke(t *testing.T) {
 	// Attempt revoke
 	req2 := logical.TestRequest(t, logical.UpdateOperation, "leases/revoke/"+resp.Secret.LeaseID)
 	resp2, err := b.HandleRequest(namespace.RootContext(t.Context()), req2)
-	if err != nil {
-		t.Fatalf("err: %v %#v", err, resp2)
-	}
+	require.NoErrorf(t, err, "err: %v %#v", err, resp2)
 	if resp2 != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1678,13 +1546,9 @@ func TestSystemBackend_revoke(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "secret/foo")
 	req.ClientToken = root
 	err = core.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Secret.LeaseID == "" {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1693,9 +1557,7 @@ func TestSystemBackend_revoke(t *testing.T) {
 	req2 = logical.TestRequest(t, logical.UpdateOperation, "leases/revoke")
 	req2.Data["lease_id"] = resp.Secret.LeaseID
 	resp2, err = b.HandleRequest(namespace.RootContext(t.Context()), req2)
-	if err != nil {
-		t.Fatalf("err: %v %#v", err, resp2)
-	}
+	require.NoErrorf(t, err, "err: %v %#v", err, resp2)
 	if resp2 != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1704,13 +1566,9 @@ func TestSystemBackend_revoke(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "secret/foo")
 	req.ClientToken = root
 	err = core.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Secret.LeaseID == "" {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1719,9 +1577,7 @@ func TestSystemBackend_revoke(t *testing.T) {
 	req2 = logical.TestRequest(t, logical.UpdateOperation, "leases/revoke")
 	req2.Data["lease_id"] = resp.Secret.LeaseID
 	resp2, err = b.HandleRequest(namespace.RootContext(t.Context()), req2)
-	if err != nil {
-		t.Fatalf("err: %v %#v", err, resp2)
-	}
+	require.NoErrorf(t, err, "err: %v %#v", err, resp2)
 	if resp2 != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1733,9 +1589,7 @@ func TestSystemBackend_revoke_invalidID(t *testing.T) {
 	// Attempt revoke
 	req := logical.TestRequest(t, logical.UpdateOperation, "leases/revoke/foobarbaz")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -1744,9 +1598,7 @@ func TestSystemBackend_revoke_invalidID(t *testing.T) {
 	req = logical.TestRequest(t, logical.UpdateOperation, "leases/revoke")
 	req.Data["lease_id"] = "foobarbaz"
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// validate the response structure for lease revoke
 	schema.ValidateResponse(
@@ -1767,9 +1619,7 @@ func TestSystemBackend_revoke_invalidID_origUrl(t *testing.T) {
 	// Attempt revoke
 	req := logical.TestRequest(t, logical.UpdateOperation, "leases/revoke/foobarbaz")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -1778,9 +1628,7 @@ func TestSystemBackend_revoke_invalidID_origUrl(t *testing.T) {
 	req = logical.TestRequest(t, logical.UpdateOperation, "leases/revoke")
 	req.Data["lease_id"] = "foobarbaz"
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -1795,9 +1643,7 @@ func TestSystemBackend_revokePrefix(t *testing.T) {
 	req.Data["lease"] = "1h"
 	req.ClientToken = root
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1806,13 +1652,9 @@ func TestSystemBackend_revokePrefix(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "secret/foo")
 	req.ClientToken = root
 	err = core.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Secret.LeaseID == "" {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1820,9 +1662,7 @@ func TestSystemBackend_revokePrefix(t *testing.T) {
 	// Attempt revoke
 	req2 := logical.TestRequest(t, logical.UpdateOperation, "leases/revoke-prefix/secret/")
 	resp2, err := b.HandleRequest(namespace.RootContext(t.Context()), req2)
-	if err != nil {
-		t.Fatalf("err: %v %#v", err, resp2)
-	}
+	require.NoErrorf(t, err, "err: %v %#v", err, resp2)
 
 	// validate the response structure for lease revoke-prefix
 	schema.ValidateResponse(
@@ -1852,9 +1692,7 @@ func TestSystemBackend_revokePrefix_origUrl(t *testing.T) {
 	req.Data["lease"] = "1h"
 	req.ClientToken = root
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1863,13 +1701,9 @@ func TestSystemBackend_revokePrefix_origUrl(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "secret/foo")
 	req.ClientToken = root
 	err = core.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Secret == nil || resp.Secret.LeaseID == "" {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1877,9 +1711,7 @@ func TestSystemBackend_revokePrefix_origUrl(t *testing.T) {
 	// Attempt revoke
 	req2 := logical.TestRequest(t, logical.UpdateOperation, "leases/revoke-prefix/secret/")
 	resp2, err := b.HandleRequest(namespace.RootContext(t.Context()), req2)
-	if err != nil {
-		t.Fatalf("err: %v %#v", err, resp2)
-	}
+	require.NoErrorf(t, err, "err: %v %#v", err, resp2)
 	if resp2 != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -1910,9 +1742,7 @@ func TestSystemBackend_revokePrefixAuth_newUrl(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
 	b := NewSystemBackend(core, hclog.New(&hclog.LoggerOptions{}))
 	err := b.Setup(ctx, bc)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	exp := ts.expiration
 
@@ -1925,9 +1755,7 @@ func TestSystemBackend_revokePrefixAuth_newUrl(t *testing.T) {
 	testMakeTokenDirectly(t, ctx, ts, te)
 
 	te, err = ts.Lookup(ctx, "foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if te == nil {
 		t.Fatal("token entry was nil")
 	}
@@ -1940,23 +1768,17 @@ func TestSystemBackend_revokePrefixAuth_newUrl(t *testing.T) {
 		},
 	}
 	err = exp.RegisterAuth(ctx, te, auth, "", true)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "leases/revoke-prefix/auth/github/")
 	resp, err := b.HandleRequest(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %v %v", err, resp)
-	}
+	require.NoErrorf(t, err, "err: %v %v", err, resp)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
 
 	te, err = ts.Lookup(ctx, te.ID)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if te != nil {
 		t.Fatalf("bad: %v", te)
 	}
@@ -1976,9 +1798,7 @@ func TestSystemBackend_revokePrefixAuth_origUrl(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
 	b := NewSystemBackend(core, hclog.New(&hclog.LoggerOptions{}))
 	err := b.Setup(ctx, bc)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	exp := ts.expiration
 
@@ -1991,9 +1811,7 @@ func TestSystemBackend_revokePrefixAuth_origUrl(t *testing.T) {
 	testMakeTokenDirectly(t, ctx, ts, te)
 
 	te, err = ts.Lookup(ctx, "foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if te == nil {
 		t.Fatal("token entry was nil")
 	}
@@ -2006,23 +1824,17 @@ func TestSystemBackend_revokePrefixAuth_origUrl(t *testing.T) {
 		},
 	}
 	err = exp.RegisterAuth(ctx, te, auth, "", true)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "leases/revoke-prefix/auth/github/")
 	resp, err := b.HandleRequest(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %v %v", err, resp)
-	}
+	require.NoErrorf(t, err, "err: %v %v", err, resp)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
 
 	te, err = ts.Lookup(ctx, te.ID)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if te != nil {
 		t.Fatalf("bad: %v", te)
 	}
@@ -2032,9 +1844,7 @@ func TestSystemBackend_authTable(t *testing.T) {
 	b := testSystemBackend(t)
 	req := logical.TestRequest(t, logical.ReadOperation, "auth")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	schema.ValidateResponse(
 		t,
 		schema.GetResponseSchema(t, b.(*SystemBackend).Route(req.Path), req.Operation),
@@ -2069,9 +1879,7 @@ func TestSystemBackend_authTable(t *testing.T) {
 
 	req = logical.TestRequest(t, logical.ReadOperation, "auth/token")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	schema.ValidateResponse(
 		t,
 		schema.GetResponseSchema(t, b.(*SystemBackend).Route(req.Path), req.Operation),
@@ -2100,9 +1908,7 @@ func TestSystemBackend_enableAuth(t *testing.T) {
 	req.Data["seal_wrap"] = true
 
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -2115,9 +1921,7 @@ func TestSystemBackend_enableAuth(t *testing.T) {
 
 	req = logical.TestRequest(t, logical.ReadOperation, "auth")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("resp is nil")
 	}
@@ -2201,9 +2005,7 @@ func TestSystemBackend_disableAuth(t *testing.T) {
 	// Deregister it
 	req = logical.TestRequest(t, logical.DeleteOperation, "auth/foo")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -2223,9 +2025,7 @@ func TestSystemBackend_tuneAuth(t *testing.T) {
 
 	req := logical.TestRequest(t, logical.ReadOperation, "auth/token/tune")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("resp is nil")
 	}
@@ -2266,33 +2066,23 @@ func TestSystemBackend_tuneAuth(t *testing.T) {
 	// Register the plugin in the catalog, and then try the same request again.
 	{
 		tempDir, err := filepath.EvalSymlinks(t.TempDir())
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		c.pluginCatalog.directory = tempDir
 		file, err := os.Create(filepath.Join(tempDir, "foo"))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if err := file.Close(); err != nil {
 			t.Fatal(err)
 		}
 		err = c.pluginCatalog.Set(t.Context(), "token", consts.PluginTypeCredential, "v1.0.0", "foo", []string{}, []string{}, []byte{}, false)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(resp, err)
-	}
+	require.NoError(t, err)
 
 	req = logical.TestRequest(t, logical.ReadOperation, "auth/token/tune")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("resp is nil")
 	}
@@ -2414,9 +2204,7 @@ func TestSystemBackend_policyList(t *testing.T) {
 	b := testSystemBackend(t)
 	req := logical.TestRequest(t, logical.ReadOperation, "policy")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// validate the response structure for policy read
 	schema.ValidateResponse(
@@ -2444,9 +2232,7 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "policy/Foo")
 	req.Data["rules"] = rules
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v %#v", err, resp)
-	}
+	require.NoErrorf(t, err, "err: %v %#v", err, resp)
 	if resp != nil && (resp.IsError() || len(resp.Data) > 0) {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -2462,9 +2248,7 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	// Read the policy
 	req = logical.TestRequest(t, logical.ReadOperation, "policy/foo")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// validate the response structure for policy named read
 	schema.ValidateResponse(
@@ -2495,9 +2279,7 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	// Read, and make sure that case has been normalized.
 	req = logical.TestRequest(t, logical.ReadOperation, "policy/Foo")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// No change; modified should be the same.
 	require.Contains(t, resp.Data, "modified")
@@ -2519,9 +2301,7 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	// List the policies
 	req = logical.TestRequest(t, logical.ReadOperation, "policy")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	exp = map[string]any{
 		"keys":     []string{"default", "foo", "root"},
@@ -2534,9 +2314,7 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	// Delete the policy
 	req = logical.TestRequest(t, logical.DeleteOperation, "policy/foo")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -2552,9 +2330,7 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	// Read the policy (deleted)
 	req = logical.TestRequest(t, logical.ReadOperation, "policy/foo")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -2562,9 +2338,7 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	// List the policies (deleted)
 	req = logical.TestRequest(t, logical.ReadOperation, "policy")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	exp = map[string]any{
 		"keys":     []string{"default", "root"},
@@ -2629,9 +2403,7 @@ func TestSystemBackend_enableAudit(t *testing.T) {
 	req.Data["type"] = "noop"
 
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -2644,9 +2416,7 @@ func TestSystemBackend_auditHash(t *testing.T) {
 	req.Data["type"] = "noop"
 
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -2662,9 +2432,7 @@ func TestSystemBackend_auditHash(t *testing.T) {
 	req.Data["input"] = "bar"
 
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Data == nil {
 		t.Fatal("response or its data was nil")
 	}
@@ -2768,9 +2536,7 @@ func TestSystemBackend_auditTable(t *testing.T) {
 
 	req = logical.TestRequest(t, logical.ReadOperation, "audit")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	exp := map[string]any{
 		"foo/": map[string]any{
@@ -2814,9 +2580,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 
 		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		schema.ValidateResponse(
 			t,
@@ -2838,9 +2602,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 			"encoding": "base64",
 		}
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		if _, ok := resp.Data["value"].([]byte); !ok {
 			t.Fatalf("value is a not an array of bytes, it is %T", resp.Data["value"])
@@ -2876,9 +2638,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 			"compressed": false,
 		}
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		if _, ok := resp.Data["value"].(string); !ok {
 			t.Fatalf("value is a not a string, it is %T", resp.Data["value"])
@@ -2899,9 +2659,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		if _, ok := resp.Data["value"].([]byte); !ok {
 			t.Fatalf("value is a not an array of bytes, it is %T", resp.Data["value"])
@@ -2920,9 +2678,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if resp != nil {
 			t.Fatalf("bad: %v", resp)
 		}
@@ -2948,9 +2704,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 			"compressed": false,
 		}
 		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if resp.IsError() {
 			t.Fatalf("bad: %v", resp)
 		}
@@ -2986,9 +2740,7 @@ func TestSystemBackend_rawReadWrite(t *testing.T) {
 	req := logical.TestRequest(t, logical.CreateOperation, "raw/sys/policy/test")
 	req.Data["value"] = `path "secret/" { policy = "read" }`
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -2996,9 +2748,7 @@ func TestSystemBackend_rawReadWrite(t *testing.T) {
 	// Read via raw API
 	req = logical.TestRequest(t, logical.ReadOperation, "raw/sys/policy/test")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if !strings.HasPrefix(resp.Data["value"].(string), "path") {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -3012,18 +2762,14 @@ func TestSystemBackend_rawWrite_ExistanceCheck(t *testing.T) {
 
 	req := logical.TestRequest(t, logical.CreateOperation, "raw/core/audit")
 	_, exist, err := b.HandleExistenceCheck(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal("err: #{err}")
-	}
+	require.NoError(t, err)
 	if !exist {
 		t.Fatal("raw existence check failed for actual key")
 	}
 
 	req = logical.TestRequest(t, logical.CreateOperation, "raw/non_existent")
 	_, exist, err = b.HandleExistenceCheck(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal("err: #{err}")
-	}
+	require.NoError(t, err)
 	if exist {
 		t.Fatal("raw existence check failed for non-existent key")
 	}
@@ -3039,9 +2785,7 @@ func TestSystemBackend_rawReadWrite_base64(t *testing.T) {
 			"encoding": "base64",
 		}
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if resp != nil {
 			t.Fatalf("bad: %v", resp)
 		}
@@ -3049,9 +2793,7 @@ func TestSystemBackend_rawReadWrite_base64(t *testing.T) {
 		// Read via raw API
 		req = logical.TestRequest(t, logical.ReadOperation, "raw/sys/policy/test")
 		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if !strings.HasPrefix(resp.Data["value"].(string), "path") {
 			t.Fatalf("bad: %v", resp)
 		}
@@ -3108,9 +2850,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 
 		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		mounts := resp.Data["value"].(string)
 		req = logical.TestRequest(t, logical.UpdateOperation, "raw/core/audit")
@@ -3119,9 +2859,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 			"compression_type": compressutil.CompressionTypeGzip,
 		}
 		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		schema.ValidateResponse(
 			t,
@@ -3138,9 +2876,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 		}
 
 		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		if _, ok := resp.Data["value"].([]byte); !ok {
 			t.Fatalf("value is a not an array of bytes, it is %T", resp.Data["value"])
@@ -3156,9 +2892,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 
 		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		mounts := resp.Data["value"].(string)
 		req = logical.TestRequest(t, logical.UpdateOperation, "raw/core/audit")
@@ -3166,9 +2900,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 			"value": mounts,
 		}
 		_, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		// Read back and check gzip was applied by looking for prefix byte
 		req = logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
@@ -3177,9 +2909,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 			"encoding":   "base64",
 		}
 		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		if _, ok := resp.Data["value"].([]byte); !ok {
 			t.Fatalf("value is a not an array of bytes, it is %T", resp.Data["value"])
@@ -3195,9 +2925,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 
 		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		mounts := resp.Data["value"].(string)
 		req = logical.TestRequest(t, logical.UpdateOperation, "raw/core/audit")
@@ -3206,9 +2934,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 			"compression_type": "",
 		}
 		_, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		// Read back and check gzip was not applied by looking for prefix byte
 		req = logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
@@ -3218,9 +2944,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 		}
 
 		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		if _, ok := resp.Data["value"].([]byte); !ok {
 			t.Fatalf("value is a not an array of bytes, it is %T", resp.Data["value"])
@@ -3236,9 +2960,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 
 		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		mounts := resp.Data["value"].(string)
 		req = logical.TestRequest(t, logical.UpdateOperation, "raw/core/audit")
@@ -3281,9 +3003,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 			"value": "{}",
 		}
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
+		require.NoError(t, err)
 
 		if resp.IsError() {
 			t.Fatalf("response is an error: %v", resp)
@@ -3313,9 +3033,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 			"compression_type": compressutil.CompressionTypeGzip,
 		}
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
+		require.NoError(t, err)
 
 		if resp.IsError() {
 			t.Fatalf("response is an error: %v", resp)
@@ -3357,16 +3075,12 @@ func TestSystemBackend_rawDelete(t *testing.T) {
 		Namespace: namespace.RootNamespace,
 	}
 	err := c.policyStore.SetPolicy(namespace.RootContext(t.Context()), p, nil)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Delete the policy
 	req := logical.TestRequest(t, logical.DeleteOperation, "raw/sys/policy/test")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -3381,9 +3095,7 @@ func TestSystemBackend_rawDelete(t *testing.T) {
 	// Policy should be gone
 	c.policyStore.PurgeCache()
 	out, err := c.policyStore.GetPolicy(namespace.RootContext(t.Context()), "test", policy.TypeToken)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if out != nil {
 		t.Fatal("policy should be gone")
 	}
@@ -3433,9 +3145,7 @@ func TestSystemBackend_deprecatedRotateConfig(t *testing.T) {
 	b := testSystemBackend(t)
 	req := logical.TestRequest(t, logical.ReadOperation, "rotate/config")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	schema.ValidateResponse(
 		t,
@@ -3459,9 +3169,7 @@ func TestSystemBackend_deprecatedRotateConfig(t *testing.T) {
 	req2.Data["enabled"] = false
 
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req2)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	schema.ValidateResponse(
 		t,
 		schema.GetResponseSchema(t, b.(*SystemBackend).Route(req2.Path), req2.Operation),
@@ -3470,9 +3178,7 @@ func TestSystemBackend_deprecatedRotateConfig(t *testing.T) {
 	)
 
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	schema.ValidateResponse(
 		t,
 		schema.GetResponseSchema(t, b.(*SystemBackend).Route(req.Path), req.Operation), resp,
@@ -3545,18 +3251,14 @@ func TestSystemBackend_deprecatedRotate(t *testing.T) {
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "rotate")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %v", resp)
 	}
 
 	req = logical.TestRequest(t, logical.ReadOperation, "key-status")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	exp := map[string]any{
 		"term": 2,
@@ -3628,16 +3330,12 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 	c, b, _ := testCoreSystemBackend(t)
 	// Bootstrap the pluginCatalog
 	sym, err := filepath.EvalSymlinks(os.TempDir())
-	if err != nil {
-		t.Fatalf("error: %v", err)
-	}
+	require.NoError(t, err)
 	c.pluginCatalog.directory = sym
 
 	req := logical.TestRequest(t, logical.ReadOperation, "plugins/catalog/database/mysql-database-plugin")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	schema.ValidateResponse(
 		t,
@@ -3667,9 +3365,7 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 
 	// Set a plugin
 	file, err := os.CreateTemp(os.TempDir(), "temp")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer file.Close()
 
 	// Check we can only specify args in one of command or args.
@@ -3679,9 +3375,7 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 	req.Data["sha_256"] = fakeSHA256
 	req.Data["command"] = command
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp.Error().Error() != "must not specify args in command and args field" {
 		t.Fatalf("err: %v", resp.Error())
 	}
@@ -3701,9 +3395,7 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 
 	req = logical.TestRequest(t, logical.ReadOperation, "plugins/catalog/database/test-plugin")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	actual := resp.Data
 	expected := map[string]any{
@@ -3723,9 +3415,7 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 	// Delete plugin
 	req = logical.TestRequest(t, logical.DeleteOperation, "plugins/catalog/database/test-plugin")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	schema.ValidateResponse(
 		t,
@@ -3753,9 +3443,7 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "plugins/catalog/database/test-plugin")
 	req.Data["version"] = "v0.1.0"
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	actual = resp.Data
 	expected = map[string]any{
@@ -3776,9 +3464,7 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 	req = logical.TestRequest(t, logical.DeleteOperation, "plugins/catalog/database/test-plugin")
 	req.Data["version"] = "0.1.0"
 	_, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	req = logical.TestRequest(t, logical.ReadOperation, "plugins/catalog/database/test-plugin")
 	req.Data["version"] = "0.1.0"
@@ -3798,9 +3484,7 @@ func TestSystemBackend_PluginCatalog_ListPlugins_SucceedsWithAuditLogEnabled(t *
 
 	tempDir := t.TempDir()
 	f, err := os.CreateTemp(tempDir, "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Enable audit logging.
 	req := logical.TestRequest(t, logical.UpdateOperation, "audit/file")
@@ -3829,9 +3513,7 @@ func TestSystemBackend_PluginCatalog_CannotRegisterBuiltinPlugins(t *testing.T) 
 	c, b, _ := testCoreSystemBackend(t)
 	// Bootstrap the pluginCatalog
 	sym, err := filepath.EvalSymlinks(os.TempDir())
-	if err != nil {
-		t.Fatalf("error: %v", err)
-	}
+	require.NoError(t, err)
 	c.pluginCatalog.directory = sym
 
 	// Set a plugin
@@ -3840,9 +3522,7 @@ func TestSystemBackend_PluginCatalog_CannotRegisterBuiltinPlugins(t *testing.T) 
 	req.Data["command"] = "foo"
 	req.Data["version"] = "v1.2.3+special.builtin"
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if !strings.Contains(resp.Error().Error(), "reserved metadata") {
 		t.Fatalf("err: %v", resp.Error())
 	}
@@ -4026,9 +3706,7 @@ func TestSystemBackend_ToolsHash(t *testing.T) {
 		"input": "dGhlIHF1aWNrIGJyb3duIGZveA==",
 	}
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	schema.ValidateResponse(
 		t,
 		schema.GetResponseSchema(t, b.(*SystemBackend).Route(req.Path), req.Operation),
@@ -4126,9 +3804,7 @@ func TestSystemBackend_ToolsRandom(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "tools/random")
 
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	schema.ValidateResponse(
 		t,
 		schema.GetResponseSchema(t, b.(*SystemBackend).Route(req.Path), req.Operation),
@@ -4177,9 +3853,7 @@ func TestSystemBackend_ToolsRandom(t *testing.T) {
 			default:
 				t.Fatal("unknown format")
 			}
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			return outputBytes
 		}
@@ -4227,9 +3901,7 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 	// Ensure no entries are in the endpoint as a starting point
 	req := logical.TestRequest(t, logical.ReadOperation, "internal/ui/mounts")
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	schema.ValidateResponse(
 		t,
 		schema.GetResponseSchema(t, systemBackend.Route(req.Path), req.Operation),
@@ -4248,9 +3920,7 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "internal/ui/mounts")
 	req.ClientToken = rootToken
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	schema.ValidateResponse(
 		t,
 		schema.GetResponseSchema(t, systemBackend.Route(req.Path), req.Operation),
@@ -4391,9 +4061,7 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 
 	req = logical.TestRequest(t, logical.ReadOperation, "internal/ui/mounts")
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	schema.ValidateResponse(
 		t,
 		schema.GetResponseSchema(t, systemBackend.Route(req.Path), req.Operation),
@@ -4520,16 +4188,12 @@ func TestSystemBackend_OpenAPI(t *testing.T) {
 	{
 		req := logical.TestRequest(t, logical.ReadOperation, "internal/specs/openapi")
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		body := resp.Data["http_raw_body"].([]byte)
 		var oapi map[string]any
 		err = jsonutil.DecodeJSON(body, &oapi)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		exp := map[string]any{
 			"openapi": framework.OASVersion,
 			"info": map[string]any{
@@ -4560,21 +4224,15 @@ func TestSystemBackend_OpenAPI(t *testing.T) {
 		}
 		req.ClientToken = rootToken
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		body := resp.Data["http_raw_body"].([]byte)
 		var oapi map[string]any
 		err = jsonutil.DecodeJSON(body, &oapi)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		doc, err := framework.NewOASDocumentFromMap(oapi)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		expectedSecretPrefix := "/secret/"
 		if genericMountPaths {
@@ -4625,9 +4283,7 @@ func TestSystemBackend_OpenAPI(t *testing.T) {
 		req := logical.TestRequest(t, logical.HelpOperation, "rotate")
 		req.ClientToken = rootToken
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		doc := resp.Data["openapi"].(*framework.OASDocument)
 		if len(doc.Paths) != 2 {
@@ -4661,9 +4317,7 @@ func TestSystemBackend_PathWildcardPreflight(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "policy/foo")
 	req.Data["rules"] = rules
 	resp, err := b.HandleRequest(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %v %#v", err, resp)
-	}
+	require.NoErrorf(t, err, "err: %v %#v", err, resp)
 	if resp != nil && (resp.IsError() || len(resp.Data) > 0) {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -4711,9 +4365,7 @@ func TestSystemBackend_PathWildcardPreflight(t *testing.T) {
 	req = logical.TestRequest(t, logical.UpdateOperation, "policy/foo")
 	req.Data["rules"] = rules
 	resp, err = b.HandleRequest(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %v %#v", err, resp)
-	}
+	require.NoErrorf(t, err, "err: %v %#v", err, resp)
 	if resp != nil && (resp.IsError() || len(resp.Data) > 0) {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -4722,9 +4374,7 @@ func TestSystemBackend_PathWildcardPreflight(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "internal/ui/mounts/kv-v1/baz")
 	req.ClientToken = te.ID
 	_, err = b.HandleRequest(ctx, req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestHandlePoliciesPasswordSet(t *testing.T) {
@@ -5388,9 +5038,7 @@ func TestHandlePoliciesPasswordGenerate(t *testing.T) {
 			b := &SystemBackend{}
 
 			actualResp, err := b.handlePoliciesPasswordGenerate(ctx, req, inputData)
-			if err != nil {
-				t.Fatalf("no error expected, got: %s", err)
-			}
+			require.NoError(t, err)
 
 			assertTrue(t, actualResp != nil, "response is nil")
 			assertTrue(t, actualResp.Data != nil, "expected data, got nil")
@@ -5464,9 +5112,7 @@ func toJson(t *testing.T, val any) []byte {
 	t.Helper()
 
 	b, err := jsonutil.EncodeJSON(val)
-	if err != nil {
-		t.Fatalf("Unable to marshal to JSON: %s", err)
-	}
+	require.NoError(t, err)
 	return b
 }
 
@@ -5566,9 +5212,7 @@ func LogicalToMap(t *testing.T, ctx context.Context, store logical.Storage) (dat
 	}
 
 	err := WalkLogicalStorage(ctx, store, f)
-	if err != nil {
-		t.Fatalf("Unable to walk the storage: %s", err)
-	}
+	require.NoError(t, err)
 	return data
 }
 
@@ -5644,9 +5288,7 @@ func TestWalkLogicalStorage(t *testing.T) {
 			}
 
 			err := WalkLogicalStorage(ctx, store, f)
-			if err != nil {
-				t.Fatalf("Failed to walk storage: %s", err)
-			}
+			require.NoError(t, err)
 
 			if !reflect.DeepEqual(actualEntries, test.entries) {
 				t.Fatalf("Actual: %#v\nExpected: %#v", actualEntries, test.entries)
@@ -5664,9 +5306,7 @@ func makeStorage(t *testing.T, entries ...*logical.StorageEntry) *logical.InmemS
 
 	for _, entry := range entries {
 		err := store.Put(ctx, entry)
-		if err != nil {
-			t.Fatalf("Unable to load test storage: %s", err)
-		}
+		require.NoError(t, err)
 	}
 
 	return store
@@ -6284,9 +5924,7 @@ func TestValidateVersion(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			version, resp, err := b.validateVersion(t.Context(), tc.pluginVersion, tc.pluginName, tc.pluginType)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if tc.expectLogicalError != "" {
 				if resp == nil || !resp.IsError() || resp.Error() == nil {
 					t.Errorf("expected logical error but got none, resp: %#v", resp)
@@ -6304,32 +5942,24 @@ func TestValidateVersion(t *testing.T) {
 func TestValidateVersion_HelpfulErrorWhenBuiltinOverridden(t *testing.T) {
 	core, _, _ := TestCoreUnsealed(t)
 	tempDir, err := filepath.EvalSymlinks(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	core.pluginCatalog.directory = tempDir
 	b := core.systemBackend
 
 	// Shadow a builtin and test getting a helpful error back.
 	file, err := os.CreateTemp(tempDir, "temp")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer file.Close()
 
 	command := filepath.Base(file.Name())
 	err = core.pluginCatalog.Set(t.Context(), "kubernetes", consts.PluginTypeCredential, "", command, nil, nil, nil, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// When we validate the version now, we should get a special error message
 	// about why the builtin isn't there.
 	k8sAuthBuiltin := versions.GetBuiltinVersion(consts.PluginTypeCredential, "kubernetes")
 	_, resp, err := b.validateVersion(t.Context(), k8sAuthBuiltin, "kubernetes", consts.PluginTypeCredential)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() || resp.Error() == nil {
 		t.Errorf("expected logical error but got none, resp: %#v", resp)
 	}
@@ -6353,9 +5983,7 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 		t.Helper()
 		req := logical.TestRequest(t, logical.ReadOperation, mountTable+"/"+pluginName)
 		resp, err := core.systemBackend.HandleRequest(ctx, req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		return resp.Data
 	}
@@ -6370,9 +5998,7 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 		}
 
 		resp, err := core.systemBackend.HandleRequest(ctx, req)
-		if err != nil {
-			t.Fatalf("err: %v, resp: %#v", err, resp)
-		}
+		require.NoErrorf(t, err, "err: %v, resp: %#v", err, resp)
 		if resp != nil {
 			t.Fatalf("bad: %v", resp)
 		}
@@ -6392,9 +6018,7 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 		} else {
 			mountEntry, err = core.auth.FindByPath(ctx, tc.pluginName+"/")
 		}
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if mountEntry == nil {
 			t.Fatal()
 		}
@@ -6406,9 +6030,7 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 			err = core.persistAuth(ctx, barrier, core.auth, &mountEntry.Local, mountEntry.UUID)
 		}
 
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		config = readMountConfig(tc.pluginName, tc.mountTable)
 		pluginVersion, ok = config["plugin_version"]
@@ -6418,9 +6040,7 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 	}
 
 	err := TestCoreSeal(core)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	for _, key := range keys {
 		if _, err := TestCoreUnseal(core, TestKeyCopy(key)); err != nil {
 			t.Fatalf("unseal err: %s", err)

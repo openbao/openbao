@@ -13,6 +13,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -49,17 +50,13 @@ func TestIdentityStore_DisableUserLockoutTest(t *testing.T) {
 	err := client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
 		Type: "userpass",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// create a userpass user
 	_, err = client.Logical().Write("auth/userpass/users/bsmith", map[string]any{
 		"password": "training",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// get mount accessor for userpass mount
 	secret, err := client.Logical().Read("sys/auth/userpass")
@@ -134,9 +131,7 @@ func TestIdentityStore_DisableUserLockoutTest(t *testing.T) {
 			err := client.Sys().TuneMount("auth/userpass", api.MountConfigInput{
 				UserLockoutConfig: userlockoutConfig,
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			// login for default lockout threshold times with wrong credentials
 			for range UserLockoutThresholdDefault {

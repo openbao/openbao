@@ -23,9 +23,7 @@ func TestSysInit_get(t *testing.T) {
 	{
 		// Pre-init
 		resp, err := http.Get(addr + "/v1/sys/init")
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
+		require.NoError(t, err)
 
 		var actual map[string]any
 		expected := map[string]any{
@@ -43,9 +41,7 @@ func TestSysInit_get(t *testing.T) {
 	{
 		// Post-init
 		resp, err := http.Get(addr + "/v1/sys/init")
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
+		require.NoError(t, err)
 
 		var actual map[string]any
 		expected := map[string]any{
@@ -115,9 +111,7 @@ func TestSysInit_put(t *testing.T) {
 
 	for _, key := range keysRaw.([]any) {
 		keySlice, err := hex.DecodeString(key.(string))
-		if err != nil {
-			t.Fatalf("bad: %s", err)
-		}
+		require.NoError(t, err)
 
 		if _, err := core.Unseal(keySlice); err != nil {
 			t.Fatalf("bad: %s", err)
@@ -187,9 +181,7 @@ func TestSysInit_Put_AutoUnseal(t *testing.T) {
 func TestSysInit_Put_ValidateParams_AutoUnseal(t *testing.T) {
 	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Wrapper: "potato"})
 	autoSeal, err := vault.NewAutoSeal(testSeal)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	conf := &vault.CoreConfig{
 		Seal: autoSeal,

@@ -52,18 +52,14 @@ func TestPostgreSQLBackend(t *testing.T) {
 		"table":          table,
 		"ha_enabled":     hae,
 	}, logger)
-	if err != nil {
-		t.Fatalf("Failed to create new backend: %v", err)
-	}
+	require.NoError(t, err)
 
 	b2, err := NewPostgreSQLBackend(map[string]string{
 		"connection_url": connURL,
 		"table":          table,
 		"ha_enabled":     hae,
 	}, logger)
-	if err != nil {
-		t.Fatalf("Failed to create new backend: %v", err)
-	}
+	require.NoError(t, err)
 
 	pg := b1.(*PostgreSQLBackend)
 
@@ -79,9 +75,7 @@ func TestPostgreSQLBackend(t *testing.T) {
 	defer func() {
 		pg := b1.(*PostgreSQLBackend)
 		_, err := pg.client.Exec(fmt.Sprintf(" TRUNCATE TABLE %v ", pg.table))
-		if err != nil {
-			t.Fatalf("Failed to truncate table: %v", err)
-		}
+		require.NoError(t, err)
 	}()
 
 	logger.Info("Running basic backend tests")
@@ -214,9 +208,7 @@ func attemptLockTTLTest(t *testing.T, ha physical.HABackend, tries int) bool {
 
 	// Get the lock
 	origLock, err := ha.LockWith(lockkey, "bar")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	{
 		// set the first lock renew period to double the expected TTL.
 		lock := origLock.(*PostgreSQLLock)
@@ -226,9 +218,7 @@ func attemptLockTTLTest(t *testing.T, ha physical.HABackend, tries int) bool {
 		// Attempt to lock
 		lockTime := time.Now()
 		leaderCh, err = lock.Lock(nil)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if leaderCh == nil {
 			t.Fatal("failed to get leader ch")
 		}
@@ -238,9 +228,7 @@ func attemptLockTTLTest(t *testing.T, ha physical.HABackend, tries int) bool {
 		}
 		// Check the value
 		held, val, err := lock.Value()
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if !held {
 			if tries < maxTries && time.Since(lockTime) > (time.Second*time.Duration(lockTTL)) {
 				// Our test environment is slow enough that we failed this, retry
@@ -256,9 +244,7 @@ func attemptLockTTLTest(t *testing.T, ha physical.HABackend, tries int) bool {
 	// Second acquisition should succeed because the first lock should
 	// not renew within the 3 sec TTL.
 	origLock2, err := ha.LockWith(lockkey, "baz")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	{
 		lock2 := origLock2.(*PostgreSQLLock)
 		lock2.renewInterval = renewInterval
@@ -274,9 +260,7 @@ func attemptLockTTLTest(t *testing.T, ha physical.HABackend, tries int) bool {
 		// Attempt to lock should work
 		lockTime := time.Now()
 		leaderCh2, err := lock2.Lock(stopCh)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if leaderCh2 == nil {
 			t.Fatal("should get leader ch")
 		}
@@ -284,9 +268,7 @@ func attemptLockTTLTest(t *testing.T, ha physical.HABackend, tries int) bool {
 
 		// Check the value
 		held, val, err := lock2.Value()
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if !held {
 			if tries < maxTries && time.Since(lockTime) > (time.Second*time.Duration(lockTTL)) {
 				// Our test environment is slow enough that we failed this, retry
@@ -312,9 +294,7 @@ func attemptLockTTLTest(t *testing.T, ha physical.HABackend, tries int) bool {
 func testPostgresSQLLockRenewal(t *testing.T, ha physical.HABackend) {
 	// Get the lock
 	origLock, err := ha.LockWith("pgrenewal", "bar")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// customize the renewal and watch intervals
 	lock := origLock.(*PostgreSQLLock)
@@ -322,18 +302,14 @@ func testPostgresSQLLockRenewal(t *testing.T, ha physical.HABackend) {
 
 	// Attempt to lock
 	leaderCh, err := lock.Lock(nil)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if leaderCh == nil {
 		t.Fatal("failed to get leader ch")
 	}
 
 	// Check the value
 	held, val, err := lock.Value()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if !held {
 		t.Fatal("should be held")
 	}
@@ -351,9 +327,7 @@ func testPostgresSQLLockRenewal(t *testing.T, ha physical.HABackend) {
 
 	// Attempt to lock with new lock
 	newLock, err := ha.LockWith("pgrenewal", "baz")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	stopCh := make(chan struct{})
 	timeout := time.Duration(lock.ttlSeconds)*time.Second + lock.retryInterval + time.Second
@@ -375,18 +349,14 @@ func testPostgresSQLLockRenewal(t *testing.T, ha physical.HABackend) {
 	}
 
 	// Attempt to lock should work
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if leaderCh2 == nil {
 		t.Fatal("should get leader ch")
 	}
 
 	// Check the value
 	held, val, err = newLock.Value()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if !held {
 		t.Fatal("should be held")
 	}
@@ -411,9 +381,7 @@ func TestPostgreSQLBackend_CreateTables(t *testing.T) {
 		"table":          "openbao_kv_store",
 		"ha_enabled":     "true",
 	}, logger)
-	if err != nil {
-		t.Fatalf("Failed to create new backend: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Do not call SetupDatabaseObjects here; this should be handled automatically.
 
@@ -435,9 +403,7 @@ func TestPostgreSQLBackend_NoCreateTables(t *testing.T) {
 		"ha_enabled":        "true",
 		"skip_create_table": "true",
 	}, logger)
-	if err != nil {
-		t.Fatalf("Failed to create new backend: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Put should fail with an error.
 	entry := &physical.Entry{Key: "foo", Value: []byte("data")}
@@ -490,9 +456,7 @@ func TestPostgreSQLBackend_PGEnv(t *testing.T) {
 		"ha_enabled":        "true",
 		"skip_create_table": "true",
 	}, logger)
-	if err != nil {
-		t.Fatalf("Failed to create new backend: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 // TestPostgreSQLBackend_Retry verifies that we will connect to a PostgreSQL
@@ -517,9 +481,7 @@ func TestPostgreSQLBackend_Retry(t *testing.T) {
 		"max_connect_retries": "1000",
 		"skip_create_table":   "true",
 	}, logger)
-	if err != nil {
-		t.Fatalf("Failed to create new backend: %v", err)
-	}
+	require.NoError(t, err)
 	if b == nil {
 		t.Fatalf("failed to create backend")
 	}
@@ -540,9 +502,7 @@ func TestPostgreSQLBackend_Parallel(t *testing.T) {
 		"ha_enabled":     "true",
 		"max_parallel":   "2",
 	}, logger)
-	if err != nil {
-		t.Fatalf("Failed to create new backend: %v", err)
-	}
+	require.NoError(t, err)
 
 	b := bRaw.(physical.TransactionalBackend)
 

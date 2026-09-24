@@ -480,9 +480,7 @@ func TestIdentityStore_CloneImmutability(t *testing.T) {
 	}
 
 	clonedEntity, err := entity.Clone()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Modify entity
 	entity.Aliases[0].ID = "invalidid"
@@ -492,9 +490,7 @@ func TestIdentityStore_CloneImmutability(t *testing.T) {
 	}
 
 	clonedAlias, err := alias.Clone()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	alias.MergedFromCanonicalIDs[0] = "invalidid"
 
@@ -542,24 +538,18 @@ func TestIdentityStore_MemDBImmutability(t *testing.T) {
 	defer txn.Abort()
 
 	err = is.MemDBUpsertEntityInTxn(txn, entity)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	txn.Commit()
 
 	entityFetched, err := is.MemDBEntityByID(ctx, entity.ID, true)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Modify the fetched entity outside of a transaction
 	entityFetched.Aliases[0].ID = "invalidaliasid"
 
 	entityFetched, err = is.MemDBEntityByID(ctx, entity.ID, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if entityFetched.Aliases[0].ID == "invalidaliasid" {
 		t.Fatal("memdb item is mutable outside of transaction")
@@ -693,16 +683,12 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 	txn := is.Txn(ctx, true)
 	defer txn.Abort()
 	err = is.MemDBUpsertEntityInTxn(txn, entity)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	txn.Commit()
 
 	// Fetch the entity using its ID
 	entityFetched, err := is.MemDBEntityByID(ctx, entity.ID, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(entity, entityFetched) {
 		t.Fatalf("bad: mismatched entities; expected: %#v\n actual: %#v\n", entity, entityFetched)
@@ -710,9 +696,7 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 
 	// Fetch the entity using its name
 	entityFetched, err = is.MemDBEntityByName(ctx, entity.Name, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(entity, entityFetched) {
 		t.Fatalf("entity mismatched entities; expected: %#v\n actual: %#v\n", entity, entityFetched)
@@ -720,32 +704,24 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 
 	txn = is.Txn(ctx, false)
 	entitiesFetched, err := is.MemDBEntitiesByBucketKeyInTxn(txn, entity.BucketKey)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if len(entitiesFetched) != 1 {
 		t.Fatalf("bad: length of entities; expected: 1, actual: %d", len(entitiesFetched))
 	}
 
 	err = is.MemDBDeleteEntityByID(ctx, entity.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	entityFetched, err = is.MemDBEntityByID(ctx, entity.ID, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if entityFetched != nil {
 		t.Fatalf("bad: entity; expected: nil, actual: %#v\n", entityFetched)
 	}
 
 	entityFetched, err = is.MemDBEntityByName(ctx, entity.Name, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if entityFetched != nil {
 		t.Fatalf("bad: entity; expected: nil, actual: %#v\n", entityFetched)
@@ -934,9 +910,7 @@ func testIdentityStoreMergeEntitiesById(t *testing.T, ctx context.Context, is *i
 	}
 
 	entity1, err := is.MemDBEntityByID(ctx, entityID1, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if entity1 == nil {
 		t.Fatalf("failed to create entity: %v", err)
 	}
@@ -976,9 +950,7 @@ func testIdentityStoreMergeEntitiesById(t *testing.T, ctx context.Context, is *i
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 	entity2, err := is.MemDBEntityByID(ctx, entityID2, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if entity2 == nil {
 		t.Fatalf("failed to create entity: %v", err)
 	}
@@ -1042,9 +1014,7 @@ func testIdentityStoreMergeEntitiesById(t *testing.T, ctx context.Context, is *i
 	for _, aliasRaw := range entity1Aliases {
 		alias := aliasRaw.(map[string]any)
 		aliasLookedUp, err := is.MemDBAliasByID(ctx, alias["id"].(string), false, false)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if aliasLookedUp == nil {
 			t.Fatalf("index for alias id %q is not updated", alias["id"].(string))
 		}
@@ -1070,9 +1040,7 @@ func testIdentityStoreMergeEntitiesById(t *testing.T, ctx context.Context, is *i
 		}
 
 		groupLookedUp, err := is.MemDBGroupByID(ctx, group, false)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		expectedEntityIDs := []string{entity1.ID}
 		if !slices.Equal(groupLookedUp.MemberEntityIDs, expectedEntityIDs) {
 			t.Fatalf("group id %q should contain %q but contains %q", group, expectedEntityIDs, groupLookedUp.MemberEntityIDs)
@@ -1104,9 +1072,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 	}
 	entityID1 := resp.Data["id"].(string)
 	entity1, err := is.MemDBEntityByID(ctx, entityID1, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if entity1 == nil {
 		t.Fatalf("failed to create entity: %v", err)
 	}
@@ -1142,9 +1108,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 	}
 
 	entity2, err := is.MemDBEntityByID(ctx, entityID2, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if entity2 == nil {
 		t.Fatalf("failed to create entity: %v", err)
 	}
@@ -1185,9 +1149,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 	}
 
 	entity1Lookup, err := is.MemDBEntityByID(ctx, entityID1, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if entity1Lookup == nil {
 		t.Fatalf("failed to create entity: %v", err)
 	}

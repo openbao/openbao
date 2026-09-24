@@ -10,6 +10,7 @@ import (
 
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSalt(t *testing.T) {
@@ -17,9 +18,7 @@ func TestSalt(t *testing.T) {
 	conf := &Config{}
 
 	salt, err := NewSalt(t.Context(), inm, conf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	if !salt.DidGenerate() {
 		t.Fatal("expected generation")
@@ -27,18 +26,14 @@ func TestSalt(t *testing.T) {
 
 	// Verify the salt exists
 	out, err := inm.Get(t.Context(), DefaultLocation)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if out == nil {
 		t.Fatal("missing salt")
 	}
 
 	// Create a new salt, should restore
 	salt2, err := NewSalt(t.Context(), inm, conf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	if salt2.DidGenerate() {
 		t.Fatal("unexpected generation")
@@ -61,9 +56,7 @@ func TestSalt(t *testing.T) {
 
 func TestSaltID(t *testing.T) {
 	salt, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	id := "foobarbaz"
 
 	sid1 := SaltID(salt, id, SHA1Hash)

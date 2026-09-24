@@ -158,9 +158,7 @@ func TestBackendHandleRequest(t *testing.T) {
 			Path:      path,
 			Data:      map[string]any{key: "42"},
 		})
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
+		require.NoError(t, err)
 		if resp.Data[key] != 42 {
 			t.Fatalf("bad: %#v", resp)
 		}
@@ -296,9 +294,7 @@ func TestBackendHandleRequest_badwrite(t *testing.T) {
 		Path:      "foo/bar",
 		Data:      map[string]any{"value": "3false3"},
 	})
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if !strings.Contains(resp.Data["error"].(string), "Field validation failed") {
 		t.Fatalf("bad: %#v", resp)
@@ -357,9 +353,7 @@ func TestBackendHandleRequest_help(t *testing.T) {
 		Path:      "foo/bar",
 		Data:      map[string]any{"value": "42"},
 	})
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if resp.Data["help"] == nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -374,9 +368,7 @@ func TestBackendHandleRequest_helpRoot(t *testing.T) {
 		Operation: logical.HelpOperation,
 		Path:      "",
 	})
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if resp.Data["help"] == nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -386,9 +378,7 @@ func TestBackendHandleRequest_renewAuth(t *testing.T) {
 	b := &Backend{}
 
 	resp, err := b.HandleRequest(t.Context(), logical.RenewAuthRequest("/foo", &logical.Auth{}, nil))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if !resp.IsError() {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -406,9 +396,7 @@ func TestBackendHandleRequest_renewAuthCallback(t *testing.T) {
 	}
 
 	_, err := b.HandleRequest(t.Context(), logical.RenewAuthRequest("/foo", &logical.Auth{}, nil))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if v := called.Load(); v != 1 {
 		t.Fatalf("bad: %#v", v)
 	}
@@ -430,9 +418,7 @@ func TestBackendHandleRequest_renew(t *testing.T) {
 	}
 
 	_, err := b.HandleRequest(t.Context(), logical.RenewRequest("/foo", secret.Response(nil, nil).Secret, nil))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if v := called.Load(); v != 1 {
 		t.Fatalf("bad: %#v", v)
 	}
@@ -454,9 +440,7 @@ func TestBackendHandleRequest_revoke(t *testing.T) {
 	}
 
 	_, err := b.HandleRequest(t.Context(), logical.RevokeRequest("/foo", secret.Response(nil, nil).Secret, nil))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if v := called.Load(); v != 1 {
 		t.Fatalf("bad: %#v", v)
 	}
@@ -488,9 +472,7 @@ func TestBackendHandleRequest_rollback(t *testing.T) {
 		Path:      "",
 		Storage:   storage,
 	})
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if v := called.Load(); v != 1 {
 		t.Fatalf("bad: %#v", v)
 	}
@@ -520,9 +502,7 @@ func TestBackendHandleRequest_rollbackMinAge(t *testing.T) {
 		Path:      "",
 		Storage:   storage,
 	})
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if v := called.Load(); v != 0 {
 		t.Fatalf("bad: %#v", v)
 	}
@@ -589,9 +569,7 @@ func TestBackendHandleRequest_urlPriority(t *testing.T) {
 		Path:      "foo/42",
 		Data:      map[string]any{"value": "84"},
 	})
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if resp.Data["value"] != 42 {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -808,9 +786,7 @@ func TestInitializeBackend(t *testing.T) {
 	}}
 
 	err := backend.Initialize(t.Context(), &logical.InitializationRequest{Storage: nil})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !inited {
 		t.Fatal("backend should be open")

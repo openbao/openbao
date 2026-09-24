@@ -13,6 +13,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 )
@@ -180,9 +181,7 @@ func TestSystem_GRPC_entityInfo(t *testing.T) {
 	testSystemView := newGRPCSystemView(client)
 
 	actual, err := testSystemView.EntityInfo("")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if !proto.Equal(sys.EntityVal, actual) {
 		t.Fatalf("expected: %v, got: %v", sys.EntityVal, actual)
 	}
@@ -208,9 +207,7 @@ func TestSystem_GRPC_groupsForEntity(t *testing.T) {
 	testSystemView := newGRPCSystemView(client)
 
 	actual, err := testSystemView.GroupsForEntity("")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if !proto.Equal(sys.GroupsVal[0], actual[0]) {
 		t.Fatalf("expected: %v, got: %v", sys.GroupsVal, actual)
 	}
@@ -233,14 +230,10 @@ func TestSystem_GRPC_pluginEnv(t *testing.T) {
 	testSystemView := newGRPCSystemView(client)
 
 	expected, err := sys.PluginEnv(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	actual, err := testSystemView.PluginEnv(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !proto.Equal(expected, actual) {
 		t.Fatalf("expected: %v, got: %v", expected, actual)
@@ -273,9 +266,7 @@ func TestSystem_GRPC_GeneratePasswordFromPolicy(t *testing.T) {
 	defer cancel()
 
 	password, err := testSystemView.GeneratePasswordFromPolicy(ctx, policyName)
-	if err != nil {
-		t.Fatalf("no error expected, got: %s", err)
-	}
+	require.NoError(t, err)
 
 	if password != expectedPassword {
 		t.Fatalf("Actual password: %s\nExpected password: %s", password, expectedPassword)

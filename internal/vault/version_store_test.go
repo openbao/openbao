@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/v2/internal/version"
+	"github.com/stretchr/testify/require"
 )
 
 // TestVersionStore_StoreMultipleVaultVersions writes multiple versions of 1.9.0 and verifies that only
@@ -46,23 +47,17 @@ func TestVersionStore_GetOldestVersion(t *testing.T) {
 
 	for _, entry := range versionEntries {
 		_, err := c.storeVersionEntry(t.Context(), &entry, false)
-		if err != nil {
-			t.Fatalf("failed to write version entry %#v, err: %s", entry, err.Error())
-		}
+		require.NoErrorf(t, err, "failed to write version entry %#v, err: %s", entry, err.Error())
 	}
 
 	err := c.loadVersionHistory(t.Context())
-	if err != nil {
-		t.Fatalf("failed to populate version history cache, err: %s", err.Error())
-	}
+	require.NoErrorf(t, err, "failed to populate version history cache, err: %s", err.Error())
 
 	if len(c.versionHistory) != 3 {
 		t.Fatalf("expected 3 entries in timestamps map after refresh, found: %d", len(c.versionHistory))
 	}
 	v, tm, err := c.FindOldestVersionTimestamp()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if v != "1.6.2" {
 		t.Fatalf("expected 1.6.2, found: %s", v)
 	}
@@ -85,23 +80,17 @@ func TestVersionStore_GetNewestVersion(t *testing.T) {
 
 	for _, entry := range versionEntries {
 		_, err := c.storeVersionEntry(t.Context(), &entry, false)
-		if err != nil {
-			t.Fatalf("failed to write version entry %#v, err: %s", entry, err.Error())
-		}
+		require.NoErrorf(t, err, "failed to write version entry %#v, err: %s", entry, err.Error())
 	}
 
 	err := c.loadVersionHistory(t.Context())
-	if err != nil {
-		t.Fatalf("failed to populate version history cache, err: %s", err.Error())
-	}
+	require.NoErrorf(t, err, "failed to populate version history cache, err: %s", err.Error())
 
 	if len(c.versionHistory) != 3 {
 		t.Fatalf("expected 3 entries in timestamps map after refresh, found: %d", len(c.versionHistory))
 	}
 	v, tm, err := c.FindNewestVersionTimestamp()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if v != "1.6.1" {
 		t.Fatalf("expected 1.6.1, found: %s", v)
 	}
@@ -113,9 +102,7 @@ func TestVersionStore_GetNewestVersion(t *testing.T) {
 func TestVersionStore_SelfHealUTC(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	estLoc, err := time.LoadLocation("EST")
-	if err != nil {
-		t.Fatalf("failed to load location, err: %s", err.Error())
-	}
+	require.NoErrorf(t, err, "failed to load location, err: %s", err.Error())
 
 	nowEST := time.Now().In(estLoc)
 
@@ -126,15 +113,11 @@ func TestVersionStore_SelfHealUTC(t *testing.T) {
 
 	for _, entry := range versionEntries {
 		_, err := c.storeVersionEntry(t.Context(), &entry, false)
-		if err != nil {
-			t.Fatalf("failed to write version entry %#v, err: %s", entry, err.Error())
-		}
+		require.NoErrorf(t, err, "failed to write version entry %#v, err: %s", entry, err.Error())
 	}
 
 	err = c.loadVersionHistory(t.Context())
-	if err != nil {
-		t.Fatalf("failed to load version timestamps, err: %s", err.Error())
-	}
+	require.NoErrorf(t, err, "failed to load version timestamps, err: %s", err.Error())
 
 	for _, entry := range c.versionHistory {
 		if entry.TimestampInstalled.Location() != time.UTC {

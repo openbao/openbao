@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestOpenAPI_Regex(t *testing.T) {
@@ -161,9 +162,7 @@ func TestOpenAPI_ExpandPattern(t *testing.T) {
 
 	for i, test := range tests {
 		out, err := expandPattern(test.inPattern)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		sort.Strings(out)
 		if !reflect.DeepEqual(out, test.outPathlets) {
 			t.Fatalf("Test %d: Expected %v got %v", i, test.outPathlets, out)
@@ -657,9 +656,7 @@ func TestOpenAPI_CustomDecoder(t *testing.T) {
 
 	docOrig := NewOASDocument("version")
 	err := documentPath(p, nil, "kv", logical.TypeLogical, docOrig)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	docJSON := mustJSONMarshal(t, docOrig)
 
@@ -669,9 +666,7 @@ func TestOpenAPI_CustomDecoder(t *testing.T) {
 	}
 
 	docNew, err := NewOASDocumentFromMap(intermediate)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	docNewJSON := mustJSONMarshal(t, docNew)
 
@@ -932,9 +927,7 @@ func testPath(t *testing.T, path *Path, sp *logical.Paths, expectedJSON string) 
 	}
 
 	docJSON, err := json.MarshalIndent(doc, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Compare json by first decoding, then comparing with a deep equality check.
 	var expected, actual any
@@ -965,8 +958,6 @@ func expected(name string) string {
 
 func mustJSONMarshal(t *testing.T, data any) []byte {
 	j, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return j
 }

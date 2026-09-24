@@ -9,6 +9,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTransit_Trim(t *testing.T) {
@@ -43,16 +44,12 @@ func TestTransit_Trim(t *testing.T) {
 		Storage: storage,
 		Name:    "aes",
 	}, b.GetRandomReader())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	p.Unlock()
 
 	// Archive: 0, 1
 	archive, err := p.LoadArchive(namespace.RootContext(t.Context()), storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// Index "0" in the archive is unused. Hence the length of the archived
 	// keys will always be 1 more than the actual number of keys.
 	if len(archive.Keys) != 2 {
@@ -68,9 +65,7 @@ func TestTransit_Trim(t *testing.T) {
 
 	// Archive: 0, 1, 2, 3, 4, 5
 	archive, err = p.LoadArchive(namespace.RootContext(t.Context()), storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(archive.Keys) != 6 {
 		t.Fatalf("bad: len of archived keys; expected: 6, actual: %d", len(archive.Keys))
 	}
@@ -136,9 +131,7 @@ func TestTransit_Trim(t *testing.T) {
 
 	// Archive: 3, 4, 5
 	archive, err = p.LoadArchive(namespace.RootContext(t.Context()), storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(archive.Keys) != 3 {
 		t.Fatalf("bad: len of archived keys; expected: 3, actual: %d", len(archive.Keys))
 	}
@@ -167,9 +160,7 @@ func TestTransit_Trim(t *testing.T) {
 
 	// Archive: 3, 4, 5, 6, 7, 8, 9, 10
 	archive, err = p.LoadArchive(namespace.RootContext(t.Context()), storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(archive.Keys) != 8 {
 		t.Fatalf("bad: len of archived keys; expected: 8, actual: %d", len(archive.Keys))
 	}
@@ -195,9 +186,7 @@ func TestTransit_Trim(t *testing.T) {
 
 	// Archive: 7, 8, 9, 10
 	archive, err = p.LoadArchive(namespace.RootContext(t.Context()), storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(archive.Keys) != 4 {
 		t.Fatalf("bad: len of archived keys; expected: 4, actual: %d", len(archive.Keys))
 	}
@@ -265,9 +254,7 @@ func TestTransit_Trim(t *testing.T) {
 	// Ensure that archive has remained unchanged
 	// Archive: 7, 8, 9, 10
 	archive, err = p.LoadArchive(namespace.RootContext(t.Context()), storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(archive.Keys) != 4 {
 		t.Fatalf("bad: len of archived keys; expected: 4, actual: %d", len(archive.Keys))
 	}

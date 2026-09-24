@@ -9,6 +9,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPhysicalView_impl(t *testing.T) {
@@ -22,9 +23,7 @@ func newInmemTestBackend() (physical.Backend, error) {
 
 func TestPhysicalView_BadKeysKeys(t *testing.T) {
 	backend, err := newInmemTestBackend()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	view := physical.NewView(backend, "foo/")
 
 	_, err = view.List(t.Context(), "../")
@@ -54,9 +53,7 @@ func TestPhysicalView_BadKeysKeys(t *testing.T) {
 
 func TestPhysicalView(t *testing.T) {
 	backend, err := newInmemTestBackend()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	view := physical.NewView(backend, "foo/")
 
@@ -68,18 +65,14 @@ func TestPhysicalView(t *testing.T) {
 
 	// List should have no visibility
 	keys, err := view.List(t.Context(), "")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(keys) != 0 {
 		t.Fatalf("bad: %v", err)
 	}
 
 	// Get should have no visibility
 	out, err := view.Get(t.Context(), "test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if out != nil {
 		t.Fatalf("bad: %v", out)
 	}
@@ -91,9 +84,7 @@ func TestPhysicalView(t *testing.T) {
 
 	// Check it is nested
 	entry, err = backend.Get(t.Context(), "foo/test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if entry == nil {
 		t.Fatal("missing nested foo/test")
 	}
@@ -105,18 +96,14 @@ func TestPhysicalView(t *testing.T) {
 
 	// Check the nested key
 	entry, err = backend.Get(t.Context(), "foo/test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if entry != nil {
 		t.Fatal("nested foo/test should be gone")
 	}
 
 	// Check the non-nested key
 	entry, err = backend.Get(t.Context(), "test")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if entry == nil {
 		t.Fatal("root test missing")
 	}

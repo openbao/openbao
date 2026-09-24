@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 func testLeaseLookupCommand(tb testing.TB) (*cli.MockUi, *LeaseLookupCommand) {
@@ -40,9 +41,7 @@ func testLeaseLookupCommandMountAndLease(tb testing.TB, client *api.Client) stri
 
 	// Read the secret back to get the leaseID
 	secret, err := client.Logical().Read("testing/foo")
-	if err != nil {
-		tb.Fatal(err)
-	}
+	require.NoError(tb, err)
 	if secret == nil || secret.LeaseID == "" {
 		tb.Fatalf("missing secret or lease: %#v", secret)
 	}

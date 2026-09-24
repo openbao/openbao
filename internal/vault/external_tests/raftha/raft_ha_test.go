@@ -14,6 +14,7 @@ import (
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/physical/raft"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRaft_HA_NewCluster(t *testing.T) {
@@ -76,9 +77,7 @@ func testRaftHANewCluster(t *testing.T, bundler teststorage.PhysicalBackendBundl
 			req.LeaderClientKey = string(cluster.CAKeyPEM)
 		}
 		resp, err := client.Sys().RaftJoin(req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !resp.Joined {
 			t.Fatal("failed to join raft cluster")
 		}
@@ -94,32 +93,24 @@ func testRaftHANewCluster(t *testing.T, bundler teststorage.PhysicalBackendBundl
 		"core-1": true,
 		"core-2": true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Test remove peers
 	_, err = leaderClient.Logical().Write("sys/storage/raft/remove-peer", map[string]any{
 		"server_id": "core-1",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = leaderClient.Logical().Write("sys/storage/raft/remove-peer", map[string]any{
 		"server_id": "core-2",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Ensure peers are removed
 	err = testhelpers.VerifyRaftPeers(t, leaderClient, map[string]bool{
 		"core-0": true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestRaft_HA_ExistingCluster(t *testing.T) {
@@ -199,9 +190,7 @@ func TestRaft_HA_ExistingCluster(t *testing.T) {
 		leaderClient.SetToken(clusterRootToken)
 		{
 			_, err := leaderClient.Logical().Write("sys/storage/raft/bootstrap", nil)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			vault.TestWaitActive(t, leaderCore.Core)
 		}
 
@@ -217,9 +206,7 @@ func TestRaft_HA_ExistingCluster(t *testing.T) {
 				LeaderCACert: string(cluster.CACertPEM),
 			}
 			resp, err := client.Sys().RaftJoin(req)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if !resp.Joined {
 				t.Fatal("failed to join raft cluster")
 			}
@@ -234,9 +221,7 @@ func TestRaft_HA_ExistingCluster(t *testing.T) {
 			"core-1": true,
 			"core-2": true,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	updateCluster(t)

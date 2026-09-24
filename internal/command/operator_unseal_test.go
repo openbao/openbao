@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/cli"
+	"github.com/stretchr/testify/require"
 )
 
 func testOperatorUnsealCommand(tb testing.TB) (*cli.MockUi, *OperatorUnsealCommand) {
@@ -132,9 +133,7 @@ func TestOperatorUnsealCommand_Run(t *testing.T) {
 		}
 
 		status, err := client.Sys().SealStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if status.Sealed {
 			t.Error("expected unsealed")
 		}

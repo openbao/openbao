@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_kubeAuthBackend_updateTLSConfig(t *testing.T) {
@@ -309,9 +310,7 @@ func Test_kubeAuthBackend_initialize(t *testing.T) {
 
 			if tt.config != nil {
 				entry, err := logical.StorageEntryJSON(configPath, tt.config)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				if err := tt.req.Storage.Put(tt.ctx, entry); err != nil {
 					t.Fatal(err)
@@ -478,9 +477,7 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 						config := tt.configs[idx]
 						if config.config != nil {
 							entry, err := logical.StorageEntryJSON(configPath, config.config)
-							if err != nil {
-								t.Fatal(err)
-							}
+							require.NoError(t, err)
 
 							if err := tt.storage.Put(tt.ctx, entry); err != nil {
 								t.Fatal(err)

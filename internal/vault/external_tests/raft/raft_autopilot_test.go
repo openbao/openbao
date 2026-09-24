@@ -261,9 +261,7 @@ func TestRaft_Autopilot_Stabilization_Delay(t *testing.T) {
 		_, err := cli.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]any{
 			"test": "data",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	joinAndUnseal(t, cluster.Cores[1], cluster, false, false)
@@ -301,9 +299,7 @@ func TestRaft_Autopilot_Stabilization_Delay(t *testing.T) {
 	deadline = time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		state, err = client.Sys().RaftAutopilotState()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if strutil.EquivalentSlices(state.Voters, []string{"core-0", "core-1", "core-2"}) {
 			break
 		}
@@ -336,17 +332,11 @@ func TestRaft_AutoPilot_Peersets_Equivalent(t *testing.T) {
 	for time.Now().Before(deadline) {
 		// Make sure all nodes have an equivalent configuration
 		core0Peers, err = cluster.Cores[0].UnderlyingRawStorage.(*raft.RaftBackend).Peers(t.Context())
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		core1Peers, err = cluster.Cores[1].UnderlyingRawStorage.(*raft.RaftBackend).Peers(t.Context())
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		core2Peers, err = cluster.Cores[2].UnderlyingRawStorage.(*raft.RaftBackend).Peers(t.Context())
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if len(core0Peers) == 3 && reflect.DeepEqual(core0Peers, core1Peers) && reflect.DeepEqual(core1Peers, core2Peers) {
 			break
@@ -388,9 +378,7 @@ func TestRaft_VotersStayVoters(t *testing.T) {
 	errIfNonVotersExist := func() error {
 		t.Helper()
 		resp, err := client.Sys().RaftAutopilotState()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		for k, v := range resp.Servers {
 			if v.Status == "non-voter" {
 				return fmt.Errorf("node %q is a non-voter", k)
@@ -443,9 +431,7 @@ func TestRaft_NonVotersStayNonVoters(t *testing.T) {
 	errIfNonVotersExist := func() error {
 		t.Helper()
 		resp, err := client.Sys().RaftAutopilotState()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		for k, v := range resp.Servers {
 			if v.Status == "non-voter" {
 				return fmt.Errorf("node %q is a non-voter", k)
@@ -457,9 +443,7 @@ func TestRaft_NonVotersStayNonVoters(t *testing.T) {
 	errIfVoter := func() error {
 		t.Helper()
 		resp, err := client.Sys().RaftAutopilotState()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp.Servers["core-3"].Status == "voter" {
 			return fmt.Errorf("node %q is a voter", "core-3")
 		}
@@ -511,9 +495,7 @@ func TestRaft_PromoteDemote(t *testing.T) {
 	errIfNonVotersExist := func() error {
 		t.Helper()
 		resp, err := client.Sys().RaftAutopilotState()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		for k, v := range resp.Servers {
 			if v.Status == "non-voter" {
 				return fmt.Errorf("node %q is a non-voter", k)
@@ -525,9 +507,7 @@ func TestRaft_PromoteDemote(t *testing.T) {
 	errIfVoter := func() error {
 		t.Helper()
 		resp, err := client.Sys().RaftAutopilotState()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp.Servers["core-3"].Status == "voter" {
 			return fmt.Errorf("node %q is a voter", "core-3")
 		}

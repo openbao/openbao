@@ -26,6 +26,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBackend_CA_Steps(t *testing.T) {
@@ -222,27 +223,21 @@ func TestBackend_CA_Steps(t *testing.T) {
 		t.Run("rsa", func(t *testing.T) {
 			t.Parallel()
 			subClient, err := client.Clone()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			subClient.SetToken(client.Token())
 			runSteps(t, rsaRoot, rsaInt, subClient, "rsaroot/", "rsaint/", rsaCACert, rsaCAKey)
 		})
 		t.Run("ec", func(t *testing.T) {
 			t.Parallel()
 			subClient, err := client.Clone()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			subClient.SetToken(client.Token())
 			runSteps(t, ecRoot, ecInt, subClient, "ecroot/", "ecint/", ecCACert, ecCAKey)
 		})
 		t.Run("ed25519", func(t *testing.T) {
 			t.Parallel()
 			subClient, err := client.Clone()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			subClient.SetToken(client.Token())
 			runSteps(t, edRoot, edInt, subClient, "ed25519root/", "ed25519int/", edCACert, edCAKey)
 		})
@@ -258,9 +253,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 			_, err := client.Logical().Write(rootName+"config/ca", map[string]any{
 				"pem_bundle": caCert,
 			})
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+			require.NoError(t, err)
 		}
 
 		// Same but with only the key
@@ -268,9 +261,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 			_, err := client.Logical().Write(rootName+"config/ca", map[string]any{
 				"pem_bundle": caKey,
 			})
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+			require.NoError(t, err)
 		}
 
 		// Import entire CA bundle; this should work as well
@@ -278,9 +269,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 			_, err := client.Logical().Write(rootName+"config/ca", map[string]any{
 				"pem_bundle": strings.Join([]string{caKey, caCert}, "\n"),
 			})
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+			require.NoError(t, err)
 		}
 
 		prevToken := client.Token()
@@ -289,9 +278,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 		// cert/ca and issuer/default/json path
 		for _, path := range []string{"cert/ca", "issuer/default/json"} {
 			resp, err := client.Logical().Read(rootName + path)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("nil response")
 			}
@@ -321,9 +308,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 				Storage:   rootB.storage,
 			}
 			resp, err := rootB.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("nil response")
 			}
@@ -348,9 +333,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 				Storage:   rootB.storage,
 			}
 			resp, err := rootB.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("nil response")
 			}
@@ -377,17 +360,13 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 			_, err := client.Logical().Write(rootName+"config/crl", map[string]any{
 				"expiry": "16h",
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 
 		// Verify it
 		{
 			resp, err := client.Logical().Read(rootName + "config/crl")
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("nil response")
 			}
@@ -406,9 +385,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 		// First, delete the existing CA info
 		{
 			_, err := client.Logical().Delete(rootName + "root")
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 
 		var rootPEM, rootKey, rootPEMBundle string
@@ -418,9 +395,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 				"common_name": "Root Cert",
 				"ttl":         "180h",
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("nil response")
 			}
@@ -440,9 +415,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 				"common_name": "intermediate.cert.com",
 				"ttl":         "180h",
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("nil response")
 			}
@@ -461,9 +434,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 				"ttl":         "10s",
 				"csr":         intCSR,
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("nil response")
 			}
@@ -476,9 +447,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 			resp, err := client.Logical().Write(intName+"intermediate/set-signed", map[string]any{
 				"certificate": intPEM,
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("nil response")
 			}
@@ -487,9 +456,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 		// Verify we can find it via the root
 		{
 			resp, err := client.Logical().Read(rootName + "cert/" + intSerialNumber)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("nil response")
 			}
@@ -503,9 +470,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 			resp, err := client.Logical().Write(rootName+"revoke", map[string]any{
 				"serial_number": intSerialNumber,
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("nil response")
 			}
@@ -517,9 +482,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 		// Verify it is now revoked
 		{
 			resp, err := client.Logical().Read(rootName + "cert/" + intSerialNumber)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			switch shouldFind {
 			case true:
 				if resp == nil {
@@ -550,9 +513,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 				Storage:   rootB.storage,
 			}
 			resp, err := rootB.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("nil response")
 			}
@@ -577,9 +538,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 			}
 
 			revcList, err := x509.ParseRevocationList(crlBytes)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			switch shouldFind {
 			case true:
 				revokedList := revcList.RevokedCertificateEntries
@@ -601,9 +560,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 
 	verifyTidyStatus := func(expectedCertStoreDeleteCount int, expectedRevokedCertDeletedCount int) {
 		tidyStatus, err := client.Logical().Read(rootName + "tidy-status")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if tidyStatus.Data["state"] != "Finished" {
 			t.Fatalf("Expected tidy operation to be finished, but tidy-status reports its state is %v", tidyStatus.Data)
@@ -640,9 +597,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 				"tidy_cert_store":    true,
 				"tidy_revoked_certs": true,
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("expected warnings")
 			}
@@ -663,9 +618,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 				"tidy_cert_store":    false,
 				"tidy_revoked_certs": false,
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("expected warnings")
 			}
@@ -686,9 +639,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 				"tidy_cert_store":    true,
 				"tidy_revoked_certs": true,
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("expected warnings")
 			}

@@ -76,9 +76,7 @@ func TestPki_RoleGenerateLease(t *testing.T) {
 	role.GenerateLease = nil
 
 	entry, err = logical.StorageEntryJSON("role/testrole", role)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if err := storage.Put(t.Context(), entry); err != nil {
 		t.Fatal(err)
 	}
@@ -178,9 +176,7 @@ func TestPki_RoleKeyUsage(t *testing.T) {
 	role.KeyUsage = nil
 
 	entry, err = logical.StorageEntryJSON("role/testrole", role)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if err := storage.Put(t.Context(), entry); err != nil {
 		t.Fatal(err)
 	}
@@ -198,9 +194,7 @@ func TestPki_RoleKeyUsage(t *testing.T) {
 
 	// Read back from storage to ensure upgrade
 	entry, err = storage.Get(t.Context(), "role/testrole")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if entry == nil {
 		t.Fatal("role should not be nil")
 	}
@@ -274,9 +268,7 @@ func TestPki_RoleOUOrganizationUpgrade(t *testing.T) {
 	role.Organization = nil
 
 	entry, err = logical.StorageEntryJSON("role/testrole", role)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if err := storage.Put(t.Context(), entry); err != nil {
 		t.Fatal(err)
 	}
@@ -298,9 +290,7 @@ func TestPki_RoleOUOrganizationUpgrade(t *testing.T) {
 
 	// Read back from storage to ensure upgrade
 	entry, err = storage.Get(t.Context(), "role/testrole")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if entry == nil {
 		t.Fatal("role should not be nil")
 	}
@@ -372,9 +362,7 @@ func TestPki_RoleAllowedDomains(t *testing.T) {
 	role.AllowedDomains = nil
 
 	entry, err = logical.StorageEntryJSON("role/testrole", role)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if err := storage.Put(t.Context(), entry); err != nil {
 		t.Fatal(err)
 	}
@@ -392,9 +380,7 @@ func TestPki_RoleAllowedDomains(t *testing.T) {
 
 	// Read back from storage to ensure upgrade
 	entry, err = storage.Get(t.Context(), "role/testrole")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if entry == nil {
 		t.Fatal("role should not be nil")
 	}
@@ -1108,9 +1094,7 @@ func TestPKI_RolePolicyInformation_Flat(t *testing.T) {
 
 		// Validate the OIDs
 		policyIdentifiers, err := getPolicyIdentifiersOffCertificate(*issueResp)
-		if err != nil {
-			t.Fatalf("bad [%d], getting policy identifier from %v err: %v resp: %#v", index, testCase.Input, err, issueResp)
-		}
+		require.NoErrorf(t, err, "bad [%d], getting policy identifier from %v err: %v resp: %#v", index, testCase.Input, err, issueResp)
 		if len(policyIdentifiers) != len(testCase.OidList) {
 			t.Fatalf("bad [%d], wrong certificate policy identifier from %v len expected: %d got %d", index, testCase.Input, len(testCase.OidList), len(policyIdentifiers))
 		}
@@ -1121,9 +1105,7 @@ func TestPKI_RolePolicyInformation_Flat(t *testing.T) {
 		}
 		// Validate the ASN
 		certificateAsn, err := getPolicyInformationExtensionOffCertificate(*issueResp)
-		if err != nil {
-			t.Fatalf("bad [%d], getting extension from %v err: %v resp: %#v", index, testCase.Input, err, issueResp)
-		}
+		require.NoErrorf(t, err, "bad [%d], getting extension from %v err: %v resp: %#v", index, testCase.Input, err, issueResp)
 		certificateString := base64.StdEncoding.EncodeToString(certificateAsn)
 		assert.Contains(t, certificateString, testCase.ASN)
 	}

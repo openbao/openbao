@@ -17,6 +17,7 @@ import (
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPubKeyFilesFlag_implements(t *testing.T) {
@@ -31,35 +32,21 @@ func TestPubKeyFilesFlagSetBinary(t *testing.T) {
 
 	decoder := base64.StdEncoding
 	pub1Bytes, err := decoder.DecodeString(pubKey1)
-	if err != nil {
-		t.Fatalf("Error decoding bytes for public key 1: %s", err)
-	}
+	require.NoError(t, err)
 	err = os.WriteFile(tempDir+"/pubkey1", pub1Bytes, 0o755)
-	if err != nil {
-		t.Fatalf("Error writing pub key 1 to temp file: %s", err)
-	}
+	require.NoError(t, err)
 	pub2Bytes, err := decoder.DecodeString(pubKey2)
-	if err != nil {
-		t.Fatalf("Error decoding bytes for public key 2: %s", err)
-	}
+	require.NoError(t, err)
 	err = os.WriteFile(tempDir+"/pubkey2", pub2Bytes, 0o755)
-	if err != nil {
-		t.Fatalf("Error writing pub key 2 to temp file: %s", err)
-	}
+	require.NoError(t, err)
 	pub3Bytes, err := decoder.DecodeString(pubKey3)
-	if err != nil {
-		t.Fatalf("Error decoding bytes for public key 3: %s", err)
-	}
+	require.NoError(t, err)
 	err = os.WriteFile(tempDir+"/pubkey3", pub3Bytes, 0o755)
-	if err != nil {
-		t.Fatalf("Error writing pub key 3 to temp file: %s", err)
-	}
+	require.NoError(t, err)
 
 	pkf := new(PubKeyFilesFlag)
 	err = pkf.Set(tempDir + "/pubkey1,@" + tempDir + "/pubkey2")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	err = pkf.Set(tempDir + "/pubkey3")
 	if err == nil {
@@ -76,23 +63,15 @@ func TestPubKeyFilesFlagSetB64(t *testing.T) {
 	tempDir := t.TempDir()
 
 	err := os.WriteFile(path.Join(tempDir, "pubkey1"), []byte(pubKey1), 0o755)
-	if err != nil {
-		t.Fatalf("Error writing pub key 1 to temp file: %s", err)
-	}
+	require.NoError(t, err)
 	err = os.WriteFile(path.Join(tempDir, "pubkey2"), []byte(pubKey2), 0o755)
-	if err != nil {
-		t.Fatalf("Error writing pub key 2 to temp file: %s", err)
-	}
+	require.NoError(t, err)
 	err = os.WriteFile(path.Join(tempDir, "pubkey3"), []byte(pubKey3), 0o755)
-	if err != nil {
-		t.Fatalf("Error writing pub key 3 to temp file: %s", err)
-	}
+	require.NoError(t, err)
 
 	pkf := new(PubKeyFilesFlag)
 	err = pkf.Set(fmt.Sprintf("%s,@%s", path.Join(tempDir, "pubkey1"), path.Join(tempDir, "pubkey2")))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	err = pkf.Set(path.Join(tempDir, "pubkey3"))
 	if err == nil {
@@ -109,27 +88,19 @@ func TestPubKeyFilesFlagSetKeybase(t *testing.T) {
 	tempDir := t.TempDir()
 
 	err := os.WriteFile(path.Join(tempDir, "pubkey2"), []byte(pubKey2), 0o755)
-	if err != nil {
-		t.Fatalf("Error writing pub key 2 to temp file: %s", err)
-	}
+	require.NoError(t, err)
 
 	pkf := new(PubKeyFilesFlag)
 	err = pkf.Set(fmt.Sprintf("keybase:jefferai,@%s,keybase:hashicorp", path.Join(tempDir, "/pubkey2")))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	fingerprints := []string{}
 	for _, pubkey := range []string(*pkf) {
 		keyBytes, err := base64.StdEncoding.DecodeString(pubkey)
-		if err != nil {
-			t.Fatalf("bad: %v", err)
-		}
+		require.NoError(t, err)
 		pubKeyBuf := bytes.NewBuffer(keyBytes)
 		reader := packet.NewReader(pubKeyBuf)
 		entity, err := openpgp.ReadEntity(reader)
-		if err != nil {
-			t.Fatalf("bad: %v", err)
-		}
+		require.NoError(t, err)
 		if entity == nil {
 			t.Fatal("nil entity encountered")
 		}

@@ -7,14 +7,14 @@ import (
 	"net/http"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func getDefaultCliHeaders(t *testing.T) http.Header {
 	bc := &BaseCommand{}
 	cli, err := bc.Client()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return cli.Headers()
 }
 

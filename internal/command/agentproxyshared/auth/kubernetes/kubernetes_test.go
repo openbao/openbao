@@ -13,6 +13,7 @@ import (
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared/auth"
+	"github.com/stretchr/testify/require"
 )
 
 func TestKubernetesAuth_basic(t *testing.T) {
@@ -52,9 +53,7 @@ func TestKubernetesAuth_basic(t *testing.T) {
 			}
 
 			a, err := NewKubernetesAuthMethod(&authCfg)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			// Type assert to set the kubernetesMethod jwtData, to mock out reading
 			// files from the pod.

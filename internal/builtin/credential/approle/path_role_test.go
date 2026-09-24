@@ -138,15 +138,11 @@ func TestAppRole_UpgradeSecretIDPrefix(t *testing.T) {
 		BindSecretID:     true,
 		BoundCIDRListOld: "127.0.0.1/18,192.178.1.2/24",
 	}, "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Reading the role entry should upgrade it to contain SecretIDPrefix
 	role, err := b.roleEntry(t.Context(), storage, "testrole")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if role.SecretIDPrefix == "" {
 		t.Fatal("expected SecretIDPrefix to be set")
 	}
@@ -192,9 +188,7 @@ func TestAppRole_LocalSecretIDImmutability(t *testing.T) {
 		Storage:   storage,
 		Data:      roleData,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected an error since local_secret_ids can't be overwritten")
 	}
@@ -244,9 +238,7 @@ func TestAppRole_UpgradeBoundCIDRList(t *testing.T) {
 		SecretIDPrefix:   secretIDPrefix,
 	}
 	err = b.setRoleEntry(t.Context(), storage, "testrole", role, "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Read the role. The upgrade code should have migrated the old type to the new type
 	resp = b.requestNoErr(t, &logical.Request{
@@ -306,9 +298,7 @@ func TestAppRole_RoleNameLowerCasing(t *testing.T) {
 		SecretIDPrefix: secretIDPrefix,
 	}
 	err = b.setRoleEntry(t.Context(), storage, "testRoleName", role, "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	secretIDReq := &logical.Request{
 		Path:      "role/testRoleName/secret-id",
@@ -457,9 +447,7 @@ func TestAppRole_RoleReadSetIndex(t *testing.T) {
 
 	// Delete the role ID index
 	err = b.roleIDEntryDelete(t.Context(), storage, roleID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Read the role again. This should add the index and return a warning
 	roleReq.Operation = logical.ReadOperation
@@ -471,9 +459,7 @@ func TestAppRole_RoleReadSetIndex(t *testing.T) {
 	}
 
 	roleIDIndex, err := b.roleIDEntry(t.Context(), storage, roleID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Check if the index has been successfully created
 	if roleIDIndex == nil || roleIDIndex.Name != "testrole" {
@@ -851,9 +837,7 @@ func TestAppRole_RoleSecretIDReadDelete(t *testing.T) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("error response:%#v", resp)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestAppRole_RoleSecretIDAccessorReadDelete(t *testing.T) {
@@ -918,9 +902,7 @@ func TestAppRoleSecretIDLookup(t *testing.T) {
 		},
 	}
 	resp, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 	expected := &logical.Response{
 		Data: map[string]any{
 			"http_content_type": "application/json",
@@ -1299,15 +1281,11 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 
 	var expectedStruct roleStorageEntry
 	err = mapstructure.Decode(expected, &expectedStruct)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	var actualStruct roleStorageEntry
 	err = mapstructure.Decode(resp.Data, &actualStruct)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expectedStruct.RoleID = actualStruct.RoleID
 	if diff := deep.Equal(expectedStruct, actualStruct); diff != nil {
@@ -1338,14 +1316,10 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 		"token_max_ttl":      5000,
 	}
 	err = mapstructure.Decode(expected, &expectedStruct)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = mapstructure.Decode(resp.Data, &actualStruct)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(expectedStruct, actualStruct) {
 		t.Fatalf("bad:\nexpected:%#v\nactual:%#v\n", expectedStruct, actualStruct)
@@ -1639,15 +1613,11 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 
 	var expectedStruct roleStorageEntry
 	err = mapstructure.Decode(expected, &expectedStruct)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	var actualStruct roleStorageEntry
 	err = mapstructure.Decode(resp.Data, &actualStruct)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expectedStruct.RoleID = actualStruct.RoleID
 	if !reflect.DeepEqual(expectedStruct, actualStruct) {
@@ -1678,14 +1648,10 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 		"token_max_ttl":      5000,
 	}
 	err = mapstructure.Decode(expected, &expectedStruct)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = mapstructure.Decode(resp.Data, &actualStruct)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(expectedStruct, actualStruct) {
 		t.Fatalf("bad:\nexpected:%#v\nactual:%#v\n", expectedStruct, actualStruct)
@@ -1730,9 +1696,7 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 	if resp.Data["token_bound_cidrs"].([]*sockaddr.SockAddrMarshaler)[0].String() != "127.0.0.1" ||
 		resp.Data["token_bound_cidrs"].([]*sockaddr.SockAddrMarshaler)[1].String() != "127.0.0.1/16" {
 		m, err := json.Marshal(resp.Data["token_bound_cidrs"].([]*sockaddr.SockAddrMarshaler))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		t.Fatalf("bad: token_bound_cidrs: expected:127.0.0.1/32,127.0.0.1/16 actual:%s\n", string(m))
 	}
 
@@ -1815,15 +1779,11 @@ func TestAppRole_RoleWithTokenTypeCRUD(t *testing.T) {
 
 	var expectedStruct roleStorageEntry
 	err = mapstructure.Decode(expected, &expectedStruct)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	var actualStruct roleStorageEntry
 	err = mapstructure.Decode(resp.Data, &actualStruct)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expectedStruct.RoleID = actualStruct.RoleID
 	if !reflect.DeepEqual(expectedStruct, actualStruct) {
@@ -1860,14 +1820,10 @@ func TestAppRole_RoleWithTokenTypeCRUD(t *testing.T) {
 		"token_type":         "service",
 	}
 	err = mapstructure.Decode(expected, &expectedStruct)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = mapstructure.Decode(resp.Data, &actualStruct)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(expectedStruct, actualStruct) {
 		t.Fatalf("bad:\nexpected:%#v\nactual:%#v\n", expectedStruct, actualStruct)
@@ -1962,9 +1918,7 @@ func TestAppRole_TokenutilUpgrade(t *testing.T) {
 			}
 
 			resEntry, err := b.roleEntry(ctx, s, tt.name)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			exp := &roleStorageEntry{
 				SecretIDPrefix: "secret_id/",

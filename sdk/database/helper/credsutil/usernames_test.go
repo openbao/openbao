@@ -6,6 +6,8 @@ package credsutil
 import (
 	"regexp"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestGenerateUsername(t *testing.T) {
@@ -135,9 +137,7 @@ func TestGenerateUsername(t *testing.T) {
 				MaxLength(test.usernameLen),
 				Case(test.caseOp),
 			)
-			if err != nil {
-				t.Fatalf("no error expected, got: %s", err)
-			}
+			require.NoError(t, err)
 
 			if !re.MatchString(username) {
 				t.Fatalf("username %q does not match regex %q", username, test.regex)

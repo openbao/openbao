@@ -176,9 +176,7 @@ func prepareTestContainer(t *testing.T, tag, caPublicKeyPEM string) (func(), str
 		},
 		Ports: []string{"2222/tcp"},
 	})
-	if err != nil {
-		t.Fatalf("Could not start local ssh docker container: %s", err)
-	}
+	require.NoError(t, err)
 
 	svc, err := runner.StartService(t.Context(), func(ctx context.Context, host string, port int) (docker.ServiceConfig, error) {
 		ipaddr, err := net.ResolveIPAddr("ip", host)
@@ -208,9 +206,7 @@ func prepareTestContainer(t *testing.T, tag, caPublicKeyPEM string) (func(), str
 
 		return docker.NewServiceHostPort(ipaddr.String(), port), nil
 	})
-	if err != nil {
-		t.Fatalf("Could not start docker ssh server: %s", err)
-	}
+	require.NoError(t, err)
 	return svc.Cleanup, svc.Config.Address()
 }
 
@@ -431,18 +427,14 @@ func TestBackend_ForbiddenCommaInTemplate(t *testing.T) {
 	tokenLookupResponse, err := client.Logical().Write("/auth/token/lookup", map[string]any{
 		"token": userpassToken,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	entityID := tokenLookupResponse.Data["entity_id"].(string)
 	_, err = client.Logical().Write("/identity/entity/id/"+entityID, map[string]any{
 		"metadata": map[string]string{
 			"ssh_username": testMultiUserName,
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("ssh/roles/my-role", map[string]any{
 		"key_type":                           testCaKeyType,
@@ -453,9 +445,7 @@ func TestBackend_ForbiddenCommaInTemplate(t *testing.T) {
 		"allowed_users_template":             true,
 		"allow_commas_in_identity_templates": false,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// sign SSH key as userpass user
 	client.SetToken(userpassToken)
@@ -481,18 +471,14 @@ func TestBackend_DefaultUserTemplateFalse_AllowedUsersTemplateTrue(t *testing.T)
 	tokenLookupResponse, err := client.Logical().Write("/auth/token/lookup", map[string]any{
 		"token": userpassToken,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	entityID := tokenLookupResponse.Data["entity_id"].(string)
 	_, err = client.Logical().Write("/identity/entity/id/"+entityID, map[string]any{
 		"metadata": map[string]string{
 			"ssh_username": testUserName,
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("ssh/roles/my-role", map[string]any{
 		"key_type":                testCaKeyType,
@@ -503,9 +489,7 @@ func TestBackend_DefaultUserTemplateFalse_AllowedUsersTemplateTrue(t *testing.T)
 		"allowed_users":          "{{identity.entity.metadata.ssh_username}}",
 		"allowed_users_template": true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// sign SSH key as userpass user
 	client.SetToken(userpassToken)
@@ -531,18 +515,14 @@ func TestBackend_DefaultUserTemplateFalse_AllowedUsersTemplateFalse(t *testing.T
 	tokenLookupResponse, err := client.Logical().Write("/auth/token/lookup", map[string]any{
 		"token": userpassToken,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	entityID := tokenLookupResponse.Data["entity_id"].(string)
 	_, err = client.Logical().Write("/identity/entity/id/"+entityID, map[string]any{
 		"metadata": map[string]string{
 			"ssh_username": testUserName,
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("ssh/roles/my-role", map[string]any{
 		"key_type":                testCaKeyType,
@@ -552,26 +532,20 @@ func TestBackend_DefaultUserTemplateFalse_AllowedUsersTemplateFalse(t *testing.T
 		"allowed_users":           "{{identity.entity.metadata.ssh_username}}",
 		"allowed_users_template":  false,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// sign SSH key as userpass user
 	client.SetToken(userpassToken)
 	signResponse, err := client.Logical().Write("ssh/sign/my-role", map[string]any{
 		"public_key": testCAPublicKey,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// check for the expected valid principals of certificate
 	signedKey := signResponse.Data["signed_key"].(string)
 	key, _ := base64.StdEncoding.DecodeString(strings.Split(signedKey, " ")[1])
 	parsedKey, err := ssh.ParsePublicKey(key)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	actualPrincipals := parsedKey.(*ssh.Certificate).ValidPrincipals
 	if len(actualPrincipals) < 1 {
 		t.Fatalf(
@@ -710,9 +684,7 @@ func TestSSHBackend_OTPCreate(t *testing.T) {
 	defer cleanup()
 
 	host, port, err := net.SplitHostPort(sshAddress)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	testOTPRoleData := map[string]any{
 		"key_type":     testOTPKeyType,
@@ -1480,9 +1452,7 @@ func TestBackend_DefExtTemplatingEnabled(t *testing.T) {
 
 	// Get auth accessor for identity template.
 	auths, err := client.Sys().ListAuth()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	userpassAccessor := auths["userpass/"].Accessor
 
 	// Write SSH role.
@@ -1499,9 +1469,7 @@ func TestBackend_DefExtTemplatingEnabled(t *testing.T) {
 				"{{identity.entity.aliases." + userpassAccessor + ".name}}_foobar",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	sshKeyID := "vault-userpass-" + testUserName + "-9bd0f01b7dfc50a13aa5e5cd11aea19276968755c8f1f9c98965d04147f30ed0"
 
@@ -1510,16 +1478,12 @@ func TestBackend_DefExtTemplatingEnabled(t *testing.T) {
 	resp, err := client.Logical().Write("ssh/sign/test", map[string]any{
 		"public_key": publicKey4096,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	signedKey := resp.Data["signed_key"].(string)
 	key, _ := base64.StdEncoding.DecodeString(strings.Split(signedKey, " ")[1])
 
 	parsedKey, err := ssh.ParsePublicKey(key)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	defaultExtensionPermissions := map[string]string{
 		"login@foobar.com":  testUserName,
@@ -1527,9 +1491,7 @@ func TestBackend_DefExtTemplatingEnabled(t *testing.T) {
 	}
 
 	err = validateSSHCertificate(parsedKey.(*ssh.Certificate), sshKeyID, ssh.UserCert, []string{"tuber"}, map[string]string{}, defaultExtensionPermissions, 16*time.Hour)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue SSH certificate with default extensions templating enabled, and user-provided extensions
 	// The certificate should only have the user-provided extensions, and no templated extensions
@@ -1540,21 +1502,15 @@ func TestBackend_DefExtTemplatingEnabled(t *testing.T) {
 		"public_key": publicKey4096,
 		"extensions": userProvidedExtensionPermissions,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	signedKey = resp.Data["signed_key"].(string)
 	key, _ = base64.StdEncoding.DecodeString(strings.Split(signedKey, " ")[1])
 
 	parsedKey, err = ssh.ParsePublicKey(key)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = validateSSHCertificate(parsedKey.(*ssh.Certificate), sshKeyID, ssh.UserCert, []string{"tuber"}, map[string]string{}, userProvidedExtensionPermissions, 16*time.Hour)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue SSH certificate with default extensions templating enabled, and invalid user-provided extensions - it should fail
 	invalidUserProvidedExtensionPermissions := map[string]string{
@@ -1576,9 +1532,7 @@ func TestBackend_EmptyAllowedExtensionFailsClosed(t *testing.T) {
 
 	// Get auth accessor for identity template.
 	auths, err := client.Sys().ListAuth()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	userpassAccessor := auths["userpass/"].Accessor
 
 	// Write SSH role to test with no allowed extension. We also provide a templated default extension,
@@ -1594,9 +1548,7 @@ func TestBackend_EmptyAllowedExtensionFailsClosed(t *testing.T) {
 			"login@foobar.com": "{{identity.entity.aliases." + userpassAccessor + ".name}}",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue SSH certificate with default extensions templating disabled, and user-provided extensions
 	client.SetToken(userpassToken)
@@ -1623,9 +1575,7 @@ func TestBackend_DefExtTemplatingDisabled(t *testing.T) {
 
 	// Get auth accessor for identity template.
 	auths, err := client.Sys().ListAuth()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	userpassAccessor := auths["userpass/"].Accessor
 
 	// Write SSH role to test with any extension. We also provide a templated default extension,
@@ -1641,9 +1591,7 @@ func TestBackend_DefExtTemplatingDisabled(t *testing.T) {
 			"login@foobar.com": "{{identity.entity.aliases." + userpassAccessor + ".name}}",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	sshKeyID := "vault-userpass-" + testUserName + "-9bd0f01b7dfc50a13aa5e5cd11aea19276968755c8f1f9c98965d04147f30ed0"
 
@@ -1657,21 +1605,15 @@ func TestBackend_DefExtTemplatingDisabled(t *testing.T) {
 		"public_key": publicKey4096,
 		"extensions": defaultExtensionPermissions,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	signedKey := resp.Data["signed_key"].(string)
 	key, _ := base64.StdEncoding.DecodeString(strings.Split(signedKey, " ")[1])
 
 	parsedKey, err := ssh.ParsePublicKey(key)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = validateSSHCertificate(parsedKey.(*ssh.Certificate), sshKeyID, ssh.UserCert, []string{"tuber"}, map[string]string{}, defaultExtensionPermissions, 16*time.Hour)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue SSH certificate with default extensions templating disabled, and user-provided extensions
 	client.SetToken(userpassToken)
@@ -1683,21 +1625,15 @@ func TestBackend_DefExtTemplatingDisabled(t *testing.T) {
 		"public_key": publicKey4096,
 		"extensions": userProvidedAnyExtensionPermissions,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	signedKey = resp.Data["signed_key"].(string)
 	key, _ = base64.StdEncoding.DecodeString(strings.Split(signedKey, " ")[1])
 
 	parsedKey, err = ssh.ParsePublicKey(key)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = validateSSHCertificate(parsedKey.(*ssh.Certificate), sshKeyID, ssh.UserCert, []string{"tuber"}, map[string]string{}, userProvidedAnyExtensionPermissions, 16*time.Hour)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestSSHBackend_ValidateNotBeforeDuration(t *testing.T) {
@@ -1850,9 +1786,7 @@ func getSshCaTestCluster(t *testing.T, userIdentity string) (*vault.TestCluster,
    path "ssh/*" {
      capabilities = ["update"]
    }`)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Enable userpass auth method.
 	if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
@@ -1884,18 +1818,14 @@ func getSshCaTestCluster(t *testing.T, userIdentity string) (*vault.TestCluster,
 			MaxLeaseTTL:     "60h",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Configure SSH CA.
 	_, err = client.Logical().Write("ssh/config/ca", map[string]any{
 		"public_key":  testCAPublicKey,
 		"private_key": testCAPrivateKey,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return cluster, userpassToken
 }
@@ -1911,16 +1841,12 @@ func testDefaultUserTemplate(t *testing.T, testDefaultUserTemplate string,
 	tokenLookupResponse, err := client.Logical().Write("/auth/token/lookup", map[string]any{
 		"token": userpassToken,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	entityID := tokenLookupResponse.Data["entity_id"].(string)
 	_, err = client.Logical().Write("/identity/entity/id/"+entityID, map[string]any{
 		"metadata": testEntityMetadata,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("ssh/roles/my-role", map[string]any{
 		"key_type":                testCaKeyType,
@@ -1930,26 +1856,20 @@ func testDefaultUserTemplate(t *testing.T, testDefaultUserTemplate string,
 		"allowed_users":           testDefaultUserTemplate,
 		"allowed_users_template":  true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// sign SSH key as userpass user
 	client.SetToken(userpassToken)
 	signResponse, err := client.Logical().Write("ssh/sign/my-role", map[string]any{
 		"public_key": testCAPublicKey,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// check for the expected valid principals of certificate
 	signedKey := signResponse.Data["signed_key"].(string)
 	key, _ := base64.StdEncoding.DecodeString(strings.Split(signedKey, " ")[1])
 	parsedKey, err := ssh.ParsePublicKey(key)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	actualPrincipals := parsedKey.(*ssh.Certificate).ValidPrincipals
 	if actualPrincipals[0] != expectedValidPrincipal {
 		t.Fatalf(
@@ -1971,36 +1891,26 @@ func testAllowedPrincipalsTemplate(t *testing.T, testAllowedDomainsTemplate stri
 	tokenLookupResponse, err := client.Logical().Write("/auth/token/lookup", map[string]any{
 		"token": userpassToken,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	entityID := tokenLookupResponse.Data["entity_id"].(string)
 	_, err = client.Logical().Write("/identity/entity/id/"+entityID, map[string]any{
 		"metadata": testEntityMetadata,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("ssh/roles/my-role", roleConfigPayload)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// sign SSH key as userpass user
 	client.SetToken(userpassToken)
 	signResponse, err := client.Logical().Write("ssh/sign/my-role", signingPayload)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// check for the expected valid principals of certificate
 	signedKey := signResponse.Data["signed_key"].(string)
 	key, _ := base64.StdEncoding.DecodeString(strings.Split(signedKey, " ")[1])
 	parsedKey, err := ssh.ParsePublicKey(key)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	actualPrincipals := parsedKey.(*ssh.Certificate).ValidPrincipals
 	if actualPrincipals[0] != expectedValidPrincipal {
 		t.Fatalf(
@@ -2623,59 +2533,45 @@ func TestProperAuthing(t *testing.T) {
 			MaxLeaseTTL:     "60h",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Setup basic configuration.
 	_, err = client.Logical().WriteWithContext(t.Context(), "ssh/config/ca", map[string]any{
 		"generate_signing_key": true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().WriteWithContext(t.Context(), "ssh/roles/test-ca", map[string]any{
 		"key_type":                "ca",
 		"allow_user_certificates": true,
 		"allowed_users":           "*",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().WriteWithContext(t.Context(), "ssh/issue/test-ca", map[string]any{
 		"valid_principals": "toor",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().WriteWithContext(t.Context(), "ssh/roles/test-ca-empty", map[string]any{
 		"key_type":                "ca",
 		"allow_host_certificates": true,
 		"allow_empty_principals":  true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().WriteWithContext(t.Context(), "ssh/issue/test-ca-empty", map[string]any{
 		"cert_type": "host",
 		"key_type":  "ssh-ed25519",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().WriteWithContext(t.Context(), "ssh/roles/test-otp", map[string]any{
 		"key_type":     "otp",
 		"default_user": "toor",
 		"cidr_list":    "127.0.0.0/24",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err := client.Logical().WriteWithContext(t.Context(), "ssh/creds/test-otp", map[string]any{
 		"username": "toor",
@@ -2713,9 +2609,7 @@ func TestProperAuthing(t *testing.T) {
 
 	client.SetToken(token)
 	openAPIResp, err := client.Logical().ReadWithContext(t.Context(), "sys/internal/specs/openapi")
-	if err != nil {
-		t.Fatalf("failed to get openapi data: %v", err)
-	}
+	require.NoError(t, err)
 
 	if len(openAPIResp.Data["paths"].(map[string]any)) == 0 {
 		t.Fatal("expected to get response from OpenAPI; got empty path list")
@@ -3165,24 +3059,16 @@ func TestSSHBackend_BasicIssuerOperations(t *testing.T) {
 	}
 
 	privateKey, err := ssh.ParsePrivateKey([]byte(testKeyToSignPrivate))
-	if err != nil {
-		t.Fatalf("error parsing private key, got err: %v", err)
-	}
+	require.NoError(t, err)
 
 	parsedKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(signedKey))
-	if err != nil {
-		t.Fatalf("error parsing signed key, got err: %v", err)
-	}
+	require.NoError(t, err)
 
 	certSigner, err := ssh.NewCertSigner(parsedKey.(*ssh.Certificate), privateKey)
-	if err != nil {
-		t.Fatalf("error creating cert signer, got err: %v", err)
-	}
+	require.NoError(t, err)
 
 	err = testSSH(testUserName, sshAddress, ssh.PublicKeys(certSigner), "date")
-	if err != nil {
-		t.Fatalf("did not expect error, got err: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 // TestSSHBackend_DefaultIssuerBehavior tests default issuer mechanics
@@ -3230,9 +3116,7 @@ func TestSSHBackend_DefaultIssuerBehavior(t *testing.T) {
 	}
 
 	parsedKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(issuedSignedKey))
-	if err != nil {
-		t.Fatalf("error parsing signed key: %v", err)
-	}
+	require.NoError(t, err)
 
 	issuedPrivateKey := strings.TrimSpace(resp.Data["private_key"].(string))
 	if issuedPrivateKey == "" {
@@ -3240,14 +3124,10 @@ func TestSSHBackend_DefaultIssuerBehavior(t *testing.T) {
 	}
 
 	privateKey, err := ssh.ParsePrivateKey([]byte(issuedPrivateKey))
-	if err != nil {
-		t.Fatalf("error parsing private key: %v", err)
-	}
+	require.NoError(t, err)
 
 	certSigner, err := ssh.NewCertSigner(parsedKey.(*ssh.Certificate), privateKey)
-	if err != nil {
-		t.Fatalf("error creating cert signer: %v", err)
-	}
+	require.NoError(t, err)
 
 	// SSH should fail since we're using a different issuer
 	cleanup, sshAddress := prepareTestContainer(t, dockerImageTagSupportsRSA1, "")

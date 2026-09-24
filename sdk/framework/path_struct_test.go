@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPathStruct(t *testing.T) {
@@ -33,9 +34,7 @@ func TestPathStruct(t *testing.T) {
 		},
 		Storage: storage,
 	})
-	if err != nil {
-		t.Fatalf("bad: %#v", err)
-	}
+	require.NoError(t, err)
 
 	// Read via HTTP
 	resp, err := b.HandleRequest(ctx, &logical.Request{
@@ -43,18 +42,14 @@ func TestPathStruct(t *testing.T) {
 		Path:      "bar",
 		Storage:   storage,
 	})
-	if err != nil {
-		t.Fatalf("bad: %#v", err)
-	}
+	require.NoError(t, err)
 	if resp.Data["value"] != "baz" {
 		t.Fatalf("bad: %#v", resp)
 	}
 
 	// Read via API
 	v, err := p.Get(ctx, storage)
-	if err != nil {
-		t.Fatalf("bad: %#v", err)
-	}
+	require.NoError(t, err)
 	if v["value"] != "baz" {
 		t.Fatalf("bad: %#v", v)
 	}
@@ -66,9 +61,7 @@ func TestPathStruct(t *testing.T) {
 		Data:      nil,
 		Storage:   storage,
 	})
-	if err != nil {
-		t.Fatalf("bad: %#v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -79,18 +72,14 @@ func TestPathStruct(t *testing.T) {
 		Path:      "bar",
 		Storage:   storage,
 	})
-	if err != nil {
-		t.Fatalf("bad: %#v", err)
-	}
+	require.NoError(t, err)
 	if _, ok := resp.Data["value"]; ok {
 		t.Fatalf("bad: %#v", resp)
 	}
 
 	// Re-read via API
 	v, err = p.Get(ctx, storage)
-	if err != nil {
-		t.Fatalf("bad: %#v", err)
-	}
+	require.NoError(t, err)
 	if v != nil {
 		t.Fatalf("bad: %#v", v)
 	}

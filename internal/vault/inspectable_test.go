@@ -9,6 +9,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInspectRouter(t *testing.T) {
@@ -80,9 +81,7 @@ func TestInspectAPIDisabled(t *testing.T) {
 		Operation:   logical.ReadOperation,
 		Path:        "sys/internal/inspect/router/root",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if !resp.IsError() || !strings.Contains(resp.Error().Error(), ErrIntrospectionNotEnabled.Error()) {
 		t.Fatal("expected invalid configuration error")
 	}
@@ -112,9 +111,7 @@ func TestInspectAPIReload(t *testing.T) {
 		Operation:   logical.ReadOperation,
 		Path:        "sys/internal/inspect/router/root",
 	})
-	if err != nil {
-		t.Fatal("Unexpected error")
-	}
+	require.NoError(t, err)
 	if !resp.IsError() {
 		t.Fatal("expected invalid configuration error")
 	}

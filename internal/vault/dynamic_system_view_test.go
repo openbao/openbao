@@ -67,9 +67,7 @@ func TestIdentity_BackendTemplating(t *testing.T) {
 	req.ClientToken = cluster.RootToken
 	req.Data["type"] = "approle"
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -77,9 +75,7 @@ func TestIdentity_BackendTemplating(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "sys/auth")
 	req.ClientToken = cluster.RootToken
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	accessor := resp.Data["approle/"].(map[string]any)["accessor"].(string)
 
@@ -92,9 +88,7 @@ func TestIdentity_BackendTemplating(t *testing.T) {
 		"team":         "vault",
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	entityID := resp.Data["id"].(string)
 
@@ -105,9 +99,7 @@ func TestIdentity_BackendTemplating(t *testing.T) {
 	req.Data["canonical_id"] = entityID
 	req.Data["mount_accessor"] = accessor
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	aliasID := resp.Data["id"].(string)
 
@@ -120,9 +112,7 @@ func TestIdentity_BackendTemplating(t *testing.T) {
 		"group": "vault",
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	groupID := resp.Data["id"].(string)
 
@@ -173,9 +163,7 @@ func TestIdentity_BackendTemplating(t *testing.T) {
 
 	for _, tCase := range tCases {
 		out, err := framework.PopulateIdentityTemplate(tCase.tpl, entityID, sysView)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if out != tCase.expected {
 			t.Fatalf("got %q, expected %q", out, tCase.expected)
@@ -207,9 +195,7 @@ func TestDynamicSystemView_GeneratePasswordFromPolicy_successful(t *testing.T) {
 	req.Data["policy"] = b64Policy
 
 	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 	defer cancel()
@@ -222,9 +208,7 @@ func TestDynamicSystemView_GeneratePasswordFromPolicy_successful(t *testing.T) {
 
 	for range 100 {
 		actual, err := dsv.GeneratePasswordFromPolicy(ctx, testPolicyName)
-		if err != nil {
-			t.Fatalf("no error expected, but got: %s", err)
-		}
+		require.NoError(t, err)
 		for _, r := range actual {
 			if runeset[r] {
 				continue

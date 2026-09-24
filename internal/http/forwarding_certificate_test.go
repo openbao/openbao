@@ -102,15 +102,11 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 			}
 			defer func(Body io.ReadCloser) {
 				err := Body.Close()
-				if err != nil {
-					t.Fatal("failed to close response body")
-				}
+				require.NoError(t, err)
 			}(resp.Body)
 			buf := bytes.NewBuffer(nil)
 			_, err = buf.ReadFrom(resp.Body)
-			if err != nil {
-				t.Fatal("failed to read response body")
-			}
+			require.NoError(t, err)
 			if !strings.Contains(buf.String(), "error decoding client certificate header as base64") {
 				t.Fatalf("bad body: %s", buf.String())
 			}
@@ -133,9 +129,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		req.Headers = make(http.Header)
 		req.Headers.Add("X-Forwarded-For-Client-Cert", clientCertBase64)
 		resp, err := client.RawRequest(req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("bad status: %d", resp.StatusCode)
 		}
@@ -157,9 +151,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		req.Headers = make(http.Header)
 		req.Headers.Add("X-Forwarded-For-Client-Cert", ":"+clientCertBase64+":")
 		resp, err := client.RawRequest(req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("bad status: %d", resp.StatusCode)
 		}
@@ -197,15 +189,11 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 			}
 			defer func(Body io.ReadCloser) {
 				err := Body.Close()
-				if err != nil {
-					t.Fatal("failed to close response body")
-				}
+				require.NoError(t, err)
 			}(resp.Body)
 			buf := bytes.NewBuffer(nil)
 			_, err = buf.ReadFrom(resp.Body)
-			if err != nil {
-				t.Fatal("failed to read response body")
-			}
+			require.NoError(t, err)
 			if !strings.Contains(buf.String(), "error decoding RFC9440 client certificate header") {
 				t.Fatalf("bad body: %s", buf.String())
 			}
@@ -257,9 +245,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		// NGINX urlencodes the certificate
 		req.Headers.Add("X-Forwarded-For-Client-Cert", url.QueryEscape(clientCertPemText))
 		resp, err := client.RawRequest(req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("bad status: %d", resp.StatusCode)
 		}
@@ -287,15 +273,11 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		}
 		defer func(Body io.ReadCloser) {
 			err := Body.Close()
-			if err != nil {
-				t.Fatal("failed to close response body")
-			}
+			require.NoError(t, err)
 		}(resp.Body)
 		buf := bytes.NewBuffer(nil)
 		_, err = buf.ReadFrom(resp.Body)
-		if err != nil {
-			t.Fatal("failed to read response body")
-		}
+		require.NoError(t, err)
 		if !strings.Contains(buf.String(), "failed to decode PEM certificate") {
 			t.Fatalf("bad body: %s", buf.String())
 		}
@@ -325,15 +307,11 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		}
 		defer func(Body io.ReadCloser) {
 			err := Body.Close()
-			if err != nil {
-				t.Fatal("failed to close response body")
-			}
+			require.NoError(t, err)
 		}(resp.Body)
 		buf := bytes.NewBuffer(nil)
 		_, err = buf.ReadFrom(resp.Body)
-		if err != nil {
-			t.Fatal("failed to read response body")
-		}
+		require.NoError(t, err)
 		if !strings.Contains(buf.String(), "error url decoding client certificate header") {
 			t.Fatalf("bad body: %s", buf.String())
 		}
@@ -353,9 +331,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		client := cluster.Cores[0].Client
 		req := client.NewRequest("GET", "/")
 		resp, err := client.RawRequest(req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("bad status: %d", resp.StatusCode)
 		}
@@ -378,14 +354,10 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		// Intentionally use the wrong canonical name.
 		req.Headers.Add("X-Processed-TLS-Client-Certificate", clientCertBase64)
 		resp, err := client.RawRequest(req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer func(Body io.ReadCloser) {
 			err := Body.Close()
-			if err != nil {
-				t.Fatal("failed to close response body")
-			}
+			require.NoError(t, err)
 		}(resp.Body)
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("bad status: %d", resp.StatusCode)
@@ -408,14 +380,10 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		// Intentionally use the wrong canonical name.
 		req.Headers.Add("X-Processed-TLS-Client-Certificate", clientCertBase64)
 		resp, err := client.RawRequest(req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer func(Body io.ReadCloser) {
 			err := Body.Close()
-			if err != nil {
-				t.Fatal("failed to close response body")
-			}
+			require.NoError(t, err)
 		}(resp.Body)
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("bad status: %d", resp.StatusCode)
@@ -442,9 +410,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		req.Headers = make(http.Header)
 		req.Headers.Add("X-TLS-Client-Certificate", clientCertBase64)
 		resp, err := client.RawRequest(req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("bad status: %d", resp.StatusCode)
 		}
@@ -476,9 +442,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		req.Headers.Add("X-Forwarded-For-Client-Cert", clientCertBase64)
 		req.Headers.Add("X-Forwarded-For", "1.2.3.4")
 		resp, err := client.RawRequest(req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("bad status: %d", resp.StatusCode)
 		}
@@ -511,9 +475,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		req.Headers.Add("X-Forwarded-For-Client-Cert", clientCertBase64)
 		req.Headers.Add("X-Forwarded-For", "1.2.3.4")
 		resp, err := client.RawRequest(req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("bad status: %d", resp.StatusCode)
 		}
@@ -544,9 +506,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		req.Headers = make(http.Header)
 		req.Headers.Add("X-Forwarded-For-Client-Cert", clientCertBase64)
 		resp, err := client.RawRequest(req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("bad status: %d", resp.StatusCode)
 		}
@@ -578,9 +538,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		req.Headers = make(http.Header)
 		req.Headers.Add("X-Forwarded-For-Client-Cert", clientCertBase64)
 		resp, err := client.RawRequest(req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("bad status: %d", resp.StatusCode)
 		}

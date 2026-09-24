@@ -64,9 +64,7 @@ func checkKubectlVersion() {
 func TestMount(t *testing.T) {
 	// Pick up VAULT_ADDR and VAULT_TOKEN from env vars
 	client, err := api.NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, umount := mountHelper(t, client)
 	defer umount()
@@ -74,9 +72,7 @@ func TestMount(t *testing.T) {
 
 func TestCheckViability(t *testing.T) {
 	client, err := api.NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	path, umount := mountHelper(t, client)
 	defer umount()
@@ -92,9 +88,7 @@ func TestCheckViability(t *testing.T) {
 func TestConfig(t *testing.T) {
 	// Pick up VAULT_ADDR and VAULT_TOKEN from env vars
 	client, err := api.NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	path, umount := mountHelper(t, client)
 	defer umount()
@@ -144,9 +138,7 @@ func TestConfig(t *testing.T) {
 func TestRole(t *testing.T) {
 	// Pick up VAULT_ADDR and VAULT_TOKEN from env vars
 	client, err := api.NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	path, umount := mountHelper(t, client)
 	defer umount()
@@ -285,15 +277,11 @@ func mountHelper(t *testing.T, client *api.Client) (string, func()) {
 	_, err := client.Logical().Write(fullPath, map[string]any{
 		"type": "kubernetes-dev",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return path, func() {
 		_, err = client.Logical().Delete(fullPath)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 }
 
@@ -306,25 +294,17 @@ func namespaceHelper(t *testing.T, client *api.Client) (*api.Client, func()) {
 	newClient := client
 
 	namespace = randomWithPrefix("somenamespace")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = createNamespace(client, namespace)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	newClient, err = client.Clone()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	newClient.SetNamespace(namespace)
 
 	return newClient, func() {
 		if namespace != "" {
 			err = deleteNamespace(client, namespace)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}
 }

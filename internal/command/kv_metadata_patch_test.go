@@ -12,6 +12,7 @@ import (
 	"github.com/go-test/deep"
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 func testKVMetadataPatchCommand(tb testing.TB) (*cli.MockUi, *KVMetadataPatchCommand) {
@@ -219,9 +220,7 @@ func TestKvMetadataPatchCommand_Flags(t *testing.T) {
 			}
 
 			initialMetadata, err := client.Logical().Read(metadataPath)
-			if err != nil {
-				t.Fatalf("metadata read failed, err: %#v", err)
-			}
+			require.NoError(t, err)
 
 			patchArgs := append(tc.args, secretPath)
 
@@ -235,9 +234,7 @@ func TestKvMetadataPatchCommand_Flags(t *testing.T) {
 			}
 
 			patchedMetadata, err := client.Logical().Read(metadataPath)
-			if err != nil {
-				t.Fatalf("metadata read failed, err: %#v", err)
-			}
+			require.NoError(t, err)
 
 			if tc.code == 0 { // Only check version increment on successful operations
 				// Verify metadata version incremented
@@ -304,9 +301,7 @@ func TestKvMetadataPatchCommand_CasWarning(t *testing.T) {
 	}
 
 	_, err := client.Logical().Write(basePath+"config", casConfig)
-	if err != nil {
-		t.Fatalf("config write failed, err: #%v", err)
-	}
+	require.NoError(t, err)
 
 	args = []string{"-cas-required=false", secretPath}
 	code, combined = kvMetadataPatchWithRetry(t, client, args, nil)

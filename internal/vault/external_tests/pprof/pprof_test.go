@@ -16,6 +16,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/http2"
 )
 
@@ -56,19 +57,13 @@ func TestSysPprof_MaxRequestDuration(t *testing.T) {
 	req := client.NewRequest("GET", "/v1/sys/pprof/profile")
 	req.Params.Set("seconds", sec)
 	httpReq, err := req.ToHTTP()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	resp, err := httpClient.Do(httpReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer resp.Body.Close() //nolint:errcheck
 
 	httpRespBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	httpResp := make(map[string]any)
 

@@ -12,6 +12,7 @@ import (
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
 	"github.com/openbao/openbao/v2/internal/vault/backend"
+	"github.com/stretchr/testify/require"
 )
 
 // Tests the regression in
@@ -38,9 +39,7 @@ func TestRecoverFromPanic(t *testing.T) {
 	err := client.Sys().Mount("noop", &api.MountInput{
 		Type: "noop",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Read("noop/panic")
 	if err == nil {

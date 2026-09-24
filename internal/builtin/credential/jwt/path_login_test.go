@@ -74,9 +74,7 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 			cb.closeServerFunc = p.server.Close
 
 			cert, err := p.getTLSCert()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			data = map[string]any{
 				"jwks_url":    p.server.URL + "/certs",
@@ -161,20 +159,14 @@ func getTestJWT(t *testing.T, privKey string, cl sqjwt.Claims, privateCl any) (s
 	if block != nil {
 		var err error
 		key, err = x509.ParseECPrivateKey(block.Bytes)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: key}, (&jose.SignerOptions{}).WithType("JWT"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	raw, err := sqjwt.Signed(sig).Claims(cl).Claims(privateCl).Serialize()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return raw, key
 }
@@ -187,14 +179,10 @@ func getTestOIDC(t *testing.T) string {
 	url := "https://team-vault.auth0.com/oauth/token"
 	payload := strings.NewReader("{\"client_id\":\"r3qXcK2bix9eFECzsU3Sbmh0K16fatW6\",\"client_secret\":\"" + os.Getenv("OIDC_CLIENT_SECRET") + "\",\"audience\":\"https://vault.plugin.auth.jwt.test\",\"grant_type\":\"client_credentials\"}")
 	req, err := http.NewRequest("POST", url, payload)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	req.Header.Add("content-type", "application/json")
 	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	defer res.Body.Close() //nolint:errcheck
 	body, _ := io.ReadAll(res.Body)
@@ -204,9 +192,7 @@ func getTestOIDC(t *testing.T) string {
 	}
 	var out a0r
 	err = json.Unmarshal(body, &out)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return out.AccessToken
 }
@@ -259,9 +245,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil {
 			t.Fatal("got nil response")
 		}
@@ -314,9 +298,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil {
 			t.Fatal("got nil response")
 		}
@@ -369,9 +351,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil {
 			t.Fatal("got nil response")
 		}
@@ -440,9 +420,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			}
 
 			resp, err := b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("got nil response")
 			}
@@ -534,9 +512,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !resp.IsError() {
 			t.Fatalf("expected error, got: %v", resp.Data)
 		}
@@ -577,9 +553,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil {
 			t.Fatal("got nil response")
 		}
@@ -623,9 +597,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil {
 			t.Fatal("got nil response")
 		}
@@ -669,9 +641,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil {
 			t.Fatal("got nil response")
 		}
@@ -715,9 +685,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil {
 			t.Fatal("got nil response")
 		}
@@ -753,9 +721,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil {
 			t.Fatal("got nil response")
 		}
@@ -832,9 +798,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil || !resp.IsError() {
 			t.Fatal("expected error")
 		}
@@ -887,9 +851,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil {
 			t.Fatal("got nil response")
 		}
@@ -947,9 +909,7 @@ func testLogin_ExpiryClaims(t *testing.T, jwks bool) {
 		req := setupLogin(t, tt.IssuedAt, tt.Expiration, tt.NotBefore, b, storage)
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil {
 			t.Fatal("got nil response")
 		}
@@ -1034,9 +994,7 @@ func testLogin_NotBeforeClaims(t *testing.T, jwks bool) {
 		req := setupLogin(t, tt.IssuedAt, tt.Expiration, tt.NotBefore, b, storage)
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp == nil {
 			t.Fatal("got nil response")
 		}
@@ -1257,9 +1215,7 @@ func TestLogin_OIDC(t *testing.T) {
 	}
 
 	resp, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("got nil response")
 	}
@@ -1373,9 +1329,7 @@ func TestLogin_NestedGroups(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("got nil response")
 	}
@@ -1428,9 +1382,7 @@ func TestLogin_OIDC_StringGroupClaim(t *testing.T) {
 	}
 
 	resp, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("got nil response")
 	}

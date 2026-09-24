@@ -7,6 +7,8 @@ import (
 	"flag"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestStringFlag_implements(t *testing.T) {
@@ -19,14 +21,10 @@ func TestStringFlag_implements(t *testing.T) {
 func TestStringFlagSet(t *testing.T) {
 	sv := new(StringFlag)
 	err := sv.Set("foo")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	err = sv.Set("bar")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := []string{"foo", "bar"}
 	if !reflect.DeepEqual([]string(*sv), expected) {

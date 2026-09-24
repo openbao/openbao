@@ -11,24 +11,21 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared/cache"
+	"github.com/stretchr/testify/require"
 )
 
 func testNewLeaseCache(t *testing.T, responses []*cache.SendResponse) *cache.LeaseCache {
 	t.Helper()
 
 	client, err := api.NewClient(api.DefaultConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lc, err := cache.NewLeaseCache(&cache.LeaseCacheConfig{
 		Client:      client,
 		BaseContext: t.Context(),
 		Proxier:     cache.NewMockProxier(responses),
 		Logger:      logging.NewVaultLogger(hclog.Trace).Named("cache.leasecache"),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return lc
 }
 
@@ -36,19 +33,13 @@ func populateTempFile(t *testing.T, name, contents string) *os.File {
 	t.Helper()
 
 	file, err := os.CreateTemp(t.TempDir(), name)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = file.WriteString(contents)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = file.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return file
 }
@@ -73,9 +64,7 @@ func Test_AddPersistentStorageToLeaseCache(t *testing.T) {
 	}
 
 	deferFunc, token, err := AddPersistentStorageToLeaseCache(t.Context(), leaseCache, persistConfig, logging.NewVaultLogger(hclog.Info))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if leaseCache.PersistentStorage() == nil {
 		t.Fatal("persistent storage was not added")

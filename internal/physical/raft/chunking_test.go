@@ -137,9 +137,7 @@ func TestFSM_Chunking_TermChange(t *testing.T) {
 			NumChunks:   uint32(len(chunks)),
 		}
 		chunkBytes, err := proto.Marshal(chunkInfo)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		logs = append(logs, &raft.Log{
 			Term:       uint64(i),
 			Data:       b,
@@ -185,18 +183,14 @@ func TestRaft_Chunking_AppliedIndex(t *testing.T) {
 	})
 
 	val, err := uuid.GenerateRandomBytes(3 * raftchunking.ChunkSize)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Write a value to fastforward the index
 	err = raft.Put(t.Context(), &physical.Entry{
 		Key:   "key",
 		Value: []byte("test"),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	currentIndex := raft.AppliedIndex()
 	// Write some data
@@ -205,9 +199,7 @@ func TestRaft_Chunking_AppliedIndex(t *testing.T) {
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: val,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	newIndex := raft.AppliedIndex()
@@ -219,9 +211,7 @@ func TestRaft_Chunking_AppliedIndex(t *testing.T) {
 
 	for i := range 10 {
 		entry, err := raft.Get(t.Context(), fmt.Sprintf("key-%d", i))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !bytes.Equal(entry.Value, val) {
 			t.Fatal("value is corrupt")
 		}

@@ -13,6 +13,7 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTransit_MissingPlaintext(t *testing.T) {
@@ -620,9 +621,7 @@ func TestTransit_BatchEncryptionCase11(t *testing.T) {
 		Data:      batchData,
 	}
 	_, err = b.HandleRequest(t.Context(), batchReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 // Case12: Invalid batch input
@@ -829,16 +828,12 @@ func TestTransit_EncryptWithRSAPublicKey(t *testing.T) {
 	b, s := createBackendWithStorage(t)
 	keyType := "rsa-2048"
 	keyID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("failed to generate key ID: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Get key
 	privateKey := getKey(t, keyType)
 	publicKeyBytes, err := getPublicKey(privateKey, keyType)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Import key
 	req := &logical.Request{
@@ -851,9 +846,7 @@ func TestTransit_EncryptWithRSAPublicKey(t *testing.T) {
 		},
 	}
 	_, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("failed to import public key: %s", err)
-	}
+	require.NoError(t, err)
 
 	req = &logical.Request{
 		Operation: logical.CreateOperation,
@@ -864,7 +857,5 @@ func TestTransit_EncryptWithRSAPublicKey(t *testing.T) {
 		},
 	}
 	_, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }

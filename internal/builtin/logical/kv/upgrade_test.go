@@ -9,6 +9,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVersionedKV_Upgrade(t *testing.T) {
@@ -45,9 +46,7 @@ func TestVersionedKV_Upgrade(t *testing.T) {
 
 	var err error
 	b, err = Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// verify requests are rejected during upgrade
 	req := &logical.Request{

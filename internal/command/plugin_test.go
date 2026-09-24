@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 // testPluginCreate creates a sample plugin in a tempdir and returns the shasum
@@ -24,9 +25,7 @@ func testPluginCreate(tb testing.TB, dir, name string) (string, string) {
 	}
 
 	f, err := os.Open(pth)
-	if err != nil {
-		tb.Fatal(err)
-	}
+	require.NoError(tb, err)
 	defer f.Close()
 
 	h := sha256.New()

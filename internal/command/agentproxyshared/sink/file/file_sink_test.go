@@ -13,6 +13,7 @@ import (
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared/sink"
+	"github.com/stretchr/testify/require"
 )
 
 func testFileSink(t *testing.T, log hclog.Logger) (*sink.SinkConfig, string) {
@@ -27,9 +28,7 @@ func testFileSink(t *testing.T, log hclog.Logger) (*sink.SinkConfig, string) {
 	}
 
 	s, err := NewFileSink(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config.Sink = s
 
 	return config, tmpDir
@@ -48,26 +47,18 @@ func TestFileSink(t *testing.T) {
 	}
 
 	file, err := os.Open(path)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	fi, err := file.Stat()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if fi.Mode() != os.FileMode(0o640) {
 		t.Fatalf("wrong file mode was detected at %s", path)
 	}
 	err = file.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	fileBytes, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if string(fileBytes) != uuidStr {
 		t.Fatalf("expected %s, got %s", uuidStr, string(fileBytes))
@@ -87,9 +78,7 @@ func testFileSinkMode(t *testing.T, log hclog.Logger) (*sink.SinkConfig, string)
 	}
 
 	s, err := NewFileSink(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config.Sink = s
 
 	return config, tmpDir
@@ -108,23 +97,17 @@ func TestFileSinkMode(t *testing.T) {
 	}
 
 	file, err := os.Open(path)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer file.Close()
 
 	fi, err := file.Stat()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if fi.Mode() != os.FileMode(0o644) {
 		t.Fatalf("wrong file mode was detected at %s", path)
 	}
 
 	fileBytes, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if string(fileBytes) != uuidStr {
 		t.Fatalf("expected %s, got %s", uuidStr, string(fileBytes))
@@ -145,9 +128,7 @@ func testFileSinkChown(t *testing.T, log hclog.Logger) (*sink.SinkConfig, string
 	}
 
 	s, err := NewFileSink(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config.Sink = s
 
 	return config, tmpDir
@@ -165,15 +146,11 @@ func TestFileSinkChown(t *testing.T) {
 	}
 
 	file, err := os.Open(path)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer file.Close() //nolint:errcheck
 
 	fi, err := file.Stat()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	stat := fi.Sys().(*syscall.Stat_t)
 	if stat.Uid != uint32(os.Getuid()) {
@@ -184,9 +161,7 @@ func TestFileSinkChown(t *testing.T) {
 	}
 
 	fileBytes, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if string(fileBytes) != uuidStr {
 		t.Fatalf("expected %s, got %s", uuidStr, string(fileBytes))

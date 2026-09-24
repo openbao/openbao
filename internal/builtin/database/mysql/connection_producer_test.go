@@ -16,6 +16,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/certhelpers"
 	"github.com/ory/dockertest/v4"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInit_clientTLS(t *testing.T) {
@@ -81,22 +82,16 @@ ssl-key=/etc/mysql/certs/server-key.pem`
 	defer cancel()
 
 	_, err := mysql.Init(ctx, conf, true)
-	if err != nil {
-		t.Fatalf("Unable to initialize mysql engine: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Initialization complete. The connection was established, but we need to ensure
 	// that we're connected as the right user
 	whoamiCmd := "SELECT CURRENT_USER()"
 
 	client, err := mysql.getConnection(ctx)
-	if err != nil {
-		t.Fatalf("Unable to make connection to MySQL: %s", err)
-	}
+	require.NoError(t, err)
 	stmt, err := client.Prepare(whoamiCmd)
-	if err != nil {
-		t.Fatalf("Unable to prepare MySQL statementL %s", err)
-	}
+	require.NoError(t, err)
 
 	results := stmt.QueryRow()
 
@@ -149,9 +144,7 @@ func startMySQLWithTLS(t *testing.T, version, confDir string) string {
 		defer db.Close()
 		return db.Ping()
 	})
-	if err != nil {
-		t.Fatalf("Could not connect to mysql docker container: %s", err)
-	}
+	require.NoError(t, err)
 
 	return dsn
 }
@@ -163,14 +156,10 @@ func connect(t *testing.T, dsn string) (db *sql.DB) {
 	})
 
 	db, err := sql.Open("mysql", url)
-	if err != nil {
-		t.Fatalf("Unable to make connection to MySQL: %s", err)
-	}
+	require.NoError(t, err)
 
 	err = db.Ping()
-	if err != nil {
-		t.Fatalf("Failed to ping MySQL server: %s", err)
-	}
+	require.NoError(t, err)
 
 	return db
 }
@@ -188,18 +177,12 @@ func setUpX509User(t *testing.T, db *sql.DB, cert certhelpers.Certificate) (user
 
 	for _, cmd := range cmds {
 		stmt, err := db.PrepareContext(ctx, cmd)
-		if err != nil {
-			t.Fatalf("Failed to prepare query: %s", err)
-		}
+		require.NoError(t, err)
 
 		_, err = stmt.ExecContext(ctx)
-		if err != nil {
-			t.Fatalf("Failed to create x509 user in database: %s", err)
-		}
+		require.NoError(t, err)
 		err = stmt.Close()
-		if err != nil {
-			t.Fatalf("Failed to close prepared statement: %s", err)
-		}
+		require.NoError(t, err)
 	}
 
 	return username
@@ -212,9 +195,7 @@ func writeFile(t *testing.T, filename string, data []byte, perms os.FileMode) {
 	t.Helper()
 
 	err := os.WriteFile(filename, data, perms)
-	if err != nil {
-		t.Fatalf("Unable to write to file [%s]: %s", filename, err)
-	}
+	require.NoErrorf(t, err, "Unable to write to file [%s]: %s", filename, err)
 }
 
 func Test_parseMultiHostDSN(t *testing.T) {
@@ -274,9 +255,7 @@ func Test_parseMultiHostDSN(t *testing.T) {
 			}
 
 			err := producer.parseMultiHostDSN()
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err)
-			}
+			require.NoError(t, err)
 
 			if !reflect.DeepEqual(producer.hosts, test.expectedHosts) {
 				t.Fatalf("hosts: got %v, expected %v", producer.hosts, test.expectedHosts)

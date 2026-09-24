@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
+	"github.com/stretchr/testify/require"
 )
 
 var defaultCustomHeaders = map[string]string{
@@ -60,9 +61,7 @@ func TestCustomResponseHeadersConfigs(t *testing.T) {
 	}
 
 	config, err := LoadConfigFile("./test-fixtures/config_custom_response_headers_1.hcl", nil)
-	if err != nil {
-		t.Fatalf("Error encountered when loading config %+v", err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(expectedCustomResponseHeader, config.Listeners[0].CustomResponseHeaders); diff != nil {
 		t.Fatalf("parsed custom headers do not match the expected ones, difference: %v", diff)
 	}
@@ -79,9 +78,7 @@ func TestCustomResponseHeadersConfigsMultipleListeners(t *testing.T) {
 	}
 
 	config, err := LoadConfigFile("./test-fixtures/config_custom_response_headers_multiple_listeners.hcl", nil)
-	if err != nil {
-		t.Fatalf("Error encountered when loading config %+v", err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(expectedCustomResponseHeader, config.Listeners[0].CustomResponseHeaders); diff != nil {
 		t.Fatalf("parsed custom headers do not match the expected ones, difference: %v", diff)
 	}

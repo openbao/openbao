@@ -212,9 +212,7 @@ plugin_download_behavior = "invalid_value"`,
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			config, err := ParseConfig(tt.configData, "test")
-			if err != nil {
-				t.Fatalf("Error parsing config: %v", err)
-			}
+			require.NoError(t, err)
 
 			errors := config.Validate("test")
 			hasError := len(errors) > 0

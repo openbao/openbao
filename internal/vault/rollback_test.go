@@ -41,9 +41,7 @@ func mockRollback(t *testing.T) (*RollbackManager, *be.Noop) {
 		},
 	}
 	meUUID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if err := router.Mount(backend, "foo", &routing.MountEntry{UUID: meUUID, Accessor: "noopaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view); err != nil {
 		t.Fatalf("err: %s", err)
@@ -363,7 +361,5 @@ func TestRollbackManager_Join(t *testing.T) {
 	wg.Wait()
 	close(errCh)
 	err := <-errCh
-	if err != nil {
-		t.Fatalf("Error on rollback:%v", err)
-	}
+	require.NoError(t, err)
 }

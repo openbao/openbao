@@ -53,52 +53,36 @@ func TestTransit_Issue_2958(t *testing.T) {
 			"file_path": "/dev/null",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = client.Sys().Mount("transit", &api.MountInput{
 		Type: "transit",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("transit/keys/foo", map[string]any{
 		"type": "ecdsa-p256",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("transit/keys/foobar", map[string]any{
 		"type": "ecdsa-p384",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("transit/keys/bar", map[string]any{
 		"type": "ed25519",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Read("transit/keys/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Read("transit/keys/foobar")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Read("transit/keys/bar")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestTransit_CreateKeyWithAutorotation(t *testing.T) {
@@ -155,16 +139,12 @@ func TestTransit_CreateKeyWithAutorotation(t *testing.T) {
 	err := client.Sys().Mount("transit", &api.MountInput{
 		Type: "transit",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			keyNameBytes, err := uuid.GenerateRandomBytes(16)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			keyName := hex.EncodeToString(keyNameBytes)
 
 			_, err = client.Logical().Write(fmt.Sprintf("transit/keys/%s", keyName), map[string]any{
@@ -179,9 +159,7 @@ func TestTransit_CreateKeyWithAutorotation(t *testing.T) {
 
 			if !test.shouldError {
 				resp, err := client.Logical().Read(fmt.Sprintf("transit/keys/%s", keyName))
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				if resp == nil {
 					t.Fatal("expected non-nil response")
 				}
@@ -190,9 +168,7 @@ func TestTransit_CreateKeyWithAutorotation(t *testing.T) {
 					t.Fatal("returned value is of unexpected type")
 				}
 				got, err := gotRaw.Int64()
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				want := int64(test.expectedValue.Seconds())
 				if got != want {
 					t.Fatalf("incorrect auto_rotate_period returned, got: %d, want: %d", got, want)

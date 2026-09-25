@@ -5,11 +5,13 @@ package command
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -71,6 +73,9 @@ type BaseCommand struct {
 	tokenHelper token.TokenHelper
 
 	client *api.Client
+
+	// Re-readable stdin contents, may be overridden by tests.
+	stdin func() ([]byte, error)
 }
 
 // Construct the HTTP API client, but do not set the token on it yet. This is to
@@ -729,12 +734,37 @@ func printFlagDetail(w io.Writer, f *flag.Flag) {
 	_, _ = fmt.Fprintf(w, "%s\n\n", indented)
 }
 
+// loadServerConfigPath loads the configuration at the given path. If the path
+// is "-", the configuration is read from stdin. Stdin is only read once, and
+// its content is reused on subsequent calls, e.g. on reload.
+func (c *BaseCommand) loadServerConfigPath(path string, allPaths []string) (*server.Config, error) {
+	if path != "-" {
+		return server.LoadConfig(path, allPaths)
+	}
+
+	if c.stdin == nil {
+		return nil, errors.New("reading configuration from stdin is not supported by this command")
+	}
+
+	d, err := c.stdin()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read configuration from stdin: %w", err)
+	}
+
+	return server.LoadConfigBytes(d, "stdin")
+}
+
 func (c *BaseCommand) ParseServerConfig(configFiles []string) (*server.Config, []configutil.ConfigError, error) {
+	// Stdin can only be read once.
+	if i := slices.Index(configFiles, "-"); i >= 0 && slices.Contains(configFiles[i+1:], "-") {
+		return nil, nil, errors.New(`configuration from stdin ("-") can only be specified once`)
+	}
+
 	var configErrors []configutil.ConfigError
 	// Load the configuration
 	var config *server.Config
 	for _, path := range configFiles {
-		current, err := server.LoadConfig(path, configFiles)
+		current, err := c.loadServerConfigPath(path, configFiles)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error loading configuration from %s: %w", path, err)
 		}

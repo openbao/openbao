@@ -4,8 +4,10 @@
 package command
 
 import (
+	"io"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/hashicorp/cli"
@@ -167,6 +169,10 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 			DefaultMount: "userpass",
 		},
 	}
+
+	stdin := sync.OnceValues(func() ([]byte, error) {
+		return io.ReadAll(os.Stdin)
+	})
 
 	getBaseCommand := func() *BaseCommand {
 		return &BaseCommand{
@@ -667,6 +673,7 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 					UI:          serverCmdUi,
 					tokenHelper: runOpts.TokenHelper,
 					flagAddress: runOpts.Address,
+					stdin:       stdin,
 				},
 				AuditBackends:      auditBackends,
 				CredentialBackends: credentialBackends,

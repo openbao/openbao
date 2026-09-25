@@ -52,7 +52,9 @@ flags](index.mdx) included on all commands.
   order; if duplicate content is present across multiple configuration files
   and the type of the top-level entry is not a list, the last present option
   wins. Otherwise, list types like listeners, of which multiple may be present,
-  are appended to the config.
+  are appended to the config. If the path is `-`, the configuration is read from
+  stdin. Stdin is read only once: on `SIGHUP`, the configuration read at startup
+  is reused, while configuration files are re-read from disk.
 
   The environment variable `BAO_CONFIG_PATH` may also be used to specify multiple
   configuration paths using a comma (,) as a separator.

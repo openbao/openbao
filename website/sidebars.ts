@@ -113,6 +113,9 @@ const sidebars: SidebarsConfig = {
                         "guides/upgrade/ha",
                         "guides/upgrade/plugins",
                     ],
+                    Migrations: [
+                        "guides/migrations/k8s-pebbledb"
+                    ]
                 },
             ],
             Configuration: [

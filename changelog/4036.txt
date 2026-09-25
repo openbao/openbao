@@ -1,0 +1,3 @@
+```release-note:bug
+api: Honor the error backoff interval after failed LifetimeWatcher renewal attempts.
+```

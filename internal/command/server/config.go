@@ -858,6 +858,17 @@ func LoadConfigFile(path string, allPaths []string) (cfg *Config, err error) {
 	return conf, nil
 }
 
+// LoadConfigBytes loads the configuration from the given content, e.g. read
+// from stdin. The source is only used to annotate warnings.
+func LoadConfigBytes(d []byte, source string) (*Config, error) {
+	conf, err := ParseConfig(string(d), source)
+	if err != nil {
+		return nil, err
+	}
+
+	return CheckConfig(conf, nil)
+}
+
 func ParseConfig(d, source string) (*Config, error) {
 	// Parse using the helper function that handles both HCL and JSON
 	obj, err := hclutil.ParseConfig([]byte(d))

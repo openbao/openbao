@@ -113,10 +113,6 @@ spec:
 
               # Migrate storage from "file" to "pebbledb"
               bao operator migrate -config=/openbao/config/migrate.hcl
-
-              # Remove old "file" backend files
-              rm -rf /openbao/data/file
-              echo "File storage backend files have been deleted successfully."
           volumeMounts:
             - { name: data,   mountPath: /openbao/data   }
             - { name: config, mountPath: /openbao/config }
@@ -171,7 +167,6 @@ $ kubectl -n openbao logs -f jobs/openbao-file-to-pebble
 2026-09-24T17:29:12.542Z [INFO]  copied key: path=sys/token/id/h4a9634b938e8645e7f3f34220cdf620160887fac0535b16fe54c5b924f28c041
 2026-09-24T17:29:12.542Z [INFO]  copied key: path=sys/token/accessor/2bf4deb8cf1864d0a90cfc3a9bdf69e26796858d
 Success! All of the keys have been migrated.
-File storage backend files have been deleted successfully.
 ```
 
 ### Upgrade OpenBao
@@ -231,4 +226,10 @@ After you successfully migrate OpenBao, clean up the migration resources:
 $ kubectl delete -f openbao-migrate-job.yml
 configmap "openbao-migrate-config" deleted from openbao namespace
 job.batch "openbao-file-to-pebble" deleted from openbao namespace
+```
+
+And finally delete the old files:
+
+```shell-session
+$ kubectl exec -f openbao-0 -- rm -rf /openbao/data/file
 ```

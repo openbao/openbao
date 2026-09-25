@@ -87,3 +87,11 @@ Both features can be used together. To temporarily block API requests to a names
 
 Sealable namespaces currently only support Shamir seals. Auto-unsealing support is
 planned, but not yet implemented. Contributions towards this are welcome.
+
+## Namespace Barrier Migration
+
+When migrating a namespace, all namespace data and its unsealable child namespaces will be re-encrypted with a new barrier. Any sealable child namespaces and their namespaces will remain unaffected.
+
+If a migration fails, the namespace remains in a tainted state and can not be accessed by normal operations. In this case, the migration can be retried and will continue where it left off. After the successful migration, the namespace is untainted and will be accessible by normal operations again.
+
+Migrating a normal namespace to a sealable namespace will leave the namespace unsealed after migration.

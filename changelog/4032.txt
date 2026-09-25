@@ -1,0 +1,6 @@
+```release-note:improvement
+api: Support the `BAO_HEADERS` environment variable to add custom HTTP headers to each API request.
+```
+```release-note:improvement
+command: Support the `BAO_HEADERS` environment variable to add custom HTTP headers to avoid needing to supply `-header` with each CLI invocation.
+```

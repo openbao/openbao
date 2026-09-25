@@ -154,7 +154,7 @@ func (b *databaseBackend) secretCredsRevoke() framework.OperationFunc {
 			if statementsRaw != nil {
 				statementsSlice, ok := statementsRaw.([]any)
 				if !ok {
-					return nil, fmt.Errorf("error during revoke: could not find role with name %q and embedded reovcation data could not be read", req.Secret.InternalData["role"])
+					return nil, fmt.Errorf("error during revoke: could not find role with name %q and embedded revocation data could not be read", req.Secret.InternalData["role"])
 				}
 				for _, v := range statementsSlice {
 					statements.Revocation = append(statements.Revocation, v.(string))

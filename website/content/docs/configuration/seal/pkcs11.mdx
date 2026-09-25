@@ -25,6 +25,8 @@ mechanism. OpenBao's PKCS#11 support is activated by one of the following:
   variable, all other required values (i.e. `BAO_HSM_SLOT`) must be also
   supplied.
 
+For a detailed tutorial, see the [PKCS#11 auto-unsealing guide](../../guides/unseal/pkcs11/generic.mdx).
+
 :::info
 
 Unlike Vault Enterprise, OpenBao requires key material to be created externally
@@ -178,13 +180,3 @@ the key value, generate a new key in a different key label in the HSM and update
 configuration with the new key label value. Restart your OpenBao instance to pick up the new key
 label and all new encryption operations will use the updated key label. Old keys must not be disabled
 or deleted and are used to decrypt older data.
-
-## Tested HSM Vendors and Models
-
-| Vendor       | Model               | Unsealing   | Installation Guide                                         |
-| ------------ | --------------------| ------------| -----------------------------------------------------------|
-| Securosys SA | Primus HSM          | Yes         | [Installation Guide](../../guides/unseal/pkcs11/securosys.mdx) |
-| Utimaco      | u.trust GP HSM      | Yes         | [Installation Guide](../../guides/unseal/pkcs11/utimaco.mdx)   |
-| Utimaco      | CryptoServer CP5    | Yes         | [Installation Guide](../../guides/unseal/pkcs11/utimaco.mdx)   |
-| DuoKey SA    | DuoKey SD-HSM       | Yes         | [Installation Guide](../../guides/unseal/pkcs11/duokey.mdx)    |
-| Nitrokey     | NetHSM              | Yes         | [Installation Guide](../../guides/unseal/pkcs11/nitrokey.mdx)  |

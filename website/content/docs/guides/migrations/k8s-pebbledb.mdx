@@ -52,7 +52,7 @@ We recommend having at least 60% free space available.
 
 ## Migrate
 
-### Shutdown OpenBao
+### Shut down OpenBao
 
 :::warning
 Disable automatic syncing tools such as Flux or Argo CD.
@@ -124,7 +124,7 @@ spec:
             name: openbao-migrate-config
 ```
 
-This job creates a pod with the OpenBao 2.7.0 container image.
+This job creates a Pod with the OpenBao 2.7.0 container image.
 
 It runs the [`openbao operator migrate`](commands/operator/migrate.mdx) command
 with the configuration deployed as a ConfigMap.
@@ -174,7 +174,7 @@ File storage backend files have been deleted successfully.
 After the migration, upgrade your OpenBao Helm deployment to version 0.30.0
 and OpenBao 2.7.0 or later.
 
-If your helm value overrides include the storage configuration,
+If your Helm value overrides include the storage configuration,
 update it to pebbledb:
 
 ```yml
@@ -190,7 +190,8 @@ $ kubectl -n openbao scale --replicas=1 sts/openbao
 statefulset.apps/openbao scaled
 ```
 
-Verify that OpenBao is running with `pebbledb` as its storage type:
+Verify that OpenBao is running with `pebbledb` as its storage type
+and unsealing was successful:
 
 ```bash
 $ kubectl -n openbao exec openbao-0 -- bao status
@@ -209,7 +210,15 @@ Cluster ID      210c60e0-d2cd-0ae0-f816-f412748610dc
 HA Enabled      false
 ```
 
+Also, ensure that all the secrets were migrated by checking their integrity
+within OpenBao.
+
 ### Clean up
+
+:::tip
+We recommend creating a new backup now and deleting the old one,
+as it cannot be used going forward.
+:::
 
 After you successfully migrate OpenBao, clean up the migration resources:
 

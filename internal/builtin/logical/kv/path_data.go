@@ -695,10 +695,14 @@ func (k *KeyMetadata) AddVersion(createdTime, deletionTime *timestamppb.Timestam
 	}
 
 	var maxVersions uint32
-	switch {
-	case max(k.MaxVersions, configMaxVersions) > 0:
-		maxVersions = max(k.MaxVersions, configMaxVersions)
-	default:
+	if k.MaxVersions > 0 {
+		// Key metadata takes highest precedence
+		maxVersions = k.MaxVersions
+	} else if configMaxVersions > 0 {
+		// Fallback to engine configuration if key is 0 (unset)
+		maxVersions = configMaxVersions
+	} else {
+		// Fallback to default if neither are set
 		maxVersions = defaultMaxVersions
 	}
 

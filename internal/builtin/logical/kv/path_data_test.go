@@ -1138,3 +1138,365 @@ func TestVersionedKV_Patch_CurrentVersionDestroyed(t *testing.T) {
 		t.Fatalf("Expected 404 status code for destroyed version: resp:%#v\n", resp)
 	}
 }
+
+func TestVersionedKV_Data_Put_CleanupOldVersions_EntryLowerThanMount(t *testing.T) {
+	b, storage := getBackend(t)
+
+	config := map[string]any{
+		"max_versions": 5,
+	}
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "config",
+		Storage:   storage,
+		Data:      config,
+	}
+	resp, err := b.HandleRequest(t.Context(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("CreateOperation request for config failed - err:%s resp:%#v\n", err, resp)
+	}
+
+	for i := range 5 {
+		data := map[string]any{
+			"data": map[string]any{
+				"bar": fmt.Sprintf("baz%d", i),
+			},
+		}
+
+		req = &logical.Request{
+			Operation: logical.CreateOperation,
+			Path:      "data/foo",
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err = b.HandleRequest(t.Context(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("CreateOperation request for data failed - err:%s resp:%#v\n", err, resp)
+		}
+
+		expectedVersion := uint64(i + 1)
+		if actualVersion := resp.Data["version"]; actualVersion != expectedVersion {
+			t.Fatalf("expected version %d but received %d, resp: %#v\n", expectedVersion, actualVersion, resp)
+		}
+	}
+
+	// lower max_versions on the specific entry metadata (lower than mount limit)
+	metadata := map[string]any{
+		"max_versions": 2,
+	}
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+		Data:      metadata,
+	}
+	resp, err = b.HandleRequest(t.Context(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("CreateOperation request for metadata failed - err:%s resp:%#v\n", err, resp)
+	}
+
+	// Write another version to trigger cleanup logic
+	data := map[string]any{
+		"data": map[string]any{
+			"bar": "baz6",
+		},
+	}
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "data/foo",
+		Storage:   storage,
+		Data:      data,
+	}
+	resp, err = b.HandleRequest(t.Context(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("CreateOperation request for data failed - err:%s resp:%#v\n", err, resp)
+	}
+
+	expectedVersion := uint64(6)
+	if actualVersion := resp.Data["version"]; actualVersion != expectedVersion {
+		t.Fatalf("expected version %d but received %d, resp: %#v", expectedVersion, actualVersion, resp)
+	}
+
+	for i := 1; i <= 6; i++ {
+		versionKey, err := b.(*versionedKVBackend).getVersionKey(t.Context(), "foo", uint64(i), storage)
+		if err != nil {
+			t.Fatalf("error getting version key for version %d, err: %#v\n", i, err)
+		}
+
+		v, err := storage.Get(t.Context(), versionKey)
+		if err != nil {
+			t.Fatalf("error getting entry for key %s, err: %#v\n", versionKey, err)
+		}
+
+		// because max_versions is 2, only versions 5 and 6 should exist
+		if i <= 4 {
+			if v != nil {
+				t.Fatalf("version %d not cleaned up, it should have been deleted because of entry-level max_versions", i)
+			}
+		} else {
+			if v == nil {
+				t.Fatalf("version %d was unexpectedly deleted, it should have been kept", i)
+			}
+		}
+	}
+}
+
+func TestVersionedKV_Data_Put_CleanupOldVersions_EntryGreaterThanMount(t *testing.T) {
+	b, storage := getBackend(t)
+
+	config := map[string]any{
+		"max_versions": 2,
+	}
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "config",
+		Storage:   storage,
+		Data:      config,
+	}
+	resp, err := b.HandleRequest(t.Context(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("CreateOperation request for config failed - err:%s resp:%#v\n", err, resp)
+	}
+
+	metadata := map[string]any{
+		"max_versions": 5,
+	}
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+		Data:      metadata,
+	}
+	resp, err = b.HandleRequest(t.Context(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("CreateOperation request for metadata failed - err:%s resp:%#v\n", err, resp)
+	}
+
+	for i := range 6 {
+		data := map[string]any{
+			"data": map[string]any{
+				"bar": fmt.Sprintf("baz%d", i),
+			},
+		}
+
+		req = &logical.Request{
+			Operation: logical.CreateOperation,
+			Path:      "data/foo",
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err = b.HandleRequest(t.Context(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("CreateOperation request for data failed - err:%s resp:%#v\n", err, resp)
+		}
+
+		expectedVersion := uint64(i + 1)
+		if actualVersion := resp.Data["version"]; actualVersion != expectedVersion {
+			t.Fatalf("expected version %d but received %d, resp: %#v\n", expectedVersion, actualVersion, resp)
+		}
+	}
+
+	for i := 1; i <= 6; i++ {
+		versionKey, err := b.(*versionedKVBackend).getVersionKey(t.Context(), "foo", uint64(i), storage)
+		if err != nil {
+			t.Fatalf("error getting version key for version %d, err: %#v\n", i, err)
+		}
+
+		v, err := storage.Get(t.Context(), versionKey)
+		if err != nil {
+			t.Fatalf("error getting entry for key %s, err: %#v\n", versionKey, err)
+		}
+
+		if i <= 1 {
+			if v != nil {
+				t.Fatalf("version %d not cleaned up, it should have been deleted because of entry-level max_versions", i)
+			}
+		} else {
+			if v == nil {
+				t.Fatalf("version %d was unexpectedly deleted, it should have been kept", i)
+			}
+		}
+	}
+}
+
+func TestVersionedKV_Data_Patch_CleanupOldVersions_EntryLowerThanMount(t *testing.T) {
+	b, storage := getBackend(t)
+
+	config := map[string]any{
+		"max_versions": 5,
+	}
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "config",
+		Storage:   storage,
+		Data:      config,
+	}
+	resp, err := b.HandleRequest(t.Context(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("CreateOperation request for config failed - err:%s resp:%#v\n", err, resp)
+	}
+
+	for i := range 5 {
+		data := map[string]any{
+			"data": map[string]any{
+				"bar": fmt.Sprintf("baz%d", i),
+			},
+		}
+
+		req = &logical.Request{
+			Operation: logical.CreateOperation,
+			Path:      "data/foo",
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err = b.HandleRequest(t.Context(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("CreateOperation request for data failed - err:%s resp:%#v\n", err, resp)
+		}
+
+		expectedVersion := uint64(i + 1)
+		if actualVersion := resp.Data["version"]; actualVersion != expectedVersion {
+			t.Fatalf("expected version %d but received %d, resp: %#v\n", expectedVersion, actualVersion, resp)
+		}
+	}
+
+	metadata := map[string]any{
+		"max_versions": 2,
+	}
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+		Data:      metadata,
+	}
+	resp, err = b.HandleRequest(t.Context(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("CreateOperation request for metadata failed - err:%s resp:%#v\n", err, resp)
+	}
+
+	data := map[string]any{
+		"data": map[string]any{
+			"bar": "baz6",
+		},
+	}
+	req = &logical.Request{
+		Operation: logical.PatchOperation,
+		Path:      "data/foo",
+		Storage:   storage,
+		Data:      data,
+	}
+	resp, err = b.HandleRequest(t.Context(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("PatchOperation request for data failed - err:%s resp:%#v\n", err, resp)
+	}
+
+	expectedVersion := uint64(6)
+	if actualVersion := resp.Data["version"]; actualVersion != expectedVersion {
+		t.Fatalf("expected version %d but received %d, resp: %#v", expectedVersion, actualVersion, resp)
+	}
+
+	for i := 1; i <= 6; i++ {
+		versionKey, err := b.(*versionedKVBackend).getVersionKey(t.Context(), "foo", uint64(i), storage)
+		if err != nil {
+			t.Fatalf("error getting version key for version %d, err: %#v\n", i, err)
+		}
+
+		v, err := storage.Get(t.Context(), versionKey)
+		if err != nil {
+			t.Fatalf("error getting entry for key %s, err: %#v\n", versionKey, err)
+		}
+
+		// because max_versions is 2, only versions 5 and 6 should exist
+		if i <= 4 {
+			if v != nil {
+				t.Fatalf("version %d not cleaned up, it should have been deleted because of entry-level max_versions", i)
+			}
+		} else {
+			if v == nil {
+				t.Fatalf("version %d was unexpectedly deleted, it should have been kept", i)
+			}
+		}
+	}
+}
+
+func TestVersionedKV_Data_Patch_CleanupOldVersions_EntryGreaterThanMount(t *testing.T) {
+	b, storage := getBackend(t)
+
+	config := map[string]any{
+		"max_versions": 2,
+	}
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "config",
+		Storage:   storage,
+		Data:      config,
+	}
+	resp, err := b.HandleRequest(t.Context(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("CreateOperation request for config failed - err:%s resp:%#v\n", err, resp)
+	}
+
+	metadata := map[string]any{
+		"max_versions": 5,
+	}
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+		Data:      metadata,
+	}
+	resp, err = b.HandleRequest(t.Context(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("CreateOperation request for metadata failed - err:%s resp:%#v\n", err, resp)
+	}
+
+	for i := 1; i < 6; i++ {
+		data := map[string]any{
+			"data": map[string]any{
+				"bar": fmt.Sprintf("baz%d", i),
+			},
+		}
+
+		req = &logical.Request{
+			Operation: logical.PatchOperation,
+			Path:      "data/foo",
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err = b.HandleRequest(t.Context(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("PatchOperation request for data failed - err:%s resp:%#v\n", err, resp)
+		}
+
+		expectedVersion := uint64(i + 1)
+		if actualVersion := resp.Data["version"]; actualVersion != expectedVersion {
+			t.Fatalf("expected version %d but received %d, resp: %#v\n", expectedVersion, actualVersion, resp)
+		}
+	}
+
+	for i := 1; i <= 6; i++ {
+		versionKey, err := b.(*versionedKVBackend).getVersionKey(t.Context(), "foo", uint64(i), storage)
+		if err != nil {
+			t.Fatalf("error getting version key for version %d, err: %#v\n", i, err)
+		}
+
+		v, err := storage.Get(t.Context(), versionKey)
+		if err != nil {
+			t.Fatalf("error getting entry for key %s, err: %#v\n", versionKey, err)
+		}
+
+		if i <= 1 {
+			if v != nil {
+				t.Fatalf("version %d not cleaned up, it should have been deleted because of entry-level max_versions", i)
+			}
+		} else {
+			if v == nil {
+				t.Fatalf("version %d was unexpectedly deleted, it should have been kept", i)
+			}
+		}
+	}
+}

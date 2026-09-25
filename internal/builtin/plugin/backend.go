@@ -29,10 +29,6 @@ var (
 // Factory returns a configured plugin logical.Backend.
 func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
 	merr := &multierror.Error{}
-	_, ok := conf.Config["plugin_name"]
-	if !ok {
-		return nil, errors.New("plugin_name not provided")
-	}
 	b, err := v5.Backend(ctx, conf)
 	if err == nil {
 		if err := b.Setup(ctx, conf); err != nil {

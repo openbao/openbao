@@ -80,10 +80,10 @@ metadata:
 data:
   migrate.hcl: |
     storage_source "file" {
-      path = "/openbao/data"
+      path = "/openbao/data/file"
     }
     storage_destination "pebbledb" {
-      path = "/openbao/data"
+      path = "/openbao/data/pebbledb"
     }
 ---
 apiVersion: batch/v1
@@ -106,11 +106,16 @@ spec:
           command: ["/bin/sh", "-eu", "-c"]
           args:
             - |
+              # Move files into sub-directory
+              mkdir -p /openbao/data/file /openbao/data/pebbledb
+              find /openbao/data -mindepth 1 -maxdepth 1 ! -name file \
+                -exec mv -t /openbao/data/file/ {} +
+
               # Migrate storage from "file" to "pebbledb"
               bao operator migrate -config=/openbao/config/migrate.hcl
 
               # Remove old "file" backend files
-              rm -rf /openbao/data/core /openbao/data/logical /openbao/data/sys
+              rm -rf /openbao/data/file
               echo "File storage backend files have been deleted successfully."
           volumeMounts:
             - { name: data,   mountPath: /openbao/data   }
@@ -175,11 +180,11 @@ After the migration, upgrade your OpenBao Helm deployment to version 0.30.0
 and OpenBao 2.7.0 or later.
 
 If your Helm value overrides include the storage configuration,
-update it to pebbledb:
+update it to pebbledb and adjust the path:
 
 ```yml
 storage "pebbledb" {
-  path = "/openbao/data"
+  path = "/openbao/data/pebbledb"
 }
 ```
 

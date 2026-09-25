@@ -42,7 +42,7 @@ maintenance window to your users.
 During migration, data is temporarily stored in both `file` and `pebbledb`
 formats. Verify that you have enough disk space available:
 
-```bash
+```shell-session
 $ kubectl -n openbao exec -it openbao-0 -- df -h /openbao/data
 Filesystem      Size  Used Avail Use% Mounted on
 /dev/sdb        9.8G  280K  9.8G   1% /openbao/data
@@ -60,7 +60,7 @@ Disable automatic syncing tools such as Flux or Argo CD.
 
 OpenBao must not be running during the migration.
 
-```bash
+```shell-session
 $ kubectl -n openbao scale --replicas=0 sts/openbao
 statefulset.apps/openbao scaled
 $ kubectl -n openbao wait --for=deleted pod/openbao-0
@@ -131,7 +131,7 @@ with the configuration deployed as a ConfigMap.
 
 Run the migration job:
 
-```bash
+```shell-session
 $ kubectl -n openbao apply -f openbao-migrate-job.yml
 configmap/openbao-migrate-config created
 job.batch/openbao-file-to-pebble created
@@ -139,7 +139,7 @@ job.batch/openbao-file-to-pebble created
 
 Wait for the migration job to finish and check its logs:
 
-```bash
+```shell-session
 $ kubectl -n openbao logs -f jobs/openbao-file-to-pebble
 2026-09-24T17:29:12.526Z [WARN]  the file physical backend is deprecated; use bao operator migrate to move to a supported storage backend by v2.7.0
 2026-09-24T17:29:12.538Z [INFO]  copied key: path=core/local-mounts
@@ -185,7 +185,7 @@ storage "pebbledb" {
 
 The upgrade should scale OpenBao back up to one Pod. If it doesn't, do it manually:
 
-```bash
+```shell-session
 $ kubectl -n openbao scale --replicas=1 sts/openbao
 statefulset.apps/openbao scaled
 ```
@@ -193,7 +193,7 @@ statefulset.apps/openbao scaled
 Verify that OpenBao is running with `pebbledb` as its storage type
 and unsealing was successful:
 
-```bash
+```shell-session
 $ kubectl -n openbao exec openbao-0 -- bao status
 Key             Value
 ---             -----
@@ -222,7 +222,7 @@ as it cannot be used going forward.
 
 After you successfully migrate OpenBao, clean up the migration resources:
 
-```bash
+```shell-session
 $ kubectl delete -f openbao-migrate-job.yml
 configmap "openbao-migrate-config" deleted from openbao namespace
 job.batch "openbao-file-to-pebble" deleted from openbao namespace

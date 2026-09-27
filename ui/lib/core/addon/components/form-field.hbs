@@ -4,7 +4,7 @@
     <FormFieldLabel
       for={{@attr.name}}
       @label={{this.labelString}}
-      @helpText={{(if this.showHelpText @attr.options.helpText)}}
+      @helpText={{if this.showHelpText @attr.options.helpText}}
       @subText={{@attr.options.subText}}
       @docLink={{@attr.options.docLink}}
     />
@@ -21,7 +21,7 @@
               value={{or val.value val}}
               @value={{or val.value val}}
               @onChange={{this.setAndBroadcast}}
-              @groupValue={{(get @model this.valuePath)}}
+              @groupValue={{get @model this.valuePath}}
               @disabled={{and @attr.options.editDisabled (not @model.isNew)}}
             />
             <label for={{or val.value val}} class="has-left-margin-xs">

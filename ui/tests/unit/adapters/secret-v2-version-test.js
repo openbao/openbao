@@ -95,6 +95,7 @@ module('Unit | Adapter | secret-v2-version', function (hooks) {
           `${adapterMethod} uses the correct http verb: ${expectedHttpVerb}`
         );
         if (exptectedRequestBody) {
+          // eslint-disable-next-line qunit/no-conditional-assertions
           assert.deepEqual(JSON.parse(requestBody), exptectedRequestBody);
         }
       });

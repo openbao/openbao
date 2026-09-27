@@ -1,6 +1,5 @@
 <div
-  {{did-insert (perform this.fetchOptions)}}
-  {{did-update (perform this.fetchOptions) (or @options @models)}}
+  {{invoke (perform this.fetchOptions) (or @options @models) onUpdate=(array @options @models)}}
   id={{@id}}
   class="field search-select {{if @displayInherit 'display-inherit'}}"
   data-test-component="search-select"

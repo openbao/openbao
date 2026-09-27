@@ -80,20 +80,24 @@ module('Acceptance | auth', function (hooks) {
       const lastRequest = this.server.passthroughRequests[this.server.passthroughRequests.length - 1];
       let body = JSON.parse(lastRequest.requestBody);
       // Note: x-vault-token used to be lowercase prior to upgrade
+      let assertion;
+      let message;
       if (backend.type === 'token') {
-        assert.ok(
-          Object.keys(lastRequest.requestHeaders).includes('X-Vault-Token'),
-          'token uses OpenBao token header'
-        );
+        assertion = Object.keys(lastRequest.requestHeaders).includes('X-Vault-Token');
+        message = 'token uses OpenBao token header';
       } else if (backend.type === 'github') {
-        assert.ok(Object.keys(body).includes('token'), 'GitHub includes token');
+        assertion = Object.keys(body).includes('token');
+        message = 'GitHub includes token';
       } else if (backend.type === 'jwt' || backend.type === 'oidc') {
         const authReq = this.server.passthroughRequests[this.server.passthroughRequests.length - 2];
         body = JSON.parse(authReq.requestBody);
-        assert.ok(Object.keys(body).includes('role'), `${backend.type} includes role`);
+        assertion = Object.keys(body).includes('role');
+        message = `${backend.type} includes role`;
       } else {
-        assert.ok(Object.keys(body).includes('password'), `${backend.type} includes password`);
+        assertion = Object.keys(body).includes('password');
+        message = `${backend.type} includes password`;
       }
+      assert.ok(assertion, message);
     }
   });
 

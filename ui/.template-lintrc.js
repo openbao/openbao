@@ -39,6 +39,7 @@ module.exports = {
     'require-input-label': 'off',
     'no-array-prototype-extensions': 'off',
     'no-unsupported-role-attributes': 'off',
+    'no-builtin-form-components': 'off',
   },
   ignore: ['lib/story-md', 'tests/**'],
   // ember language server vscode extension does not currently respect the ignore field

@@ -4,6 +4,7 @@
 package command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -1531,4 +1532,161 @@ func createTokenForPolicy(t *testing.T, client *api.Client, policy string) (*api
 	}
 
 	return secret.Auth, err
+}
+
+func testKVSubkeysCommand(tb testing.TB) (*cli.MockUi, *KVSubkeysCommand) {
+	tb.Helper()
+
+	ui := cli.NewMockUi()
+	return ui, &KVSubkeysCommand{
+		BaseCommand: &BaseCommand{
+			UI: &VaultUI{
+				Ui:     ui,
+				format: "json",
+			},
+		},
+	}
+}
+
+func TestKVSubkeysCommand(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name         string
+		args         []string
+		outStrings   []string
+		expectedData map[string]any
+		code         int
+	}{
+		{
+			name:       "not_enough_args",
+			args:       []string{},
+			outStrings: []string{"Not enough arguments"},
+			code:       1,
+		},
+		{
+			name:       "too_many_args",
+			args:       []string{"foo", "bar"},
+			outStrings: []string{"Too many arguments"},
+			code:       1,
+		},
+		{
+			name:       "v1_not_supported",
+			args:       []string{"secret/read/foo"},
+			outStrings: []string{"Subkeys require KV Version 2"},
+			code:       1,
+		},
+		{
+			name:       "v2_not_found",
+			args:       []string{"kv/missing"},
+			outStrings: []string{"No value found at kv/subkeys/missing"},
+			code:       2,
+		},
+		{
+			name: "v2_read",
+			args: []string{"kv/read/foo"},
+			expectedData: map[string]any{
+				"foo": nil,
+				"nested": map[string]any{
+					"bar": nil,
+				},
+			},
+			code: 0,
+		},
+		{
+			name: "v2_mount_flag_syntax",
+			args: []string{"-mount", "kv", "read/foo"},
+			expectedData: map[string]any{
+				"foo": nil,
+				"nested": map[string]any{
+					"bar": nil,
+				},
+			},
+			code: 0,
+		},
+		{
+			name: "v2_read_version",
+			args: []string{"-version", "1", "kv/read/foo"},
+			expectedData: map[string]any{
+				"old": nil,
+			},
+			code: 0,
+		},
+		{
+			name: "v2_read_depth",
+			args: []string{"-depth", "1", "kv/read/foo"},
+			expectedData: map[string]any{
+				"foo":    nil,
+				"nested": nil,
+			},
+			code: 0,
+		},
+	}
+
+	t.Run("validations", func(t *testing.T) {
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+
+				client, closer := testVaultServer(t)
+				defer closer()
+
+				if err := client.Sys().Mount("kv/", &api.MountInput{
+					Type: "kv-v2",
+				}); err != nil {
+					t.Fatal(err)
+				}
+
+				require.EventuallyWithT(t, func(t *assert.CollectT) {
+					config, err := client.Logical().Read("kv/config")
+					require.NoError(t, err)
+					require.NotNil(t, config)
+				}, 10*time.Second, 10*time.Millisecond,
+					"timed out waiting for KV v2")
+
+				if _, err := client.Logical().Write("kv/data/read/foo", map[string]any{
+					"data": map[string]any{
+						"old": "bar",
+					},
+				}); err != nil {
+					t.Fatal(err)
+				}
+
+				if _, err := client.Logical().Write("kv/data/read/foo", map[string]any{
+					"data": map[string]any{
+						"foo": "bar",
+						"nested": map[string]any{
+							"bar": "baz",
+						},
+					},
+				}); err != nil {
+					t.Fatal(err)
+				}
+
+				ui, cmd := testKVSubkeysCommand(t)
+				cmd.client = client
+
+				code := cmd.Run(tc.args)
+				combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
+
+				if code != tc.code {
+					t.Fatalf("expected exit code %d, got %d: %s",
+						tc.code, code, combined)
+				}
+
+				for _, str := range tc.outStrings {
+					if !strings.Contains(combined, str) {
+						t.Errorf("expected %q to contain %q", combined, str)
+					}
+				}
+
+				if tc.code == 0 {
+					var actual map[string]any
+					err := json.Unmarshal([]byte(ui.OutputWriter.String()), &actual)
+					require.NoError(t, err)
+					require.Equal(t, tc.expectedData, actual)
+				}
+			})
+		}
+	})
 }

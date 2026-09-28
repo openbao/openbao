@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	subkeysAPIPath           = "subkeys"
-	subkeysResponseDataField = "subkeys"
+	subkeysAPIPath               = "subkeys"
+	subkeysResponseDataField     = "subkeys"
+	subkeysResponseMetadataField = "metadata"
 )
 
 var (
@@ -187,13 +188,39 @@ func (c *KVSubkeysCommand) Run(args []string) int {
 		return OutputSecret(c.UI, secret)
 	}
 
-	printWarnings(c.UI, secret)
-
-	subkeys, ok := secret.Data[subkeysResponseDataField]
-	if !ok || subkeys == nil {
+	subkeysRaw, ok := secret.Data[subkeysResponseDataField]
+	if !ok || subkeysRaw == nil {
 		c.UI.Error(fmt.Sprintf("No subkeys found at %s", fullPath))
 		return 2
 	}
 
-	return OutputData(c.UI, subkeys)
+	if Format(c.UI) != "table" {
+		return OutputSecret(c.UI, secret)
+	}
+
+	printWarnings(c.UI, secret)
+	outputPath(c.UI, fullPath, "Secret Path")
+
+	metadata, ok := secret.Data[subkeysResponseMetadataField].(map[string]any)
+	if ok && metadata != nil {
+		c.UI.Info(getHeaderForMap("Metadata", metadata))
+		if code := OutputData(c.UI, metadata); code != 0 {
+			return code
+		}
+		c.UI.Info("")
+	}
+
+	subkeys, ok := subkeysRaw.(map[string]any)
+	if !ok {
+		c.UI.Error("Expected subkeys field in response to be a map")
+		return 2
+	}
+	if subkeys != nil {
+		c.UI.Info(getHeaderForMap("Subkeys", subkeys))
+		if code := OutputData(c.UI, subkeys); code != 0 {
+			return code
+		}
+	}
+
+	return 0
 }

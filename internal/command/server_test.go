@@ -309,62 +309,28 @@ func TestServer(t *testing.T) {
 	}
 }
 
-// testStdin mimics the lazy and memoized stdin set up in initCommands.
-func testStdin(content string) func() ([]byte, error) {
-	return func() ([]byte, error) {
-		return []byte(content), nil
+// TestServer_ConfigStdin verifies that the server config is read via
+// BaseCommand.stdin repeatedly if passed a file path of "-".
+func TestServer_ConfigStdin(t *testing.T) {
+	_, cmd := testServerCommand(t)
+	cmd.stdin = func() ([]byte, error) {
+		return []byte(testBaseHCL(t, "")), nil
 	}
-}
 
-// TestServer_ParseServerConfigStdin mocks stdin with a reader to check:
-// - read once for real and then delivers cached content on reload
-// - refuses to be used twice
-func TestServer_ParseServerConfigStdin(t *testing.T) {
-	t.Parallel()
+	configFile := path.Join(t.TempDir(), "config.hcl")
+	require.NoError(t, os.WriteFile(configFile, []byte(inmemHCL), 0o600))
+	config, _, err := cmd.ParseServerConfig([]string{"-", configFile})
+	require.NoError(t, err)
+	require.Len(t, config.Listeners, 1)
+	require.Equal(t, "inmem_ha", config.Storage.Type)
 
-	t.Run("stdin", func(t *testing.T) {
-		t.Parallel()
-
-		_, cmd := testServerCommand(t)
-		cmd.stdin = testStdin(testBaseHCL(t, "") + inmemHCL)
-
-		config, _, err := cmd.ParseServerConfig([]string{"-"})
-		require.NoError(t, err)
-		require.Len(t, config.Listeners, 1)
-		require.Equal(t, "inmem_ha", config.Storage.Type)
-
-		// Stdin is exhausted by now, so its cached content must be reused,
-		// as happens on reload (SIGHUP) => run ParseServerConfig again
-		config, _, err = cmd.ParseServerConfig([]string{"-"})
-		require.NoError(t, err)
-		require.Len(t, config.Listeners, 1)
-		require.Equal(t, "inmem_ha", config.Storage.Type)
-	})
-
-	t.Run("stdin-and-file", func(t *testing.T) {
-		t.Parallel()
-
-		_, cmd := testServerCommand(t)
-		cmd.stdin = testStdin(testBaseHCL(t, ""))
-
-		configFile := path.Join(t.TempDir(), "config.hcl")
-		require.NoError(t, os.WriteFile(configFile, []byte(inmemHCL), 0o600))
-
-		config, _, err := cmd.ParseServerConfig([]string{"-", configFile})
-		require.NoError(t, err)
-		require.Len(t, config.Listeners, 1)
-		require.Equal(t, "inmem_ha", config.Storage.Type)
-
-		// Stdin is exhausted by now, so its cached content must be reused,
-		// but real file must be reloaded, with new content
-		// as happens on reload (SIGHUP) => run ParseServerConfig again
-		require.NoError(t, os.WriteFile(configFile, []byte(inmemNoHaHCL), 0o600))
-
-		newConfig, _, err := cmd.ParseServerConfig([]string{"-", configFile})
-		require.NoError(t, err)
-		require.Len(t, newConfig.Listeners, 1)
-		require.Equal(t, "inmem", newConfig.Storage.Type)
-	})
+	// On second parse (as is triggered by runtime config reloads via SIGHUP),
+	// we expect to reuse stdin contents but reload file contents.
+	require.NoError(t, os.WriteFile(configFile, []byte(inmemNoHaHCL), 0o600))
+	newConfig, _, err := cmd.ParseServerConfig([]string{"-", configFile})
+	require.NoError(t, err)
+	require.Len(t, newConfig.Listeners, 1)
+	require.Equal(t, "inmem", newConfig.Storage.Type)
 }
 
 // TestServer_DevTLS verifies that a vault server starts up correctly with the -dev-tls flag

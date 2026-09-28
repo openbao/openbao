@@ -261,5 +261,5 @@ func (c *KeyRotationConfig) Sanitize() {
 }
 
 func (c *KeyRotationConfig) Equals(config KeyRotationConfig) bool {
-	return c.MaxOperations == config.MaxOperations && c.Interval == config.Interval
+	return c.MaxOperations == config.MaxOperations && c.Interval == config.Interval && c.Disabled == config.Disabled
 }

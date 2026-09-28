@@ -8,6 +8,9 @@
 
 set -euo pipefail
 
+GITHUB_REPOSITORY=${GITHUB_REPOSITORY:-openbao/openbao}
+GITHUB_WORKFLOW="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml"
+
 cd dist
 
 # Avoid signing any existing signatures.
@@ -24,13 +27,25 @@ while read -r f; do
         "$f" <<< "$GPG_PASSWORD"
 
     gpg \
-        --batch\
+        --batch \
         --verify \
         "${f}.gpgsig" \
         "$f"
 done <<< "$artifacts"
 
 echo "Signing w/ cosign..."
+
+case "$GITHUB_REPOSITORY" in
+    openbao/openbao)
+        # If on the main repository, strictly limit to main and release
+        # branches.
+        IDENTITY_REGEXP="${GITHUB_WORKFLOW}@refs/heads/(main|release/.+)$"
+        ;;
+    *)
+        # Otherwise, allow releasing from anywhere.
+        IDENTITY_REGEXP="${GITHUB_WORKFLOW}@.*"
+        ;;
+esac
 
 while read -r f; do
     cosign sign-blob \
@@ -41,6 +56,6 @@ while read -r f; do
     cosign verify-blob \
         --bundle="${f}.sigstore.json" \
         --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
-        --certificate-identity-regexp='https://github.com/openbao/openbao/.github/workflows/release.yml@refs/heads/(main|release/)' \
+        --certificate-identity-regexp="$IDENTITY_REGEXP" \
         "$f"
 done <<< "$artifacts"

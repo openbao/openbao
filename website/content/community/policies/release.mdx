@@ -23,7 +23,7 @@ a better release process going forward.
       - [ ] GitHub milestones
       - [ ] Helm chart team
  - [ ] Ensure relevant features and bug fixes are present in the release.
- - [ ] Update Go version pinning in `/.go-release` and in the the `toolchain`
+ - [ ] Update Go version pinning in `/.go-version` and in the the `toolchain`
        directive in `go.mod`; go-releaser uses this version via a custom
        (in-repo) `set-up-go` action.
  - [ ] Update external dependencies with vulnerabilities. Major changes should
@@ -71,6 +71,8 @@ a better release process going forward.
        on `pkgs.openbao.org`. Check the box to create the discussion.
  - [ ] Spot-check stage-two release artifacts:
       - [ ] Container images work and have valid CoSign signatures.
+ - [ ] Pin the created GitHub discussion globally and unpin older release
+       discussions as needed.
  - [ ] Share release notification announcement:
       - [ ] OpenBao Core mailing list (cc TSC mailing list)
       - [ ] Link from Zulip

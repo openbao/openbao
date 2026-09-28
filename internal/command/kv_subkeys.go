@@ -62,31 +62,30 @@ func (c *KVSubkeysCommand) Flags() *FlagSets {
 }
 
 func (c *KVSubkeysCommand) Help() string {
-	helpText := `Usage: bao kv subkeys [options] PATH
+	helpText := `
+Usage: bao kv subkeys [options] PATH
 
-  Retrieves the key structure of a secret without its values.
+  Retrieves the key structure of a secret from OpenBao's key-value store 
+  without its values. If no secret exists at the given path, an error is 
+  returned. Requires KV Version 2.
 
-  Retrieve the subkeys of a secret:
+      $ bao kv subkeys -mount=secret foo
 
-  $ bao kv subkeys -mount=secret foo
+  The deprecated path-like syntax can also be used, but this should be avoided 
+  for KV v2, as the fact that it is not actually the full API path to 
+  the secret (secret/subkeys/foo) can cause confusion: 
 
-  Alternatively, specify the mount and secret path together:
+      $ bao kv subkeys secret/foo
 
-  $ bao kv subkeys secret/foo
+  To retrieve the subkeys for a specific version, specify the “-version” flag:
 
-  Select a specific secret version:
+      $ bao kv subkeys -mount=secret -version=2 foo
 
-  $ bao kv subkeys -mount=secret -version=2 foo
+  To limit the nesting depth, specify the “-depth” flag:
 
-  Limit the nesting depth:
-
-  $ bao kv subkeys -mount=secret -depth=1 foo
+      $ bao kv subkeys -mount=secret -depth=1 foo
 
   By default, the latest version is used, and there is no depth limit.
-
-  Display the subkeys as JSON:
-
-  $ bao kv subkeys -mount=secret -format=json foo
 ` + c.Flags().Help()
 
 	return strings.TrimSpace(helpText)
@@ -149,7 +148,7 @@ func (c *KVSubkeysCommand) Run(args []string) int {
 	}
 
 	if !v2 {
-		c.UI.Error("Subkeys are only supported in kv Version 2")
+		c.UI.Error("Subkeys require KV Version 2")
 		return 1
 	}
 

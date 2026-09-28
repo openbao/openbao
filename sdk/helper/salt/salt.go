@@ -42,7 +42,7 @@ type Config struct {
 	Location string
 
 	// HashFunc is the hashing function to use for salting.
-	// Defaults to SHA1 if not provided.
+	// Defaults to SHA256 if not provided.
 	HashFunc HashFunc
 
 	// HMAC allows specification of a hash function to use for

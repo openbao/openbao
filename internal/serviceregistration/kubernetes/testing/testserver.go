@@ -80,16 +80,13 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 		}
 	}
 
+	tmpDir := t.TempDir()
+
 	// Plant our token in a place where it can be read for the config.
-	tmpToken, err := os.CreateTemp("", "token")
+	tmpToken, err := os.CreateTemp(tmpDir, "token")
 	if err != nil {
 		t.Fatal(err)
 	}
-	closers = append(closers, func() {
-		if err := os.Remove(tmpToken.Name()); err != nil {
-			t.Errorf("error removing temp token file: %v", err)
-		}
-	})
 	if _, err = tmpToken.WriteString(token); err != nil {
 		closeFunc()
 		t.Fatal(err)
@@ -100,16 +97,11 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 	}
 	testConf.PathToTokenFile = tmpToken.Name()
 
-	tmpCACrt, err := os.CreateTemp("", "ca.crt")
+	tmpCACrt, err := os.CreateTemp(tmpDir, "ca.crt")
 	if err != nil {
 		closeFunc()
 		t.Fatal(err)
 	}
-	closers = append(closers, func() {
-		if err := os.Remove(tmpCACrt.Name()); err != nil {
-			t.Errorf("error removing temp CA certificate file: %v", err)
-		}
-	})
 	if _, err = tmpCACrt.WriteString(caCrt); err != nil {
 		closeFunc()
 		t.Fatal(err)

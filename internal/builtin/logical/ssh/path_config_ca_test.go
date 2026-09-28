@@ -55,8 +55,7 @@ func TestSSH_ConfigCASubmitDefaultIssuer(t *testing.T) {
 	require.NotEmpty(t, caPublicKey, "empty CA issuer public key")
 
 	// prepare test container to test SSH
-	cleanup, sshAddress := prepareTestContainer(t, dockerImageTagSupportsRSA1, caPublicKey)
-	t.Cleanup(cleanup)
+	sshAddress := prepareTestContainer(t, dockerImageTagSupportsRSA1, caPublicKey)
 
 	// sign a key
 	signReq := &logical.Request{

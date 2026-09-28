@@ -1,0 +1,4 @@
+```release-note:improvement
+test/ssh: Verify a container successfully starts before executing tests, and
+reliably schedule the removal of a container.
+```

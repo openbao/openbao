@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
+	"github.com/stretchr/testify/require"
 )
 
 // Tests converting back and forth between a CertBundle and a ParsedCertBundle.
@@ -63,14 +64,10 @@ func TestCertBundleConversion(t *testing.T) {
 		}
 
 		cbut, err := pcbut.ToCertBundle()
-		if err != nil {
-			t.Fatalf("Error converting to cert bundle: %s", err)
-		}
+		require.NoError(t, err)
 
 		err = compareCertBundleToParsedCertBundle(cbut, pcbut)
-		if err != nil {
-			t.Fatalf("%s", err.Error())
-		}
+		require.NoErrorf(t, err, "%s", err)
 	}
 }
 
@@ -98,9 +95,7 @@ func BenchmarkCertBundleParsing(b *testing.B) {
 			}
 
 			_, err = pcbut.ToCertBundle()
-			if err != nil {
-				b.Fatalf("Error converting to cert bundle: %s", err)
-			}
+			require.NoErrorf(b, err, "Error converting to cert bundle: %s", err)
 		}
 	}
 }
@@ -276,24 +271,16 @@ func TestCSRBundleConversion(t *testing.T) {
 
 	for _, csrbut := range csrbuts {
 		pcsrbut, err := csrbut.ToParsedCSRBundle()
-		if err != nil {
-			t.Fatalf("Error converting to parsed CSR bundle: %v", err)
-		}
+		require.NoError(t, err)
 
 		err = compareCSRBundleToParsedCSRBundle(csrbut, pcsrbut)
-		if err != nil {
-			t.Fatalf("%s", err.Error())
-		}
+		require.NoErrorf(t, err, "%s", err)
 
 		csrbut, err = pcsrbut.ToCSRBundle()
-		if err != nil {
-			t.Fatalf("Error converting to CSR bundle: %v", err)
-		}
+		require.NoError(t, err)
 
 		err = compareCSRBundleToParsedCSRBundle(csrbut, pcsrbut)
-		if err != nil {
-			t.Fatalf("%s", err.Error())
-		}
+		require.NoErrorf(t, err, "%s", err)
 	}
 }
 
@@ -374,9 +361,7 @@ func TestTLSConfig(t *testing.T) {
 	cbut := refreshRSACertBundle()
 
 	pcbut, err := cbut.ToParsedCertBundle()
-	if err != nil {
-		t.Fatalf("Error getting parsed cert bundle: %s", err)
-	}
+	require.NoError(t, err)
 
 	usages := []TLSUsage{
 		TLSUnknown,
@@ -387,9 +372,7 @@ func TestTLSConfig(t *testing.T) {
 
 	for _, usage := range usages {
 		tlsConfig, err := pcbut.GetTLSConfig(usage)
-		if err != nil {
-			t.Fatalf("Error getting tls config: %s", err)
-		}
+		require.NoError(t, err)
 		if tlsConfig == nil {
 			t.Fatal("Got nil tls.Config")
 		}
@@ -503,30 +486,22 @@ vitin0L6nprauWkKO38XgM4T75qKZpqtiOcT
 
 func TestGetPublicKeySize(t *testing.T) {
 	rsa, err := rsa.GenerateKey(rand.Reader, 3072)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if GetPublicKeySize(&rsa.PublicKey) != 3072 {
 		t.Fatal("unexpected rsa key size")
 	}
 	ecdsa, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if GetPublicKeySize(&ecdsa.PublicKey) != 384 {
 		t.Fatal("unexpected ecdsa key size")
 	}
 	ed25519, _, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if GetPublicKeySize(ed25519) != 256 {
 		t.Fatal("unexpected ed25519 key size")
 	}
 	mldsakey, err := mldsa.GenerateKey(mldsa.MLDSA65())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if GetPublicKeySize(mldsakey.PublicKey()) != 65 {
 		t.Fatal("unexpected mldsa key size")
 	}
@@ -1006,14 +981,10 @@ func TestBasicConstraintExtension(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ext, err := CreateBasicConstraintExtension(tt.isCA, tt.maxPathLen)
-			if err != nil {
-				t.Fatalf("failed generating basic extension: %v", err)
-			}
+			require.NoError(t, err)
 
 			gotIsCa, gotMaxPathLen, err := ParseBasicConstraintExtension(ext)
-			if err != nil {
-				t.Fatalf("failed parsing basic extension: %v", err)
-			}
+			require.NoError(t, err)
 
 			if tt.isCA != gotIsCa {
 				t.Fatalf("expected isCa (%v) got isCa (%v)", tt.isCA, gotIsCa)
@@ -1035,9 +1006,7 @@ func TestBasicConstraintExtension(t *testing.T) {
 
 	t.Run("garbage-value", func(t *testing.T) {
 		extraBytes, err := asn1.Marshal("a string")
-		if err != nil {
-			t.Fatalf("failed encoding the struct: %v", err)
-		}
+		require.NoError(t, err)
 		ext := pkix.Extension{
 			Id:    ExtensionBasicConstraintsOID,
 			Value: extraBytes,
@@ -1051,25 +1020,19 @@ func TestBasicConstraintExtension(t *testing.T) {
 
 func genRsaKey(t *testing.T) *rsa.PrivateKey {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return key
 }
 
 func genEdDSA(t *testing.T) *ecdsa.PrivateKey {
 	key, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return key
 }
 
 func genEd25519Key(t *testing.T) (ed25519.PublicKey, ed25519.PrivateKey) {
 	key, priv, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return key, priv
 }
 

@@ -39,9 +39,7 @@ func TestAppRole_AliasNameFromLoginRequest_Panic(t *testing.T) {
 	err = client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
 		Type: "approle",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("auth/approle/login", map[string]any{
 		"role_id":   make(map[string]any),

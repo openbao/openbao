@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tsaarni/certyaml"
 
 	"golang.org/x/crypto/ocsp"
@@ -64,9 +65,7 @@ func TestCert_RoleResolve(t *testing.T) {
 	}
 
 	connState, err := testConnState(cert, ca)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
@@ -108,9 +107,7 @@ func TestCert_RoleResolveWithoutProvidingCertName(t *testing.T) {
 	}
 
 	connState, err := testConnState(cert, ca)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
@@ -206,9 +203,7 @@ func TestCert_RoleResolve_RoleDoesNotExist(t *testing.T) {
 	}
 
 	connState, err := testConnState(cert, ca)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
@@ -247,24 +242,16 @@ func TestCert_RoleResolveOCSP(t *testing.T) {
 	}
 
 	connState, err := testConnState(cert, ca)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 
 	issuerCert, err := ca.X509Certificate()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	issuerKey, err := ca.PrivateKey()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Get the generated cert to access its serial number.
 	x509Cert, err := cert.X509Certificate()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -275,9 +262,7 @@ func TestCert_RoleResolveOCSP(t *testing.T) {
 				ThisUpdate:   time.Now(),
 				NextUpdate:   time.Now().Add(time.Hour),
 			}, issuerKey)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			source[x509Cert.SerialNumber.String()] = resp
 
 			b := testFactory(t)

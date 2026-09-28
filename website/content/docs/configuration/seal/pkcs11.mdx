@@ -92,33 +92,34 @@ These parameters apply to the `seal` stanza in the OpenBao configuration file:
 
   :::
 
-- `slot` `(string: <slot or token label required>)`: The slot number to use,
-  specified as a string (e.g. `"2305843009213693953"`). May also be specified by
-  the `BAO_HSM_SLOT` environment variable.
+- `slot` `(string: <optional>)`: The slot number to use, specified as a string
+  (e.g., a decimal `"2305843009213693953"` or a hex `"0x2000000000000001"`). May
+  also be specified by the `BAO_HSM_SLOT` environment variable.
+
+- `serial` `(string: <optional>)`. The token serial number to use. May also be
+  specified by the `BAO_HSM_SERIAL` environment variable.
+
+- `token_label` `(string: <optional>)`: The token label to use. May also be
+  specified by the `BAO_HSM_TOKEN_LABEL` environment variable.
 
   :::info
 
-  Slots are typically listed as hex-decimal values in the OS setup utility but
-  this configuration uses their decimal equivalent. For example, using the HSM
-  command-line `pkcs11-tool`, a slot listed as `0x2000000000000001`in hex is
-  equal to `2305843009213693953` in decimal; these values may be listed shorter
-  or differently as determined by the HSM in use.
+  One of `slot`, `serial` and `token_label` is required. If more than one option
+  is set, a token is only selected if it matches all provided parameters.
 
   :::
 
-- `token_label` `(string: <slot or token label required>)`: The slot token label to
-  use. May also be specified by the `BAO_HSM_TOKEN_LABEL` environment variable.
+- `pin` `(string: <optional>)`: The PIN for `CKU_USER` login. May also
+  be specified by the `BAO_HSM_PIN` environment variable. _If set via the
+  environment variable, it will need to be re-set if OpenBao is restarted._
 
-- `pin` `(string: <required>)`: The PIN for login. May also be specified by the
-  `BAO_HSM_PIN` environment variable. _If set via the environment variable,
-  it will need to be re-set if OpenBao is restarted._
+- `key_label` `(string: <required>)`: The label (`CKA_LABEL`) of the key or
+  key pair to use. May also be specified by the `BAO_HSM_KEY_LABEL` environment
+  variable.
 
-- `key_label` `(string: <required>)`: The label of the key to use. May also be specified by the `BAO_HSM_KEY_LABEL`
-  environment variable.
-
-- `key_id` `(string: "")`: The ID of the key to use. The value should be a hexadecimal
-  string (e.g., "0x33333435363434373537"). May also be specified by the
-  `BAO_HSM_KEY_ID` environment variable.
+- `key_id` `(string: "")`: The ID (`CKA_ID`) of the key or key pair to use. The
+  value should be a hexadecimal string (e.g., `"0x33333435363434373537"`). May
+  also be specified by the `BAO_HSM_KEY_ID` environment variable.
 
 - `mechanism` `(string: <best available>)`: The encryption/decryption mechanism
   to use, specified either by name, or by decimal or hexadecimal (prefixed by
@@ -136,12 +137,10 @@ These parameters apply to the `seal` stanza in the OpenBao configuration file:
 
   :::
 
-- `disable_software_encryption` `(bool: false)`: For RSA-based mechanisms,
-  OpenBao performs the encryption operation locally in memory by exporting the
-  public key from the HSM. Set this option to `true` to force calling out to the
-  HSM for all encryption operations. This option is available starting with
-  OpenBao v2.4.0. All prior versions always call out to the HSM for encryption
-  and never perform encryption in software.
+- `disable_software_encryption` `(bool: false)`: If set to `true`, perform
+  encryption via public keys (e.g., RSA-OAEP) via PKCS#11 instead of exporting
+  the public key and encrypting in software. This defaults to `false` because
+  some HSMs implement RSA-based decryption but not encryption.
 
 - `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
 
@@ -163,6 +162,7 @@ environment variables:
 BAO_SEAL_TYPE
 BAO_HSM_LIB
 BAO_HSM_SLOT
+BAO_HSM_SERIAL
 BAO_HSM_TOKEN_LABEL
 BAO_HSM_PIN
 BAO_HSM_KEY_LABEL

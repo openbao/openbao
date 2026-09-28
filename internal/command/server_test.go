@@ -288,7 +288,7 @@ func TestServer(t *testing.T) {
 			ui, cmd := testServerCommand(t)
 
 			f, err := os.CreateTemp(t.TempDir(), "")
-			require.NoErrorf(t, err, "error creating temp dir: %v", err)
+			require.NoError(t, err)
 
 			_, err = f.WriteString(tc.contents)
 			require.NoErrorf(t, err, "cannot write temp file contents")

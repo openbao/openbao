@@ -13,6 +13,7 @@ import (
 	logicalKv "github.com/openbao/openbao/v2/internal/builtin/logical/kv"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 // TestKV_Subkeys_NotFound issues a read to the subkeys endpoint for a path
@@ -41,9 +42,7 @@ func TestKV_Subkeys_NotFound(t *testing.T) {
 	err := c.Sys().Mount("kv", &api.MountInput{
 		Type: "kv-v2",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	apiRespRaw, err := kvRequestWithRetry(t, func() (any, error) {
 		return c.Logical().ReadRaw("kv/subkeys/foo")
@@ -91,9 +90,7 @@ func TestKV_Subkeys_Deleted(t *testing.T) {
 	err := c.Sys().Mount("kv", &api.MountInput{
 		Type: "kv-v2",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	kvData := map[string]any{
 		"data": map[string]any{
@@ -104,16 +101,12 @@ func TestKV_Subkeys_Deleted(t *testing.T) {
 	resp, err := kvRequestWithRetry(t, func() (any, error) {
 		return c.Logical().Write("kv/data/foo", kvData)
 	})
-	if err != nil {
-		t.Fatalf("write failed, err :%v, resp: %#v", err, resp)
-	}
+	require.NoErrorf(t, err, "write failed, err :%v, resp: %#v", err, resp)
 
 	secretRaw, err := kvRequestWithRetry(t, func() (any, error) {
 		return c.Logical().Delete("kv/data/foo")
 	})
-	if err != nil {
-		t.Fatalf("delete failed, err :%v, resp: %#v", err, secretRaw)
-	}
+	require.NoErrorf(t, err, "delete failed, err :%v, resp: %#v", err, secretRaw)
 
 	apiRespRaw, err := kvRequestWithRetry(t, func() (any, error) {
 		return c.Logical().ReadRaw("kv/subkeys/foo")
@@ -137,9 +130,7 @@ func TestKV_Subkeys_Deleted(t *testing.T) {
 	}
 
 	secret, err := api.ParseSecret(apiResp.Body)
-	if err != nil {
-		t.Fatalf("failed to parse resp body, err: %v", err)
-	}
+	require.NoError(t, err)
 
 	subkeys, ok := secret.Data["subkeys"]
 	if !ok {
@@ -189,9 +180,7 @@ func TestKV_Subkeys_Destroyed(t *testing.T) {
 	err := c.Sys().Mount("kv", &api.MountInput{
 		Type: "kv-v2",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	kvData := map[string]any{
 		"data": map[string]any{
@@ -202,9 +191,7 @@ func TestKV_Subkeys_Destroyed(t *testing.T) {
 	secretRaw, err := kvRequestWithRetry(t, func() (any, error) {
 		return c.Logical().Write("kv/data/foo", kvData)
 	})
-	if err != nil {
-		t.Fatalf("write failed, err :%v, resp: %#v", err, secretRaw)
-	}
+	require.NoErrorf(t, err, "write failed, err :%v, resp: %#v", err, secretRaw)
 
 	destroyVersions := map[string]any{
 		"versions": []int{1},
@@ -213,9 +200,7 @@ func TestKV_Subkeys_Destroyed(t *testing.T) {
 	secretRaw, err = kvRequestWithRetry(t, func() (any, error) {
 		return c.Logical().Write("kv/destroy/foo", destroyVersions)
 	})
-	if err != nil {
-		t.Fatalf("destroy failed, err :%v, resp: %#v", err, secretRaw)
-	}
+	require.NoErrorf(t, err, "destroy failed, err :%v, resp: %#v", err, secretRaw)
 
 	_, ok := secretRaw.(*api.Secret)
 	if !ok {
@@ -244,9 +229,7 @@ func TestKV_Subkeys_Destroyed(t *testing.T) {
 	}
 
 	secret, err := api.ParseSecret(apiResp.Body)
-	if err != nil {
-		t.Fatalf("failed to parse resp body, err: %v", err)
-	}
+	require.NoError(t, err)
 
 	subkeys, ok := secret.Data["subkeys"]
 	if !ok {
@@ -295,9 +278,7 @@ func TestKV_Subkeys_CurrentVersion(t *testing.T) {
 	err := c.Sys().Mount("kv", &api.MountInput{
 		Type: "kv-v2",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	kvData := map[string]any{
 		"data": map[string]any{
@@ -314,9 +295,7 @@ func TestKV_Subkeys_CurrentVersion(t *testing.T) {
 	secretRaw, err := kvRequestWithRetry(t, func() (any, error) {
 		return c.Logical().Write("kv/data/foo", kvData)
 	})
-	if err != nil {
-		t.Fatalf("write failed, err :%v, resp: %#v", err, secretRaw)
-	}
+	require.NoErrorf(t, err, "write failed, err :%v, resp: %#v", err, secretRaw)
 
 	kvData = map[string]any{
 		"data": map[string]any{
@@ -327,9 +306,7 @@ func TestKV_Subkeys_CurrentVersion(t *testing.T) {
 	secretRaw, err = kvRequestWithRetry(t, func() (any, error) {
 		return c.Logical().JSONMergePatch(t.Context(), "kv/data/foo", kvData)
 	})
-	if err != nil {
-		t.Fatalf("patch failed, err :%v, resp: %#v", err, secretRaw)
-	}
+	require.NoErrorf(t, err, "patch failed, err :%v, resp: %#v", err, secretRaw)
 
 	apiRespRaw, err := kvRequestWithRetry(t, func() (any, error) {
 		return c.Logical().ReadRaw("kv/subkeys/foo")
@@ -353,9 +330,7 @@ func TestKV_Subkeys_CurrentVersion(t *testing.T) {
 	}
 
 	secret, err := api.ParseSecret(apiResp.Body)
-	if err != nil {
-		t.Fatalf("failed to parse resp body, err: %v", err)
-	}
+	require.NoError(t, err)
 
 	expectedSubkeys := map[string]any{
 		"foo": nil,

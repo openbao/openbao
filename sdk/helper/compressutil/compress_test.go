@@ -7,6 +7,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestCompressUtil_CompressDecompress(t *testing.T) {
@@ -49,9 +51,7 @@ func TestCompressUtil_CompressDecompress(t *testing.T) {
 	for _, test := range tests {
 		// Compress the input
 		compressedJSONBytes, err := Compress(inputJSONBytes, &test.compressionConfig)
-		if err != nil {
-			t.Fatalf("compress error (%s): %s", test.compressionType, err)
-		}
+		require.NoErrorf(t, err, "compress error (%s): %s", test.compressionType, err)
 		if len(compressedJSONBytes) == 0 {
 			t.Fatalf("failed to compress data in %s format", test.compressionType)
 		}
@@ -62,9 +62,7 @@ func TestCompressUtil_CompressDecompress(t *testing.T) {
 		}
 
 		decompressedJSONBytes, wasNotCompressed, err := Decompress(compressedJSONBytes)
-		if err != nil {
-			t.Fatalf("decompress error (%s): %s", test.compressionType, err)
-		}
+		require.NoErrorf(t, err, "decompress error (%s): %s", test.compressionType, err)
 
 		// Check if the input for decompress was not compressed in the first place
 		if wasNotCompressed {
@@ -81,9 +79,7 @@ func TestCompressUtil_CompressDecompress(t *testing.T) {
 		}
 
 		decompressedJSONBytes, compressionType, _, err := DecompressWithCanary(compressedJSONBytes)
-		if err != nil {
-			t.Fatalf("decompress error (%s): %s", test.compressionType, err)
-		}
+		require.NoErrorf(t, err, "decompress error (%s): %s", test.compressionType, err)
 
 		if compressionType != test.compressionConfig.Type {
 			t.Fatalf("bad compressionType value;\nexpected: %q\naction: %q", test.compressionConfig.Type, compressionType)

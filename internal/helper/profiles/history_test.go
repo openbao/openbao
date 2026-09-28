@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func newHistory() *EvaluationHistory {
@@ -33,9 +34,7 @@ func TestAddRequest_Success(t *testing.T) {
 	}
 
 	got, err := h.GetRequest("initialize", "userpass")
-	if err != nil {
-		t.Fatalf("GetRequest failed: %v", err)
-	}
+	require.NoError(t, err)
 
 	d, ok := got["map"].(map[string]any)
 	if !ok {
@@ -74,9 +73,7 @@ func TestAddAndGetResponse_Success(t *testing.T) {
 	}
 
 	got, err := h.GetResponse("initialize", "userpass")
-	if err != nil {
-		t.Fatalf("GetResponse failed: %v", err)
-	}
+	require.NoError(t, err)
 
 	d, ok := got["data"].(map[string]any)
 	if !ok {
@@ -110,9 +107,7 @@ func TestAddAndGetRequestData_Success(t *testing.T) {
 	}
 
 	retrieved, err := history.GetRequest("initialize", "userpass")
-	if err != nil {
-		t.Fatalf("GetRequest error: %v", err)
-	}
+	require.NoError(t, err)
 	if !reflect.DeepEqual(retrieved, payload) {
 		t.Errorf("GetRequest returned %v; want %v", retrieved, payload)
 	}
@@ -160,9 +155,7 @@ func TestGetRequestField_SingleKey(t *testing.T) {
 	}
 
 	value, err := history.GetRequestField("tokenInit", "create-token", []any{"token_ttl"})
-	if err != nil {
-		t.Fatalf("GetRequestField error: %v", err)
-	}
+	require.NoError(t, err)
 	ttl, ok := value.(float64)
 	if !ok || ttl != 3600 {
 		t.Errorf("GetRequestField returned %v; want %v", value, 3600)
@@ -187,9 +180,7 @@ func TestGetRequestField_NestedKeyPath(t *testing.T) {
 
 	selector := []any{"data", "data", "config_key"}
 	value, err := history.GetRequestField("secretInit", "write-config", selector)
-	if err != nil {
-		t.Fatalf("GetRequestField nested error: %v", err)
-	}
+	require.NoError(t, err)
 	if key, ok := value.(string); !ok || key != "example" {
 		t.Errorf("GetRequestField nested returned %v; want %q", value, "example")
 	}
@@ -222,9 +213,7 @@ func TestAddAndGetResponseData_Success(t *testing.T) {
 		t.Fatalf("AddResponseData: %v", err)
 	}
 	result, err := history.GetResponse("initialize", "userpass")
-	if err != nil {
-		t.Fatalf("GetResponse: %v", err)
-	}
+	require.NoError(t, err)
 	if !reflect.DeepEqual(result, responsePayload) {
 		t.Errorf("GetResponse returned %v; want %v", result, responsePayload)
 	}
@@ -256,9 +245,7 @@ func TestGetResponseField_Success(t *testing.T) {
 
 	selector := []any{"auth", "client_token"}
 	value, err := history.GetResponseField("tokenInit", "create-token", selector)
-	if err != nil {
-		t.Fatalf("GetResponseField error: %v", err)
-	}
+	require.NoError(t, err)
 	if token, ok := value.(string); !ok || token != "s.xxxx" {
 		t.Errorf("GetResponseField returned %v; want %q", value, "s.xxxx")
 	}

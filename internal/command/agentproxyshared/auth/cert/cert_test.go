@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared/auth"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCertAuthMethod_Authenticate(t *testing.T) {
@@ -24,19 +25,13 @@ func TestCertAuthMethod_Authenticate(t *testing.T) {
 	}
 
 	method, err := NewCertAuthMethod(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	client, err := api.NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	loginPath, _, authMap, err := method.Authenticate(t.Context(), client)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expectedLoginPath := path.Join(config.MountPath, "/login")
 	if loginPath != expectedLoginPath {
@@ -61,19 +56,13 @@ func TestCertAuthMethod_AuthClient_withoutCerts(t *testing.T) {
 	}
 
 	method, err := NewCertAuthMethod(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	client, err := api.NewClient(api.DefaultConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	clientToUse, err := method.(auth.AuthMethodWithClient).AuthClient(client)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if client != clientToUse {
 		t.Fatal("error: expected AuthClient to return back original client")
@@ -82,15 +71,11 @@ func TestCertAuthMethod_AuthClient_withoutCerts(t *testing.T) {
 
 func TestCertAuthMethod_AuthClient_withCerts(t *testing.T) {
 	clientCert, err := os.Open("./test-fixtures/keys/cert.pem")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer clientCert.Close()
 
 	clientKey, err := os.Open("./test-fixtures/keys/key.pem")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer clientKey.Close()
 
 	config := &auth.AuthConfig{
@@ -104,19 +89,13 @@ func TestCertAuthMethod_AuthClient_withCerts(t *testing.T) {
 	}
 
 	method, err := NewCertAuthMethod(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	client, err := api.NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	clientToUse, err := method.(auth.AuthMethodWithClient).AuthClient(client)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if client == clientToUse {
 		t.Fatal("expected client from AuthClient to be different from original client")
@@ -124,9 +103,7 @@ func TestCertAuthMethod_AuthClient_withCerts(t *testing.T) {
 
 	// Call AuthClient again to get back the cached client
 	cachedClient, err := method.(auth.AuthMethodWithClient).AuthClient(client)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if cachedClient != clientToUse {
 		t.Fatal("expected client from AuthClient to return back a cached client")
@@ -135,16 +112,12 @@ func TestCertAuthMethod_AuthClient_withCerts(t *testing.T) {
 
 func TestCertAuthMethod_AuthClient_withCertsReload(t *testing.T) {
 	clientCert, err := os.Open("./test-fixtures/keys/cert.pem")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	defer clientCert.Close()
 
 	clientKey, err := os.Open("./test-fixtures/keys/key.pem")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	defer clientKey.Close()
 
@@ -160,19 +133,13 @@ func TestCertAuthMethod_AuthClient_withCertsReload(t *testing.T) {
 	}
 
 	method, err := NewCertAuthMethod(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	client, err := api.NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	clientToUse, err := method.(auth.AuthMethodWithClient).AuthClient(client)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if client == clientToUse {
 		t.Fatal("expected client from AuthClient to be different from original client")
@@ -180,9 +147,7 @@ func TestCertAuthMethod_AuthClient_withCertsReload(t *testing.T) {
 
 	// Call AuthClient again to get back a new client with reloaded certificates
 	reloadedClient, err := method.(auth.AuthMethodWithClient).AuthClient(client)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if reloadedClient == clientToUse {
 		t.Fatal("expected client from AuthClient to return back a new client")

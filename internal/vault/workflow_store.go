@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"path/filepath"
+	"path"
 	"strings"
 
 	log "github.com/hashicorp/go-hclog"
@@ -273,7 +273,7 @@ func (ws *WorkflowStore) List(ctx context.Context, prefix string, recursive bool
 
 	var results []*WorkflowEntry
 	for index, key := range keys {
-		path := filepath.Join(prefix, key)
+		path := path.Join(prefix, key)
 		entry, err := ws.getLocked(ctx, key)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch workflow (%d/%v) in list: %w", index, path, err)
@@ -407,6 +407,11 @@ func (ws *WorkflowStore) Execute(ctx context.Context, reqId string, path string,
 	return &logical.Response{}, nil
 }
 
-func (ws *WorkflowStore) sanitizePath(path string) string {
-	return strings.ToLower(strings.TrimSpace(path))
+func (ws *WorkflowStore) sanitizePath(name string) string {
+	sanitized := path.Clean(strings.ToLower(strings.TrimSpace(name)))
+	if sanitized == "." {
+		return ""
+	}
+
+	return sanitized
 }

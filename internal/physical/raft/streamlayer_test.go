@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/v2/internal/vault/cluster"
+	"github.com/stretchr/testify/require"
 )
 
 type mockClusterHook struct {
@@ -37,9 +38,7 @@ func TestStreamLayer_UnspecifiedIP(t *testing.T) {
 	}
 
 	raftTLSKey, err := GenerateTLSKey()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	raftTLS := &TLSKeyring{
 		Keys:        []*TLSKey{raftTLSKey},
@@ -62,9 +61,7 @@ func TestStreamLayer_UnspecifiedIP(t *testing.T) {
 	m.address.(*cluster.NetAddr).Host = "10.0.0.1:8200"
 
 	layer, err = NewRaftLayer(nil, raftTLS, m)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if layer == nil {
 		t.Fatal("nil layer")

@@ -15,6 +15,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTranslation_Errors(t *testing.T) {
@@ -178,13 +179,9 @@ func TestTranslation_Request(t *testing.T) {
 
 	for _, c := range tCases {
 		p, err := LogicalRequestToProtoRequest(c)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		r, err := ProtoRequestToLogicalRequest(p)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if !reflect.DeepEqual(c, r) {
 			t.Fatalf("Requests did not match: \n%#v, \n%#v", c, r)
@@ -273,13 +270,9 @@ func TestTranslation_Response(t *testing.T) {
 
 	for _, c := range tCases {
 		p, err := LogicalResponseToProtoResponse(c)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		r, err := ProtoResponseToLogicalResponse(p)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if !reflect.DeepEqual(c, r) {
 			t.Fatalf("Requests did not match: \n%#v, \n%#v", c, r)

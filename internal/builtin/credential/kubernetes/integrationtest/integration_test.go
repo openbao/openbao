@@ -11,6 +11,7 @@ import (
 
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/v2/internal/builtin/credential/kubernetes/integrationtest/k8s"
+	"github.com/stretchr/testify/require"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -60,18 +61,14 @@ func createToken(t *testing.T, sa string, audiences []string) string {
 	t.Helper()
 
 	k8sClient, err := k8s.ClientFromKubeConfig(os.Getenv("KUBE_CONTEXT"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err := k8sClient.CoreV1().ServiceAccounts("test").CreateToken(t.Context(), sa, &authenticationv1.TokenRequest{
 		Spec: authenticationv1.TokenRequestSpec{
 			Audiences: audiences,
 		},
 	}, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return resp.Status.Token
 }
@@ -80,22 +77,16 @@ func setupKubernetesAuth(t *testing.T, boundServiceAccountName string, mountConf
 	t.Helper()
 	// Pick up VAULT_ADDR and VAULT_TOKEN from env vars
 	client, err := api.NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("sys/auth/kubernetes", map[string]any{
 		"type": "kubernetes-dev",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	cleanup := func() {
 		_, err = client.Logical().Delete("sys/auth/kubernetes")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	defer func() {
@@ -112,9 +103,7 @@ func setupKubernetesAuth(t *testing.T, boundServiceAccountName string, mountConf
 	}
 
 	_, err = client.Logical().Write("auth/kubernetes/config", mountConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	roleConfig := map[string]any{
 		"bound_service_account_names":      boundServiceAccountName,
@@ -125,9 +114,7 @@ func setupKubernetesAuth(t *testing.T, boundServiceAccountName string, mountConf
 	}
 
 	_, err = client.Logical().Write("auth/kubernetes/role/test-role", roleConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return client, cleanup
 }
@@ -140,9 +127,7 @@ func TestSuccess(t *testing.T) {
 		"role": "test-role",
 		"jwt":  createToken(t, "vault", nil),
 	})
-	if err != nil {
-		t.Fatalf("Expected successful login but got: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestSuccessWithTokenReviewerJwt(t *testing.T) {
@@ -156,9 +141,7 @@ func TestSuccessWithTokenReviewerJwt(t *testing.T) {
 		"role": "test-role",
 		"jwt":  createToken(t, "vault", nil),
 	})
-	if err != nil {
-		t.Fatalf("Expected successful login but got: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestSuccessWithNamespaceLabels(t *testing.T) {
@@ -173,9 +156,7 @@ func TestSuccessWithNamespaceLabels(t *testing.T) {
 		"role": "test-role",
 		"jwt":  createToken(t, "vault", nil),
 	})
-	if err != nil {
-		t.Fatalf("Expected successful login but got: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestFailWithMismatchNamespaceLabels(t *testing.T) {

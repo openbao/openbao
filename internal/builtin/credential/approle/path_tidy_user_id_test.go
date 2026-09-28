@@ -11,6 +11,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAppRole_TidyDanglingAccessors_Normal(t *testing.T) {
@@ -28,9 +29,7 @@ func TestAppRole_TidyDanglingAccessors_Normal(t *testing.T) {
 	_ = b.requestNoErr(t, roleSecretIDReq)
 
 	accessorHashes, err := storage.List(t.Context(), "accessor/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(accessorHashes) != 1 {
 		t.Fatalf("bad: len(accessorHashes); expect 1, got %d", len(accessorHashes))
 	}
@@ -41,9 +40,7 @@ func TestAppRole_TidyDanglingAccessors_Normal(t *testing.T) {
 			SecretIDHMAC: "samplesecretidhmac",
 		},
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if err := storage.Put(t.Context(), entry1); err != nil {
 		t.Fatal(err)
@@ -55,17 +52,13 @@ func TestAppRole_TidyDanglingAccessors_Normal(t *testing.T) {
 			SecretIDHMAC: "samplesecretidhmac2",
 		},
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if err := storage.Put(t.Context(), entry2); err != nil {
 		t.Fatal(err)
 	}
 
 	accessorHashes, err = storage.List(t.Context(), "accessor/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(accessorHashes) != 3 {
 		t.Fatalf("bad: len(accessorHashes); expect 3, got %d", len(accessorHashes))
 	}
@@ -73,9 +66,7 @@ func TestAppRole_TidyDanglingAccessors_Normal(t *testing.T) {
 	secret, err := b.tidySecretID(t.Context(), &logical.Request{
 		Storage: storage,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	schema.ValidateResponse(
 		t,
 		schema.GetResponseSchema(t, pathTidySecretID(b), logical.UpdateOperation),
@@ -87,9 +78,7 @@ func TestAppRole_TidyDanglingAccessors_Normal(t *testing.T) {
 	time.Sleep(10 * time.Second)
 
 	accessorHashes, err = storage.List(t.Context(), "accessor/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(accessorHashes) != 1 {
 		t.Fatalf("bad: len(accessorHashes); expect 1, got %d", len(accessorHashes))
 	}
@@ -118,9 +107,7 @@ func TestAppRole_TidyDanglingAccessors_RaceTest(t *testing.T) {
 			secret, err := b.tidySecretID(t.Context(), &logical.Request{
 				Storage: storage,
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			schema.ValidateResponse(
 				t,
 				schema.GetResponseSchema(t, pathTidySecretID(b), logical.UpdateOperation),
@@ -143,9 +130,7 @@ func TestAppRole_TidyDanglingAccessors_RaceTest(t *testing.T) {
 				SecretIDHMAC: "samplesecretidhmac",
 			},
 		)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if err := storage.Put(t.Context(), entry); err != nil {
 			t.Fatal(err)
@@ -191,21 +176,15 @@ func TestAppRole_TidyDanglingAccessors_RaceTest(t *testing.T) {
 	}
 
 	accessorHashes, err := storage.List(t.Context(), "accessor/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(accessorHashes) != count {
 		t.Fatalf("bad: len(accessorHashes); expect %d, got %d", count, len(accessorHashes))
 	}
 
 	roleHMACs, err := storage.List(t.Context(), secretIDPrefix)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	secretIDs, err := storage.List(t.Context(), fmt.Sprintf("%s%s", secretIDPrefix, roleHMACs[0]))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(secretIDs) != count {
 		t.Fatalf("bad: len(secretIDs); expect %d, got %d", count, len(secretIDs))
 	}

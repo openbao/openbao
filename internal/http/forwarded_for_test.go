@@ -12,6 +12,7 @@ import (
 	sockaddr "github.com/hashicorp/go-sockaddr"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func getListenerConfigForMarshalerTest(addr sockaddr.IPAddr) *configutil.Listener {
@@ -26,14 +27,10 @@ func getListenerConfigForMarshalerTest(addr sockaddr.IPAddr) *configutil.Listene
 
 func TestHandler_XForwardedFor(t *testing.T) {
 	goodAddr, err := sockaddr.NewIPAddr("127.0.0.1")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	badAddr, err := sockaddr.NewIPAddr("1.2.3.4")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// First: test reject not present
 	t.Run("reject_not_present", func(t *testing.T) {
@@ -67,9 +64,7 @@ func TestHandler_XForwardedFor(t *testing.T) {
 		req.Headers = make(http.Header)
 		req.Headers.Set("x-forwarded-for", "1.2.3.4")
 		resp, err := client.RawRequest(req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer resp.Body.Close() //nolint:errcheck
 		buf := bytes.NewBuffer(nil)
 		buf.ReadFrom(resp.Body)
@@ -102,9 +97,7 @@ func TestHandler_XForwardedFor(t *testing.T) {
 		req.Headers = make(http.Header)
 		req.Headers.Set("x-forwarded-for", "5.6.7.8")
 		resp, err := client.RawRequest(req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer resp.Body.Close() //nolint:errcheck
 		buf := bytes.NewBuffer(nil)
 		buf.ReadFrom(resp.Body)
@@ -206,9 +199,7 @@ func TestHandler_XForwardedFor(t *testing.T) {
 		req.Headers = make(http.Header)
 		req.Headers.Set("x-forwarded-for", "2.3.4.5,3.4.5.6,4.5.6.7,5.6.7.8")
 		resp, err := client.RawRequest(req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer resp.Body.Close() //nolint:errcheck
 		buf := bytes.NewBuffer(nil)
 		buf.ReadFrom(resp.Body)
@@ -245,9 +236,7 @@ func TestHandler_XForwardedFor(t *testing.T) {
 		req.Headers.Add("x-forwarded-for", "3.4.5.6,4.5.6.7")
 		req.Headers.Add("x-forwarded-for", "5.6.7.8")
 		resp, err := client.RawRequest(req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer resp.Body.Close() //nolint:errcheck
 		buf := bytes.NewBuffer(nil)
 		buf.ReadFrom(resp.Body)

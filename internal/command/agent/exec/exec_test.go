@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-retryablehttp"
 	ctconfig "github.com/openbao/openbao-template/config"
+	"github.com/stretchr/testify/require"
 
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/v2/internal/command/agent/config"
@@ -82,9 +83,7 @@ func fakeVaultServer(t *testing.T) *httptest.Server {
 func TestExecServer_Run(t *testing.T) {
 	// we must build a test-app binary since 'go run' does not propagate signals correctly
 	goBinary, err := exec.LookPath("go")
-	if err != nil {
-		t.Fatalf("could not find go binary on path: %s", err)
-	}
+	require.NoError(t, err)
 
 	testAppBinary := filepath.Join(os.TempDir(), "test-app")
 
@@ -351,9 +350,7 @@ func TestExecServer_Run(t *testing.T) {
 			t.Log("verifying test-app's environment variables")
 
 			resp, err := retryablehttp.Get(testAppAddr)
-			if err != nil {
-				t.Fatalf("error making request to the test app: %s", err)
-			}
+			require.NoError(t, err)
 			defer resp.Body.Close() //nolint:errcheck
 
 			decoder := json.NewDecoder(resp.Body)

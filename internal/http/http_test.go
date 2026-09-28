@@ -18,6 +18,7 @@ import (
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/stretchr/testify/require"
 )
 
 func testHttpGet(t *testing.T, token string, addr string) *http.Response {
@@ -65,9 +66,7 @@ func testHttpData(t *testing.T, method string, token string, addr string, body a
 	}
 
 	req, err := http.NewRequest(method, addr, bodyReader)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Get the address of the local listener in order to attach it to an Origin header.
 	// This will allow for the testing of requests that require CORS, without using a browser.

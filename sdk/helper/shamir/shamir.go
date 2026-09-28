@@ -18,6 +18,19 @@ const (
 	ShareOverhead = 1
 )
 
+// Shares is a collection of Shamir key shares.
+type Shares [][]byte
+
+// Has reports whether s contains share. It compares every share without
+// short-circuiting on a match.
+func (s Shares) Has(share []byte) bool {
+	found := 0
+	for _, candidate := range s {
+		found |= subtle.ConstantTimeCompare(candidate, share)
+	}
+	return found == 1
+}
+
 // polynomial represents a polynomial of arbitrary degree
 type polynomial struct {
 	coefficients []uint8

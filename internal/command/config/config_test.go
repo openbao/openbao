@@ -8,15 +8,15 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 const FixturePath = "../test-fixtures"
 
 func TestLoadConfig(t *testing.T) {
 	config, err := LoadConfig(filepath.Join(FixturePath, "config.hcl"))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := &DefaultConfig{
 		TokenHelper: "foo",
@@ -28,9 +28,7 @@ func TestLoadConfig(t *testing.T) {
 
 func TestLoadConfig_noExist(t *testing.T) {
 	config, err := LoadConfig("nope/not-once/.never")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if config.TokenHelper != "" {
 		t.Errorf("expected %q to be %q", config.TokenHelper, "")

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/v2/internal/helper/useragent"
+	"github.com/stretchr/testify/require"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
@@ -42,28 +43,20 @@ func TestAPIProxy(t *testing.T) {
 		UserAgentStringFunction: useragent.ProxyStringWithProxiedUserAgent,
 		UserAgentString:         useragent.ProxyAPIProxyString(),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	r := client.NewRequest("GET", "/v1/sys/health")
 	req, err := r.ToHTTP()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err := proxier.Send(namespace.RootContext(t.Context()), &SendRequest{
 		Request: req,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	var result api.HealthResponse
 	err = jsonutil.DecodeJSONFromReader(resp.Response.Body, &result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !result.Initialized || result.Sealed || result.Standby {
 		t.Fatalf("bad sys/health response: %#v", result)
@@ -80,28 +73,20 @@ func TestAPIProxyNoCache(t *testing.T) {
 		UserAgentStringFunction: useragent.ProxyStringWithProxiedUserAgent,
 		UserAgentString:         useragent.ProxyAPIProxyString(),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	r := client.NewRequest("GET", "/v1/sys/health")
 	req, err := r.ToHTTP()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err := proxier.Send(namespace.RootContext(t.Context()), &SendRequest{
 		Request: req,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	var result api.HealthResponse
 	err = jsonutil.DecodeJSONFromReader(resp.Response.Body, &result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !result.Initialized || result.Sealed || result.Standby {
 		t.Fatalf("bad sys/health response: %#v", result)
@@ -120,15 +105,11 @@ func TestAPIProxy_queryParams(t *testing.T) {
 		UserAgentStringFunction: useragent.ProxyStringWithProxiedUserAgent,
 		UserAgentString:         useragent.ProxyAPIProxyString(),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	r := client.NewRequest("GET", "/v1/sys/health")
 	req, err := r.ToHTTP()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Add a query parameter for testing
 	q := req.URL.Query()
@@ -138,15 +119,11 @@ func TestAPIProxy_queryParams(t *testing.T) {
 	resp, err := proxier.Send(namespace.RootContext(t.Context()), &SendRequest{
 		Request: req,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	var result api.HealthResponse
 	err = jsonutil.DecodeJSONFromReader(resp.Response.Body, &result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !result.Initialized || result.Sealed || !result.Standby {
 		t.Fatalf("bad sys/health response: %#v", result)
@@ -232,17 +209,13 @@ func setupClusterAndAgentCommon(ctx context.Context, t *testing.T, coreConfig *v
 	err := activeClient.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
 		Type: "userpass",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = activeClient.Logical().Write("auth/userpass/users/foo", map[string]any{
 		"password": "bar",
 		"policies": []string{"admin"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Set up env vars for agent consumption
 	origEnvVaultAddress := os.Getenv(api.EnvVaultAddress)
@@ -252,9 +225,7 @@ func setupClusterAndAgentCommon(ctx context.Context, t *testing.T, coreConfig *v
 	os.Setenv(api.EnvVaultCACert, fmt.Sprintf("%s/ca_cert.pem", cluster.TempDir))
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	apiProxyLogger := logging.NewVaultLogger(hclog.Trace).Named("apiproxy")
 
@@ -265,9 +236,7 @@ func setupClusterAndAgentCommon(ctx context.Context, t *testing.T, coreConfig *v
 		UserAgentStringFunction: useragent.ProxyStringWithProxiedUserAgent,
 		UserAgentString:         useragent.ProxyAPIProxyString(),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a muxer and add paths relevant for the lease cache layer and API proxy layer
 	mux := http.NewServeMux()
@@ -284,9 +253,7 @@ func setupClusterAndAgentCommon(ctx context.Context, t *testing.T, coreConfig *v
 			Proxier:     apiProxy,
 			Logger:      cacheLogger.Named("leasecache"),
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		mux.Handle("/agent/v1/cache-clear", leaseCache.HandleCacheClear(ctx))
 
@@ -306,9 +273,7 @@ func setupClusterAndAgentCommon(ctx context.Context, t *testing.T, coreConfig *v
 
 	// testClient is the client that is used to talk to the agent for proxying/caching behavior.
 	testClient, err := activeClient.Clone()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if err := testClient.SetAddress("http://" + listener.Addr().String()); err != nil {
 		t.Fatal(err)
@@ -319,9 +284,7 @@ func setupClusterAndAgentCommon(ctx context.Context, t *testing.T, coreConfig *v
 	resp, err := testClient.Logical().Write("auth/userpass/login/foo", map[string]any{
 		"password": "bar",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	testClient.SetToken(resp.Auth.ClientToken)
 
 	cleanup := func() {

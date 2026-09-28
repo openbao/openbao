@@ -16,6 +16,8 @@ import (
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestStringGenerator_Generate_successful(t *testing.T) {
@@ -83,9 +85,7 @@ func TestStringGenerator_Generate_successful(t *testing.T) {
 
 			for range 100 {
 				actual, err := test.generator.Generate(ctx, nil)
-				if err != nil {
-					t.Fatalf("no error expected, but got: %s", err)
-				}
+				require.NoError(t, err)
 				for _, r := range actual {
 					if runeset[r] {
 						continue
@@ -242,9 +242,7 @@ func TestRandomRunes_deterministic(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			rng := MRAND.New(MRAND.NewSource(test.rngSeed))
 			runes, err := randomRunes(rng, []rune(test.charset), test.length)
-			if err != nil {
-				t.Fatalf("Expected no error, but found: %s", err)
-			}
+			require.NoError(t, err)
 
 			str := string(runes)
 
@@ -288,9 +286,7 @@ func TestRandomRunes_successful(t *testing.T) {
 
 			for range 10000 {
 				actual, err := randomRunes(rand.Reader, test.charset, test.length)
-				if err != nil {
-					t.Fatalf("no error expected, but got: %s", err)
-				}
+				require.NoError(t, err)
 				for _, r := range actual {
 					if runeset[r] {
 						continue
@@ -477,9 +473,7 @@ func BenchmarkStringGenerator_Generate(b *testing.B) {
 					b.ResetTimer()
 					for i := 0; i < b.N; i++ {
 						str, err := bench.generator.Generate(ctx, nil)
-						if err != nil {
-							b.Fatalf("Failed to generate string: %s", err)
-						}
+						require.NoErrorf(b, err, "Failed to generate string: %s", err)
 						if str == "" {
 							b.Fatalf("Didn't error but didn't generate a string")
 						}
@@ -503,9 +497,7 @@ func BenchmarkStringGenerator_Generate(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			str, err := sg.Generate(ctx, nil)
-			if err != nil {
-				b.Fatalf("Failed to generate string: %s", err)
-			}
+			require.NoErrorf(b, err, "Failed to generate string: %s", err)
 			if str == "" {
 				b.Fatalf("Didn't error but didn't generate a string")
 			}
@@ -531,9 +523,7 @@ func TestStringGenerator_JSON(t *testing.T) {
 	}
 
 	b, err := json.Marshal(expected)
-	if err != nil {
-		t.Fatalf("Failed to marshal to JSON: %s", err)
-	}
+	require.NoError(t, err)
 
 	parser := PolicyParser{
 		RuleRegistry: Registry{
@@ -544,9 +534,7 @@ func TestStringGenerator_JSON(t *testing.T) {
 		},
 	}
 	actual, err := parser.ParsePolicy(string(b))
-	if err != nil {
-		t.Fatalf("Failed to parse JSON: %s", err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("Actual: %#v\nExpected: %#v", actual, expected)
@@ -790,9 +778,7 @@ func TestRandomRunes_Bias(t *testing.T) {
 			length := 100
 			for range generations {
 				str, err := randomRunes(nil, test.charset, length)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				for _, r := range str {
 					runeCounts[r]++
 				}

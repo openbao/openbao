@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/stretchr/testify/require"
 )
 
 // Test_RegistryGet exercises the (registry).Get functionality by comparing
@@ -292,9 +293,7 @@ func Test_RegistryMatchesGenOpenapi(t *testing.T) {
 
 	// test starts here
 	scriptCredentialBackends, scriptSecretsBackends, err := parseScript(scriptPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	for _, name := range scriptCredentialBackends {
 		ensureInRegistry(t, name, consts.PluginTypeCredential)

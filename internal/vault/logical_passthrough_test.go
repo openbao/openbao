@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPassthroughBackend_RootPaths(t *testing.T) {
@@ -32,17 +33,13 @@ func TestPassthroughBackend_Write(t *testing.T) {
 		req.Data["raw"] = "test"
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if resp != nil {
 			t.Fatalf("bad: %v", resp)
 		}
 
 		out, err := req.Storage.Get(t.Context(), "foo")
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if out == nil {
 			t.Fatal("failed to write to view")
 		}
@@ -77,14 +74,10 @@ func TestPassthroughBackend_Read(t *testing.T) {
 		req.Storage = storage
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		expectedTTL, err := parseutil.ParseDurationSecond(ttl)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// What comes back if an int is passed in is a json.Number which is
 		// actually aliased as a string so to make the deep equal happy if it's
@@ -93,9 +86,7 @@ func TestPassthroughBackend_Read(t *testing.T) {
 		_, ok := respTTL.(json.Number)
 		if ok {
 			respTTL, err = respTTL.(json.Number).Int64()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			resp.Data[ttlType] = respTTL
 		}
 
@@ -142,9 +133,7 @@ func TestPassthroughBackend_Delete(t *testing.T) {
 		req = logical.TestRequest(t, logical.DeleteOperation, "foo")
 		req.Storage = storage
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if resp != nil {
 			t.Fatalf("bad: %v", resp)
 		}
@@ -152,9 +141,7 @@ func TestPassthroughBackend_Delete(t *testing.T) {
 		req = logical.TestRequest(t, logical.ReadOperation, "foo")
 		req.Storage = storage
 		resp, err = b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if resp != nil {
 			t.Fatalf("bad: %v", resp)
 		}
@@ -178,9 +165,7 @@ func TestPassthroughBackend_List(t *testing.T) {
 		req = logical.TestRequest(t, logical.ListOperation, "")
 		req.Storage = storage
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		expected := &logical.Response{
 			Data: map[string]any{

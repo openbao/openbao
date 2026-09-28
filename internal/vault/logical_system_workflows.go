@@ -137,6 +137,9 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.handleWorkflowsResolvePath("workflows/manage/"),
+				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleWorkflowsRead(),
 					Responses: map[int][]framework.Response{
@@ -195,6 +198,9 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 			TakesArbitraryInput: true,
 
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.handleWorkflowsResolvePath("workflows/execute/"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleWorkflowsExecute(false /* we are authenticated */, false /* we are doing a real execution */),
 					Responses: map[int][]framework.Response{
@@ -225,6 +231,9 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 			TakesArbitraryInput: true,
 
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.handleWorkflowsResolvePath("workflows/trace/"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleWorkflowsExecute(false /* we are authenticated */, true /* we are executing in trace mode */),
 					Responses: map[int][]framework.Response{
@@ -257,6 +266,9 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 			TakesArbitraryInput: true,
 
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.handleWorkflowsResolvePath("workflows/unauthed-execute/"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleWorkflowsExecute(true /* we are unauthenticated */, false /* we are not performing a trace */),
 					Responses: map[int][]framework.Response{
@@ -288,6 +300,21 @@ func createWorkflowDataResponse(we *WorkflowEntry) map[string]any {
 	base := createWorkflowListResponse(we)
 	base["workflow"] = we.Workflow
 	return base
+}
+
+func (b *SystemBackend) handleWorkflowsResolvePath(prefix string) framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path := data.Get("path").(string)
+		path = b.Core.workflowStore.sanitizePath(path)
+
+		if strings.HasSuffix(req.Path, "/") {
+			// GenericNameRegex does not include the trailing '/' present when
+			// listing a subset of policies.
+			path += "/"
+		}
+
+		return logical.ResolvePathResponse(prefix + path)
+	}
 }
 
 // handleWorkflowsList handles "/sys/workflows/manage/*" endpoints to list the

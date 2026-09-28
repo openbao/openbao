@@ -9,7 +9,17 @@ node_modules
 /.sass-cache
 /.eslintcache
 /coverage
+/npm-debug.log*
 /testem.log
 
 # test artifacts
 /tests/helpers/vault-keys.js
+# ember-try
+/.node_modules.ember-try/
+/npm-shrinkwrap.json.ember-try
+/package.json.ember-try
+/package-lock.json.ember-try
+/yarn.lock.ember-try
+
+# broccoli-debug
+/DEBUG/

@@ -55,6 +55,9 @@ func pathAcmeEabList(b *backend) *framework.Path {
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.resolvePathIssuerKey,
+			},
 			logical.ListOperation: &framework.PathOperation{
 				Callback: b.pathAcmeListEab,
 				DisplayAttrs: &framework.DisplayAttributes{
@@ -102,6 +105,9 @@ func patternAcmeNewEab(b *backend, pattern string) *framework.Path {
 		Fields:  fields,
 
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.resolvePathIssuerKey,
+			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback:                    b.pathAcmeCreateEab,
 				ForwardPerformanceSecondary: false,
@@ -164,6 +170,9 @@ func pathAcmeEabDelete(b *backend) *framework.Path {
 			},
 		},
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.resolvePathIssuerKey,
+			},
 			logical.DeleteOperation: &framework.PathOperation{
 				Callback:                    b.pathAcmeDeleteEab,
 				ForwardPerformanceSecondary: false,

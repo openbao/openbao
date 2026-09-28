@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 // testHTTPServer creates a test HTTP server that handles requests until
@@ -21,9 +22,7 @@ func testHTTPServer(
 	t *testing.T, handler http.Handler,
 ) (*api.Config, net.Listener) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	server := &http.Server{Handler: handler}
 	go server.Serve(ln)
@@ -45,14 +44,10 @@ func TestLogin(t *testing.T) {
 
 	content := []byte(allowedPassword)
 	tmpfile, err := os.CreateTemp("", "file-containing-password")
-	if err != nil {
-		t.Fatalf("error creating temp file: %v", err)
-	}
+	require.NoError(t, err)
 	defer os.Remove(tmpfile.Name()) // clean up
 	err = os.Setenv(passwordEnvVar, allowedPassword)
-	if err != nil {
-		t.Fatalf("error writing password to env var: %v", err)
-	}
+	require.NoError(t, err)
 
 	if _, err := tmpfile.Write(content); err != nil {
 		t.Fatalf("error writing to temp file: %v", err)
@@ -69,16 +64,12 @@ func TestLogin(t *testing.T) {
 	}
 
 	authBytes, err := json.Marshal(authSecret)
-	if err != nil {
-		t.Fatalf("error marshaling json: %v", err)
-	}
+	require.NoError(t, err)
 
 	handler := func(w http.ResponseWriter, req *http.Request) {
 		payload := make(map[string]any)
 		err := json.NewDecoder(req.Body).Decode(&payload)
-		if err != nil {
-			t.Fatalf("error decoding json: %v", err)
-		}
+		require.NoError(t, err)
 		if payload["password"] == allowedPassword {
 			w.Write(authBytes)
 		}
@@ -89,45 +80,31 @@ func TestLogin(t *testing.T) {
 
 	config.Address = strings.ReplaceAll(config.Address, "127.0.0.1", "localhost")
 	client, err := api.NewClient(config)
-	if err != nil {
-		t.Fatalf("error initializing Vault client: %v", err)
-	}
+	require.NoError(t, err)
 
 	authFromFile, err := NewUserpassAuth("my-role-id", &Password{FromFile: tmpfile.Name()})
-	if err != nil {
-		t.Fatalf("error initializing AppRoleAuth with password file: %v", err)
-	}
+	require.NoError(t, err)
 
 	loginRespFromFile, err := client.Auth().Login(t.Context(), authFromFile)
-	if err != nil {
-		t.Fatalf("error logging in with password from file: %v", err)
-	}
+	require.NoError(t, err)
 	if loginRespFromFile.Auth == nil || loginRespFromFile.Auth.ClientToken == "" {
 		t.Fatal("no authentication info returned by login")
 	}
 
 	authFromEnv, err := NewUserpassAuth("my-role-id", &Password{FromEnv: passwordEnvVar})
-	if err != nil {
-		t.Fatalf("error initializing AppRoleAuth with password env var: %v", err)
-	}
+	require.NoError(t, err)
 
 	loginRespFromEnv, err := client.Auth().Login(t.Context(), authFromEnv)
-	if err != nil {
-		t.Fatalf("error logging in with password from env var: %v", err)
-	}
+	require.NoError(t, err)
 	if loginRespFromEnv.Auth == nil || loginRespFromEnv.Auth.ClientToken == "" {
 		t.Fatal("no authentication info returned by login with password from env var")
 	}
 
 	authFromStr, err := NewUserpassAuth("my-role-id", &Password{FromString: allowedPassword})
-	if err != nil {
-		t.Fatalf("error initializing AppRoleAuth with password string: %v", err)
-	}
+	require.NoError(t, err)
 
 	loginRespFromStr, err := client.Auth().Login(t.Context(), authFromStr)
-	if err != nil {
-		t.Fatalf("error logging in with string: %v", err)
-	}
+	require.NoError(t, err)
 	if loginRespFromStr.Auth == nil || loginRespFromStr.Auth.ClientToken == "" {
 		t.Fatal("no authentication info returned by login with password from string")
 	}

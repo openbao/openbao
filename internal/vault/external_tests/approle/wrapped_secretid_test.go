@@ -42,9 +42,7 @@ func TestApproleSecretId_Wrapped(t *testing.T) {
 	err = client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
 		Type: "approle",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("auth/approle/role/test-role-1", map[string]any{
 		"name": "test-role-1",
@@ -101,9 +99,7 @@ func TestApproleSecretId_NotWrapped(t *testing.T) {
 	err = client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
 		Type: "approle",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("auth/approle/role/test-role-1", map[string]any{
 		"name": "test-role-1",

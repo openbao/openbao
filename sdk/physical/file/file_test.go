@@ -13,6 +13,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFileBackend_Base64URLEncoding(t *testing.T) {
@@ -23,22 +24,16 @@ func TestFileBackend_Base64URLEncoding(t *testing.T) {
 	b, err := NewFileBackend(map[string]string{
 		"path": backendPath,
 	}, logger)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	// List the entries. Length should be zero.
 	keys, err := b.List(t.Context(), "")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(keys) != 0 {
 		t.Fatalf("bad: len(keys): expected: 0, actual: %d", len(keys))
 	}
 	keys, err = b.ListPage(t.Context(), "", "", -1)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(keys) != 0 {
 		t.Fatalf("bad: len(keys): expected: 0, actual: %d", len(keys))
 	}
@@ -50,100 +45,74 @@ func TestFileBackend_Base64URLEncoding(t *testing.T) {
 		os.O_CREATE|os.O_TRUNC|os.O_WRONLY,
 		0o600,
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	json.NewEncoder(f).Encode(e)
 	f.Close()
 
 	// Get should work
 	out, err := b.Get(t.Context(), "foo")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if !reflect.DeepEqual(out, e) {
 		t.Fatalf("bad: %v expected: %v", out, e)
 	}
 
 	// List the entries. There should be one entry.
 	keys, err = b.List(t.Context(), "")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(keys) != 1 {
 		t.Fatalf("bad: len(keys): expected: 1, actual: %d", len(keys))
 	}
 	keys, err = b.ListPage(t.Context(), "", "", -1)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(keys) != 1 {
 		t.Fatalf("bad: len(keys): expected: 1, actual: %d", len(keys))
 	}
 
 	// Listing after the last entry should return none.
 	keys, err = b.ListPage(t.Context(), "", "foo", -1)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(keys) != 0 {
 		t.Fatalf("bad: len(keys): expected: 0, actual: %d", len(keys))
 	}
 
 	err = b.Put(t.Context(), e)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// List the entries again. There should still be one entry.
 	keys, err = b.List(t.Context(), "")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(keys) != 1 {
 		t.Fatalf("bad: len(keys): expected: 1, actual: %d", len(keys))
 	}
 	keys, err = b.ListPage(t.Context(), "", "", -1)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(keys) != 1 {
 		t.Fatalf("bad: len(keys): expected: 1, actual: %d", len(keys))
 	}
 
 	// Get should work
 	out, err = b.Get(t.Context(), "foo")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if !reflect.DeepEqual(out, e) {
 		t.Fatalf("bad: %v expected: %v", out, e)
 	}
 
 	err = b.Delete(t.Context(), "foo")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	out, err = b.Get(t.Context(), "foo")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if out != nil {
 		t.Fatalf("bad: entry: expected: nil, actual: %#v", e)
 	}
 
 	keys, err = b.List(t.Context(), "")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(keys) != 0 {
 		t.Fatalf("bad: len(keys): expected: 0, actual: %d", len(keys))
 	}
 	keys, err = b.ListPage(t.Context(), "", "", -1)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(keys) != 0 {
 		t.Fatalf("bad: len(keys): expected: 0, actual: %d", len(keys))
 	}
@@ -153,23 +122,17 @@ func TestFileBackend_Base64URLEncoding(t *testing.T) {
 		os.O_CREATE|os.O_TRUNC|os.O_WRONLY,
 		0o600,
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	json.NewEncoder(f).Encode(e)
 	f.Close()
 
 	keys, err = b.List(t.Context(), "")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(keys) != 1 {
 		t.Fatalf("bad: len(keys): expected: 1, actual: %d", len(keys))
 	}
 	keys, err = b.ListPage(t.Context(), "", "", -1)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(keys) != 1 {
 		t.Fatalf("bad: len(keys): expected: 1, actual: %d", len(keys))
 	}
@@ -183,9 +146,7 @@ func TestFileBackend_ValidatePath(t *testing.T) {
 	b, err := NewFileBackend(map[string]string{
 		"path": dir,
 	}, logger)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if err := b.Delete(t.Context(), "foo/bar/../zip"); err == nil {
 		t.Fatal("expected error")
@@ -203,9 +164,7 @@ func TestFileBackend(t *testing.T) {
 	b, err := NewFileBackend(map[string]string{
 		"path": dir,
 	}, logger)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	// File backend is not transactional
 	physical.ExerciseBackend(t, b)
@@ -213,25 +172,17 @@ func TestFileBackend(t *testing.T) {
 	// Underscores should not trip things up; ref GH-3476
 	e := &physical.Entry{Key: "_zip", Value: []byte("foobar")}
 	err = b.Put(t.Context(), e)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	e = &physical.Entry{Key: "_zip/_zap", Value: []byte("boofar")}
 	err = b.Put(t.Context(), e)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	e, err = b.Get(t.Context(), "_zip/_zap")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if e == nil {
 		t.Fatal("got nil entry")
 	}
 	vals, err := b.List(t.Context(), "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(vals) != 2 || vals[0] == vals[1] {
 		t.Fatalf("bad: %v", vals)
 	}
@@ -241,31 +192,21 @@ func TestFileBackend(t *testing.T) {
 		}
 	}
 	vals, err = b.List(t.Context(), "_zip/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(vals) != 1 || vals[0] != "_zap" {
 		t.Fatalf("bad: %v", vals)
 	}
 	err = b.Delete(t.Context(), "_zip/_zap")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	vals, err = b.List(t.Context(), "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(vals) != 1 || vals[0] != "_zip" {
 		t.Fatalf("bad: %v", vals)
 	}
 	err = b.Delete(t.Context(), "_zip")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	vals, err = b.List(t.Context(), "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(vals) != 0 {
 		t.Fatalf("bad: %v", vals)
 	}

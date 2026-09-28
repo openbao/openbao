@@ -81,9 +81,7 @@ func compareDBs(t *testing.T, boltDB1, boltDB2 *bolt.DB, dataOnly bool) error {
 
 		return nil
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = boltDB2.View(func(tx *bolt.Tx) error {
 		c := tx.Cursor()
@@ -102,9 +100,7 @@ func compareDBs(t *testing.T, boltDB1, boltDB2 *bolt.DB, dataOnly bool) error {
 
 		return nil
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if diff := deep.Equal(db1, db2); diff != nil {
 		return fmt.Errorf("%+v", diff)
@@ -269,9 +265,7 @@ func TestRaft_ParseNonVoter(t *testing.T) {
 							t.Fatal("expected an error but got none")
 						}
 					default:
-						if err != nil {
-							t.Fatalf("expected no error but got: %s", err)
-						}
+						require.NoError(t, err)
 
 						raftBackend := backend.(*RaftBackend)
 						if tc.expectNonVoter != raftBackend.NonVoter() {
@@ -289,9 +283,7 @@ func TestRaft_Backend_LargeKey(t *testing.T) {
 	b := GetRaft(t, true, true)
 
 	key, err := base62.Random(bolt.MaxKeySize + 1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	entry := &physical.Entry{Key: key, Value: []byte(key)}
 
 	err = b.Put(t.Context(), entry)
@@ -304,9 +296,7 @@ func TestRaft_Backend_LargeKey(t *testing.T) {
 	}
 
 	out, err := b.Get(t.Context(), entry.Key)
-	if err != nil {
-		t.Fatalf("unexpected error after failed put: %v", err)
-	}
+	require.NoError(t, err)
 	if out != nil {
 		t.Fatal("expected response entry to be nil after a failed put")
 	}
@@ -330,9 +320,7 @@ func TestRaft_Backend_LargeValue(t *testing.T) {
 	}
 
 	out, err := b.Get(t.Context(), entry.Key)
-	if err != nil {
-		t.Fatalf("unexpected error after failed put: %v", err)
-	}
+	require.NoError(t, err)
 	if out != nil {
 		t.Fatal("expected response entry to be nil after a failed put")
 	}
@@ -443,9 +431,7 @@ func TestRaft_GetOfflineConfig(t *testing.T) {
 	raft1.TeardownCluster(nil)
 
 	conf, err := raft1.GetConfigurationOffline()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(conf.Servers) != 3 {
 		t.Fatalf("three raft nodes existed but we only see %d", len(conf.Servers))
 	}
@@ -510,21 +496,13 @@ func TestRaft_Recovery(t *testing.T) {
 	})
 
 	peersJSONBytes, err := jsonutil.EncodeJSON(peersList)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(filepath.Join(dir1, raftState), "peers.json"), peersJSONBytes, 0o644)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(filepath.Join(dir2, raftState), "peers.json"), peersJSONBytes, 0o644)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(filepath.Join(dir4, raftState), "peers.json"), peersJSONBytes, 0o644)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Bring up the nodes again
 	require.NoError(t, raft1.SetupCluster(t.Context(), SetupOpts{}))
@@ -532,9 +510,7 @@ func TestRaft_Recovery(t *testing.T) {
 	require.NoError(t, raft4.SetupCluster(t.Context(), SetupOpts{}))
 
 	peers, err := raft1.Peers(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(peers) != 3 {
 		t.Fatal("failed to recover the cluster")
 	}
@@ -747,9 +723,7 @@ func BenchmarkDB_Puts(b *testing.B) {
 
 	bench := func(b *testing.B, s physical.Backend, dataSize int) {
 		data, err := uuid.GenerateRandomBytes(dataSize)
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(b, err)
 
 		pe := &physical.Entry{
 			Value: data,
@@ -760,9 +734,7 @@ func BenchmarkDB_Puts(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
 			err := s.Put(b.Context(), pe)
-			if err != nil {
-				b.Fatal(err)
-			}
+			require.NoError(b, err)
 		}
 	}
 
@@ -774,9 +746,7 @@ func BenchmarkDB_Snapshot(b *testing.B) {
 	raft := GetRaft(b, true, false)
 
 	data, err := uuid.GenerateRandomBytes(256 * 1024)
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err)
 
 	pe := &physical.Entry{
 		Value: data,
@@ -786,9 +756,7 @@ func BenchmarkDB_Snapshot(b *testing.B) {
 	for i := range 100 {
 		pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
 		err = raft.Put(b.Context(), pe)
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(b, err)
 	}
 
 	bench := func(b *testing.B, s *FSM) {

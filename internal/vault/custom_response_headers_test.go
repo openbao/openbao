@@ -16,6 +16,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
+	"github.com/stretchr/testify/require"
 )
 
 var defaultCustomHeaders = map[string]string{
@@ -54,9 +55,7 @@ var customHeader400 = map[string]string{
 func TestConfigCustomHeaders(t *testing.T) {
 	logger := logging.NewVaultLogger(log.Trace)
 	phys, err := inmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	logl := &logical.InmemStorage{}
 	uiConfig := NewUIConfig(true, phys, logl)
 
@@ -76,9 +75,7 @@ func TestConfigCustomHeaders(t *testing.T) {
 	}
 
 	uiHeaders, err := uiConfig.Headers(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	listenerCustomHeaders := *NewListenerCustomHeader(rawListenerConfig, logger, uiHeaders)
 	if listenerCustomHeaders == nil || len(listenerCustomHeaders) != 1 {
@@ -122,9 +119,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 		},
 	}
 	uiHeaders, err := b.(*SystemBackend).Core.uiConfig.Headers(t.Context())
-	if err != nil {
-		t.Fatal("failed to get headers from ui config")
-	}
+	require.NoError(t, err)
 	customListenerHeader := NewListenerCustomHeader(rawListenerConfig, logger, uiHeaders)
 	if customListenerHeader == nil {
 		t.Fatal("custom header config should be configured")
@@ -175,9 +170,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 	)
 
 	h, err := b.(*SystemBackend).Core.uiConfig.Headers(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if h.Get("Someheader-400") == "400" {
 		t.Fatal("should not be able to set a header that is in custom response headers")
 	}
@@ -188,9 +181,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 	req.ResponseWriter = hw
 
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal("request failed on setting a header that is not present in custom response headers.", "error:", err)
-	}
+	require.NoError(t, err)
 	schema.ValidateResponse(
 		t,
 		schema.FindResponseSchema(t, paths, 3, req.Operation),
@@ -199,9 +190,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 	)
 
 	h, err = b.(*SystemBackend).Core.uiConfig.Headers(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if h.Get("X-CustomUiHeader") != "Ui header value" {
 		t.Fatal("failed to set a header that is not in custom response headers")
 	}

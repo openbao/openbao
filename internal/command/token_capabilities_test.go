@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 func testTokenCapabilitiesCommand(tb testing.TB) (*cli.MockUi, *TokenCapabilitiesCommand) {
@@ -76,9 +77,7 @@ func TestTokenCapabilitiesCommand_Run(t *testing.T) {
 			Policies: []string{"policy"},
 			TTL:      "30m",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret == nil || secret.Auth == nil || secret.Auth.ClientToken == "" {
 			t.Fatalf("missing auth data: %#v", secret)
 		}
@@ -116,9 +115,7 @@ func TestTokenCapabilitiesCommand_Run(t *testing.T) {
 			Policies: []string{"policy"},
 			TTL:      "30m",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret == nil || secret.Auth == nil || secret.Auth.ClientToken == "" {
 			t.Fatalf("missing auth data: %#v", secret)
 		}

@@ -99,9 +99,7 @@ func TestConfig_JWT_Write(t *testing.T) {
 	}
 
 	resp, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -119,9 +117,7 @@ func TestConfig_JWT_Write(t *testing.T) {
 		Data:      data,
 	}
 	resp, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
@@ -146,9 +142,7 @@ func TestConfig_JWT_Write(t *testing.T) {
 	}
 
 	pubkey, err := certutil.ParsePublicKeyPEM([]byte(testJWTPubKey))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &jwtConfig{
 		ParsedJWTPubKeys:           []crypto.PublicKey{pubkey},
@@ -162,9 +156,7 @@ func TestConfig_JWT_Write(t *testing.T) {
 	}
 
 	conf, err := b.(*jwtAuthBackend).config(t.Context(), storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(expected, conf) {
 		t.Fatalf("expected did not match actual: expected %#v\n got %#v\n", expected, conf)
@@ -203,9 +195,7 @@ func TestConfig_JWKS_Update(t *testing.T) {
 	defer s.server.Close()
 
 	cert, err := s.getTLSCert()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	data := map[string]any{
 		"jwks_url":                      s.server.URL + "/certs",
@@ -261,9 +251,7 @@ func TestConfig_JWKS_Update_Invalid(t *testing.T) {
 	defer s.server.Close()
 
 	cert, err := s.getTLSCert()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	data := map[string]any{
 		"jwks_url":               s.server.URL + "/certs_missing",
@@ -285,9 +273,7 @@ func TestConfig_JWKS_Update_Invalid(t *testing.T) {
 	}
 
 	resp, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -305,9 +291,7 @@ func TestConfig_JWKS_Update_Invalid(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -375,9 +359,7 @@ func TestConfig_OIDC_Write(t *testing.T) {
 		Data:      data,
 	}
 	resp, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -402,9 +384,7 @@ func TestConfig_OIDC_Write(t *testing.T) {
 	}
 
 	conf, err := b.(*jwtAuthBackend).config(t.Context(), storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if diff := deep.Equal(expected, conf); diff != nil {
 		t.Fatal(diff)
@@ -464,9 +444,7 @@ func TestConfig_OIDC_Write(t *testing.T) {
 			Data:      test.data,
 		}
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatalf("test '%s', %v", test.id, err)
-		}
+		require.NoErrorf(t, err, "test '%s', %v", test.id, err)
 		if !resp.IsError() {
 			t.Fatalf("test '%s', expected error", test.id)
 		}
@@ -510,9 +488,7 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 		}
 
 		conf, err := b.(*jwtAuthBackend).config(t.Context(), storage)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if diff := deep.Equal(expected, conf); diff != nil {
 			t.Fatal(diff)
@@ -568,9 +544,7 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 		}
 
 		conf, err := b.(*jwtAuthBackend).config(t.Context(), storage)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if diff := deep.Equal(expected, conf); diff != nil {
 			t.Fatal(diff)
@@ -784,9 +758,7 @@ func TestConfig_OIDC_Ignore(t *testing.T) {
 		Data:      data,
 	}
 	resp, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("unexpected error; expected warning: %v", err)
-	}
+	require.NoError(t, err)
 	if resp.IsError() {
 		t.Fatalf("unexpected error; expected warning: %#v", resp)
 	}
@@ -800,9 +772,7 @@ func TestConfig_OIDC_Ignore(t *testing.T) {
 	req.Data = nil
 
 	resp, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("unexpected error; expected warning: %v", err)
-	}
+	require.NoError(t, err)
 	if resp.IsError() {
 		t.Fatalf("unexpected error; expected warning: %#v", resp)
 	}
@@ -877,9 +847,7 @@ func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 			}
 
 			caCtx, err := b.createCAContext(t.Context(), rootCAString, test.allowedServerNames)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+			require.NoError(t, err)
 			client, ok := caCtx.Value(oauth2.HTTPClient).(*http.Client)
 			if !ok {
 				t.Fatalf("unexpected error; can't retrieve client")

@@ -14,6 +14,7 @@ import (
 
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/v2/internal/helper/metricsutil"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
@@ -86,9 +87,7 @@ func TestAutoSeal_UpgradeKeys(t *testing.T) {
 	changeKey("kaz")
 
 	autoSeal, err := NewAutoSeal(testSeal)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	autoSeal.SetCore(core)
 	pBackend := newTestBackend(t)
@@ -109,18 +108,14 @@ func TestAutoSeal_UpgradeKeys(t *testing.T) {
 	check := func() {
 		// The values of the stored keys should never change.
 		outkeys, err := autoSeal.GetStoredKeys(ctx)
-		if err != nil {
-			t.Fatalf("GetStoredKeys: want no error, got %v", err)
-		}
+		require.NoError(t, err)
 		if !reflect.DeepEqual(inkeys, outkeys) {
 			t.Errorf("incorrect stored keys: want %v, got %v", inkeys, outkeys)
 		}
 
 		// The value of the recovery key should also never change.
 		outRecoveryKey, err := autoSeal.RecoveryKey(ctx)
-		if err != nil {
-			t.Fatalf("RecoveryKey: want no error, got %v", err)
-		}
+		require.NoError(t, err)
 		if !bytes.Equal(inRecoveryKey, outRecoveryKey) {
 			t.Errorf("incorrect recovery key: want %q, got %q", inRecoveryKey, outRecoveryKey)
 		}
@@ -201,9 +196,7 @@ func TestAutoSeal_HealthCheck(t *testing.T) {
 		10*time.Millisecond,
 		10*time.Millisecond,
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	autoSeal.SetCore(core)
 	core.seal = autoSeal

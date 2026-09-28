@@ -27,6 +27,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -323,9 +324,7 @@ func TestLogin(t *testing.T) {
 	}
 
 	resp, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error response")
 	}
@@ -345,9 +344,7 @@ func TestLogin(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -368,9 +365,7 @@ func TestLogin(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -1436,19 +1431,13 @@ func Test_kubeAuthBackend_getAliasName(t *testing.T) {
 			b := &kubeAuthBackend{}
 
 			s, err := signTestJWTRequest(tt.signRequest)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			tok, err := josejwt.ParseSigned(s, consts.AllowedJWTSignatureAlgorithmsK8s)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			claims := map[string]any{}
 			err = tok.UnsafeClaimsWithoutVerification(&claims)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			sa := &serviceAccount{}
 			if err := mapstructure.Decode(claims, sa); err != nil {
@@ -1596,9 +1585,7 @@ func TestResolveRole(t *testing.T) {
 	}
 
 	entry, err := logical.StorageEntryJSON("role/"+role, validRoleStorageEntry)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if err := storage.Put(t.Context(), entry); err != nil {
 		t.Fatal(err)
 	}

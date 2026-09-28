@@ -11,23 +11,20 @@ import (
 
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCubbyholeBackend_Write(t *testing.T) {
 	b := testCubbyholeBackend(t)
 	req := logical.TestRequest(t, logical.UpdateOperation, "foo")
 	clientToken, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	req.ClientToken = clientToken
 	storage := req.Storage
 	req.Data["raw"] = "test"
 
 	resp, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -36,9 +33,7 @@ func TestCubbyholeBackend_Write(t *testing.T) {
 	req.Storage = storage
 	req.ClientToken = clientToken
 	_, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestCubbyholeBackend_Read(t *testing.T) {
@@ -47,9 +42,7 @@ func TestCubbyholeBackend_Read(t *testing.T) {
 	req.Data["raw"] = "test"
 	storage := req.Storage
 	clientToken, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	req.ClientToken = clientToken
 
 	if _, err := b.HandleRequest(t.Context(), req); err != nil {
@@ -61,9 +54,7 @@ func TestCubbyholeBackend_Read(t *testing.T) {
 	req.ClientToken = clientToken
 
 	resp, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	expected := &logical.Response{
 		Data: map[string]any{
@@ -82,9 +73,7 @@ func TestCubbyholeBackend_Delete(t *testing.T) {
 	req.Data["raw"] = "test"
 	storage := req.Storage
 	clientToken, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	req.ClientToken = clientToken
 
 	if _, err := b.HandleRequest(t.Context(), req); err != nil {
@@ -95,9 +84,7 @@ func TestCubbyholeBackend_Delete(t *testing.T) {
 	req.Storage = storage
 	req.ClientToken = clientToken
 	resp, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -106,9 +93,7 @@ func TestCubbyholeBackend_Delete(t *testing.T) {
 	req.Storage = storage
 	req.ClientToken = clientToken
 	resp, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -118,9 +103,7 @@ func TestCubbyholeBackend_List(t *testing.T) {
 	b := testCubbyholeBackend(t)
 	req := logical.TestRequest(t, logical.UpdateOperation, "foo")
 	clientToken, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	req.Data["raw"] = "test"
 	req.ClientToken = clientToken
 	storage := req.Storage
@@ -142,9 +125,7 @@ func TestCubbyholeBackend_List(t *testing.T) {
 	req.Storage = storage
 	req.ClientToken = clientToken
 	resp, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	expKeys := []string{"foo", "bar"}
 	respKeys := resp.Data["keys"].([]string)
@@ -159,13 +140,9 @@ func TestCubbyholeIsolation(t *testing.T) {
 	b := testCubbyholeBackend(t)
 
 	clientTokenA, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	clientTokenB, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	var storageA logical.Storage
 	var storageB logical.Storage
 
@@ -176,9 +153,7 @@ func TestCubbyholeIsolation(t *testing.T) {
 	req.Data["raw"] = "test"
 
 	resp, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -187,9 +162,7 @@ func TestCubbyholeIsolation(t *testing.T) {
 	req.Storage = storageA
 	req.ClientToken = clientTokenA
 	resp, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	expected := &logical.Response{
 		Data: map[string]any{
@@ -208,9 +181,7 @@ func TestCubbyholeIsolation(t *testing.T) {
 	req.Data["raw"] = "baz"
 
 	resp, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -219,9 +190,7 @@ func TestCubbyholeIsolation(t *testing.T) {
 	req.Storage = storageB
 	req.ClientToken = clientTokenB
 	resp, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	expected = &logical.Response{
 		Data: map[string]any{
@@ -238,9 +207,7 @@ func TestCubbyholeIsolation(t *testing.T) {
 	req.Storage = storageB
 	req.ClientToken = clientTokenB
 	resp, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatal("err: was able to read from other user's cubbyhole")
 	}
@@ -249,9 +216,7 @@ func TestCubbyholeIsolation(t *testing.T) {
 	req.Storage = storageA
 	req.ClientToken = clientTokenA
 	resp, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatal("err: was able to read from other user's cubbyhole")
 	}

@@ -11,6 +11,8 @@ import (
 	"runtime"
 	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestCheckPathInfo(t *testing.T) {
@@ -61,9 +63,7 @@ func TestCheckPathInfo(t *testing.T) {
 
 	for _, tc := range testCases {
 		err := os.Mkdir("testFile", tc.filepermissions)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		info, err := os.Stat("testFile")
 		if err != nil {
 			t.Errorf("error stating %q: %v", "testFile", err)
@@ -81,9 +81,7 @@ func TestCheckPathInfo(t *testing.T) {
 		}
 
 		err = os.RemoveAll("testFile")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 }
 
@@ -91,25 +89,17 @@ func TestCheckPathInfo(t *testing.T) {
 // file
 func TestOwnerPermissionsMatchFile(t *testing.T) {
 	currentUser, err := user.Current()
-	if err != nil {
-		t.Fatal("failed to get current user", err)
-	}
+	require.NoError(t, err)
 	uid, err := strconv.ParseInt(currentUser.Uid, 0, 64)
-	if err != nil {
-		t.Fatal("failed to convert uid", err)
-	}
+	require.NoError(t, err)
 	dir := t.TempDir()
 	path := filepath.Join(dir, "foo")
 	f, err := os.Create(path)
-	if err != nil {
-		t.Fatal("failed to create test file", err)
-	}
+	require.NoError(t, err)
 	defer f.Close()
 
 	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatal("failed to stat test file", err)
-	}
+	require.NoError(t, err)
 
 	if err := OwnerPermissionsMatchFile(f, int(uid), int(info.Mode())); err != nil {
 		t.Fatalf("expected no error but got %v", err)
@@ -120,25 +110,17 @@ func TestOwnerPermissionsMatchFile(t *testing.T) {
 // that a different user is not the owner of the file
 func TestOwnerPermissionsMatchFile_OtherUser(t *testing.T) {
 	currentUser, err := user.Current()
-	if err != nil {
-		t.Fatal("failed to get current user", err)
-	}
+	require.NoError(t, err)
 	uid, err := strconv.ParseInt(currentUser.Uid, 0, 64)
-	if err != nil {
-		t.Fatal("failed to convert uid", err)
-	}
+	require.NoError(t, err)
 	dir := t.TempDir()
 	path := filepath.Join(dir, "foo")
 	f, err := os.Create(path)
-	if err != nil {
-		t.Fatal("failed to create test file", err)
-	}
+	require.NoError(t, err)
 	defer f.Close()
 
 	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatal("failed to stat test file", err)
-	}
+	require.NoError(t, err)
 
 	if err := OwnerPermissionsMatchFile(f, int(uid)+1, int(info.Mode())); err == nil {
 		t.Fatal("expected error but none")
@@ -149,34 +131,22 @@ func TestOwnerPermissionsMatchFile_OtherUser(t *testing.T) {
 // user of the process is the owner of the file
 func TestOwnerPermissionsMatchFile_Symlink(t *testing.T) {
 	currentUser, err := user.Current()
-	if err != nil {
-		t.Fatal("failed to get current user", err)
-	}
+	require.NoError(t, err)
 	uid, err := strconv.ParseInt(currentUser.Uid, 0, 64)
-	if err != nil {
-		t.Fatal("failed to convert uid", err)
-	}
+	require.NoError(t, err)
 	dir := t.TempDir()
 	path := filepath.Join(dir, "foo")
 	f, err := os.Create(path)
-	if err != nil {
-		t.Fatal("failed to create test file", err)
-	}
+	require.NoError(t, err)
 	defer f.Close()
 
 	symlink := filepath.Join(dir, "symlink")
 	err = os.Symlink(path, symlink)
-	if err != nil {
-		t.Fatal("failed to symlink file", err)
-	}
+	require.NoError(t, err)
 	symlinkedFile, err := os.Open(symlink)
-	if err != nil {
-		t.Fatal("failed to open file", err)
-	}
+	require.NoError(t, err)
 	info, err := os.Stat(symlink)
-	if err != nil {
-		t.Fatal("failed to stat test file", err)
-	}
+	require.NoError(t, err)
 	if err := OwnerPermissionsMatchFile(symlinkedFile, int(uid), int(info.Mode())); err != nil {
 		t.Fatalf("expected no error but got %v", err)
 	}

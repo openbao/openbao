@@ -12,6 +12,7 @@ import {
   fillIn,
   triggerKeyEvent,
   typeIn,
+  waitFor,
 } from '@ember/test-helpers';
 import { create } from 'ember-cli-page-object';
 import { module, skip, test } from 'qunit';
@@ -531,8 +532,11 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     await settled();
     await listPage.create();
     await editPage.createSecretDontSave(secretPath, 'foo', 'bar');
-    // to trigger warning need to hit keyup on the secret path
+    // commit the path value, then fire keyup so the
+    // whitespace check is reliably triggered
+    await fillIn('[data-test-secret-path="true"]', secretPath);
     await triggerKeyEvent('[data-test-secret-path="true"]', 'keyup', 65);
+    await waitFor('[data-test-whitespace-warning]');
 
     assert.dom('[data-test-whitespace-warning]').exists('renders warning about their being a space');
     await settled();
@@ -736,9 +740,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
       'edit route does not include version query param'
     );
     // Update key
-    await editPage.secretKey('newKey');
-    await editPage.secretValue('some-value');
-    await editPage.save();
+    await editPage.editSecret('newKey', 'some-value');
     assert.dom('[data-test-value-div="newKey"]').exists('Info row table exists at newKey');
 
     // check metadata tab

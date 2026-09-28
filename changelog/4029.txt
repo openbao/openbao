@@ -1,0 +1,6 @@
+```release-note:change
+secrets/pki: Replace the deprecated `x509.ParseCRL` with the newer `x509.ParseRevocationList`.
+```
+```release-note:change
+auth/cert: Replace the deprecated `x509.ParseCRL` with the newer `x509.ParseRevocationList`.
+```

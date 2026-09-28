@@ -174,9 +174,7 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 	}
 
 	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatalf("Failed to parse certificate: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Validate the TTL
 	expectedTTL := 1 * time.Hour
@@ -376,9 +374,7 @@ func TestCelRoleSign(t *testing.T) {
 	}
 
 	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatalf("Failed to parse signed certificate: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Validate Key Usage
 	expectedKeyUsage := x509.KeyUsageCertSign
@@ -566,9 +562,7 @@ func TestCelRoleIssueWithMultipleRootsPresent(t *testing.T) {
 	}
 
 	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatalf("Failed to parse certificate: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Validate the TTL
 	expectedTTL := 3 * time.Hour
@@ -717,9 +711,7 @@ func TestCelParsedCsr(t *testing.T) {
 	}
 
 	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatalf("Failed to parse signed certificate: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Validate common_name is as in the CSR
 	if cert.Subject.CommonName != "example.com" {
@@ -867,9 +859,7 @@ func TestCelCustomFunction(t *testing.T) {
 	}
 
 	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatalf("Failed to parse certificate: %v", err)
-	}
+	require.NoError(t, err)
 
 	require.Equal(t, "example@gmail.com", cert.EmailAddresses[0], "Email Address should be example@gmail.com")
 	require.Equal(t, "example.com", cert.Subject.CommonName, "Common Name should be example.com")
@@ -1004,9 +994,7 @@ func TestNotAfter(t *testing.T) {
 	}
 
 	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatalf("Failed to parse certificate: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Validate the TTL
 	expectedTTL := 1 * time.Hour

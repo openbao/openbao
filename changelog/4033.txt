@@ -1,0 +1,7 @@
+```release-note:bug
+core/mfa: Properly handle MFA enforcement configs deletion from storage.
+```
+
+```release-note:improvement
+core/mfa: Handle cache entry invalidation on standby nodes after mfa config deletion on leader node.
+```

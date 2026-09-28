@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVersionedKV_Metadata_Put(t *testing.T) {
@@ -471,14 +472,10 @@ func TestVersionedKV_Metadata_Delete(t *testing.T) {
 	// Verify all the version data was deleted.
 	for i := 0; i <= 5; i++ {
 		versionKey, err := b.(*versionedKVBackend).getVersionKey(t.Context(), "foo", uint64(i+1), req.Storage)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		v, err := storage.Get(t.Context(), versionKey)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if v != nil {
 			t.Fatal("Version wasn't deleted")
@@ -574,9 +571,7 @@ func TestVersionedKV_Metadata_Put_Bad_CustomMetadata(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("Read err: %#v, resp: %#v", err, resp)
-	}
+	require.NoErrorf(t, err, "Read err: %#v, resp: %#v", err, resp)
 
 	if resp != nil {
 		t.Fatalf("Expected empty read due to validation errors, resp: %#v", resp)
@@ -667,9 +662,7 @@ func TestVersionedKv_Metadata_Put_Too_Many_CustomMetadata_Keys(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("Read err: %#v, resp :%#v", err, resp)
-	}
+	require.NoErrorf(t, err, "Read err: %#v, resp :%#v", err, resp)
 
 	if resp != nil {
 		t.Fatalf("Expected empty read due to validation errors, resp: %#v", resp)
@@ -1051,9 +1044,7 @@ func TestVersionedKV_Metadata_Patch_Validation(t *testing.T) {
 			}
 
 			resp, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("unexpected patch error, err: %#v", err)
-			}
+			require.NoError(t, err)
 
 			if resp == nil || !resp.IsError() {
 				t.Fatalf("expected patch response to be error, actual: %#v", resp)

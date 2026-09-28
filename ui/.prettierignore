@@ -1,5 +1,6 @@
 # unconventional js
 /vendor
+/blueprints/*/files/
 
 # compiled output
 /dist/
@@ -13,3 +14,7 @@ node_modules
 !.*
 /.eslintcache
 /coverage
+.*/
+
+# ember-try
+/.node_modules.ember-try/

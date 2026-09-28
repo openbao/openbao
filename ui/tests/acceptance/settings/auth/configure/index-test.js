@@ -34,8 +34,8 @@ module('Acceptance | settings/auth/configure', function (hooks) {
   });
 
   test('it redirects to the first section', async function (assert) {
-    const path = `ldap-redirect-${this.uid}`;
-    const type = 'ldap';
+    const path = `jwt-${this.uid}`;
+    const type = 'jwt';
     await enablePage.enable(type, path);
     await page.visit({ path });
     assert.strictEqual(currentRouteName(), 'vault.cluster.settings.auth.configure.section');

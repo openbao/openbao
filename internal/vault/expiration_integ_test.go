@@ -13,6 +13,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/builtin/credential/approle"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExpiration_RenewToken_TestCluster(t *testing.T) {
@@ -36,32 +37,24 @@ func TestExpiration_RenewToken_TestCluster(t *testing.T) {
 	err := client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
 		Type: "approle",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Tune the mount
 	err = client.Sys().TuneMount("auth/approle", api.MountConfigInput{
 		DefaultLeaseTTL: "5s",
 		MaxLeaseTTL:     "5s",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create role
 	_, err = client.Logical().Write("auth/approle/role/role-period", map[string]any{
 		"period": "5s",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Get role_id
 	resp, err := client.Logical().Read("auth/approle/role/role-period/role-id")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for fetching the role-id")
 	}
@@ -69,9 +62,7 @@ func TestExpiration_RenewToken_TestCluster(t *testing.T) {
 
 	// Get secret_id
 	resp, err = client.Logical().Write("auth/approle/role/role-period/secret-id", map[string]any{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for fetching the secret-id")
 	}
@@ -82,9 +73,7 @@ func TestExpiration_RenewToken_TestCluster(t *testing.T) {
 		"role_id":   roleID,
 		"secret_id": secretID,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for login")
 	}
@@ -103,18 +92,14 @@ func TestExpiration_RenewToken_TestCluster(t *testing.T) {
 	resp, err = client.Logical().Write("auth/token/renew", map[string]any{
 		"token": roleToken,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for renew")
 	}
 
 	// Perform token lookup and verify TTL
 	resp, err = client.Auth().Token().Lookup(roleToken)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for token lookup")
 	}
@@ -124,9 +109,7 @@ func TestExpiration_RenewToken_TestCluster(t *testing.T) {
 		t.Fatal("no ttl value found in data object")
 	}
 	ttlInt, err := ttlRaw.Int64()
-	if err != nil {
-		t.Fatalf("unable to convert ttl to int: %s", err)
-	}
+	require.NoError(t, err)
 	ttl := time.Duration(ttlInt) * time.Second
 	if ttl < 4*time.Second {
 		t.Fatal("expected ttl value to be around 5s")
@@ -139,18 +122,14 @@ func TestExpiration_RenewToken_TestCluster(t *testing.T) {
 	resp, err = client.Logical().Write("auth/token/renew", map[string]any{
 		"token": roleToken,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for renew")
 	}
 
 	// Perform token lookup and verify TTL
 	resp, err = client.Auth().Token().Lookup(roleToken)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a response for token lookup")
 	}
@@ -160,9 +139,7 @@ func TestExpiration_RenewToken_TestCluster(t *testing.T) {
 		t.Fatal("no ttl value found in data object")
 	}
 	ttlInt, err = ttlRaw.Int64()
-	if err != nil {
-		t.Fatalf("unable to convert ttl to int: %s", err)
-	}
+	require.NoError(t, err)
 	ttl = time.Duration(ttlInt) * time.Second
 	if ttl < 4*time.Second {
 		t.Fatal("expected ttl value to be around 5s")

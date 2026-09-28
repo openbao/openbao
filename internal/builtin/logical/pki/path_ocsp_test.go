@@ -391,7 +391,7 @@ func TestOcsp_HigherLevel(t *testing.T) {
 		"ttl":         "600h",
 	})
 
-	require.NoError(t, err, "error generating root ca: %v", err)
+	require.NoError(t, err)
 	require.NotNil(t, resp, "expected ca info from root")
 
 	issuerCert := parseCert(t, resp.Data["certificate"].(string))
@@ -403,14 +403,14 @@ func TestOcsp_HigherLevel(t *testing.T) {
 		"max_ttl":          "1h",
 		"key_type":         "ec",
 	})
-	require.NoError(t, err, "error setting up pki role: %v", err)
+	require.NoError(t, err)
 	require.NotNil(t, resp)
 
 	resp, err = client.Logical().Write("pki/issue/example", map[string]any{
 		"common_name": "test.example.com",
 		"ttl":         "15m",
 	})
-	require.NoError(t, err, "error issuing certificate: %v", err)
+	require.NoError(t, err)
 	require.NotNil(t, resp, "got nil response from issuing request")
 	certToRevoke := parseCert(t, resp.Data["certificate"].(string))
 	serialNum := resp.Data["serial_number"].(string)
@@ -419,7 +419,7 @@ func TestOcsp_HigherLevel(t *testing.T) {
 	resp, err = client.Logical().Write("pki/revoke", map[string]any{
 		"serial_number": serialNum,
 	})
-	require.NoError(t, err, "error revoking certificate: %v", err)
+	require.NoError(t, err)
 	require.NotNil(t, resp, "got nil response from revoke")
 
 	// Make sure that OCSP handler responds properly

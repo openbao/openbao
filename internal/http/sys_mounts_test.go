@@ -11,6 +11,7 @@ import (
 
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSysMountConfig(t *testing.T) {
@@ -22,23 +23,17 @@ func TestSysMountConfig(t *testing.T) {
 	config.Address = addr
 
 	client, err := api.NewClient(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client.SetToken(token)
 
 	// Set up a test mount
 	path, err := testMount(client)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer client.Sys().Unmount(path)
 
 	// Get config info for this mount
 	mountConfig, err := client.Sys().MountConfig(path)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expectedDefaultTTL := 2764800
 	if mountConfig.DefaultLeaseTTL != expectedDefaultTTL {

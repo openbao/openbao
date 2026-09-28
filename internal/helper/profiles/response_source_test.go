@@ -3,6 +3,8 @@ package profiles
 import (
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSourceBuilder_Success(t *testing.T) {
@@ -103,9 +105,7 @@ func TestEvaluate_WithFieldSelector_String(t *testing.T) {
 	}
 
 	result, err := source.Evaluate(ctx, history)
-	if err != nil {
-		t.Fatalf("Evaluate error: %v", err)
-	}
+	require.NoError(t, err)
 	expected := "active"
 	if !reflect.DeepEqual(result, expected) {
 		t.Fatalf("Evaluate result = %#v; want %#v", result, expected)

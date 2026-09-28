@@ -28,7 +28,7 @@ export default Route.extend({
   afterModel(model, transition) {
     const path = model && model.path;
     if (transition.targetName === this.routeName) {
-      return this.replaceWith('vault.cluster.secrets.backend.list-root', path);
+      return this.router.replaceWith('vault.cluster.secrets.backend.list-root', path);
     }
   },
 });

@@ -114,9 +114,7 @@ func TestRaft_BoltDBMetrics(t *testing.T) {
 		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]any{
 			fmt.Sprintf("foo%d", i): fmt.Sprintf("bar%d", i),
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	// Even though there is a long delay between when we start the node and when we check for these metrics,
@@ -124,9 +122,7 @@ func TestRaft_BoltDBMetrics(t *testing.T) {
 	// need a small artificial delay here as well, otherwise we won't see any metrics emitted.
 	time.Sleep(5 * time.Second)
 	data, err := testhelpers.SysMetricsReq(leaderClient, cluster, true)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	noBoltDBMetrics := true
 	for _, g := range data.Gauges {
@@ -189,9 +185,7 @@ func TestRaft_RetryAutoJoin(t *testing.T) {
 	err := testhelpers.VerifyRaftPeers(t, cluster.Cores[0].Client, map[string]bool{
 		"core-0": true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestRaft_Retry_Join(t *testing.T) {
@@ -291,9 +285,7 @@ func TestRaft_Join(t *testing.T) {
 			req.LeaderClientKey = string(cluster.CAKeyPEM)
 		}
 		resp, err := client.Sys().RaftJoin(req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !resp.Joined {
 			t.Fatal("failed to join raft cluster")
 		}
@@ -305,16 +297,12 @@ func TestRaft_Join(t *testing.T) {
 	_, err := cluster.Cores[0].Client.Logical().Write("sys/storage/raft/remove-peer", map[string]any{
 		"server_id": "core-1",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = cluster.Cores[0].Client.Logical().Write("sys/storage/raft/remove-peer", map[string]any{
 		"server_id": "core-2",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	joinFunc(cluster.Cores[1].Client, true)
 	joinFunc(cluster.Cores[2].Client, true)
@@ -338,38 +326,28 @@ func TestRaft_RemovePeer(t *testing.T) {
 		"core-1": true,
 		"core-2": true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("sys/storage/raft/remove-peer", map[string]any{
 		"server_id": "core-2",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = testhelpers.VerifyRaftPeers(t, client, map[string]bool{
 		"core-0": true,
 		"core-1": true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("sys/storage/raft/remove-peer", map[string]any{
 		"server_id": "core-1",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = testhelpers.VerifyRaftPeers(t, client, map[string]bool{
 		"core-0": true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestRaft_NodeIDHeader(t *testing.T) {
@@ -405,9 +383,7 @@ func TestRaft_NodeIDHeader(t *testing.T) {
 
 				client := c.Client
 				resp, err := client.Logical().ReadRaw("sys/seal-status")
-				if err != nil {
-					t.Fatalf("err: %s", err)
-				}
+				require.NoError(t, err)
 				if resp == nil {
 					t.Fatal("nil response")
 				}
@@ -460,21 +436,15 @@ func TestRaft_SnapshotAPI(t *testing.T) {
 		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]any{
 			"test": "data",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	// Take a snapshot
 	buf := new(bytes.Buffer)
 	err := leaderClient.Sys().RaftSnapshot(buf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	snap, err := io.ReadAll(buf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(snap) == 0 {
 		t.Fatal("no snapshot returned")
 	}
@@ -484,21 +454,15 @@ func TestRaft_SnapshotAPI(t *testing.T) {
 		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]any{
 			"test": "data",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 	// Restore snapshot
 	err = leaderClient.Sys().RaftSnapshotRestore(bytes.NewReader(snap), false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// List kv to make sure we removed the extra keys
 	secret, err := leaderClient.Logical().List("secret/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if len(secret.Data["keys"].([]any)) != 10 {
 		t.Fatal("snapshot didn't apply correctly")
@@ -511,9 +475,7 @@ func TestRaft_SnapshotAPI_MidstreamFailure(t *testing.T) {
 
 	seal, setErr := vaultseal.NewToggleableTestSeal(nil)
 	autoSeal, err := vault.NewAutoSeal(seal)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cluster, _ := raftCluster(t, &RaftClusterOpts{
 		NumCores: 1,
 		Seal:     autoSeal,
@@ -529,9 +491,7 @@ func TestRaft_SnapshotAPI_MidstreamFailure(t *testing.T) {
 		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]any{
 			"test": "data",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	r, w := io.Pipe()
@@ -602,9 +562,7 @@ func TestRaft_SnapshotAPI_Rotate_Backward(t *testing.T) {
 				_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]any{
 					"test": "data",
 				})
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 			}
 
 			transport := cleanhttp.DefaultPooledTransport()
@@ -619,19 +577,13 @@ func TestRaft_SnapshotAPI_Rotate_Backward(t *testing.T) {
 			// Take a snapshot
 			req := leaderClient.NewRequest("GET", "/v1/sys/storage/raft/snapshot")
 			httpReq, err := req.ToHTTP()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			resp, err := client.Do(httpReq)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			defer resp.Body.Close() //nolint:errcheck
 
 			snap, err := io.ReadAll(resp.Body)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if len(snap) == 0 {
 				t.Fatal("no snapshot returned")
 			}
@@ -642,9 +594,7 @@ func TestRaft_SnapshotAPI_Rotate_Backward(t *testing.T) {
 			if tCaseLocal.RotateKeyring {
 				// Rotate
 				err = leaderClient.Sys().RotateKeyring()
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				testhelpers.EnsureStableActiveNode(t, cluster)
 				testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
@@ -661,13 +611,9 @@ func TestRaft_SnapshotAPI_Rotate_Backward(t *testing.T) {
 				req = leaderClient.NewRequest("POST", "/v1/sys/storage/raft/snapshot")
 				req.Body = bytes.NewBuffer(snap)
 				httpReq, err = req.ToHTTP()
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				resp, err = client.Do(httpReq)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				// Parse Response
 				apiResp := api.Response{Response: resp}
 				if !strings.Contains(apiResp.Error().Error(), "could not verify hash file, possibly the snapshot is using a different set of unseal keys") {
@@ -679,13 +625,9 @@ func TestRaft_SnapshotAPI_Rotate_Backward(t *testing.T) {
 			req = leaderClient.NewRequest("POST", "/v1/sys/storage/raft/snapshot-force")
 			req.Body = bytes.NewBuffer(snap)
 			httpReq, err = req.ToHTTP()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			_, err = client.Do(httpReq)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			testhelpers.EnsureStableActiveNode(t, cluster)
 			testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
@@ -695,9 +637,7 @@ func TestRaft_SnapshotAPI_Rotate_Backward(t *testing.T) {
 			_, err = leaderClient.Logical().Write("secret/foo", map[string]any{
 				"test": "data",
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			testhelpers.EnsureCoresSealed(t, cluster)
 
@@ -708,9 +648,7 @@ func TestRaft_SnapshotAPI_Rotate_Backward(t *testing.T) {
 
 			// Read the value.
 			data, err := activeCore.Client.Logical().Read("secret/foo")
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if data.Data["test"].(string) != "data" {
 				t.Fatal(data)
 			}
@@ -767,9 +705,7 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 				_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]any{
 					"test": "data",
 				})
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 			}
 
 			transport := cleanhttp.DefaultPooledTransport()
@@ -784,19 +720,13 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 			// Take a snapshot
 			req := leaderClient.NewRequest("GET", "/v1/sys/storage/raft/snapshot")
 			httpReq, err := req.ToHTTP()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			resp, err := client.Do(httpReq)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			snap, err := io.ReadAll(resp.Body)
 			resp.Body.Close() //nolint:errcheck
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if len(snap) == 0 {
 				t.Fatal("no snapshot returned")
 			}
@@ -819,9 +749,7 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 
 				// Rotate keyring
 				err = leaderClient.Sys().RotateKeyring()
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 			}
 
 			// cache the new barrier keys
@@ -830,19 +758,13 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 			// Take another snapshot for later use in "jumping" forward
 			req = leaderClient.NewRequest("GET", "/v1/sys/storage/raft/snapshot")
 			httpReq, err = req.ToHTTP()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			resp, err = client.Do(httpReq)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			snap2, err := io.ReadAll(resp.Body)
 			resp.Body.Close() //nolint:errcheck
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if len(snap2) == 0 {
 				t.Fatal("no snapshot returned")
 			}
@@ -852,13 +774,9 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 			req = leaderClient.NewRequest("POST", "/v1/sys/storage/raft/snapshot-force")
 			req.Body = bytes.NewBuffer(snap)
 			httpReq, err = req.ToHTTP()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			_, err = client.Do(httpReq)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			testhelpers.EnsureStableActiveNode(t, cluster)
 			testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
@@ -867,13 +785,9 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 				req = leaderClient.NewRequest("POST", "/v1/sys/storage/raft/snapshot")
 				req.Body = bytes.NewBuffer(snap2)
 				httpReq, err = req.ToHTTP()
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				resp, err = client.Do(httpReq)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				// Parse Response
 				apiResp := api.Response{Response: resp}
 				if apiResp.Error() == nil || !strings.Contains(apiResp.Error().Error(), "could not verify hash file, possibly the snapshot is using a different set of unseal keys") {
@@ -886,13 +800,9 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 			req = leaderClient.NewRequest("POST", "/v1/sys/storage/raft/snapshot-force")
 			req.Body = bytes.NewBuffer(snap2)
 			httpReq, err = req.ToHTTP()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			_, err = client.Do(httpReq)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			switch tCaseLocal.ShouldSeal {
 			case true:
@@ -907,9 +817,7 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 				_, err = leaderClient.Logical().Write("secret/foo", map[string]any{
 					"test": "data",
 				})
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				testhelpers.EnsureCoresSealed(t, cluster)
 
@@ -920,9 +828,7 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 
 				// Read the value.
 				data, err := activeCore.Client.Logical().Read("secret/foo")
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				if data.Data["test"].(string) != "data" {
 					t.Fatal(data)
 				}
@@ -1024,9 +930,7 @@ func TestRaft_SnapshotAPI_DifferentCluster(t *testing.T) {
 		_, err := leaderClient.Logical().Write(fmt.Sprintf("secret/%d", i), map[string]any{
 			"test": "data",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	transport := cleanhttp.DefaultPooledTransport()
@@ -1041,19 +945,13 @@ func TestRaft_SnapshotAPI_DifferentCluster(t *testing.T) {
 	// Take a snapshot
 	req := leaderClient.NewRequest("GET", "/v1/sys/storage/raft/snapshot")
 	httpReq, err := req.ToHTTP()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	resp, err := client.Do(httpReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	snap, err := io.ReadAll(resp.Body)
 	resp.Body.Close() //nolint:errcheck
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(snap) == 0 {
 		t.Fatal("no snapshot returned")
 	}
@@ -1077,13 +975,9 @@ func TestRaft_SnapshotAPI_DifferentCluster(t *testing.T) {
 		req = leaderClient.NewRequest("POST", "/v1/sys/storage/raft/snapshot")
 		req.Body = bytes.NewBuffer(snap)
 		httpReq, err = req.ToHTTP()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		resp, err = client.Do(httpReq)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		// Parse Response
 		apiResp := api.Response{Response: resp}
 		if !strings.Contains(apiResp.Error().Error(), "could not verify hash file, possibly the snapshot is using a different set of unseal keys") {
@@ -1094,13 +988,9 @@ func TestRaft_SnapshotAPI_DifferentCluster(t *testing.T) {
 		req = leaderClient.NewRequest("POST", "/v1/sys/storage/raft/snapshot-force")
 		req.Body = bytes.NewBuffer(snap)
 		httpReq, err = req.ToHTTP()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		_, err = client.Do(httpReq)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		testhelpers.WaitForNCoresSealed(t, cluster2, 3)
 	}
@@ -1114,9 +1004,7 @@ func BenchmarkRaft_SingleNode(b *testing.B) {
 
 	bench := func(b *testing.B, dataSize int) {
 		data, err := uuid.GenerateRandomBytes(dataSize)
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(b, err)
 
 		testName := b.Name()
 
@@ -1126,9 +1014,7 @@ func BenchmarkRaft_SingleNode(b *testing.B) {
 			_, err := leaderClient.Logical().Write(key, map[string]any{
 				"test": data,
 			})
-			if err != nil {
-				b.Fatal(err)
-			}
+			require.NoError(b, err)
 		}
 	}
 
@@ -1165,9 +1051,7 @@ func TestRaft_Join_InitStatus(t *testing.T) {
 			LeaderCACert:  string(cluster.CACertPEM),
 		}
 		resp, err := client.Sys().RaftJoin(req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !resp.Joined {
 			t.Fatal("failed to join raft cluster")
 		}
@@ -1178,27 +1062,21 @@ func TestRaft_Join_InitStatus(t *testing.T) {
 		client := cluster.Cores[coreIdx].Client
 
 		initialized, err := client.Sys().InitStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if initialized != expected {
 			t.Errorf("core %d: expected init=%v, sys/init returned %v", coreIdx, expected, initialized)
 		}
 
 		status, err := client.Sys().SealStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if status.Initialized != expected {
 			t.Errorf("core %d: expected init=%v, sys/seal-status returned %v", coreIdx, expected, status.Initialized)
 		}
 
 		health, err := client.Sys().Health()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if health.Initialized != expected {
 			t.Errorf("core %d: expected init=%v, sys/health returned %v", coreIdx, expected, health.Initialized)
 		}

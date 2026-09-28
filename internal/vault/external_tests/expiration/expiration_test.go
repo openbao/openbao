@@ -11,6 +11,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExpiration_irrevocableLeaseCountsAPI(t *testing.T) {
@@ -27,9 +28,7 @@ func TestExpiration_irrevocableLeaseCountsAPI(t *testing.T) {
 	params := make(map[string][]string)
 	params["type"] = []string{"irrevocable"}
 	resp, err := client.Logical().ReadWithData("sys/leases/count", params)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("response is nil")
 	}
@@ -44,9 +43,7 @@ func TestExpiration_irrevocableLeaseCountsAPI(t *testing.T) {
 	}
 
 	totalLeaseCount, err := totalLeaseCountRaw.(json.Number).Int64()
-	if err != nil {
-		t.Fatalf("error extracting lease count: %v", err)
-	}
+	require.NoError(t, err)
 	if totalLeaseCount != 0 {
 		t.Errorf("expected no leases, got %d", totalLeaseCount)
 	}
@@ -62,14 +59,10 @@ func TestExpiration_irrevocableLeaseCountsAPI(t *testing.T) {
 
 	expectedNumLeases := 50
 	expectedCountPerMount, err := core.InjectIrrevocableLeases(namespace.RootContext(t.Context()), expectedNumLeases)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err = client.Logical().ReadWithData("sys/leases/count", params)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("response is nil")
 	}
@@ -84,9 +77,7 @@ func TestExpiration_irrevocableLeaseCountsAPI(t *testing.T) {
 	}
 
 	totalLeaseCount, err = totalLeaseCountRaw.(json.Number).Int64()
-	if err != nil {
-		t.Fatalf("error extracting lease count: %v", err)
-	}
+	require.NoError(t, err)
 	if totalLeaseCount != int64(expectedNumLeases) {
 		t.Errorf("expected %d leases, got %d", expectedNumLeases, totalLeaseCount)
 	}
@@ -133,9 +124,7 @@ func TestExpiration_irrevocableLeaseListAPI(t *testing.T) {
 	params := make(map[string][]string)
 	params["type"] = []string{"irrevocable"}
 	resp, err := client.Logical().ReadWithData("sys/leases", params)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("response is nil")
 	}
@@ -150,9 +139,7 @@ func TestExpiration_irrevocableLeaseListAPI(t *testing.T) {
 	}
 
 	totalLeaseCount, err := totalLeaseCountRaw.(json.Number).Int64()
-	if err != nil {
-		t.Fatalf("error extracting lease count: %v", err)
-	}
+	require.NoError(t, err)
 	if totalLeaseCount != 0 {
 		t.Errorf("expected no leases, got %d", totalLeaseCount)
 	}
@@ -169,14 +156,10 @@ func TestExpiration_irrevocableLeaseListAPI(t *testing.T) {
 	// test with a low enough number to not give an error without limit set to none
 	expectedNumLeases := 50
 	expectedCountPerMount, err := core.InjectIrrevocableLeases(namespace.RootContext(t.Context()), expectedNumLeases)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err = client.Logical().ReadWithData("sys/leases", params)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("response is nil")
 	}
@@ -191,9 +174,7 @@ func TestExpiration_irrevocableLeaseListAPI(t *testing.T) {
 	}
 
 	totalLeaseCount, err = totalLeaseCountRaw.(json.Number).Int64()
-	if err != nil {
-		t.Fatalf("error extracting lease count: %v", err)
-	}
+	require.NoError(t, err)
 	if totalLeaseCount != int64(expectedNumLeases) {
 		t.Errorf("expected %d leases, got %d", expectedNumLeases, totalLeaseCount)
 	}
@@ -235,17 +216,13 @@ func TestExpiration_irrevocableLeaseListAPI_includeAll(t *testing.T) {
 	// test with a low enough number to not give an error with the default limit
 	expectedNumLeases := vault.MaxIrrevocableLeasesToReturn + 50
 	expectedCountPerMount, err := core.InjectIrrevocableLeases(namespace.RootContext(t.Context()), expectedNumLeases)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	params := make(map[string][]string)
 	params["type"] = []string{"irrevocable"}
 
 	resp, err := client.Logical().ReadWithData("sys/leases", params)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("unexpected nil response")
 	}
@@ -257,9 +234,7 @@ func TestExpiration_irrevocableLeaseListAPI_includeAll(t *testing.T) {
 	// now try it with the no limit on return size - we expect no errors and many results
 	params["limit"] = []string{"none"}
 	resp, err = client.Logical().ReadWithData("sys/leases", params)
-	if err != nil {
-		t.Fatalf("unexpected error when using limit=none: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("response is nil")
 	}
@@ -274,9 +249,7 @@ func TestExpiration_irrevocableLeaseListAPI_includeAll(t *testing.T) {
 	}
 
 	totalLeaseCount, err := totalLeaseCountRaw.(json.Number).Int64()
-	if err != nil {
-		t.Fatalf("error extracting lease count: %v", err)
-	}
+	require.NoError(t, err)
 	if totalLeaseCount != int64(expectedNumLeases) {
 		t.Errorf("expected %d leases, got %d", expectedNumLeases, totalLeaseCount)
 	}

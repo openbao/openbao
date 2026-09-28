@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 func testSecretsDisableCommand(tb testing.TB) (*cli.MockUi, *SecretsDisableCommand) {
@@ -112,9 +113,7 @@ func TestSecretsDisableCommand_Run(t *testing.T) {
 		}
 
 		mounts, err := client.Sys().ListMounts()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if _, ok := mounts["integration_unmount"]; ok {
 			t.Errorf("expected mount to not exist: %#v", mounts)

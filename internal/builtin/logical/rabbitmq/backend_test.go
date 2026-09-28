@@ -48,9 +48,7 @@ func prepareRabbitMQTestContainer(t *testing.T) (func(), string) {
 		ContainerName: "rabbitmq",
 		Ports:         []string{"15672/tcp"},
 	})
-	if err != nil {
-		t.Fatalf("could not start docker rabbitmq: %s", err)
-	}
+	require.NoError(t, err)
 
 	svc, err := runner.StartService(t.Context(), func(ctx context.Context, host string, port int) (docker.ServiceConfig, error) {
 		connURL := fmt.Sprintf("http://%s:%d", host, port)
@@ -66,9 +64,7 @@ func prepareRabbitMQTestContainer(t *testing.T) (func(), string) {
 
 		return docker.NewServiceURLParse(connURL)
 	})
-	if err != nil {
-		t.Fatalf("could not start docker rabbitmq: %s", err)
-	}
+	require.NoError(t, err)
 	return svc.Cleanup, svc.Config.URL().String()
 }
 
@@ -236,14 +232,10 @@ func testAccStepReadCreds(t *testing.T, b logical.Backend, uri, name string) log
 			log.Printf("[WARN] Generated credentials: %v", d)
 
 			client, err := rabbithole.NewClient(uri, d.Username, d.Password)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			_, err = client.ListQueues()
-			if err != nil {
-				t.Fatalf("unable to list queues with generated credentials: %s", err)
-			}
+			require.NoError(t, err)
 
 			resp, err = b.HandleRequest(t.Context(), &logical.Request{
 				Operation: logical.RevokeOperation,
@@ -264,9 +256,7 @@ func testAccStepReadCreds(t *testing.T, b logical.Backend, uri, name string) log
 			}
 
 			client, err = rabbithole.NewClient(uri, d.Username, d.Password)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			_, err = client.ListQueues()
 			if err == nil {
@@ -382,18 +372,14 @@ func TestBackend_RoleReadCrash(t *testing.T) {
 	err := client.Sys().Mount("rabbitmq", &api.MountInput{
 		Type: "rabbitmq",
 	})
-	if err != nil {
-		t.Fatalf("failed to mount: %v", err)
-	}
+	require.NoError(t, err)
 
 	resp, err := client.Logical().Write("rabbitmq/config/connection", map[string]any{
 		"connection_uri": uri,
 		"username":       "guest",
 		"password":       "guest",
 	})
-	if err != nil {
-		t.Fatalf("bad: err: %v resp: %#v", err, resp)
-	}
+	require.NoErrorf(t, err, "bad: err: %v resp: %#v", err, resp)
 
 	resp, err = client.Logical().Write("rabbitmq/roles/newrole", map[string]any{
 		"tags": "administrator",
@@ -417,15 +403,11 @@ func TestBackend_RoleReadCrash(t *testing.T) {
 }
 `,
 	})
-	if err != nil {
-		t.Fatalf("bad: err: %v resp: %#v", err, resp)
-	}
+	require.NoErrorf(t, err, "bad: err: %v resp: %#v", err, resp)
 
 	// Crash here in audit subsystem due to typing of vhost_topics.
 	resp, err = client.Logical().Read("rabbitmq/roles/newrole")
-	if err != nil {
-		t.Fatalf("bad: err: %v resp: %#v", err, resp)
-	}
+	require.NoErrorf(t, err, "bad: err: %v resp: %#v", err, resp)
 	t.Logf("response: %#v", resp)
 }
 

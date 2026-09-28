@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCertificateValidation(t *testing.T) {
@@ -37,9 +38,7 @@ func TestCertificateValidation(t *testing.T) {
 func TestNewConfigEntry(t *testing.T) {
 	s := &framework.FieldData{Schema: ConfigFields()}
 	config, err := NewConfigEntry(nil, s)
-	if err != nil {
-		t.Fatal("error getting default config")
-	}
+	require.NoError(t, err)
 	configFromJSON := testJSONConfig(t, jsonConfigDefault)
 
 	t.Run("equality_check", func(t *testing.T) {

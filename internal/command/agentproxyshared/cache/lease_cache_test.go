@@ -33,18 +33,14 @@ func testNewLeaseCache(t *testing.T, responses []*SendResponse) *LeaseCache {
 	t.Helper()
 
 	client, err := api.NewClient(api.DefaultConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lc, err := NewLeaseCache(&LeaseCacheConfig{
 		Client:      client,
 		BaseContext: t.Context(),
 		Proxier:     NewMockProxier(responses),
 		Logger:      logging.NewVaultLogger(hclog.Trace).Named("cache.leasecache"),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return lc
 }
 
@@ -52,9 +48,7 @@ func testNewLeaseCacheWithDelay(t *testing.T, cacheable bool, delay int) *LeaseC
 	t.Helper()
 
 	client, err := api.NewClient(api.DefaultConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	lc, err := NewLeaseCache(&LeaseCacheConfig{
 		Client:      client,
@@ -62,9 +56,7 @@ func testNewLeaseCacheWithDelay(t *testing.T, cacheable bool, delay int) *LeaseC
 		Proxier:     &mockDelayProxier{cacheable, delay},
 		Logger:      logging.NewVaultLogger(hclog.Trace).Named("cache.leasecache"),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return lc
 }
@@ -101,9 +93,7 @@ func TestLeaseCache_EmptyToken(t *testing.T) {
 		Request: httptest.NewRequest("GET", urlPath, strings.NewReader(`{"value": "input"}`)),
 	}
 	resp, err := lc.Send(t.Context(), sendReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("expected a non empty response")
 	}
@@ -129,9 +119,7 @@ func TestLeaseCache_SendCacheable(t *testing.T) {
 		Request: httptest.NewRequest("GET", urlPath, strings.NewReader(`{"value": "input"}`)),
 	}
 	resp, err := lc.Send(t.Context(), sendReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(resp.Response.StatusCode, responses[0].Response.StatusCode); diff != nil {
 		t.Fatalf("expected getting proxied response: got %v", diff)
 	}
@@ -142,18 +130,14 @@ func TestLeaseCache_SendCacheable(t *testing.T) {
 		Request: httptest.NewRequest("GET", urlPath, strings.NewReader(`{"value": "input"}`)),
 	}
 	resp, err = lc.Send(t.Context(), sendReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(resp.Response.StatusCode, responses[0].Response.StatusCode); diff != nil {
 		t.Fatalf("expected getting proxied response: got %v", diff)
 	}
 
 	// Check TokenParent
 	cachedItem, err := lc.db.Get(cachememdb.IndexNameToken, "testtoken")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if cachedItem == nil {
 		t.Fatal("expected token entry from cache")
 	}
@@ -168,9 +152,7 @@ func TestLeaseCache_SendCacheable(t *testing.T) {
 		Request: httptest.NewRequest("GET", urlPath, strings.NewReader(`{"value": "input_changed"}`)),
 	}
 	resp, err = lc.Send(t.Context(), sendReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(resp.Response.StatusCode, responses[1].Response.StatusCode); diff != nil {
 		t.Fatalf("expected getting proxied response: got %v", diff)
 	}
@@ -182,9 +164,7 @@ func TestLeaseCache_SendCacheable(t *testing.T) {
 		Request: httptest.NewRequest("GET", urlPath, strings.NewReader(`{"value": "input_changed"}`)),
 	}
 	resp, err = lc.Send(t.Context(), sendReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(resp.Response.StatusCode, responses[1].Response.StatusCode); diff != nil {
 		t.Fatalf("expected getting proxied response: got %v", diff)
 	}
@@ -206,9 +186,7 @@ func TestLeaseCache_SendNonCacheable(t *testing.T) {
 		Request: httptest.NewRequest("GET", "http://example.com", strings.NewReader(`{"value": "input"}`)),
 	}
 	resp, err := lc.Send(t.Context(), sendReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(resp.Response, responses[0].Response); diff != nil {
 		t.Fatalf("expected getting proxied response: got %v", diff)
 	}
@@ -220,9 +198,7 @@ func TestLeaseCache_SendNonCacheable(t *testing.T) {
 		Request: httptest.NewRequest("GET", "http://example.com", strings.NewReader(`{"value": "input"}`)),
 	}
 	resp, err = lc.Send(t.Context(), sendReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(resp.Response, responses[1].Response); diff != nil {
 		t.Fatalf("expected getting proxied response: got %v", diff)
 	}
@@ -234,9 +210,7 @@ func TestLeaseCache_SendNonCacheable(t *testing.T) {
 		Request: httptest.NewRequest("GET", "http://example.com", nil),
 	}
 	resp, err = lc.Send(t.Context(), sendReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(resp.Response, responses[2].Response); diff != nil {
 		t.Fatalf("expected getting proxied response: got %v", diff)
 	}
@@ -248,9 +222,7 @@ func TestLeaseCache_SendNonCacheable(t *testing.T) {
 		Request: httptest.NewRequest("GET", "http://example.com", nil),
 	}
 	resp, err = lc.Send(t.Context(), sendReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(resp.Response, responses[3].Response); diff != nil {
 		t.Fatalf("expected getting proxied response: got %v", diff)
 	}
@@ -273,17 +245,13 @@ func TestLeaseCache_SendNonCacheableNonTokenLease(t *testing.T) {
 		Request: httptest.NewRequest("GET", urlPath, strings.NewReader(`{"value": "input"}`)),
 	}
 	resp, err := lc.Send(t.Context(), sendReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(resp.Response, responses[0].Response); diff != nil {
 		t.Fatalf("expected getting proxied response: got %v", diff)
 	}
 
 	idx, err := lc.db.Get(cachememdb.IndexNameRequestPath, "root/", urlPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if idx != nil {
 		t.Fatalf("expected nil entry, got: %#v", idx)
 	}
@@ -295,17 +263,13 @@ func TestLeaseCache_SendNonCacheableNonTokenLease(t *testing.T) {
 		Request: httptest.NewRequest("GET", urlPath, strings.NewReader(`{"value": "input"}`)),
 	}
 	resp, err = lc.Send(t.Context(), sendReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(resp.Response, responses[1].Response); diff != nil {
 		t.Fatalf("expected getting proxied response: got %v", diff)
 	}
 
 	idx, err = lc.db.Get(cachememdb.IndexNameRequestPath, "root/", urlPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if idx != nil {
 		t.Fatalf("expected nil entry, got: %#v", idx)
 	}
@@ -320,9 +284,7 @@ func TestLeaseCache_HandleCacheClear(t *testing.T) {
 
 	// Test missing body, should return 400
 	resp, err := http.Post(ts.URL, "application/json", nil)
-	if err != nil {
-		t.Fatal()
-	}
+	require.NoError(t, err)
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status code mismatch: expected = %v, got = %v", http.StatusBadRequest, resp.StatusCode)
 	}
@@ -375,9 +337,7 @@ func TestLeaseCache_HandleCacheClear(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			reqBody := fmt.Sprintf("{\"type\": \"%s\", \"value\": \"%s\"}", tc.reqType, tc.reqValue)
 			resp, err := http.Post(ts.URL, "application/json", strings.NewReader(reqBody))
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if tc.expectedStatusCode != resp.StatusCode {
 				t.Fatalf("status code mismatch: expected = %v, got = %v", tc.expectedStatusCode, resp.StatusCode)
 			}

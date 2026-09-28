@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBackend_Roles_CredentialTypes(t *testing.T) {
@@ -25,9 +26,7 @@ func TestBackend_Roles_CredentialTypes(t *testing.T) {
 	config.System = logical.TestSystemView()
 	config.StorageView = &logical.InmemStorage{}
 	b, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	type args struct {
 		credentialType   v5.CredentialType
@@ -213,9 +212,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 	config.System = sys
 
 	lb, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b, ok := lb.(*databaseBackend)
 	if !ok {
 		t.Fatal("could not convert to db backend")
@@ -395,9 +392,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 	config.System = sys
 
 	lb, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b, ok := lb.(*databaseBackend)
 	if !ok {
 		t.Fatal("could not convert to db backend")
@@ -588,9 +583,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 	config.System = sys
 
 	lb, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b, ok := lb.(*databaseBackend)
 	if !ok {
 		t.Fatal("could not convert to db backend")
@@ -664,9 +657,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error, got none")
 	}
@@ -710,9 +701,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error, got none")
 	}
@@ -747,14 +736,10 @@ func TestWALsStillTrackedAfterUpdate(t *testing.T) {
 	// which will tell us that the in-memory structure still kept track of the
 	// WAL in addition to it still being in storage.
 	wal, err := b.findStaticWAL(ctx, storage, walIDs[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	rotateRole(t, b, storage, mockDB, "hashicorp")
 	role, err := b.StaticRole(ctx, storage, "hashicorp")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if role.StaticAccount.Password != wal.NewPassword {
 		t.Fatal()
 	}

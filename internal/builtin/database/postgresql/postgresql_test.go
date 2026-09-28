@@ -72,9 +72,7 @@ func TestPostgreSQL_Initialize_ConnURLWithDSNFormat(t *testing.T) {
 	defer cleanup()
 
 	dsnConnURL, err := dbutil.ParseURL(connURL)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	connectionDetails := map[string]any{
 		"connection_url": dsnConnURL,
@@ -142,9 +140,7 @@ func TestPostgreSQL_PasswordAuthentication_SCRAMSHA256(t *testing.T) {
 	defer cleanup()
 
 	dsnConnURL, err := dbutil.ParseURL(connURL)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	connectionDetails := map[string]any{
 		"connection_url":          dsnConnURL,
@@ -608,36 +604,26 @@ func getExpiration(t testing.TB, db *PostgreSQL, username string) time.Time {
 
 	query := fmt.Sprintf("select valuntil from pg_catalog.pg_user where usename = '%s'", username)
 	conn, err := db.getConnection(ctx)
-	if err != nil {
-		t.Fatalf("Failed to get connection to database: %s", err)
-	}
+	require.NoError(t, err)
 
 	stmt, err := conn.PrepareContext(ctx, query)
-	if err != nil {
-		t.Fatalf("Failed to prepare statement: %s", err)
-	}
+	require.NoError(t, err)
 	defer stmt.Close()
 
 	rows, err := stmt.QueryContext(ctx)
-	if err != nil {
-		t.Fatalf("Failed to execute query to get expiration: %s", err)
-	}
+	require.NoError(t, err)
 
 	if !rows.Next() {
 		return time.Time{} // No expiration
 	}
 	rawExp := ""
 	err = rows.Scan(&rawExp)
-	if err != nil {
-		t.Fatalf("Unable to get raw expiration: %s", err)
-	}
+	require.NoError(t, err)
 	if rawExp == "" {
 		return time.Time{} // No expiration
 	}
 	exp, err := time.Parse(time.RFC3339, rawExp)
-	if err != nil {
-		t.Fatalf("Failed to parse expiration %q: %s", rawExp, err)
-	}
+	require.NoErrorf(t, err, "Failed to parse expiration %q: %s", rawExp, err)
 	return exp
 }
 
@@ -764,9 +750,7 @@ func assertUsernameRegex(rawRegex string) credsAssertion {
 func assertCredsExist(t testing.TB, connURL, username, password string) {
 	t.Helper()
 	err := testCredsExist(t, connURL, username, password)
-	if err != nil {
-		t.Fatalf("user does not exist: %s", err)
-	}
+	require.NoError(t, err)
 }
 
 func assertCredsDoNotExist(t testing.TB, connURL, username, password string) {
@@ -914,9 +898,7 @@ func TestExtractQuotedStrings(t *testing.T) {
 	for tName, tCase := range testCases {
 		t.Run(tName, func(t *testing.T) {
 			results, err := extractQuotedStrings(tCase.Input)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if len(results) != len(tCase.Expected) {
 				t.Fatalf("%s isn't equal to %s", results, tCase.Expected)
 			}
@@ -1134,9 +1116,7 @@ func TestPostgreSQL_Repmgr(t *testing.T) {
 			},
 		},
 	})
-	if err != nil {
-		t.Fatalf("no error expected, got: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Open a connection to both databases using the multihost connection string
 	connectionDetails := map[string]any{

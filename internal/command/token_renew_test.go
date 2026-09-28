@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/cli"
+	"github.com/stretchr/testify/require"
 )
 
 func testTokenRenewCommand(tb testing.TB) (*cli.MockUi, *TokenRenewCommand) {
@@ -108,15 +109,11 @@ func TestTokenRenewCommand_Run(t *testing.T) {
 		}
 
 		secret, err := client.Auth().Token().Lookup(token)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		str := string(secret.Data["ttl"].(json.Number))
 		ttl, err := strconv.ParseInt(str, 10, 64)
-		if err != nil {
-			t.Fatalf("bad ttl: %#v", secret.Data["ttl"])
-		}
+		require.NoErrorf(t, err, "bad ttl: %#v", secret.Data["ttl"])
 		if exp := int64(1800); ttl > exp {
 			t.Errorf("expected %d to be <= to %d", ttl, exp)
 		}
@@ -143,15 +140,11 @@ func TestTokenRenewCommand_Run(t *testing.T) {
 		}
 
 		secret, err := client.Auth().Token().Lookup(token)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		str := string(secret.Data["ttl"].(json.Number))
 		ttl, err := strconv.ParseInt(str, 10, 64)
-		if err != nil {
-			t.Fatalf("bad ttl: %#v", secret.Data["ttl"])
-		}
+		require.NoErrorf(t, err, "bad ttl: %#v", secret.Data["ttl"])
 		if exp := int64(1800); ttl > exp {
 			t.Errorf("expected %d to be <= to %d", ttl, exp)
 		}
@@ -182,15 +175,11 @@ func TestTokenRenewCommand_Run(t *testing.T) {
 
 		client.SetToken(oldToken)
 		secret, err := client.Auth().Token().Lookup(token)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		str := string(secret.Data["ttl"].(json.Number))
 		ttl, err := strconv.ParseInt(str, 10, 64)
-		if err != nil {
-			t.Fatalf("bad ttl: %#v", secret.Data["ttl"])
-		}
+		require.NoErrorf(t, err, "bad ttl: %#v", secret.Data["ttl"])
 		if exp := int64(1800); ttl > exp {
 			t.Errorf("expected %d to be <= to %d", ttl, exp)
 		}

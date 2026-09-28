@@ -16,6 +16,7 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/v2/internal/helper/pgpkeys"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func testOperatorInitCommand(tb testing.TB) (*cli.MockUi, *OperatorInitCommand) {
@@ -177,9 +178,7 @@ func TestOperatorInitCommand_Run(t *testing.T) {
 		}
 
 		init, err := client.Sys().InitStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !init {
 			t.Error("expected initialized")
 		}
@@ -200,9 +199,7 @@ func TestOperatorInitCommand_Run(t *testing.T) {
 		// threshold.
 		for i, key := range keys[:3] {
 			resp, err := client.Sys().Unseal(key)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			exp := (i + 1) % 3 // 1, 2, 0
 			if resp.Progress != exp {
@@ -211,9 +208,7 @@ func TestOperatorInitCommand_Run(t *testing.T) {
 		}
 
 		status, err := client.Sys().SealStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if status.Sealed {
 			t.Errorf("expected vault to be unsealed: %#v", status)
 		}
@@ -239,9 +234,7 @@ func TestOperatorInitCommand_Run(t *testing.T) {
 		}
 
 		init, err := client.Sys().InitStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !init {
 			t.Error("expected initialized")
 		}
@@ -262,9 +255,7 @@ func TestOperatorInitCommand_Run(t *testing.T) {
 		// threshold.
 		for i, key := range keys[:keyThreshold] {
 			resp, err := client.Sys().Unseal(key)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			exp := (i + 1) % keyThreshold
 			if resp.Progress != exp {
@@ -273,9 +264,7 @@ func TestOperatorInitCommand_Run(t *testing.T) {
 		}
 
 		status, err := client.Sys().SealStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if status.Sealed {
 			t.Errorf("expected vault to be unsealed: %#v", status)
 		}
@@ -285,9 +274,7 @@ func TestOperatorInitCommand_Run(t *testing.T) {
 		t.Parallel()
 
 		pubFiles, err := getPubKeyFiles(t)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		client, closer := testVaultServerUninit(t)
 		defer closer()

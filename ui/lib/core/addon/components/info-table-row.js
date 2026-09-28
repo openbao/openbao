@@ -71,6 +71,11 @@ export default class InfoTableRowComponent extends Component {
     return value;
   }
 
+  copyText(value) {
+    if (typeof value === 'string' || typeof value === 'function') return value;
+    return value == null ? '' : String(value);
+  }
+
   @action
   calculateLabelOverflow(el) {
     const labelDiv = el;

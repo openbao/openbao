@@ -13,6 +13,7 @@ import (
 	"unicode"
 
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5/proto"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -29,9 +30,7 @@ func TestConversionsHaveAllFields(t *testing.T) {
 		}
 
 		protoReq, err := initReqToProto(req)
-		if err != nil {
-			t.Fatalf("Failed to convert request to proto request: %s", err)
-		}
+		require.NoError(t, err)
 
 		values := getAllGetterValues(protoReq)
 		if len(values) == 0 {
@@ -41,9 +40,7 @@ func TestConversionsHaveAllFields(t *testing.T) {
 
 		for _, gtr := range values {
 			err := assertAllFieldsSet(fmt.Sprintf("InitializeRequest.%s", gtr.name), gtr.value)
-			if err != nil {
-				t.Fatalf("%s", err)
-			}
+			require.NoError(t, err)
 		}
 	})
 
@@ -71,9 +68,7 @@ func TestConversionsHaveAllFields(t *testing.T) {
 		}
 
 		protoReq, err := newUserReqToProto(req)
-		if err != nil {
-			t.Fatalf("Failed to convert request to proto request: %s", err)
-		}
+		require.NoError(t, err)
 
 		values := getAllGetterValues(protoReq)
 		if len(values) == 0 {
@@ -83,9 +78,7 @@ func TestConversionsHaveAllFields(t *testing.T) {
 
 		for _, gtr := range values {
 			err := assertAllFieldsSet(fmt.Sprintf("NewUserRequest.%s", gtr.name), gtr.value)
-			if err != nil {
-				t.Fatalf("%s", err)
-			}
+			require.NoError(t, err)
 		}
 	})
 
@@ -120,9 +113,7 @@ func TestConversionsHaveAllFields(t *testing.T) {
 		}
 
 		protoReq, err := updateUserReqToProto(req)
-		if err != nil {
-			t.Fatalf("Failed to convert request to proto request: %s", err)
-		}
+		require.NoError(t, err)
 
 		values := getAllGetterValues(protoReq)
 		if len(values) == 0 {
@@ -132,9 +123,7 @@ func TestConversionsHaveAllFields(t *testing.T) {
 
 		for _, gtr := range values {
 			err := assertAllFieldsSet(fmt.Sprintf("UpdateUserRequest.%s", gtr.name), gtr.value)
-			if err != nil {
-				t.Fatalf("%s", err)
-			}
+			require.NoError(t, err)
 		}
 	})
 
@@ -149,9 +138,7 @@ func TestConversionsHaveAllFields(t *testing.T) {
 		}
 
 		protoReq, err := deleteUserReqToProto(req)
-		if err != nil {
-			t.Fatalf("Failed to convert request to proto request: %s", err)
-		}
+		require.NoError(t, err)
 
 		values := getAllGetterValues(protoReq)
 		if len(values) == 0 {
@@ -161,9 +148,7 @@ func TestConversionsHaveAllFields(t *testing.T) {
 
 		for _, gtr := range values {
 			err := assertAllFieldsSet(fmt.Sprintf("DeleteUserRequest.%s", gtr.name), gtr.value)
-			if err != nil {
-				t.Fatalf("%s", err)
-			}
+			require.NoError(t, err)
 		}
 	})
 
@@ -198,14 +183,10 @@ func TestConversionsHaveAllFields(t *testing.T) {
 		}
 
 		protoReq, err := getUpdateUserRequest(req)
-		if err != nil {
-			t.Fatalf("Failed to convert request to proto request: %s", err)
-		}
+		require.NoError(t, err)
 
 		err = assertAllFieldsSet("proto.UpdateUserRequest", protoReq)
-		if err != nil {
-			t.Fatalf("%s", err)
-		}
+		require.NoError(t, err)
 	})
 }
 
@@ -524,8 +505,6 @@ func newStructPb(t *testing.T, m map[string]any) *structpb.Struct {
 	t.Helper()
 
 	s, err := structpb.NewStruct(m)
-	if err != nil {
-		t.Fatalf("Failed to convert map to struct: %s", err)
-	}
+	require.NoError(t, err)
 	return s
 }

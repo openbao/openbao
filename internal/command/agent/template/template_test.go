@@ -192,9 +192,7 @@ func TestCacheConfigNoListener(t *testing.T) {
 	serverConfig := ServerConfig{AgentConfig: agentConfig}
 
 	ctConfig, err := newRunnerConfig(&serverConfig, ctconfig.TemplateConfigs{})
-	if err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
+	require.NoError(t, err)
 
 	assert.Equal(t, "http://127.0.0.1:8200", *ctConfig.Vault.Address)
 	assert.NotNil(t, ctConfig.Vault.Transport.CustomDialer)
@@ -494,9 +492,7 @@ func TestNewServerLogLevels(t *testing.T) {
 			case <-ctx.Done():
 				t.Fatal("timeout reached before templates were rendered")
 			case err := <-errCh:
-				if err != nil {
-					t.Fatalf("did not expect error, got: %v", err)
-				}
+				require.NoError(t, err)
 			}
 		})
 	}

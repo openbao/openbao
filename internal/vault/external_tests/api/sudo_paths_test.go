@@ -20,6 +20,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/builtin/logical/transit"
 	"github.com/openbao/openbao/v2/internal/helper/builtinplugins"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 const sudoKey = "x-vault-sudo"
@@ -54,24 +55,18 @@ func TestSudoPaths(t *testing.T) {
 		err := client.Sys().EnableAuthWithOptions(credBackendName, &api.EnableAuthOptions{
 			Type: credBackendName,
 		})
-		if err != nil {
-			t.Fatalf("error enabling auth backend for test: %v", err)
-		}
+		require.NoError(t, err)
 	}
 
 	for logicalBackendName := range coreConfig.LogicalBackends {
 		err := client.Sys().Mount(logicalBackendName, &api.MountInput{
 			Type: logicalBackendName,
 		})
-		if err != nil {
-			t.Fatalf("error enabling logical backend for test: %v", err)
-		}
+		require.NoError(t, err)
 	}
 
 	sudoPathsFromSpec, err := getSudoPathsFromSpec(client)
-	if err != nil {
-		t.Fatalf("error getting list of paths that require sudo from OpenAPI endpoint: %v", err)
-	}
+	require.NoError(t, err)
 
 	sudoPathsInCode := api.SudoPaths()
 

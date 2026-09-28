@@ -12,6 +12,7 @@ import (
 
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
 )
 
@@ -62,9 +63,7 @@ func TestYamlFormatter(t *testing.T) {
 	}
 	var newUi mockUi
 	err := yaml.Unmarshal([]byte(output), &newUi)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if newUi.SampleData != ui.SampleData {
 		t.Fatalf(`values not equal ("%s" != "%s")`,
 			newUi.SampleData,

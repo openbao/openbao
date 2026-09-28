@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"slices"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestRegisterPlugin(t *testing.T) {
@@ -18,16 +20,12 @@ func TestRegisterPlugin(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.Address = mockVaultServer.URL
 	client, err := NewClient(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = client.Sys().RegisterPluginWithContext(t.Context(), &RegisterPluginInput{
 		Version: "v1.0.0",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestListPlugins(t *testing.T) {
@@ -37,9 +35,7 @@ func TestListPlugins(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.Address = mockVaultServer.URL
 	client, err := NewClient(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	for name, tc := range map[string]struct {
 		input           ListPluginsInput
@@ -74,9 +70,7 @@ func TestListPlugins(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			resp, err := client.Sys().ListPluginsWithContext(t.Context(), &tc.input)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			for pluginType, expected := range tc.expectedPlugins {
 				actualPlugins := resp.PluginsByType[pluginType]
@@ -105,9 +99,7 @@ func TestListPlugins(t *testing.T) {
 
 			for _, actual := range resp.Details {
 				pluginType, err := ParsePluginType(actual.Type)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				if !slices.Contains(tc.expectedPlugins[pluginType], actual.Name) {
 					t.Errorf("Did not expect to find %s in details", actual.Name)
 				}
@@ -167,9 +159,7 @@ func TestGetPlugin(t *testing.T) {
 			cfg := DefaultConfig()
 			cfg.Address = mockVaultServer.URL
 			client, err := NewClient(cfg)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			input := GetPluginInput{
 				Name: "approle",
@@ -180,9 +170,7 @@ func TestGetPlugin(t *testing.T) {
 			}
 
 			info, err := client.Sys().GetPluginWithContext(t.Context(), &input)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			if !reflect.DeepEqual(tc.expected, *info) {
 				t.Errorf("expected: %#v\ngot: %#v", tc.expected, info)

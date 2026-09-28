@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared/sink/file"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTokenFileEndToEnd(t *testing.T) {
@@ -47,9 +48,7 @@ func TestTokenFileEndToEnd(t *testing.T) {
 	}
 
 	tokenFile, err := os.Create(filepath.Join(t.TempDir(), "token_file"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	tokenFileName := tokenFile.Name()
 	tokenFile.Close() // WriteFile doesn't need it open
 	os.WriteFile(tokenFileName, []byte(secret.Auth.ClientToken), 0o666)
@@ -68,9 +67,7 @@ func TestTokenFileEndToEnd(t *testing.T) {
 			"token_file_path": tokenFileName,
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	ah := auth.NewAuthHandler(ahConfig)
 	errCh := make(chan error)
@@ -81,18 +78,14 @@ func TestTokenFileEndToEnd(t *testing.T) {
 		select {
 		case <-ctx.Done():
 		case err := <-errCh:
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}()
 
 	// We close these right away because we're just basically testing
 	// permissions and finding a usable file name
 	sinkFile, err := os.Create(filepath.Join(t.TempDir(), "auth.tokensink.test."))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	tokenSinkFileName := sinkFile.Name()
 	sinkFile.Close()
 	os.Remove(tokenSinkFileName)
@@ -107,9 +100,7 @@ func TestTokenFileEndToEnd(t *testing.T) {
 	}
 
 	fs, err := file.NewFileSink(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config.Sink = fs
 
 	ss := sink.NewSinkServer(&sink.SinkServerConfig{
@@ -123,9 +114,7 @@ func TestTokenFileEndToEnd(t *testing.T) {
 		select {
 		case <-ctx.Done():
 		case err := <-errCh:
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}()
 
@@ -146,16 +135,12 @@ func TestTokenFileEndToEnd(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	token, err := readToken(tokenSinkFileName)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if token.Token == "" {
 		t.Fatal("expected token but didn't receive it")
 	}
 
 	_, err = os.Stat(tokenFileName)
-	if err != nil {
-		t.Fatal("Token file removed")
-	}
+	require.NoError(t, err)
 }

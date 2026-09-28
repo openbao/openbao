@@ -27,6 +27,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -34,9 +35,7 @@ func tokenRevocationValidation(t *testing.T, sampleSpace map[string]string, expe
 	t.Helper()
 	for val, valType := range sampleSpace {
 		index, err := leaseCache.db.Get(valType, val)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if expected[val] == "" && index != nil {
 			t.Fatalf("failed to evict index from the cache: type: %q, value: %q", valType, val)
 		}
@@ -72,9 +71,7 @@ func TestCache_AutoAuthTokenStripping(t *testing.T) {
 
 	cacheLogger := logging.NewVaultLogger(hclog.Trace).Named("cache")
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	ctx := namespace.RootContext(t.Context())
 
@@ -93,9 +90,7 @@ func TestCache_AutoAuthTokenStripping(t *testing.T) {
 	go server.Serve(listener)
 
 	testClient, err := client.Clone()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if err := testClient.SetAddress("http://" + listener.Addr().String()); err != nil {
 		t.Fatal(err)
@@ -104,25 +99,19 @@ func TestCache_AutoAuthTokenStripping(t *testing.T) {
 	// Empty the token in the client. Auto-auth token should be put to use.
 	testClient.SetToken("")
 	secret, err := testClient.Auth().Token().LookupSelf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Data["id"] != nil || secret.Data["accessor"] != nil || secret.Data["request"].(string) != "lookup-self" {
 		t.Fatal("failed to strip off auto-auth token on lookup-self")
 	}
 
 	secret, err = testClient.Auth().Token().Lookup("")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Data["id"] != nil || secret.Data["accessor"] != nil || secret.Data["request"].(string) != "lookup" {
 		t.Fatal("failed to strip off auto-auth token on lookup")
 	}
 
 	secret, err = testClient.Auth().Token().RenewSelf(1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Auth == nil {
 		secretJson, _ := json.Marshal(secret)
 		t.Fatalf("Expected secret to have Auth but was %s", secretJson)
@@ -132,9 +121,7 @@ func TestCache_AutoAuthTokenStripping(t *testing.T) {
 	}
 
 	secret, err = testClient.Auth().Token().Renew("testid", 1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Auth == nil {
 		secretJson, _ := json.Marshal(secret)
 		t.Fatalf("Expected secret to have Auth but was %s", secretJson)
@@ -161,9 +148,7 @@ func TestCache_AutoAuthClientTokenProxyStripping(t *testing.T) {
 
 	cacheLogger := logging.NewVaultLogger(hclog.Trace).Named("cache")
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	ctx := namespace.RootContext(t.Context())
 
@@ -182,9 +167,7 @@ func TestCache_AutoAuthClientTokenProxyStripping(t *testing.T) {
 	go server.Serve(listener)
 
 	testClient, err := client.Clone()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if err := testClient.SetAddress("http://" + listener.Addr().String()); err != nil {
 		t.Fatal(err)
@@ -193,9 +176,7 @@ func TestCache_AutoAuthClientTokenProxyStripping(t *testing.T) {
 	// Empty the token in the client. Auto-auth token should be put to use.
 	testClient.SetToken(dummyToken)
 	_, err = testClient.Auth().Token().LookupSelf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if leaseCache.currentToken != realToken {
 		t.Fatal("failed to use real token from auto-auth")
 	}
@@ -216,9 +197,7 @@ func TestCache_ConcurrentRequests(t *testing.T) {
 	err := testClient.Sys().Mount("kv", &api.MountInput{
 		Type: "kv",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	eg := errgroup.Group{}
 	for i := range 100 {
@@ -267,56 +246,42 @@ func TestCache_TokenRevocations_RevokeOrphan(t *testing.T) {
 	err := testClient.Sys().Mount("kv", &api.MountInput{
 		Type: "kv",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a secret in the backend
 	_, err = testClient.Logical().Write("kv/foo", map[string]any{
 		"value": "bar",
 		"ttl":   "1h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Read the secret and create a lease
 	leaseResp, err := testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lease1 := leaseResp.LeaseID
 	sampleSpace[lease1] = "lease"
 
 	resp, err := testClient.Logical().Write("auth/token/create", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	token2 := resp.Auth.ClientToken
 	sampleSpace[token2] = "token"
 
 	testClient.SetToken(token2)
 
 	leaseResp, err = testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lease2 := leaseResp.LeaseID
 	sampleSpace[lease2] = "lease"
 
 	resp, err = testClient.Logical().Write("auth/token/create", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	token3 := resp.Auth.ClientToken
 	sampleSpace[token3] = "token"
 
 	testClient.SetToken(token3)
 
 	leaseResp, err = testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lease3 := leaseResp.LeaseID
 	sampleSpace[lease3] = "lease"
 
@@ -330,9 +295,7 @@ func TestCache_TokenRevocations_RevokeOrphan(t *testing.T) {
 	// untouched.
 	testClient.SetToken(token2)
 	err = testClient.Auth().Token().RevokeOrphan(token2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	time.Sleep(1 * time.Second)
 
 	expected = map[string]string{
@@ -365,56 +328,42 @@ func TestCache_TokenRevocations_LeafLevelToken(t *testing.T) {
 	err := testClient.Sys().Mount("kv", &api.MountInput{
 		Type: "kv",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a secret in the backend
 	_, err = testClient.Logical().Write("kv/foo", map[string]any{
 		"value": "bar",
 		"ttl":   "1h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Read the secret and create a lease
 	leaseResp, err := testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lease1 := leaseResp.LeaseID
 	sampleSpace[lease1] = "lease"
 
 	resp, err := testClient.Logical().Write("auth/token/create", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	token2 := resp.Auth.ClientToken
 	sampleSpace[token2] = "token"
 
 	testClient.SetToken(token2)
 
 	leaseResp, err = testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lease2 := leaseResp.LeaseID
 	sampleSpace[lease2] = "lease"
 
 	resp, err = testClient.Logical().Write("auth/token/create", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	token3 := resp.Auth.ClientToken
 	sampleSpace[token3] = "token"
 
 	testClient.SetToken(token3)
 
 	leaseResp, err = testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lease3 := leaseResp.LeaseID
 	sampleSpace[lease3] = "lease"
 
@@ -427,9 +376,7 @@ func TestCache_TokenRevocations_LeafLevelToken(t *testing.T) {
 	// leases.
 	testClient.SetToken(token3)
 	err = testClient.Auth().Token().RevokeSelf("")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	time.Sleep(1 * time.Second)
 
 	expected = map[string]string{
@@ -462,56 +409,42 @@ func TestCache_TokenRevocations_IntermediateLevelToken(t *testing.T) {
 	err := testClient.Sys().Mount("kv", &api.MountInput{
 		Type: "kv",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a secret in the backend
 	_, err = testClient.Logical().Write("kv/foo", map[string]any{
 		"value": "bar",
 		"ttl":   "1h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Read the secret and create a lease
 	leaseResp, err := testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lease1 := leaseResp.LeaseID
 	sampleSpace[lease1] = "lease"
 
 	resp, err := testClient.Logical().Write("auth/token/create", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	token2 := resp.Auth.ClientToken
 	sampleSpace[token2] = "token"
 
 	testClient.SetToken(token2)
 
 	leaseResp, err = testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lease2 := leaseResp.LeaseID
 	sampleSpace[lease2] = "lease"
 
 	resp, err = testClient.Logical().Write("auth/token/create", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	token3 := resp.Auth.ClientToken
 	sampleSpace[token3] = "token"
 
 	testClient.SetToken(token3)
 
 	leaseResp, err = testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lease3 := leaseResp.LeaseID
 	sampleSpace[lease3] = "lease"
 
@@ -524,9 +457,7 @@ func TestCache_TokenRevocations_IntermediateLevelToken(t *testing.T) {
 	// their respective leases.
 	testClient.SetToken(token2)
 	err = testClient.Auth().Token().RevokeSelf("")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	time.Sleep(1 * time.Second)
 
 	expected = map[string]string{
@@ -557,56 +488,42 @@ func TestCache_TokenRevocations_TopLevelToken(t *testing.T) {
 	err := testClient.Sys().Mount("kv", &api.MountInput{
 		Type: "kv",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a secret in the backend
 	_, err = testClient.Logical().Write("kv/foo", map[string]any{
 		"value": "bar",
 		"ttl":   "1h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Read the secret and create a lease
 	leaseResp, err := testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lease1 := leaseResp.LeaseID
 	sampleSpace[lease1] = "lease"
 
 	resp, err := testClient.Logical().Write("auth/token/create", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	token2 := resp.Auth.ClientToken
 	sampleSpace[token2] = "token"
 
 	testClient.SetToken(token2)
 
 	leaseResp, err = testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lease2 := leaseResp.LeaseID
 	sampleSpace[lease2] = "lease"
 
 	resp, err = testClient.Logical().Write("auth/token/create", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	token3 := resp.Auth.ClientToken
 	sampleSpace[token3] = "token"
 
 	testClient.SetToken(token3)
 
 	leaseResp, err = testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lease3 := leaseResp.LeaseID
 	sampleSpace[lease3] = "lease"
 
@@ -619,9 +536,7 @@ func TestCache_TokenRevocations_TopLevelToken(t *testing.T) {
 	// respective leases.
 	testClient.SetToken(token1)
 	err = testClient.Auth().Token().RevokeSelf("")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	time.Sleep(1 * time.Second)
 
 	expected = make(map[string]string)
@@ -650,56 +565,42 @@ func TestCache_TokenRevocations_Shutdown(t *testing.T) {
 	err := testClient.Sys().Mount("kv", &api.MountInput{
 		Type: "kv",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a secret in the backend
 	_, err = testClient.Logical().Write("kv/foo", map[string]any{
 		"value": "bar",
 		"ttl":   "1h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Read the secret and create a lease
 	leaseResp, err := testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lease1 := leaseResp.LeaseID
 	sampleSpace[lease1] = "lease"
 
 	resp, err := testClient.Logical().Write("auth/token/create", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	token2 := resp.Auth.ClientToken
 	sampleSpace[token2] = "token"
 
 	testClient.SetToken(token2)
 
 	leaseResp, err = testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lease2 := leaseResp.LeaseID
 	sampleSpace[lease2] = "lease"
 
 	resp, err = testClient.Logical().Write("auth/token/create", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	token3 := resp.Auth.ClientToken
 	sampleSpace[token3] = "token"
 
 	testClient.SetToken(token3)
 
 	leaseResp, err = testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lease3 := leaseResp.LeaseID
 	sampleSpace[lease3] = "lease"
 
@@ -736,56 +637,42 @@ func TestCache_TokenRevocations_BaseContextCancellation(t *testing.T) {
 	err := testClient.Sys().Mount("kv", &api.MountInput{
 		Type: "kv",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a secret in the backend
 	_, err = testClient.Logical().Write("kv/foo", map[string]any{
 		"value": "bar",
 		"ttl":   "1h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Read the secret and create a lease
 	leaseResp, err := testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lease1 := leaseResp.LeaseID
 	sampleSpace[lease1] = "lease"
 
 	resp, err := testClient.Logical().Write("auth/token/create", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	token2 := resp.Auth.ClientToken
 	sampleSpace[token2] = "token"
 
 	testClient.SetToken(token2)
 
 	leaseResp, err = testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lease2 := leaseResp.LeaseID
 	sampleSpace[lease2] = "lease"
 
 	resp, err = testClient.Logical().Write("auth/token/create", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	token3 := resp.Auth.ClientToken
 	sampleSpace[token3] = "token"
 
 	testClient.SetToken(token3)
 
 	leaseResp, err = testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	lease3 := leaseResp.LeaseID
 	sampleSpace[lease3] = "lease"
 
@@ -817,9 +704,7 @@ func TestCache_NonCacheable(t *testing.T) {
 
 	// Query mounts first
 	origMounts, err := testClient.Sys().ListMounts()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Mount a kv backend
 	if err := testClient.Sys().Mount("kv", &api.MountInput{
@@ -833,9 +718,7 @@ func TestCache_NonCacheable(t *testing.T) {
 
 	// Query mounts again
 	newMounts, err := testClient.Sys().ListMounts()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if diff := deep.Equal(origMounts, newMounts); diff == nil {
 		t.Logf("response #1: %#v", origMounts)
@@ -862,17 +745,13 @@ func TestCache_Caching_AuthResponse(t *testing.T) {
 	defer cleanup()
 
 	resp, err := testClient.Logical().Write("auth/token/create", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	token := resp.Auth.ClientToken
 	testClient.SetToken(token)
 
 	authTokeCreateReq := func(t *testing.T, policies map[string]any) *api.Secret {
 		resp, err := testClient.Logical().Write("auth/token/create", policies)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp.Auth == nil || resp.Auth.ClientToken == "" {
 			t.Fatalf("expected a valid client token in the response, got = %#v", resp)
 		}
@@ -922,9 +801,7 @@ func TestCache_Caching_LeaseResponse(t *testing.T) {
 	err := client.Sys().Mount("kv", &api.MountInput{
 		Type: "kv",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Test proxy by issuing two different requests
 	{
@@ -933,26 +810,18 @@ func TestCache_Caching_LeaseResponse(t *testing.T) {
 			"value": "bar",
 			"ttl":   "1h",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		_, err = testClient.Logical().Write("kv/foobar", map[string]any{
 			"value": "bar",
 			"ttl":   "1h",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		firstResp, err := testClient.Logical().Read("kv/foo")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		secondResp, err := testClient.Logical().Read("kv/foobar")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if diff := deep.Equal(firstResp, secondResp); diff == nil {
 			t.Logf("response: %#v", firstResp)
@@ -966,19 +835,13 @@ func TestCache_Caching_LeaseResponse(t *testing.T) {
 			"value": "foo",
 			"ttl":   "1h",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		proxiedResp, err := testClient.Logical().Read("kv/baz")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		cachedResp, err := testClient.Logical().Read("kv/baz")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if diff := deep.Equal(proxiedResp, cachedResp); diff != nil {
 			t.Fatal(diff)
@@ -1023,31 +886,23 @@ func testCachingCacheClearCommon(t *testing.T, clearType string) {
 	err := client.Sys().Mount("kv", &api.MountInput{
 		Type: "kv",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Write data to the lease-kv backend
 	_, err = testClient.Logical().Write("kv/foo", map[string]any{
 		"value": "bar",
 		"ttl":   "1h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Proxy this request, agent should cache the response
 	resp, err := testClient.Logical().Read("kv/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	gotLeaseID := resp.LeaseID
 
 	// Verify the entry exists
 	idx, err := leaseCache.db.Get(cachememdb.IndexNameLease, gotLeaseID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if idx == nil {
 		t.Fatalf("expected cached entry, got: %v", idx)
@@ -1068,9 +923,7 @@ func testCachingCacheClearCommon(t *testing.T, clearType string) {
 		data["value"] = testClient.Token()
 	case "token_accessor":
 		lookupResp, err := client.Auth().Token().Lookup(testClient.Token())
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		data["value"] = lookupResp.Data["accessor"]
 	case "all":
 	default:
@@ -1096,17 +949,13 @@ func testCachingCacheClearCommon(t *testing.T, clearType string) {
 			t.Fatal(err)
 		}
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	time.Sleep(100 * time.Millisecond)
 
 	// Verify the entry is cleared
 	idx, err = leaseCache.db.Get(cachememdb.IndexNameLease, gotLeaseID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if idx != nil {
 		t.Fatalf("expected entry to be nil, got: %v", idx)
@@ -1124,15 +973,11 @@ func TestCache_AuthTokenCreateOrphan(t *testing.T) {
 				NoParent: true,
 			}
 			resp, err := testClient.Auth().Token().Create(reqOpts)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			token := resp.Auth.ClientToken
 
 			idx, err := leaseCache.db.Get(cachememdb.IndexNameToken, token)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if idx == nil {
 				t.Fatalf("expected entry to be non-nil, got: %#v", idx)
 			}
@@ -1151,15 +996,11 @@ func TestCache_AuthTokenCreateOrphan(t *testing.T) {
 			testClient.SetToken(clusterClient.Token())
 
 			resp, err := testClient.Auth().Token().Create(reqOpts)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			token := resp.Auth.ClientToken
 
 			idx, err := leaseCache.db.Get(cachememdb.IndexNameToken, token)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if idx == nil {
 				t.Fatalf("expected entry to be non-nil, got: %#v", idx)
 			}
@@ -1175,15 +1016,11 @@ func TestCache_AuthTokenCreateOrphan(t *testing.T) {
 				Policies: []string{"default"},
 			}
 			resp, err := testClient.Auth().Token().CreateOrphan(reqOpts)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			token := resp.Auth.ClientToken
 
 			idx, err := leaseCache.db.Get(cachememdb.IndexNameToken, token)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if idx == nil {
 				t.Fatalf("expected entry to be non-nil, got: %#v", idx)
 			}
@@ -1201,15 +1038,11 @@ func TestCache_AuthTokenCreateOrphan(t *testing.T) {
 			testClient.SetToken(clusterClient.Token())
 
 			resp, err := testClient.Auth().Token().CreateOrphan(reqOpts)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			token := resp.Auth.ClientToken
 
 			idx, err := leaseCache.db.Get(cachememdb.IndexNameToken, token)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if idx == nil {
 				t.Fatalf("expected entry to be non-nil, got: %#v", idx)
 			}

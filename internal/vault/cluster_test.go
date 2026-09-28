@@ -21,6 +21,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/vault/cluster"
 	"github.com/openbao/openbao/v2/internal/vault/forwarding"
+	"github.com/stretchr/testify/require"
 )
 
 var clusterTestPausePeriod = 2 * time.Second
@@ -29,14 +30,10 @@ func TestClusterFetching(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 
 	err := c.setupCluster(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	cluster, err := c.Cluster(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// Test whether expected values are found
 	if cluster == nil || cluster.Name == "" || cluster.ID == "" {
 		t.Fatalf("cluster information missing: cluster: %#v", cluster)
@@ -49,21 +46,15 @@ func TestClusterHAFetching(t *testing.T) {
 	redirect := "http://127.0.0.1:8200"
 
 	inm, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	inmha, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	c, err := NewCore(&CoreConfig{
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirect,
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer c.Shutdown()
 	keys, _ := TestCoreInit(t, c)
 	for _, key := range keys {
@@ -81,9 +72,7 @@ func TestClusterHAFetching(t *testing.T) {
 	TestWaitActive(t, c)
 
 	cluster, err := c.Cluster(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// Test whether expected values are found
 	if cluster == nil || cluster.Name == "" || cluster.ID == "" {
 		t.Fatalf("cluster information missing: cluster:%#v", cluster)
@@ -127,9 +116,7 @@ func TestCluster_ListenForRequests(t *testing.T) {
 			}
 			conn := netConn.(*tls.Conn)
 			err = conn.Handshake()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			connState := conn.ConnectionState()
 			switch {
 			case connState.Version != tls.VersionTLS12 && connState.Version != tls.VersionTLS13:
@@ -149,9 +136,7 @@ func TestCluster_ListenForRequests(t *testing.T) {
 		Path:        "sys/step-down",
 		ClientToken: cluster.RootToken,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// StepDown doesn't wait during actual preSeal so give time for listeners
 	// to close
@@ -164,9 +149,7 @@ func TestCluster_ListenForRequests(t *testing.T) {
 	checkListenersFunc(false, "back on active")
 
 	err = cores[0].Core.Seal(cluster.RootToken)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	time.Sleep(clusterTestPausePeriod)
 	// After sealing it should be inactive again
 	checkListenersFunc(true, "after seal")
@@ -187,9 +170,7 @@ func TestCluster_ForwardRequests(t *testing.T) {
 			Level: log.Trace,
 			Name:  "inmem-cluster",
 		}))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		testCluster_ForwardRequestsCommon(t, &TestClusterOptions{
 			ClusterLayers: inmemCluster,
@@ -257,9 +238,7 @@ func testCluster_Forwarding(t *testing.T, cluster *TestCluster, oldLeaderCoreIdx
 		Path:        "sys/step-down",
 		ClientToken: rootToken,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	time.Sleep(clusterTestPausePeriod)
 
 	for i := range 3 {
@@ -314,9 +293,7 @@ func testCluster_ForwardRequests(t *testing.T, c *TestClusterCore, rootToken, re
 
 	// We need to call Leader as that refreshes the connection info
 	isLeader, _, _, err := c.Leader()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if isLeader {
 		t.Fatal("core should not be leader")
 	}
@@ -330,16 +307,12 @@ func testCluster_ForwardRequests(t *testing.T, c *TestClusterCore, rootToken, re
 
 	bodBuf := bytes.NewReader([]byte(`{ "foo": "bar", "zip": "zap" }`))
 	req, err := http.NewRequest("PUT", "https://pushit.real.good:9281/"+remoteCoreID, bodBuf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 	req = req.WithContext(ContextWithOriginalRequestPath(req.Context(), req.URL.Path))
 
 	statusCode, header, respBytes, err := c.ForwardRequest(req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	if header == nil {
 		t.Fatal("err: expected at least a content-type header")

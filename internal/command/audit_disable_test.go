@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 func testAuditDisableCommand(tb testing.TB) (*cli.MockUi, *AuditDisableCommand) {
@@ -120,9 +121,7 @@ func TestAuditDisableCommand_Run(t *testing.T) {
 		}
 
 		mounts, err := client.Sys().ListMounts()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if _, ok := mounts["integration_audit_disable"]; ok {
 			t.Errorf("expected mount to not exist: %#v", mounts)

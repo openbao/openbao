@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5/proto"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
 
@@ -504,9 +505,7 @@ func assertErrNotNil(t *testing.T, err error) {
 
 func assertErrNil(t *testing.T, err error) {
 	t.Helper()
-	if err != nil {
-		t.Fatalf("no error expected, got: %s", err)
-	}
+	require.NoError(t, err)
 }
 
 func assertErrEquals(expectedErr error) errorAssertion {

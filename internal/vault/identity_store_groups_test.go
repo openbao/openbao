@@ -139,69 +139,6 @@ func TestIdentityStore_FixOverwrittenMemberGroupIDs(t *testing.T) {
 	}
 }
 
-func TestIdentityStore_GroupEntityMembershipUpgrade(t *testing.T) {
-	c, keys, rootToken := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(t.Context())
-
-	// Create a group
-	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
-		Path:      "group",
-		Operation: logical.UpdateOperation,
-		Data: map[string]any{
-			"name": "testgroup",
-		},
-	})
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("bad: err:%v\nresp: %#v", err, resp)
-	}
-
-	// Create a memdb transaction
-	txn := c.identityStore.Txn(ctx, true)
-	defer txn.Abort()
-
-	// Fetch the above created group
-	group, err := c.identityStore.MemDBGroupByNameInTxn(ctx, txn, "testgroup", true)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Manually add an invalid entity as the group's member
-	group.MemberEntityIDs = []string{"invalidentityid"}
-
-	// Persist the group
-	err = c.identityStore.UpsertGroupInTxn(ctx, txn, group, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	txn.Commit()
-
-	// Perform seal and unseal forcing an upgrade
-	err = c.Seal(rootToken)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for i, key := range keys {
-		unseal, err := TestCoreUnseal(c, key)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if i+1 == len(keys) && !unseal {
-			t.Fatal("failed to unseal")
-		}
-	}
-
-	// Read the group and ensure that invalid entity id is cleaned up
-	group, err = c.identityStore.MemDBGroupByName(ctx, "testgroup", false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(group.MemberEntityIDs) != 0 {
-		t.Fatalf("bad: member entity IDs; expected: none, actual: %#v", group.MemberEntityIDs)
-	}
-}
-
 func TestIdentityStore_UpsertGroupInTxn(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ctx := namespace.RootContext(t.Context())
@@ -256,7 +193,7 @@ func TestIdentityStore_PurgeCorruptedGroups(t *testing.T) {
 	require.NotNil(t, item)
 
 	// loadGroups should purge corrupt entries
-	require.NoError(t, c.identityStore.LoadGroups(ctx, false /* readOnly */))
+	require.NoError(t, c.identityStore.LoadGroups(ctx, namespace.RootNamespace, false /* readOnly */))
 
 	// enure it was removed
 	item, err = packer.GetItem(group.ID)
@@ -536,9 +473,7 @@ func TestIdentityStore_Groups_TypeMembershipAdditions(t *testing.T) {
 	}
 
 	resp, err = i.HandleRequest(ctx, groupReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if !resp.IsError() {
 		t.Fatal("expected an error")
 	}
@@ -549,9 +484,7 @@ func TestIdentityStore_Groups_TypeMembershipAdditions(t *testing.T) {
 	}
 
 	resp, err = i.HandleRequest(ctx, groupReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if !resp.IsError() {
 		t.Fatal("expected an error")
 	}
@@ -589,9 +522,7 @@ func TestIdentityStore_Groups_TypeImmutability(t *testing.T) {
 	}
 	groupReq.Path = "group/id/" + internalGroupID
 	resp, err = i.HandleRequest(ctx, groupReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if !resp.IsError() {
 		t.Fatal("expected an error")
 	}
@@ -602,9 +533,7 @@ func TestIdentityStore_Groups_TypeImmutability(t *testing.T) {
 	}
 	groupReq.Path = "group/id/" + externalGroupID
 	resp, err = i.HandleRequest(ctx, groupReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if !resp.IsError() {
 		t.Fatal("expected an error")
 	}
@@ -633,9 +562,7 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 	txn := i.Txn(ctx, true)
 	defer txn.Abort()
 	err = i.MemDBUpsertGroupInTxn(txn, group)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	txn.Commit()
 
 	// Insert another dummy group
@@ -657,27 +584,21 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 	txn = i.Txn(ctx, true)
 	defer txn.Abort()
 	err = i.MemDBUpsertGroupInTxn(txn, group)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	txn.Commit()
 
 	var fetchedGroup *identity.Group
 
 	// Fetch group given the name
 	fetchedGroup, err = i.MemDBGroupByName(ctx, "testgroupname", false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if fetchedGroup == nil || fetchedGroup.Name != "testgroupname" {
 		t.Fatal("failed to fetch an indexed group")
 	}
 
 	// Fetch group given the ID
 	fetchedGroup, err = i.MemDBGroupByID(ctx, "testgroupid", false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if fetchedGroup == nil || fetchedGroup.Name != "testgroupname" {
 		t.Fatal("failed to fetch an indexed group")
 	}
@@ -685,34 +606,26 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 	var fetchedGroups []*identity.Group
 	// Fetch the subgroups of a given group ID
 	fetchedGroups, err = i.MemDBGroupsByParentGroupID(ctx, "testparentgroupid1", false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(fetchedGroups) != 1 || fetchedGroups[0].Name != "testgroupname" {
 		t.Fatal("failed to fetch an indexed group")
 	}
 
 	fetchedGroups, err = i.MemDBGroupsByParentGroupID(ctx, "testparentgroupid2", false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(fetchedGroups) != 2 {
 		t.Fatal("failed to fetch a indexed groups")
 	}
 
 	// Fetch groups based on member entity ID
 	fetchedGroups, err = i.MemDBGroupsByMemberEntityID(ctx, "testentityid1", false, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(fetchedGroups) != 1 || fetchedGroups[0].Name != "testgroupname" {
 		t.Fatal("failed to fetch an indexed group")
 	}
 
 	fetchedGroups, err = i.MemDBGroupsByMemberEntityID(ctx, "testentityid2", false, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if len(fetchedGroups) != 2 {
 		t.Fatal("failed to fetch groups by entity ID")
@@ -1079,9 +992,7 @@ func TestIdentityStore_GroupsCRUD_ByID(t *testing.T) {
 
 	groupReq.Operation = logical.ReadOperation
 	resp, err = is.HandleRequest(ctx, groupReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatal("expected a nil response")
 	}
@@ -1153,9 +1064,7 @@ func TestIdentityStore_GroupMultiCase(t *testing.T) {
 	}
 
 	policiesResult, err := is.GroupPoliciesByEntityID(ctx, entityID1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	policies := []string{}
 	for _, nsPolicies := range policiesResult {
@@ -1292,13 +1201,9 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	var memberGroupIDs []string
 	// Fetch 'eng' group
 	engGroup, err := is.MemDBGroupByID(ctx, engGroupID, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	memberGroupIDs, err = is.MemberGroupIDsByID(ctx, engGroup.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	sort.Strings(memberGroupIDs)
 	sort.Strings(engMemberGroupIDs)
 	if !reflect.DeepEqual(engMemberGroupIDs, memberGroupIDs) {
@@ -1306,13 +1211,9 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	}
 
 	vaultGroup, err := is.MemDBGroupByID(ctx, vaultGroupID, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	memberGroupIDs, err = is.MemberGroupIDsByID(ctx, vaultGroup.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	sort.Strings(memberGroupIDs)
 	sort.Strings(vaultMemberGroupIDs)
 	if !reflect.DeepEqual(vaultMemberGroupIDs, memberGroupIDs) {
@@ -1320,13 +1221,9 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	}
 
 	opsGroup, err := is.MemDBGroupByID(ctx, opsGroupID, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	memberGroupIDs, err = is.MemberGroupIDsByID(ctx, opsGroup.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	sort.Strings(memberGroupIDs)
 	sort.Strings(opsMemberGroupIDs)
 	if !reflect.DeepEqual(opsMemberGroupIDs, memberGroupIDs) {
@@ -1406,9 +1303,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	}
 
 	policiesResult, err := is.GroupPoliciesByEntityID(ctx, entityID1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	var policies []string
 	for _, nsPolicies := range policiesResult {
 		policies = append(policies, nsPolicies...)
@@ -1421,9 +1316,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	}
 
 	policiesResult, err = is.GroupPoliciesByEntityID(ctx, entityID2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	policies = nil
 	for _, nsPolicies := range policiesResult {
 		policies = append(policies, nsPolicies...)
@@ -1436,9 +1329,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	}
 
 	policiesResult, err = is.GroupPoliciesByEntityID(ctx, entityID3)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	policies = nil
 	for _, nsPolicies := range policiesResult {
 		policies = append(policies, nsPolicies...)
@@ -1449,9 +1340,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	}
 
 	groups, inheritedGroups, err := is.GroupsByEntityID(ctx, entityID1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(groups) != 1 {
 		t.Fatalf("bad: length of groups; expected: 1, actual: %d", len(groups))
 	}
@@ -1460,9 +1349,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	}
 
 	groups, inheritedGroups, err = is.GroupsByEntityID(ctx, entityID2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(groups) != 1 {
 		t.Fatalf("bad: length of groups; expected: 1, actual: %d", len(groups))
 	}
@@ -1471,9 +1358,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	}
 
 	groups, inheritedGroups, err = is.GroupsByEntityID(ctx, entityID3)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(groups) != 1 {
 		t.Fatalf("bad: length of groups; expected: 1, actual: %d", len(groups))
 	}

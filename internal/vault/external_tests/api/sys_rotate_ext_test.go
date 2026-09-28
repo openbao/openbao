@@ -64,9 +64,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 		}
 	}
 	inm, err := inmem.NewInmemHA(nil, logging.NewVaultLogger(hclog.Debug))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	conf := vault.CoreConfig{
 		Physical: inm,
 	}
@@ -109,9 +107,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 			SecretThreshold:     3,
 			RequireVerification: true,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if status == nil {
 			t.Fatal("nil status")
 		}
@@ -126,9 +122,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 		var resp *api.RotateUpdateResponse
 		for i := range 3 {
 			resp, err = updateFunc(base64.StdEncoding.EncodeToString(keys[i]), status.Nonce)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 		switch {
 		case !resp.Complete:
@@ -167,9 +161,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 		// Start the process
 		for i := range 2 {
 			status, err := verificationUpdateFunc(newKeys[i], verificationNonce)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			switch {
 			case status.Nonce != verificationNonce:
 				t.Fatalf("unexpected nonce, expected %q, got %q", verificationNonce, status.Nonce)
@@ -180,9 +172,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 
 		// Check status
 		vStatus, err := verificationStatusFunc()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		switch {
 		case vStatus.Nonce != verificationNonce:
 			t.Fatalf("unexpected nonce, expected %q, got %q", verificationNonce, vStatus.Nonce)
@@ -200,9 +190,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 	// Cancel; this should still keep the rekey process going but just cancel
 	// the verification operation
 	err = verificationCancelFunc()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// Verify cannot init again
 	_, err = initFunc(&api.RotateInitRequest{
 		SecretShares:        5,
@@ -213,9 +201,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 		t.Fatal("expected error")
 	}
 	vStatus, err := verificationStatusFunc()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	switch {
 	case vStatus.Nonce == verificationNonce:
 		t.Fatalf("unexpected nonce, expected not-%q but got it", verificationNonce)
@@ -248,9 +234,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 
 	// Provide the final new key
 	vuStatus, err := verificationUpdateFunc(newKeys[2], verificationNonce)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	switch {
 	case vuStatus.Nonce != verificationNonce:
 		t.Fatalf("unexpected nonce, expected %q, got %q", verificationNonce, vuStatus.Nonce)
@@ -282,9 +266,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 		var newKeyBytes [][]byte
 		for _, key := range newKeys {
 			val, err := base64.StdEncoding.DecodeString(key)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			newKeyBytes = append(newKeyBytes, val)
 		}
 		cluster.BarrierKeys = newKeyBytes
@@ -302,9 +284,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 		cluster.RecoveryKeys = nil
 		for _, key := range newKeys {
 			dec, err := base64.StdEncoding.DecodeString(key)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			cluster.RecoveryKeys = append(cluster.RecoveryKeys, dec)
 		}
 		if err := client.Sys().GenerateRootCancel(); err != nil {

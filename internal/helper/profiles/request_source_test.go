@@ -82,9 +82,7 @@ func TestRequestSource_Validate_Success(t *testing.T) {
 	}
 
 	reqs, _, err := source.Validate()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 	if len(reqs) != 1 || reqs[0] != "mount-userpass" {
 		t.Errorf("expected request=[mount-userpass], got %v", reqs)
 	}
@@ -120,9 +118,7 @@ func TestRequestValidate_OuterNameOK(t *testing.T) {
 	}
 
 	gotReqDeps, gotRespDeps, err := rs.Validate()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
 	wantDeps := []string{"outer1.r1"}
 	if !reflect.DeepEqual(gotReqDeps, wantDeps) {
@@ -161,9 +157,7 @@ func TestRequestSource_Evaluate_WithFieldSelector_String(t *testing.T) {
 	}
 
 	result, err := source.Evaluate(ctx, history)
-	if err != nil {
-		t.Fatalf("Evaluate error: %v", err)
-	}
+	require.NoError(t, err)
 	expected := "test"
 	if !reflect.DeepEqual(result, expected) {
 		t.Fatalf("Evaluate result = %#v; want %#v", result, expected)

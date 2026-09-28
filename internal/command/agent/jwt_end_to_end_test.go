@@ -24,6 +24,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/dhutil"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestJWTEndToEnd(t *testing.T) {
@@ -72,18 +73,14 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 	err := client.Sys().EnableAuthWithOptions("jwt", &api.EnableAuthOptions{
 		Type: "jwt",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("auth/jwt/config", map[string]any{
 		"bound_issuer":           "https://team-vault.auth0.com/",
 		"jwt_validation_pubkeys": TestECDSAPubKey,
 		"jwt_supported_algs":     "ES256",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("auth/jwt/role/test", map[string]any{
 		"role_type":       "jwt",
@@ -94,29 +91,21 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 		"policies":        "test",
 		"period":          "3s",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Generate encryption params
 	pub, pri, err := dhutil.GeneratePublicPrivateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// We close these right away because we're just basically testing
 	// permissions and finding a usable file name
 	inf, err := os.CreateTemp("", "auth.jwt.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	in := inf.Name()
 	inf.Close()
 	os.Remove(in)
 	symlink, err := os.CreateTemp("", "auth.jwt.symlink.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	symlinkName := symlink.Name()
 	symlink.Close()
 	os.Remove(symlinkName)
@@ -124,18 +113,14 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 	t.Logf("input: %s", in)
 
 	ouf, err := os.CreateTemp("", "auth.tokensink.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	out := ouf.Name()
 	ouf.Close()
 	os.Remove(out)
 	t.Logf("output: %s", out)
 
 	dhpathf, err := os.CreateTemp("", "auth.dhpath.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	dhpath := dhpathf.Name()
 	dhpathf.Close()
 	os.Remove(dhpath)
@@ -144,9 +129,7 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 	mPubKey, err := jsonutil.EncodeJSON(&dhutil.PublicKeyInfo{
 		Curve25519PublicKey: pub,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if err := os.WriteFile(dhpath, mPubKey, 0o600); err != nil {
 		t.Fatal(err)
 	} else {
@@ -172,9 +155,7 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 			"jwt_read_period":             "0.5s",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	ahConfig := &auth.AuthHandlerConfig{
 		Logger:                       logger.Named("auth.handler"),
@@ -193,9 +174,7 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 		select {
 		case <-ctx.Done():
 		case err := <-errCh:
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}()
 
@@ -213,9 +192,7 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 		config.WrapTTL = 10 * time.Second
 	}
 	fs, err := file.NewFileSink(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config.Sink = fs
 
 	ss := sink.NewSinkServer(&sink.SinkServerConfig{
@@ -229,9 +206,7 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 		select {
 		case <-ctx.Done():
 		case err := <-errCh:
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}()
 
@@ -259,9 +234,7 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 	}
 
 	cloned, err := client.Clone()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Get a token
 	jwtToken, _ := GetTestJWT(t)
@@ -296,9 +269,7 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 					}
 				} else {
 					_, err := os.Stat(in)
-					if err != nil {
-						t.Fatal("JWT file removed despite removeJWTAfterReading being set to false")
-					}
+					require.NoError(t, err)
 				}
 
 				// First decrypt it
@@ -308,21 +279,15 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 				}
 
 				shared, err := dhutil.GenerateSharedSecret(pri, resp.Curve25519PublicKey)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				aesKey, err := dhutil.DeriveSharedKey(shared, pub, resp.Curve25519PublicKey)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				if len(aesKey) == 0 {
 					t.Fatal("got empty aes key")
 				}
 
 				val, err = dhutil.DecryptAES(aesKey, resp.EncryptedPayload, resp.Nonce, []byte("foobar"))
-				if err != nil {
-					t.Fatalf("error: %v\nresp: %v", err, string(val))
-				}
+				require.NoErrorf(t, err, "error: %v\nresp: %v", err, string(val))
 
 				// Now unwrap it
 				wrapInfo := new(api.SecretWrapInfo)
@@ -341,9 +306,7 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 				}
 				cloned.SetToken(wrapInfo.Token)
 				secret, err := cloned.Logical().Unwrap("")
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				if ahWrapping {
 					switch {
 					case secret.Auth == nil:
@@ -374,13 +337,9 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 		cloned.SetToken(origToken)
 		for time.Now().Before(timeout) {
 			secret, err := cloned.Auth().Token().LookupSelf()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			ttl, err := secret.Data["ttl"].(json.Number).Int64()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if ttl > 3 {
 				t.Fatalf("unexpected ttl: %v", secret.Data["ttl"])
 			}
@@ -406,13 +365,9 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 		cloned.SetToken(newToken)
 		for time.Now().Before(timeout) {
 			secret, err := cloned.Auth().Token().LookupSelf()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			ttl, err := secret.Data["ttl"].(json.Number).Int64()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if ttl > 3 {
 				t.Fatalf("unexpected ttl: %v", secret.Data["ttl"])
 			}

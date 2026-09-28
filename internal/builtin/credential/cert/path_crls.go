@@ -4,9 +4,10 @@
 package cert
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
-	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"math/big"
 	url2 "net/url"
@@ -236,6 +237,20 @@ func (b *backend) pathCRLRead(ctx context.Context, req *logical.Request, d *fram
 	return &logical.Response{Data: data}, nil
 }
 
+// parseCRL mirrors logic in the deprecated [x509.ParseCRL], which
+// transparently supports both PEM-encoded and raw DER input. The newer
+// [x509.ParseRevocationList] always requires raw DER, but cert auth has always
+// supported both implicitly since it used [x509.ParseCRL] in the past.
+func parseCRL(input []byte) (*x509.RevocationList, error) {
+	if bytes.HasPrefix(input, []byte("-----BEGIN X509 CRL")) {
+		block, _ := pem.Decode(input)
+		if block != nil && block.Type == "X509 CRL" {
+			input = block.Bytes
+		}
+	}
+	return x509.ParseRevocationList(input)
+}
+
 func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	name := strings.ToLower(d.Get("name").(string))
 	if name == "" {
@@ -243,17 +258,14 @@ func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *fra
 	}
 	if crlRaw, ok := d.GetOk("crl"); ok {
 		crl := crlRaw.(string)
-		certList, err := x509.ParseCRL([]byte(crl))
+		revcList, err := parseCRL([]byte(crl))
 		if err != nil {
 			return logical.ErrorResponse("failed to parse CRL: %v", err), nil
-		}
-		if certList == nil {
-			return logical.ErrorResponse("parsed CRL is nil"), nil
 		}
 
 		b.crlUpdateMutex.Lock()
 		defer b.crlUpdateMutex.Unlock()
-		err = b.setCRL(ctx, req.Storage, certList, name, nil)
+		err = b.setCRL(ctx, req.Storage, revcList, name, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -286,7 +298,7 @@ func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *fra
 	return nil, nil
 }
 
-func (b *backend) setCRL(ctx context.Context, storage logical.Storage, certList *pkix.CertificateList, name string, cdp *CDPInfo) error {
+func (b *backend) setCRL(ctx context.Context, storage logical.Storage, revcList *x509.RevocationList, name string, cdp *CDPInfo) error {
 	if err := b.populateCRLs(ctx, storage); err != nil {
 		return err
 	}
@@ -296,8 +308,8 @@ func (b *backend) setCRL(ctx context.Context, storage logical.Storage, certList 
 		Serials: map[string]RevokedSerialInfo{},
 	}
 
-	if certList != nil {
-		for _, revokedCert := range certList.TBSCertList.RevokedCertificates {
+	if revcList != nil {
+		for _, revokedCert := range revcList.RevokedCertificateEntries {
 			crlInfo.Serials[revokedCert.SerialNumber.String()] = RevokedSerialInfo{}
 		}
 	}

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/cli"
+	"github.com/stretchr/testify/require"
 )
 
 func testPolicyDeleteCommand(tb testing.TB) (*cli.MockUi, *PolicyDeleteCommand) {
@@ -99,9 +100,7 @@ func TestPolicyDeleteCommand_Run(t *testing.T) {
 		}
 
 		policies, err := client.Sys().ListPolicies()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		list := []string{"default", "root"}
 		if !reflect.DeepEqual(policies, list) {

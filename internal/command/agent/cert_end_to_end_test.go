@@ -25,6 +25,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/dhutil"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCertEndToEnd(t *testing.T) {
@@ -83,9 +84,7 @@ func testCertEndToEnd(t *testing.T, withCertRoleName, ahWrapping bool) {
 	err := client.Sys().EnableAuthWithOptions("cert", &api.EnableAuthOptions{
 		Type: "cert",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	certificatePEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cluster.CACert.Raw})
 
@@ -94,29 +93,21 @@ func testCertEndToEnd(t *testing.T, withCertRoleName, ahWrapping bool) {
 		"certificate": string(certificatePEM),
 		"policies":    "default",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Generate encryption params
 	pub, pri, err := dhutil.GeneratePublicPrivateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	ouf, err := os.CreateTemp("", "auth.tokensink.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	out := ouf.Name()
 	ouf.Close()
 	os.Remove(out)
 	t.Logf("output: %s", out)
 
 	dhpathf, err := os.CreateTemp("", "auth.dhpath.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	dhpath := dhpathf.Name()
 	dhpathf.Close()
 	os.Remove(dhpath)
@@ -125,9 +116,7 @@ func testCertEndToEnd(t *testing.T, withCertRoleName, ahWrapping bool) {
 	mPubKey, err := jsonutil.EncodeJSON(&dhutil.PublicKeyInfo{
 		Curve25519PublicKey: pub,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if err := os.WriteFile(dhpath, mPubKey, 0o600); err != nil {
 		t.Fatal(err)
 	} else {
@@ -147,9 +136,7 @@ func testCertEndToEnd(t *testing.T, withCertRoleName, ahWrapping bool) {
 		MountPath: "auth/cert",
 		Config:    aaConfig,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	ahConfig := &auth.AuthHandlerConfig{
 		Logger:                       logger.Named("auth.handler"),
@@ -168,9 +155,7 @@ func testCertEndToEnd(t *testing.T, withCertRoleName, ahWrapping bool) {
 		select {
 		case <-ctx.Done():
 		case err := <-errCh:
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}()
 
@@ -188,9 +173,7 @@ func testCertEndToEnd(t *testing.T, withCertRoleName, ahWrapping bool) {
 		config.WrapTTL = 10 * time.Second
 	}
 	fs, err := file.NewFileSink(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config.Sink = fs
 
 	ss := sink.NewSinkServer(&sink.SinkServerConfig{
@@ -204,9 +187,7 @@ func testCertEndToEnd(t *testing.T, withCertRoleName, ahWrapping bool) {
 		select {
 		case <-ctx.Done():
 		case err := <-errCh:
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}()
 
@@ -218,9 +199,7 @@ func testCertEndToEnd(t *testing.T, withCertRoleName, ahWrapping bool) {
 	defer cancel()
 
 	cloned, err := client.Clone()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	checkToken := func() string {
 		timeout := time.Now().Add(5 * time.Second)
@@ -242,21 +221,15 @@ func testCertEndToEnd(t *testing.T, withCertRoleName, ahWrapping bool) {
 				}
 
 				shared, err := dhutil.GenerateSharedSecret(pri, resp.Curve25519PublicKey)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				aesKey, err := dhutil.DeriveSharedKey(shared, pub, resp.Curve25519PublicKey)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				if len(aesKey) == 0 {
 					t.Fatal("got empty aes key")
 				}
 
 				val, err = dhutil.DecryptAES(aesKey, resp.EncryptedPayload, resp.Nonce, []byte("foobar"))
-				if err != nil {
-					t.Fatalf("error: %v\nresp: %v", err, string(val))
-				}
+				require.NoErrorf(t, err, "error: %v\nresp: %v", err, string(val))
 
 				// Now unwrap it
 				wrapInfo := new(api.SecretWrapInfo)
@@ -275,9 +248,7 @@ func testCertEndToEnd(t *testing.T, withCertRoleName, ahWrapping bool) {
 				}
 				cloned.SetToken(wrapInfo.Token)
 				secret, err := cloned.Logical().Unwrap("")
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				if ahWrapping {
 					switch {
 					case secret.Auth == nil:
@@ -334,18 +305,14 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 			MaxLeaseTTL:     "32h",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Set the cluster's certificate as the root CA in /pki
 	pemBundleRootCA := string(cluster.CACertPEM) + string(cluster.CAKeyPEM)
 	_, err = client.Logical().Write("pki/config/ca", map[string]any{
 		"pem_bundle": pemBundleRootCA,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Mount /pki2 to operate as an intermediate CA
 	err = client.Sys().Mount("pki2", &api.MountInput{
@@ -355,15 +322,11 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 			MaxLeaseTTL:     "32h",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a CSR for the intermediate CA
 	secret, err := client.Logical().Write("pki2/intermediate/generate/internal", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	intermediateCSR := secret.Data["csr"].(string)
 
 	// Sign the intermediate CSR using /pki
@@ -371,18 +334,14 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 		"permitted_dns_domains": ".example.com",
 		"csr":                   intermediateCSR,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	intermediateCertPEM := secret.Data["certificate"].(string)
 
 	// Configure the intermediate cert as the CA in /pki2
 	_, err = client.Logical().Write("pki2/intermediate/set-signed", map[string]any{
 		"certificate": intermediateCertPEM,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a role on the intermediate CA mount
 	_, err = client.Logical().Write("pki2/roles/myvault-dot-com", map[string]any{
@@ -390,9 +349,7 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 		"allow_subdomains": "true",
 		"max_ttl":          "5m",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue a leaf cert using the intermediate CA
 	secret, err = client.Logical().Write("pki2/issue/myvault-dot-com", map[string]any{
@@ -400,18 +357,14 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 		"format":      "pem",
 		"ip_sans":     "127.0.0.1",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	leafCertPEM := secret.Data["certificate"].(string)
 	leafCertKeyPEM := secret.Data["private_key"].(string)
 
 	// Create temporary files for CA cert, client cert and client cert key.
 	// This is used to configure TLS in the api client.
 	caCertFile, err := os.CreateTemp("", "caCert")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer os.Remove(caCertFile.Name())
 	if _, err := caCertFile.Write([]byte(cluster.CACertPEM)); err != nil {
 		t.Fatal(err)
@@ -421,9 +374,7 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 	}
 
 	leafCertFile, err := os.CreateTemp("", "leafCert")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer os.Remove(leafCertFile.Name())
 	if _, err := leafCertFile.Write([]byte(leafCertPEM)); err != nil {
 		t.Fatal(err)
@@ -433,9 +384,7 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 	}
 
 	leafCertKeyFile, err := os.CreateTemp("", "leafCertKey")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer os.Remove(leafCertKeyFile.Name())
 	if _, err := leafCertKeyFile.Write([]byte(leafCertKeyPEM)); err != nil {
 		t.Fatal(err)
@@ -452,9 +401,7 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 	err = client.Sys().EnableAuthWithOptions("cert", &api.EnableAuthOptions{
 		Type: "cert",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Set the intermediate CA cert as a trusted certificate in the backend
 	_, err = client.Logical().Write("auth/cert/certs/myvault-dot-com", map[string]any{
@@ -462,9 +409,7 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 		"policies":     "default",
 		"certificate":  intermediateCertPEM,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// /////////////
 	// Auth handler (auto-auth) setup
@@ -481,9 +426,7 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 			"client_key":  leafCertKeyFile.Name(),
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	ahConfig := &auth.AuthHandlerConfig{
 		Logger:                       logger.Named("auth.handler"),
@@ -500,9 +443,7 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 		select {
 		case <-ctx.Done():
 		case err := <-errCh:
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}()
 
@@ -512,9 +453,7 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 
 	// Use TempFile to get us a generated file name to use for the sink.
 	ouf, err := os.CreateTemp("", "auth.tokensink.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	ouf.Close()
 	out := ouf.Name()
 	os.Remove(out)
@@ -527,9 +466,7 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 		},
 	}
 	fs, err := file.NewFileSink(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config.Sink = fs
 
 	ss := sink.NewSinkServer(&sink.SinkServerConfig{
@@ -543,9 +480,7 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 		select {
 		case <-ctx.Done():
 		case err := <-errCh:
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}()
 

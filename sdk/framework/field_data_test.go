@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestFieldDataGet(t *testing.T) {
@@ -1280,5 +1282,30 @@ func TestValidateStrict(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestGetPrimitiveNoEcho(t *testing.T) {
+	for _, fieldType := range []FieldType{TypeKVPairs, TypeHeader} {
+		sentinel := "test-sentinel"
+		data := &FieldData{
+			Raw: map[string]any{
+				"field": []string{sentinel},
+			},
+			Schema: map[string]*FieldSchema{
+				"field": {Type: fieldType},
+			},
+		}
+
+		err := data.ValidateStrict()
+		require.Error(t, err)
+		require.False(t, strings.Contains(err.Error(), sentinel))
+		t.Log(err)
+
+		_, _, err = data.getPrimitive("field", data.Schema["field"])
+		require.Error(t, err)
+		require.False(t, strings.Contains(err.Error(), sentinel))
+
+		t.Log(err)
 	}
 }

@@ -7,14 +7,14 @@ import (
 	"context"
 	"fmt"
 
+	"cel.dev/cel-go/cel"
+	"cel.dev/cel-go/common/decls"
+	celenv "cel.dev/cel-go/common/env"
+	"cel.dev/cel-go/common/operators"
+	"cel.dev/cel-go/common/overloads"
+	"cel.dev/cel-go/common/types"
+	"cel.dev/cel-go/common/types/ref"
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common/decls"
-	celenv "github.com/google/cel-go/common/env"
-	"github.com/google/cel-go/common/operators"
-	"github.com/google/cel-go/common/overloads"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/common/types/ref"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 )
@@ -96,7 +96,7 @@ func (e *EvalConfig) ToOptions() []cel.EnvOption {
 }
 
 func (e *EvalConfig) ToEnv() (*cel.Env, error) {
-	// See https://github.com/google/cel-go/issues/1221
+	// See https://github.com/cel-expr/cel-go/issues/1221
 	//
 	// We wish to build an environment that behaves like the standard library
 	// but looses the type checking requirements around ternaries as we

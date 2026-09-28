@@ -13,7 +13,6 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/v2/internal/command/server"
 	"github.com/openbao/openbao/v2/internal/helper/pluginutil/oci"
 	"github.com/posener/complete"
 )
@@ -32,32 +31,32 @@ type PluginInitCommand struct {
 }
 
 func (c *PluginInitCommand) Synopsis() string {
-	return "Initialize and download OCI-based plugins"
+	return "Download OCI-based plugins into the plugin directory"
 }
 
 func (c *PluginInitCommand) Help() string {
 	helpText := `
 Usage: bao plugin init [options]
 
-  This command reads the plugin configuration from the server config files,
-  downloads the specified OCI images, and extracts the contained plugin
+  This command reads plugin configuration from the given server configuration
+  files, downloads the specified OCI images, and extracts the contained plugin
   binaries. This command does not automatically register the plugin to the
   server, which is handled automatically via the server on startup and SIGHUP
   if 'plugin_auto_register' is not disabled in the configuration file. When the
   server's configuration includes 'plugin_auto_download=true', plugins will be
   automatically downloaded on server startup and on SIGHUP.
 
-  Initialize plugins using configuration files:
+  Download plugins using a configuration file:
 
       $ bao plugin init -config=/path/to/openbao.hcl
 
-  Initialize plugins with multiple configuration files:
-
-      $ bao plugin init -config=/etc/openbao -config=/opt/openbao/extra.hcl
-
-  Initialize plugins to a specific directory:
+  Download to a specific directory:
 
       $ bao plugin init -config=/path/to/config.hcl -directory=/opt/openbao/plugins
+
+  Load multiple configuration files:
+
+      $ bao plugin init -config=/etc/openbao -config=/opt/openbao/extra.hcl
 
 ` + c.Flags().Help()
 
@@ -123,13 +122,9 @@ func (c *PluginInitCommand) Run(args []string) int {
 		return 1
 	}
 
-	return c.runPluginInit()
-}
-
-func (c *PluginInitCommand) runPluginInit() int {
-	// Require config flags to be specified
+	// Require config flags to be specified:
 	if len(c.flagConfigs) == 0 {
-		c.UI.Error("No configuration specified. Use -config flag to specify configuration files or directories.")
+		c.UI.Error("No configuration specified. Use the -config flag to specify configuration files or directories.")
 		return 1
 	}
 
@@ -155,40 +150,27 @@ func (c *PluginInitCommand) runPluginInit() int {
 		pluginDir = config.PluginDirectory
 	}
 	if pluginDir == "" {
-		c.UI.Error("No plugin directory specified. Use -directory flag or set plugin_directory in config.")
+		c.UI.Error("No plugin directory specified. Use the -directory flag or set plugin_directory in config.")
 		return 1
 	}
 
-	// Check if plugins are configured
-	if len(config.Plugins) == 0 {
-		c.UI.Error("No OCI plugins configured in the configuration files.")
-		return 1
-	}
+	logger := hclog.Default()
 
-	hclog.Default().Info(fmt.Sprintf("Plugin directory: %s", pluginDir))
-	hclog.Default().Info(fmt.Sprintf("Found %d OCI plugin(s) in configuration", len(config.Plugins)))
+	logger.Info(fmt.Sprintf("plugin directory: %s", pluginDir))
+	logger.Info(fmt.Sprintf("found %d OCI plugin(s) in configuration", len(config.Plugins)))
 
 	// Ensure plugin directory exists
-	if err = os.MkdirAll(pluginDir, 0o755); err != nil {
-		hclog.Default().Error(fmt.Sprintf("Failed to create plugin directory: %v", err))
+	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
+		logger.Error(fmt.Sprintf("failed to create plugin directory: %v", err))
 		return 1
 	}
 
-	// Initialize plugins using the existing reconciliation logic
-	return c.reconcilePlugins(config, pluginDir)
-}
-
-func (c *PluginInitCommand) reconcilePlugins(config *server.Config, pluginDir string) int {
 	// Create context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), c.flagTimeout)
 	defer cancel()
 
-	// Create OCI plugin downloader using the shared package
-	downloader := oci.NewPluginDownloader(pluginDir, config, hclog.Default())
-
-	err := downloader.ReconcilePlugins(ctx)
-	if err != nil {
-		hclog.Default().Error(fmt.Sprintf("Error reconciling plugins: %s", err))
+	if err := oci.NewPluginDownloader(pluginDir, config, logger).Reconcile(ctx); err != nil {
+		logger.Error(fmt.Sprintf("error reconciling plugins: %s", err))
 		return 1
 	}
 

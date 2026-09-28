@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { assign } from '@ember/polyfills';
 import ApplicationSerializer from './application';
 import { EmbeddedRecordsMixin } from '@ember-data/serializer/rest';
 
@@ -34,7 +33,7 @@ export default ApplicationSerializer.extend(EmbeddedRecordsMixin, {
     }
 
     if (struct.data) {
-      struct = assign({}, struct, struct.data);
+      struct = Object.assign({}, struct, struct.data);
       delete struct.data;
     }
     // strip the trailing slash off of the path so we

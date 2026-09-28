@@ -21,6 +21,7 @@ import (
 
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 	"github.com/tink-crypto/tink-go/v2/kwp/subtle"
 )
 
@@ -72,9 +73,7 @@ func generateKeys(t *testing.T) {
 
 	for _, keyType := range keyTypes {
 		key, err := generateKey(keyType)
-		if err != nil {
-			t.Fatalf("failed to generate %s key: %s", keyType, err)
-		}
+		require.NoErrorf(t, err, "failed to generate %s key: %s", keyType, err)
 		keys[keyType] = key
 	}
 }
@@ -105,9 +104,7 @@ func TestTransit_ImportNSSEd25519Key(t *testing.T) {
 	pubWrappingKey := &privWrappingKey.PublicKey
 
 	rawPKCS8, err := base64.StdEncoding.DecodeString(nssFormattedEd25519Key)
-	if err != nil {
-		t.Fatalf("failed to parse nss base64: %v", err)
-	}
+	require.NoError(t, err)
 
 	blob := wrapTargetPKCS8ForImport(t, pubWrappingKey, rawPKCS8, "SHA256")
 	req := &logical.Request{
@@ -121,9 +118,7 @@ func TestTransit_ImportNSSEd25519Key(t *testing.T) {
 	}
 
 	_, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("failed to import NSS-formatted Ed25519 key: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestTransit_ImportRSAPSS(t *testing.T) {
@@ -138,9 +133,7 @@ func TestTransit_ImportRSAPSS(t *testing.T) {
 	pubWrappingKey := &privWrappingKey.PublicKey
 
 	rawPKCS8, err := base64.StdEncoding.DecodeString(rsaPSSFormattedKey)
-	if err != nil {
-		t.Fatalf("failed to parse rsa-pss base64: %v", err)
-	}
+	require.NoError(t, err)
 
 	blob := wrapTargetPKCS8ForImport(t, pubWrappingKey, rawPKCS8, "SHA256")
 	req := &logical.Request{
@@ -154,9 +147,7 @@ func TestTransit_ImportRSAPSS(t *testing.T) {
 	}
 
 	_, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("failed to import RSA-PSS private key: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestTransit_Import(t *testing.T) {
@@ -167,14 +158,10 @@ func TestTransit_Import(t *testing.T) {
 		"import into a key fails before wrapping key is read",
 		func(t *testing.T) {
 			fakeWrappingKey, err := rsa.GenerateKey(rand.Reader, 4096)
-			if err != nil {
-				t.Fatalf("failed to generate fake wrapping key: %s", err)
-			}
+			require.NoError(t, err)
 			// Roll an AES256 key and import
 			keyID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("failed to generate key ID: %s", err)
-			}
+			require.NoError(t, err)
 			targetKey := getKey(t, "aes256-gcm96")
 			importBlob := wrapTargetKeyForImport(t, &fakeWrappingKey.PublicKey, targetKey, "aes256-gcm96", "SHA256")
 			req := &logical.Request{
@@ -205,9 +192,7 @@ func TestTransit_Import(t *testing.T) {
 		func(t *testing.T) {
 			// Generate a key ID
 			keyID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("failed to generate a key ID: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Create an AES256 key within Transit
 			req := &logical.Request{
@@ -216,9 +201,7 @@ func TestTransit_Import(t *testing.T) {
 				Path:      fmt.Sprintf("keys/%s", keyID),
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("unexpected error creating key: %s", err)
-			}
+			require.NoError(t, err)
 
 			targetKey := getKey(t, "aes256-gcm96")
 			importBlob := wrapTargetKeyForImport(t, pubWrappingKey, targetKey, "aes256-gcm96", "SHA256")
@@ -244,9 +227,7 @@ func TestTransit_Import(t *testing.T) {
 				fmt.Sprintf("%s/%s", keyType, hashFn),
 				func(t *testing.T) {
 					keyID, err := uuid.GenerateUUID()
-					if err != nil {
-						t.Fatalf("failed to generate key ID: %s", err)
-					}
+					require.NoError(t, err)
 					importBlob := wrapTargetKeyForImport(t, pubWrappingKey, priv, keyType, hashFn)
 					req := &logical.Request{
 						Storage:   s,
@@ -259,9 +240,7 @@ func TestTransit_Import(t *testing.T) {
 						},
 					}
 					_, err = b.HandleRequest(t.Context(), req)
-					if err != nil {
-						t.Fatalf("failed to import valid key: %s", err)
-					}
+					require.NoError(t, err)
 				},
 			)
 
@@ -307,9 +286,7 @@ func TestTransit_Import(t *testing.T) {
 			tt.name,
 			func(t *testing.T) {
 				keyID, err := uuid.GenerateUUID()
-				if err != nil {
-					t.Fatalf("failed to generate key ID: %s", err)
-				}
+				require.NoError(t, err)
 				req := &logical.Request{
 					Storage:   s,
 					Operation: logical.UpdateOperation,
@@ -337,9 +314,7 @@ func TestTransit_Import(t *testing.T) {
 		"disallow import of convergent keys",
 		func(t *testing.T) {
 			keyID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("failed to generate key ID: %s", err)
-			}
+			require.NoError(t, err)
 			targetKey := getKey(t, "aes256-gcm96")
 			importBlob := wrapTargetKeyForImport(t, pubWrappingKey, targetKey, "aes256-gcm96", "SHA256")
 			req := &logical.Request{
@@ -362,9 +337,7 @@ func TestTransit_Import(t *testing.T) {
 		"allow_rotation=true enables rotation within vault",
 		func(t *testing.T) {
 			keyID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("failed to generate key ID: %s", err)
-			}
+			require.NoError(t, err)
 			targetKey := getKey(t, "aes256-gcm96")
 
 			// Import key
@@ -379,9 +352,7 @@ func TestTransit_Import(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to import key: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Rotate key
 			req = &logical.Request{
@@ -390,9 +361,7 @@ func TestTransit_Import(t *testing.T) {
 				Path:      fmt.Sprintf("keys/%s/rotate", keyID),
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to rotate key: %s", err)
-			}
+			require.NoError(t, err)
 		},
 	)
 
@@ -400,9 +369,7 @@ func TestTransit_Import(t *testing.T) {
 		"allow_rotation=false disables rotation within vault",
 		func(t *testing.T) {
 			keyID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("failed to generate key ID: %s", err)
-			}
+			require.NoError(t, err)
 			targetKey := getKey(t, "aes256-gcm96")
 
 			// Import key
@@ -417,9 +384,7 @@ func TestTransit_Import(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to import key: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Rotate key
 			req = &logical.Request{
@@ -439,16 +404,12 @@ func TestTransit_Import(t *testing.T) {
 		func(t *testing.T) {
 			keyType := "ed25519"
 			keyID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("failed to generate key ID: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Get keys
 			privateKey := getKey(t, keyType)
 			publicKeyBytes, err := getPublicKey(privateKey, keyType)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			// Import key
 			req := &logical.Request{
@@ -461,9 +422,7 @@ func TestTransit_Import(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to import ed25519 key: %v", err)
-			}
+			require.NoError(t, err)
 		},
 	)
 
@@ -472,16 +431,12 @@ func TestTransit_Import(t *testing.T) {
 		func(t *testing.T) {
 			keyType := "ecdsa-p256"
 			keyID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("failed to generate key ID: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Get keys
 			privateKey := getKey(t, keyType)
 			publicKeyBytes, err := getPublicKey(privateKey, keyType)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			// Import key
 			req := &logical.Request{
@@ -494,9 +449,7 @@ func TestTransit_Import(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to import public key: %s", err)
-			}
+			require.NoError(t, err)
 		},
 	)
 }
@@ -509,14 +462,10 @@ func TestTransit_ImportVersion(t *testing.T) {
 		"import into a key version fails before wrapping key is read",
 		func(t *testing.T) {
 			fakeWrappingKey, err := rsa.GenerateKey(rand.Reader, 4096)
-			if err != nil {
-				t.Fatalf("failed to generate fake wrapping key: %s", err)
-			}
+			require.NoError(t, err)
 			// Roll an AES256 key and import
 			keyID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("failed to generate key ID: %s", err)
-			}
+			require.NoError(t, err)
 			targetKey := getKey(t, "aes256-gcm96")
 			importBlob := wrapTargetKeyForImport(t, &fakeWrappingKey.PublicKey, targetKey, "aes256-gcm96", "SHA256")
 			req := &logical.Request{
@@ -546,9 +495,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 		"import into a non-existent key fails",
 		func(t *testing.T) {
 			keyID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("failed to generate key ID: %s", err)
-			}
+			require.NoError(t, err)
 			targetKey := getKey(t, "aes256-gcm96")
 			importBlob := wrapTargetKeyForImport(t, pubWrappingKey, targetKey, "aes256-gcm96", "SHA256")
 			req := &logical.Request{
@@ -570,9 +517,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 		"import into an internally-generated key fails",
 		func(t *testing.T) {
 			keyID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("failed to generate key ID: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Roll a key within Transit
 			req := &logical.Request{
@@ -581,9 +526,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 				Path:      fmt.Sprintf("keys/%s", keyID),
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to generate a key within transit: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Attempt to import into newly generated key
 			targetKey := getKey(t, "aes256-gcm96")
@@ -607,9 +550,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 		"imported key version type must match existing key type",
 		func(t *testing.T) {
 			keyID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("failed to generate key ID: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Import an RSA key
 			targetKey := getKey(t, "rsa-2048")
@@ -624,9 +565,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to generate a key within transit: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Attempt to import an AES key version into existing RSA key
 			targetKey = getKey(t, "aes256-gcm96")
@@ -651,17 +590,13 @@ func TestTransit_ImportVersion(t *testing.T) {
 		func(t *testing.T) {
 			keyType := "rsa-2048"
 			keyID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("failed to generate key ID: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Get keys
 			privateKey := getKey(t, keyType)
 			importBlob := wrapTargetKeyForImport(t, pubWrappingKey, privateKey, keyType, "SHA256")
 			publicKeyBytes, err := getPublicKey(privateKey, keyType)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			// Import RSA public key
 			req := &logical.Request{
@@ -674,9 +609,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to import public key: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Update version - import RSA private key
 			req = &logical.Request{
@@ -688,9 +621,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to update key: %s", err)
-			}
+			require.NoError(t, err)
 		},
 	)
 }
@@ -713,17 +644,13 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 		func(t *testing.T) {
 			keyType := "ecdsa-p256"
 			keyID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("failed to generate key ID: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Get keys
 			privateKey := getKey(t, keyType)
 			importBlob := wrapTargetKeyForImport(t, pubWrappingKey, privateKey, keyType, "SHA256")
 			publicKeyBytes, err := getPublicKey(privateKey, keyType)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			// Import EC public key
 			req := &logical.Request{
@@ -736,9 +663,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to import public key: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Update version - import EC private key
 			req = &logical.Request{
@@ -750,9 +675,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to update key: %s", err)
-			}
+			require.NoError(t, err)
 
 			// We should have one key on export
 			req = &logical.Request{
@@ -761,9 +684,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				Path:      fmt.Sprintf("export/public-key/%s", keyID),
 			}
 			resp, err := b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to export key: %s", err)
-			}
+			require.NoError(t, err)
 
 			if len(resp.Data["keys"].(map[string]string)) != 1 {
 				t.Fatalf("expected 1 key but got %v: %v", len(resp.Data["keys"].(map[string]string)), resp)
@@ -777,17 +698,13 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 		func(t *testing.T) {
 			keyType := "ecdsa-p256"
 			keyID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("failed to generate key ID: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Get keys
 			privateKey := getKey(t, keyType)
 			importBlob := wrapTargetKeyForImport(t, pubWrappingKey, privateKey, keyType, "SHA256")
 			publicKeyBytes, err := getPublicKey(privateKey, keyType)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			// Import EC private key
 			req := &logical.Request{
@@ -800,9 +717,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to update key: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Update version - Import EC public key
 			req = &logical.Request{
@@ -814,9 +729,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to import public key: %s", err)
-			}
+			require.NoError(t, err)
 
 			// We should have two keys on export
 			req = &logical.Request{
@@ -825,9 +738,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				Path:      fmt.Sprintf("export/public-key/%s", keyID),
 			}
 			resp, err := b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to export key: %s", err)
-			}
+			require.NoError(t, err)
 
 			if len(resp.Data["keys"].(map[string]string)) != 2 {
 				t.Fatalf("expected 2 key but got %v: %v", len(resp.Data["keys"].(map[string]string)), resp)
@@ -841,27 +752,19 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 		func(t *testing.T) {
 			keyType := "ecdsa-p256"
 			keyID, err := uuid.GenerateUUID()
-			if err != nil {
-				t.Fatalf("failed to generate key ID: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Get keys
 			privateKey1 := getKey(t, keyType)
 			importBlob1 := wrapTargetKeyForImport(t, pubWrappingKey, privateKey1, keyType, "SHA256")
 			publicKeyBytes1, err := getPublicKey(privateKey1, keyType)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			privateKey2, err := generateKey(keyType)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			importBlob2 := wrapTargetKeyForImport(t, pubWrappingKey, privateKey2, keyType, "SHA256")
 			publicKeyBytes2, err := getPublicKey(privateKey2, keyType)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			// Import EC public key
 			req := &logical.Request{
@@ -874,9 +777,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to update key: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Update version - Import second EC public key
 			req = &logical.Request{
@@ -888,9 +789,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to import public key: %s", err)
-			}
+			require.NoError(t, err)
 
 			// We should have two keys on export
 			req = &logical.Request{
@@ -899,9 +798,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				Path:      fmt.Sprintf("export/public-key/%s", keyID),
 			}
 			resp, err := b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to export key: %s", err)
-			}
+			require.NoError(t, err)
 
 			if len(resp.Data["keys"].(map[string]string)) != 2 {
 				t.Fatalf("expected 2 key but got %v: %v", len(resp.Data["keys"].(map[string]string)), resp)
@@ -917,9 +814,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to import private key: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Import first private key second, with a version
 			req = &logical.Request{
@@ -932,9 +827,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to import private key: %s", err)
-			}
+			require.NoError(t, err)
 
 			// We should still have two keys on export
 			req = &logical.Request{
@@ -943,9 +836,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				Path:      fmt.Sprintf("export/public-key/%s", keyID),
 			}
 			resp, err = b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("failed to export key: %s", err)
-			}
+			require.NoError(t, err)
 
 			if len(resp.Data["keys"].(map[string]string)) != 2 {
 				t.Fatalf("expected 2 key but got %v: %v", len(resp.Data["keys"].(map[string]string)), resp)
@@ -969,9 +860,7 @@ func wrapTargetKeyForImport(t *testing.T, wrappingKey *rsa.PublicKey, targetKey 
 		}
 	default:
 		preppedTargetKey, err = x509.MarshalPKCS8PrivateKey(targetKey)
-		if err != nil {
-			t.Fatalf("failed to wrap target key for import: %s", err)
-		}
+		require.NoError(t, err)
 	}
 
 	return wrapTargetPKCS8ForImport(t, wrappingKey, preppedTargetKey, hashFnName)
@@ -982,33 +871,23 @@ func wrapTargetPKCS8ForImport(t *testing.T, wrappingKey *rsa.PublicKey, preppedT
 
 	// Generate an ephemeral AES-256 key
 	ephKey, err := uuid.GenerateRandomBytes(32)
-	if err != nil {
-		t.Fatalf("failed to wrap target key for import: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Parse the hash function name into an actual function
 	hashFn, err := parseHashFn(hashFnName)
-	if err != nil {
-		t.Fatalf("failed to wrap target key for import: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Wrap ephemeral AES key with public wrapping key
 	ephKeyWrapped, err := rsa.EncryptOAEP(hashFn, rand.Reader, wrappingKey, ephKey, []byte{})
-	if err != nil {
-		t.Fatalf("failed to wrap target key for import: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Create KWP instance for wrapping target key
 	kwp, err := subtle.NewKWP(ephKey)
-	if err != nil {
-		t.Fatalf("failed to wrap target key for import: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Wrap target key with KWP
 	targetKeyWrapped, err := kwp.Wrap(preppedTargetKey)
-	if err != nil {
-		t.Fatalf("failed to wrap target key for import: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Combined wrapped keys into a single blob and base64 encode
 	wrappedKeys := append(ephKeyWrapped, targetKeyWrapped...)

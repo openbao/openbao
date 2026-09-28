@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestKeyring(t *testing.T) {
@@ -27,9 +29,7 @@ func TestKeyring(t *testing.T) {
 	testKey := []byte("testing")
 	key1 := &Key{Term: 1, Version: 1, Value: testKey, InstallTime: time.Now()}
 	k, err := k.AddKey(key1)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Term should be 1
 	if term := k.ActiveTerm(); term != 1 {
@@ -50,9 +50,7 @@ func TestKeyring(t *testing.T) {
 
 	// Should handle idempotent set
 	k, err = k.AddKey(key1)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Should not allow conflicting set
 	testConflict := []byte("nope")
@@ -66,9 +64,7 @@ func TestKeyring(t *testing.T) {
 	testSecond := []byte("second")
 	key2 := &Key{Term: 2, Version: 1, Value: testSecond, InstallTime: time.Now()}
 	k, err = k.AddKey(key2)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Term should be 2
 	if term := k.ActiveTerm(); term != 2 {
@@ -94,9 +90,7 @@ func TestKeyring(t *testing.T) {
 
 	// Remove the old key
 	k, err = k.RemoveKey(1)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Read of old key should not work
 	if tKey := k.TermKey(1); tKey != nil {
@@ -148,14 +142,10 @@ func TestKeyring_Serialize(t *testing.T) {
 	k, _ = k.AddKey(&Key{Term: 2, Version: 1, Value: testSecond, InstallTime: now})
 
 	buf, err := k.Serialize()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	k2, err := DeserializeKeyring(buf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	out := k2.RootKey()
 	if !bytes.Equal(out, root) {
@@ -190,14 +180,10 @@ func TestKey_Serialize(t *testing.T) {
 	}
 
 	buf, err := k.Serialize()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	out, err := DeserializeKey(buf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Work around timezone bug due to DeepEqual using == for comparison
 	if !k.InstallTime.Equal(out.InstallTime) {

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseArgsData(t *testing.T) {
@@ -25,9 +27,7 @@ func TestParseArgsData(t *testing.T) {
 		}()
 
 		m, err := parseArgsData(stdinR, []string{"-"})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if v, ok := m["foo"]; !ok || v != "bar" {
 			t.Errorf("expected %q to be %q", v, "bar")
@@ -44,9 +44,7 @@ func TestParseArgsData(t *testing.T) {
 		}()
 
 		m, err := parseArgsData(stdinR, []string{"foo=-"})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if v, ok := m["foo"]; !ok || v != "bar" {
 			t.Errorf("expected %q to be %q", v, "bar")
@@ -57,17 +55,13 @@ func TestParseArgsData(t *testing.T) {
 		t.Parallel()
 
 		f, err := os.CreateTemp("", "vault")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		f.Write([]byte(`{"foo":"bar"}`))
 		f.Close()
 		defer os.Remove(f.Name())
 
 		m, err := parseArgsData(os.Stdin, []string{"@" + f.Name()})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if v, ok := m["foo"]; !ok || v != "bar" {
 			t.Errorf("expected %q to be %q", v, "bar")
@@ -78,17 +72,13 @@ func TestParseArgsData(t *testing.T) {
 		t.Parallel()
 
 		f, err := os.CreateTemp("", "vault")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		f.Write([]byte(`bar`))
 		f.Close()
 		defer os.Remove(f.Name())
 
 		m, err := parseArgsData(os.Stdin, []string{"foo=@" + f.Name()})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if v, ok := m["foo"]; !ok || v != "bar" {
 			t.Errorf("expected %q to be %q", v, "bar")
@@ -99,9 +89,7 @@ func TestParseArgsData(t *testing.T) {
 		t.Parallel()
 
 		m, err := parseArgsData(os.Stdin, []string{`foo=\@`})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if v, ok := m["foo"]; !ok || v != "@" {
 			t.Errorf("expected %q to be %q", v, "@")
@@ -167,9 +155,7 @@ func TestParseFlagFile(t *testing.T) {
 
 	content := "some raw content"
 	tmpFile, err := os.CreateTemp(os.TempDir(), "TestParseFlagFile")
-	if err != nil {
-		t.Fatalf("failed to create temporary file: %v", err)
-	}
+	require.NoError(t, err)
 
 	defer os.Remove(tmpFile.Name())
 
@@ -198,9 +184,7 @@ func TestParseFlagFile(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.value, func(t *testing.T) {
 			content, err := parseFlagFile(tc.value)
-			if err != nil {
-				t.Fatalf("unexpected error parsing flag value: %v", err)
-			}
+			require.NoError(t, err)
 
 			if content != tc.exp {
 				t.Fatalf("expected %s to be %s", content, tc.exp)

@@ -19,6 +19,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/builtin/plugin"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBackend_impl(t *testing.T) {
@@ -34,9 +35,7 @@ func TestBackend(t *testing.T) {
 			defer cleanup()
 
 			_, err := plugin.Backend(t.Context(), config)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		})
 	}
 }
@@ -50,9 +49,7 @@ func TestBackend_Factory(t *testing.T) {
 			defer cleanup()
 
 			_, err := plugin.Factory(t.Context(), config)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		})
 	}
 }
@@ -80,9 +77,7 @@ func TestBackend_PluginMain(t *testing.T) {
 		BackendFactoryFunc: mock.Factory,
 		TLSProviderFunc:    tlsProviderFunc,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestBackend_PluginMain_Multiplexed(t *testing.T) {
@@ -108,9 +103,7 @@ func TestBackend_PluginMain_Multiplexed(t *testing.T) {
 		BackendFactoryFunc: mock.Factory,
 		TLSProviderFunc:    tlsProviderFunc,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func testConfig(t *testing.T, pluginCmd string) (*logical.BackendConfig, func()) {

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/go-viper/mapstructure/v2"
+	"github.com/stretchr/testify/require"
 
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/api/v2"
@@ -62,20 +63,14 @@ func TestRecovery_Docker(t *testing.T) {
 
 		fooVal := map[string]any{"bar": 1.0}
 		_, err := client.Logical().Write("secret/foo", fooVal)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		secret, err := client.Logical().List("secret/")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if diff := deep.Equal(secret.Data["keys"], []any{"foo"}); len(diff) > 0 {
 			t.Fatalf("got=%v, want=%v, diff: %v", secret.Data["keys"], []string{"foo"}, diff)
 		}
 		mounts, err := client.Sys().ListMounts()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		secretMount := mounts["secret/"]
 		if secretMount == nil {
 			t.Fatalf("secret mount not found, mounts: %v", mounts)
@@ -86,17 +81,13 @@ func TestRecovery_Docker(t *testing.T) {
 	listSecrets := func() []string {
 		client := cluster.Nodes()[0].APIClient()
 		secret, err := client.Logical().List("secret/")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret == nil {
 			return nil
 		}
 		var result []string
 		err = mapstructure.Decode(secret.Data["keys"], &result)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		return result
 	}
 
@@ -104,19 +95,13 @@ func TestRecovery_Docker(t *testing.T) {
 		cluster.Nodes()[0].(*docker.DockerClusterNode).Stop()
 
 		err := cluster.Nodes()[0].(*docker.DockerClusterNode).Start(ctx, opts)
-		if err != nil {
-			t.Fatalf("node restart post-recovery failed: %v", err)
-		}
+		require.NoError(t, err)
 
 		err = testcluster.UnsealAllNodes(ctx, cluster)
-		if err != nil {
-			t.Fatalf("node unseal post-recovery failed: %v", err)
-		}
+		require.NoError(t, err)
 
 		_, err = testcluster.WaitForActiveNode(ctx, cluster)
-		if err != nil {
-			t.Fatalf("node didn't become active: %v", err)
-		}
+		require.NoError(t, err)
 	}
 
 	restart()
@@ -139,15 +124,11 @@ func TestRecovery_Docker(t *testing.T) {
 			return err
 		}
 		err := cluster.Nodes()[0].(*docker.DockerClusterNode).Start(ctx, opts)
-		if err != nil {
-			t.Fatalf("node restart with -recovery failed: %v", err)
-		}
+		require.NoError(t, err)
 		client := cluster.Nodes()[0].APIClient()
 
 		recoveryToken, err := testcluster.GenerateRoot(cluster, testcluster.GenerateRecovery)
-		if err != nil {
-			t.Fatalf("recovery token generation failed: %v", err)
-		}
+		require.NoError(t, err)
 		_, err = testcluster.GenerateRoot(cluster, testcluster.GenerateRecovery)
 		if err == nil {
 			t.Fatal("expected second generate-root to fail")
@@ -155,17 +136,13 @@ func TestRecovery_Docker(t *testing.T) {
 		client.SetToken(recoveryToken)
 
 		secret, err := client.Logical().List(path.Join("sys/raw/logical", secretUUID))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if diff := deep.Equal(secret.Data["keys"], []any{"foo"}); len(diff) > 0 {
 			t.Fatalf("got=%v, want=%v, diff: %v", secret.Data, []string{"foo"}, diff)
 		}
 
 		_, err = client.Logical().Delete(path.Join("sys/raw/logical", secretUUID, "foo"))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	// Now go back to regular mode and verify that our changes are present

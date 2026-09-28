@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 type environment struct {
@@ -24,9 +25,7 @@ func TestAcceptance(t *testing.T) {
 	ctx := t.Context()
 	storage := &logical.InmemStorage{}
 	b, err := backend(ctx, storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	env := &environment{
 		ctx:     ctx,
 		storage: storage,
@@ -51,9 +50,7 @@ func (e *environment) TestInitialFieldsAreDefault(t *testing.T) {
 			RemoteAddr: "http://foo.com",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Data == nil {
 		t.Fatal("expected non-nil response")
 	}
@@ -73,9 +70,7 @@ func (e *environment) TestInitialFieldsAreDefault(t *testing.T) {
 			"role_name": "something",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Auth == nil || resp.Auth.Alias == nil || resp.Auth.Alias.Metadata == nil {
 		t.Fatal("expected alias metadata")
 	}
@@ -101,9 +96,7 @@ func (e *environment) TestAuthMetadataCanBeUnset(t *testing.T) {
 			authMetadataFields.FieldName: []string{},
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatal("expected nil response")
 	}
@@ -117,9 +110,7 @@ func (e *environment) TestAuthMetadataCanBeUnset(t *testing.T) {
 			RemoteAddr: "http://foo.com",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Data == nil {
 		t.Fatal("expected non-nil response")
 	}
@@ -139,9 +130,7 @@ func (e *environment) TestAuthMetadataCanBeUnset(t *testing.T) {
 			"role_name": "something",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Auth == nil || resp.Auth.Alias == nil || resp.Auth.Alias.Metadata == nil {
 		t.Fatal("expected alias metadata")
 	}
@@ -164,9 +153,7 @@ func (e *environment) TestDefaultCanBeReused(t *testing.T) {
 			authMetadataFields.FieldName: []string{"default"},
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatal("expected nil response")
 	}
@@ -180,9 +167,7 @@ func (e *environment) TestDefaultCanBeReused(t *testing.T) {
 			RemoteAddr: "http://foo.com",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Data == nil {
 		t.Fatal("expected non-nil response")
 	}
@@ -202,9 +187,7 @@ func (e *environment) TestDefaultCanBeReused(t *testing.T) {
 			"role_name": "something",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Auth == nil || resp.Auth.Alias == nil || resp.Auth.Alias.Metadata == nil {
 		t.Fatal("expected alias metadata")
 	}
@@ -247,9 +230,7 @@ func (e *environment) TestOnlyNonDefaultsCanBeSelected(t *testing.T) {
 			authMetadataFields.FieldName: []string{"remote_addr"},
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatal("expected nil response")
 	}
@@ -263,9 +244,7 @@ func (e *environment) TestOnlyNonDefaultsCanBeSelected(t *testing.T) {
 			RemoteAddr: "http://foo.com",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Data == nil {
 		t.Fatal("expected non-nil response")
 	}
@@ -286,9 +265,7 @@ func (e *environment) TestOnlyNonDefaultsCanBeSelected(t *testing.T) {
 			"role_name": "something",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Auth == nil || resp.Auth.Alias == nil || resp.Auth.Alias.Metadata == nil {
 		t.Fatal("expected alias metadata")
 	}

@@ -44,32 +44,24 @@ func setupMounts(t *testing.T, client *api.Client) {
 	err := client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
 		Type: "userpass",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("auth/userpass/users/foo", map[string]any{
 		"password": "bar",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = client.Sys().Mount("pki", &api.MountInput{
 		Type: "pki",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("pki/root/generate/internal", map[string]any{
 		"common_name": "testvault.com",
 		"ttl":         "200h",
 		"ip_sans":     "127.0.0.1",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("pki/roles/test", map[string]any{
 		"require_cn":       false,
@@ -78,9 +70,7 @@ func setupMounts(t *testing.T, client *api.Client) {
 		"max_ttl":          "2h",
 		"generate_lease":   true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func teardownMounts(t *testing.T, client *api.Client) {
@@ -368,9 +358,7 @@ func TestQuotas_RateLimitQuota_Mount(t *testing.T) {
 		"rate": 7.7,
 		"path": "pki/",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	numSuccess, numFail, elapsed := testRPS(reqFunc, 5*time.Second)
 
@@ -392,9 +380,7 @@ func TestQuotas_RateLimitQuota_Mount(t *testing.T) {
 		"rate": 10000.0,
 		"path": "pki/",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, numFail, _ = testRPS(reqFunc, 5*time.Second)
 	if numFail > 0 {
@@ -424,9 +410,7 @@ func TestQuotas_RateLimitQuota_MountPrecedence(t *testing.T) {
 		"name": "root-rlq",
 		"rate": 14.7,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// create a mount rate limit quota with a lower RPS than the root rate limit quota
 	_, err = client.Logical().Write("sys/quotas/rate-limit/mount-rlq", map[string]any{
@@ -434,9 +418,7 @@ func TestQuotas_RateLimitQuota_MountPrecedence(t *testing.T) {
 		"rate": 7.7,
 		"path": "pki/",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// ensure mount rate limit quota takes precedence over root rate limit quota
 	reqFunc := func(numSuccess, numFail *atomic.Int32) {
@@ -486,9 +468,7 @@ func TestQuotas_RateLimitQuota(t *testing.T) {
 	_, err := client.Logical().Write("sys/quotas/rate-limit/rlq", map[string]any{
 		"rate": 7.7,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	reqFunc := func(numSuccess, numFail *atomic.Int32) {
 		_, err := client.Logical().Read("sys/quotas/rate-limit/rlq")
@@ -522,9 +502,7 @@ func TestQuotas_RateLimitQuota(t *testing.T) {
 	_, err = client.Logical().Write("sys/quotas/rate-limit/rlq", map[string]any{
 		"rate": 10000.0,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, numFail, _ = testRPS(reqFunc, 5*time.Second)
 	if numFail > 0 {
@@ -551,23 +529,17 @@ func TestQuotas_RateLimitQuotaNS(t *testing.T) {
 	_, err := client.Logical().Write("sys/quotas/rate-limit/global-rlq", map[string]any{
 		"rate": 7.7,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create Parent Namespace ns1
 	// ns1 intentionaly does not have a quota, so it should be able to do more requests than root
 	_, err = client.Logical().Write("sys/namespaces/ns1", map[string]any{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create Childnamespace, so we get a hierarchy of ns1/ns1.1
 	client.SetNamespace("ns1")
 	_, err = client.Logical().Write("sys/namespaces/ns1.1", map[string]any{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client.ClearNamespace()
 
 	// Create a rate limit for namespace ns1/ns1.1 with a higher RPS than the global quota
@@ -575,9 +547,7 @@ func TestQuotas_RateLimitQuotaNS(t *testing.T) {
 		"rate": 9.9,
 		"path": "ns1/ns1.1",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	reqFunc := func(numSuccess, numFail *atomic.Int32, ns string) {
 		// list all namespaces in ns1/ns1.1
@@ -647,9 +617,7 @@ func TestQuotas_RateLimitQuotaInheritableNS(t *testing.T) {
 
 	// Create Parent Namespace
 	_, err := client.Logical().Write("sys/namespaces/ns1", map[string]any{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a rate limit quota for parent namespace with a low RPS of 7.7, which means we can process
 	// ⌈7.7⌉*2 requests in the span of roughly a second -- 8 initially, followed
@@ -660,16 +628,12 @@ func TestQuotas_RateLimitQuotaInheritableNS(t *testing.T) {
 		"path":        "ns1",
 		"inheritable": true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create Childnamespace, so we get a hierarchy of ns1/ns1.1
 	client.SetNamespace("ns1")
 	_, err = client.Logical().Write("sys/namespaces/ns1.1", map[string]any{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client.ClearNamespace()
 
 	reqFunc := func(numSuccess, numFail *atomic.Int32, ns string) {
@@ -711,9 +675,7 @@ func TestQuotas_RateLimitQuotaInheritableNS(t *testing.T) {
 		"path":        "ns1",
 		"inheritable": false,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// as there is no quota for ns1/ns1.1, there should be no fails
 	_, numFail, _ = testRPSWithNS(reqFunc, 5*time.Second, "ns1/ns1.1")

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 // intentionally != time.Now() to catch latent used of time.Now instead of
@@ -397,7 +398,7 @@ func TestPopulate_Basic(t *testing.T) {
 			input:                `path "bad" {{identity.entity.metadata.x}}`,
 			blockedSubstitutions: []string{"*", "+"},
 			metadata:             map[string]string{"x": "this * is not ok"},
-			err:                  errors.New(`template substitution contains forbidden value "*"`),
+			err:                  errors.New(`template substitution contains forbidden value: "*"`),
 		},
 		{
 			mode:                 ACLTemplating,
@@ -429,7 +430,7 @@ func TestPopulate_Basic(t *testing.T) {
 			input:                `{ "test/bad": {{identity.entity.metadata.x}} }`,
 			blockedSubstitutions: []string{"that", "this", "other"},
 			metadata:             map[string]string{"x": `+ and * are ok, but "this" is not`},
-			err:                  errors.New(`template substitution contains forbidden value "this"`),
+			err:                  errors.New(`template substitution contains forbidden value: "this"`),
 		},
 	}
 
@@ -509,14 +510,10 @@ func TestPopulate_CurrentTime(t *testing.T) {
 	}
 
 	_, out, err := PopulateString(input)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	nowPopulated, err := strconv.Atoi(out)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	diff := math.Abs(float64(int64(nowPopulated) - now.Unix()))
 	if diff > 1 {
@@ -600,9 +597,7 @@ func TestPopulate_FullObject(t *testing.T) {
 		Groups: testGroups,
 	}
 	_, out, err := PopulateString(input)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if out != expected {
 		t.Fatalf("expected:\n%s\n\ngot:\n%s", expected, out)

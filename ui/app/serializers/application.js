@@ -5,7 +5,6 @@
 
 import JSONSerializer from '@ember-data/serializer/json';
 import { isNone, isBlank } from '@ember/utils';
-import { assign } from '@ember/polyfills';
 import { decamelize } from '@ember/string';
 import { addCapabilityRelationships } from 'vault/lib/capabilities';
 
@@ -31,7 +30,7 @@ export default JSONSerializer.extend({
       });
       return models;
     }
-    assign(payload, payload.data);
+    Object.assign(payload, payload.data);
     delete payload.data;
     return payload;
   },

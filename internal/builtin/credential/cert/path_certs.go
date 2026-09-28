@@ -234,6 +234,9 @@ certificate.`,
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.pathCertResolvePath,
+			},
 			logical.DeleteOperation: &framework.PathOperation{
 				Callback: b.pathCertDelete,
 			},
@@ -284,6 +287,11 @@ func (b *backend) Cert(ctx context.Context, s logical.Storage, n string) (*CertE
 	}
 
 	return &result, nil
+}
+
+func (b *backend) pathCertResolvePath(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	name := strings.ToLower(d.Get("name").(string))
+	return logical.ResolvePathResponse("certs/" + name)
 }
 
 func (b *backend) pathCertDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {

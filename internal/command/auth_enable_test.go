@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/v2/internal/helper/builtinplugins"
+	"github.com/stretchr/testify/require"
 )
 
 func testAuthEnableCommand(tb testing.TB) (*cli.MockUi, *AuthEnableCommand) {
@@ -107,9 +108,7 @@ func TestAuthEnableCommand_Run(t *testing.T) {
 		}
 
 		auths, err := client.Sys().ListAuth()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		authInfo, ok := auths["auth_integration/"]
 		if !ok {
@@ -172,9 +171,7 @@ func TestAuthEnableCommand_Run(t *testing.T) {
 		defer closer()
 
 		files, err := os.ReadDir("../builtin/credential")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		var backends []string
 		for _, f := range files {
@@ -184,9 +181,7 @@ func TestAuthEnableCommand_Run(t *testing.T) {
 		}
 
 		modFile, err := os.ReadFile("../../go.mod")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		modLines := strings.SplitSeq(string(modFile), "\n")
 		for p := range modLines {
 			splitLine := strings.Split(strings.TrimSpace(p), " ")

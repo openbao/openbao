@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -22,9 +23,7 @@ func TestTransit_WrappingKey(t *testing.T) {
 
 	// Ensure the key does not exist before requesting it.
 	keyEntry, err := s.Get(t.Context(), storagePath)
-	if err != nil {
-		t.Fatalf("error retrieving wrapping key from storage: %s", err)
-	}
+	require.NoError(t, err)
 	if keyEntry != nil {
 		t.Fatal("wrapping key unexpectedly exists")
 	}
@@ -36,9 +35,7 @@ func TestTransit_WrappingKey(t *testing.T) {
 		Path:      "wrapping_key",
 	}
 	resp, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("unexpected request error: %s", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Data == nil || resp.Data["public_key"] == nil {
 		t.Fatal("expected non-nil response")
 	}
@@ -47,9 +44,7 @@ func TestTransit_WrappingKey(t *testing.T) {
 	// Ensure the returned key is a 4096-bit RSA key.
 	pubKeyBlock, _ := pem.Decode([]byte(pubKeyPEM.(string)))
 	rawPubKey, err := x509.ParsePKIXPublicKey(pubKeyBlock.Bytes)
-	if err != nil {
-		t.Fatalf("failed to parse public wrapping key: %s", err)
-	}
+	require.NoError(t, err)
 	wrappingKey, ok := rawPubKey.(*rsa.PublicKey)
 	if !ok || wrappingKey.Size() != 512 {
 		t.Fatal("public wrapping key is not a 4096-bit RSA key")
@@ -62,9 +57,7 @@ func TestTransit_WrappingKey(t *testing.T) {
 		Path:      "wrapping_key",
 	}
 	resp, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("unexpected request error: %s", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.Data == nil || resp.Data["public_key"] == nil {
 		t.Fatal("expected non-nil response")
 	}

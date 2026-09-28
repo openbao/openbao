@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 func testWriteCommand(tb testing.TB) (*cli.MockUi, *WriteCommand) {
@@ -144,9 +145,7 @@ func TestWriteCommand_Run(t *testing.T) {
 		}
 
 		secret, err := client.Logical().Read("transit/keys/my-key")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret == nil || secret.Data == nil {
 			t.Fatal("expected secret to have data")
 		}
@@ -176,9 +175,7 @@ func TestWriteCommand_Run(t *testing.T) {
 		}
 
 		secret, err := client.Logical().Read("secret/write/stdin_full")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret == nil || secret.Data == nil {
 			t.Fatal("expected secret to have data")
 		}
@@ -211,9 +208,7 @@ func TestWriteCommand_Run(t *testing.T) {
 		}
 
 		secret, err := client.Logical().Read("secret/write/stdin_value")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret == nil || secret.Data == nil {
 			t.Fatal("expected secret to have data")
 		}
@@ -239,9 +234,7 @@ func TestWriteCommand_Run(t *testing.T) {
 		}
 
 		secret, err := client.Logical().Read("secret/write/integration")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret == nil || secret.Data == nil {
 			t.Fatal("expected secret to have data")
 		}

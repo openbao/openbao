@@ -14,6 +14,7 @@ import (
 	postgreshelper "github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -35,9 +36,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 	config.System = sys
 
 	lb, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	dbBackend, ok := lb.(*databaseBackend)
 	if !ok {
 		t.Fatal("could not convert to db backend")
@@ -98,9 +97,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 	// Get a connection to the database plugin
 	dbi, err := dbBackend.GetConnection(t.Context(),
 		config.StorageView, "plugin-test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Alter the database password so it no longer matches what is in storage
 	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
@@ -112,15 +109,11 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 		},
 	}
 	_, err = dbi.database.UpdateUser(ctx, updateReq, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Clear the plugin connection to verify we're no longer able to connect
 	err = dbBackend.ClearConnection("plugin-test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Reading credentials should no longer work
 	_, err = lb.HandleRequest(namespace.RootContext(t.Context()), credReq)
@@ -136,9 +129,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 		NewPassword:    "newSecret",
 	}
 	_, err = framework.PutWAL(t.Context(), config.StorageView, rotateRootWALKey, walEntry)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	assertWALCount(t, config.StorageView, 1, rotateRootWALKey)
 
 	// Trigger an immediate RollbackOperation so that the WAL rollback
@@ -151,9 +142,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 			"immediate": true,
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	assertWALCount(t, config.StorageView, 0, rotateRootWALKey)
 
 	// Reading credentials should work again after the database
@@ -178,9 +167,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_1(t *testing.T) {
 	config.System = sys
 
 	lb, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer lb.Cleanup(t.Context())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "")
@@ -242,9 +229,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_1(t *testing.T) {
 		NewPassword:    "newSecret",
 	}
 	_, err = framework.PutWAL(t.Context(), config.StorageView, rotateRootWALKey, walEntry)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	assertWALCount(t, config.StorageView, 1, rotateRootWALKey)
 
 	// Trigger an immediate RollbackOperation
@@ -256,9 +241,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_1(t *testing.T) {
 			"immediate": true,
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	assertWALCount(t, config.StorageView, 0, rotateRootWALKey)
 
 	// Reading credentials should work
@@ -282,9 +265,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 	config.System = sys
 
 	lb, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	dbBackend, ok := lb.(*databaseBackend)
 	if !ok {
 		t.Fatal("could not convert to db backend")
@@ -344,9 +325,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 
 	// Get a connection to the database plugin
 	dbi, err := dbBackend.GetConnection(t.Context(), config.StorageView, "plugin-test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Alter the database password
 	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
@@ -358,31 +337,21 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 		},
 	}
 	_, err = dbi.database.UpdateUser(ctx, updateReq, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Update storage with the new password
 	dbConfig, err := dbBackend.DatabaseConfig(t.Context(), config.StorageView,
 		"plugin-test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	dbConfig.ConnectionDetails["password"] = "newSecret"
 	entry, err := logical.StorageEntryJSON("config/plugin-test", dbConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = config.StorageView.Put(t.Context(), entry)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Clear the plugin connection to verify we can connect to the database
 	err = dbBackend.ClearConnection("plugin-test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Reading credentials should work
 	credResp, err = lb.HandleRequest(namespace.RootContext(t.Context()), credReq)
@@ -398,9 +367,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 		NewPassword:    "newSecret",
 	}
 	_, err = framework.PutWAL(t.Context(), config.StorageView, rotateRootWALKey, walEntry)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	assertWALCount(t, config.StorageView, 1, rotateRootWALKey)
 
 	// Trigger an immediate RollbackOperation
@@ -412,9 +379,7 @@ func TestBackend_RotateRootCredentials_WAL_no_rollback_2(t *testing.T) {
 			"immediate": true,
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	assertWALCount(t, config.StorageView, 0, rotateRootWALKey)
 
 	// Reading credentials should work

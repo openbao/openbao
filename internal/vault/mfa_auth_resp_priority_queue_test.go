@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/queue"
+	"github.com/stretchr/testify/require"
 )
 
 // some tests rely on the ordering of items from this method
@@ -61,9 +62,7 @@ func TestLoginMFAPriorityQueue_PushPopByKey(t *testing.T) {
 	}
 
 	item, err := pq.PopByKey(tc[0].RequestID)
-	if err != nil {
-		t.Fatalf("error popping item: %s", err)
-	}
+	require.NoError(t, err)
 	if tc[0].TimeOfStorage != item.TimeOfStorage {
 		t.Fatalf("expected tc[0] and popped item to match, got (%v) and (%v)", tc[0].TimeOfStorage, item.TimeOfStorage)
 	}

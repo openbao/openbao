@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -30,38 +31,28 @@ func Benchmark_ForwardedRequest_GenerateParse(b *testing.B) {
 func testForwardedRequestGenerateParse(t testing.TB) int64 {
 	bodBuf := bytes.NewReader([]byte(`{ "foo": "bar", "zip": { "argle": "bargle", neet: 0 } }`))
 	req, err := http.NewRequest("FOOBAR", "https://pushit.real.good:9281/snicketysnack?furbleburble=bloopetybloop", bodBuf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// We want to get the fields we would expect from an incoming request, so
 	// we write it out and then read it again
 	buf1 := bytes.NewBuffer(nil)
 	err = req.Write(buf1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Read it back in, parsing like a server
 	bufr1 := bufio.NewReader(buf1)
 	initialReq, err := http.ReadRequest(bufr1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Generate the request with the forwarded request in the body
 	forwardedRequest, err := GenerateForwardedRequest(initialReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	size := int64(proto.Size(forwardedRequest))
 
 	// Now extract the forwarded request to generate a final request for processing
 	finalReq, err := ParseForwardedRequest(forwardedRequest)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	switch {
 	case initialReq.Method != finalReq.Method:
@@ -79,14 +70,10 @@ func testForwardedRequestGenerateParse(t testing.TB) int64 {
 		bodBuf.Seek(0, 0)
 		initBuf := bytes.NewBuffer(nil)
 		_, err = initBuf.ReadFrom(bodBuf)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		finBuf := bytes.NewBuffer(nil)
 		_, err = finBuf.ReadFrom(finalReq.Body)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !reflect.DeepEqual(initBuf.Bytes(), finBuf.Bytes()) {
 			t.Fatalf("badbody :\ninitialReq:\n%#v\nfinalReq:\n%#v\n", initBuf.Bytes(), finBuf.Bytes())
 		}

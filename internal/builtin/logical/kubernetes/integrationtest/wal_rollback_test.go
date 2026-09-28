@@ -27,9 +27,7 @@ func TestCreds_wal_rollback(t *testing.T) {
 
 	// Pick up VAULT_ADDR and VAULT_TOKEN from env vars
 	baseClient, err := api.NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	client, delNamespace := namespaceHelper(t, baseClient)
 	defer delNamespace()

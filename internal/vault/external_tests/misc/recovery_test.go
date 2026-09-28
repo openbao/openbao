@@ -21,9 +21,7 @@ import (
 func TestRecovery(t *testing.T) {
 	logger := logging.NewVaultLogger(hclog.Debug).Named(t.Name())
 	inm, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	var keys [][]byte
 	var secretUUID string
@@ -47,20 +45,14 @@ func TestRecovery(t *testing.T) {
 		rootToken = client.Token()
 		fooVal := map[string]any{"bar": 1.0}
 		_, err = client.Logical().Write("secret/foo", fooVal)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		secret, err := client.Logical().List("secret/")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if diff := deep.Equal(secret.Data["keys"], []any{"foo"}); len(diff) > 0 {
 			t.Fatalf("got=%v, want=%v, diff: %v", secret.Data["keys"], []string{"foo"}, diff)
 		}
 		mounts, err := cluster.Cores[0].Client.Sys().ListMounts()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		secretMount := mounts["secret/"]
 		if secretMount == nil {
 			t.Fatalf("secret mount not found, mounts: %v", mounts)
@@ -122,17 +114,13 @@ func TestRecovery(t *testing.T) {
 		client.SetToken(recoveryToken)
 
 		secret, err = client.Logical().List(path.Join("sys/raw/logical", secretUUID))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if diff := deep.Equal(secret.Data["keys"], []any{"foo"}); len(diff) > 0 {
 			t.Fatalf("got=%v, want=%v, diff: %v", secret.Data, []string{"foo"}, diff)
 		}
 
 		_, err = client.Logical().Delete(path.Join("sys/raw/logical", secretUUID, "foo"))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// Check our namespace entry.
 		values, err := client.Logical().List(path.Join("sys/raw/namespaces/", nsUUID))
@@ -165,9 +153,7 @@ func TestRecovery(t *testing.T) {
 		client := cluster.Cores[0].Client
 		client.SetToken(rootToken)
 		secret, err := client.Logical().List("secret/")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if secret != nil {
 			t.Fatal("expected no data in secret mount")
 		}

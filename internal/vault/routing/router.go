@@ -541,6 +541,10 @@ func (r *Router) MatchingBackend(ctx context.Context, path string) logical.Backe
 	}
 	path = ns.Path + path
 
+	return r.matchingBackend(path)
+}
+
+func (r *Router) matchingBackend(path string) logical.Backend {
 	r.l.RLock()
 	_, raw, ok := r.root.LongestPrefix(path)
 	r.l.RUnlock()
@@ -1179,4 +1183,77 @@ func (r *Router) Get(path string) (*RouteEntry, bool) {
 
 func (r *Router) SetTokenStoreSaltFunc(fn func(context.Context) (*salt.Salt, error)) {
 	r.tokenStoreSaltFunc = fn
+}
+
+// ResolvePath performs a ResolvePathOperation request against the specified
+// mount to canonicalize the given path.
+//
+//   - mount, by construction in r.MatchingMount(...) is namespaced.
+//   - path, by construction prior to this, contains the mount point but does not
+//     contain the namespace path.
+//   - data is any request data
+//   - mount point and path both should not contain a leading '/'.
+//
+// We need to preserve this on the return i.e., the resulting path should
+// contain the mount point but not the namespace path.
+func (r *Router) ResolvePath(ctx context.Context, mount string, path string, data map[string]any) (string, error) {
+	matchingBackend := r.matchingBackend(mount)
+	if matchingBackend == nil {
+		// If the path does not exist, we'll wait later to err.
+		return path, nil
+	}
+
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	nsPath := ns.Path
+	nsPath = strings.TrimPrefix(nsPath, "/")
+	nsPath = strings.TrimSuffix(nsPath, "/")
+
+	reqPath := path
+	reqPath = strings.TrimPrefix(reqPath, "/")
+
+	reqPath = nsPath + "/" + reqPath
+	reqPath = strings.TrimPrefix(reqPath, "/")
+
+	mountPath := mount
+	mountPath = strings.TrimPrefix(mountPath, "/")
+	mountPath = strings.TrimSuffix(mountPath, "/") + "/"
+
+	reqPath = strings.TrimPrefix(reqPath, mountPath)
+
+	resp, err := matchingBackend.HandleRequest(ctx, &logical.Request{
+		MountPoint: mount,
+		Path:       reqPath,
+		Operation:  logical.ResolvePathOperation,
+		Data:       data,
+		Storage:    r.MatchingStorageByAPIPath(ctx, path),
+	})
+	if err != nil {
+		// If this backend doesn't support this operation or know about this
+		// path, it means that the path should be treated as-is for ACL
+		// purposes.
+		if errors.Is(err, logical.ErrUnsupportedOperation) || errors.Is(err, logical.ErrUnsupportedPath) {
+			return path, nil
+		}
+
+		return "", err
+	}
+	if resp == nil || resp.Data == nil || resp.Data["path"] == nil {
+		return path, nil
+	}
+
+	respPath, ok := resp.Data["path"].(string)
+	if !ok {
+		return "", fmt.Errorf("unknown type for 'path' from resolve-path operation: %T", resp.Data["path"])
+	}
+
+	respPath = strings.TrimPrefix(respPath, "/")
+	respPath = mountPath + respPath
+	respPath = strings.TrimPrefix(respPath, nsPath)
+	respPath = strings.TrimPrefix(respPath, "/")
+
+	return respPath, nil
 }

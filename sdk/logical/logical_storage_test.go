@@ -7,6 +7,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical/file"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -76,9 +77,7 @@ func makeStorage(t *testing.T) Storage {
 	b, err := file.NewFileBackend(map[string]string{
 		"path": dir,
 	}, logger)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	return NewLogicalStorage(b)
 }
 
@@ -86,9 +85,7 @@ func makeTxStorage(t *testing.T) Transaction {
 	logicalStorage := makeStorage(t)
 	if txStorage, ok := logicalStorage.(TransactionalStorage); ok {
 		txn, err := txStorage.BeginTx(t.Context())
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
+		require.NoError(t, err)
 		return txn
 	}
 	t.Fatalf("storage is not transactional")

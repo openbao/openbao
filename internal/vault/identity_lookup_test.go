@@ -8,6 +8,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIdentityStore_Lookup_Entity(t *testing.T) {
@@ -44,9 +45,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 	aliasID := resp.Data["id"].(string)
 
 	entity, err := i.MemDBEntityByID(ctx, entityID, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	lookupReq := &logical.Request{
 		Path:      "lookup/entity",
@@ -111,9 +110,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 	}
 
 	resp, err = i.HandleRequest(ctx, lookupReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected an error")
 	}
@@ -124,9 +121,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 	}
 
 	resp, err = i.HandleRequest(ctx, lookupReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected an error")
 	}
@@ -137,9 +132,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 	}
 
 	resp, err = i.HandleRequest(ctx, lookupReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected an error")
 	}
@@ -148,9 +141,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 	lookupReq.Data = nil
 
 	resp, err = i.HandleRequest(ctx, lookupReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected an error")
 	}
@@ -290,9 +281,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 	}
 
 	resp, err = i.HandleRequest(ctx, lookupReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected an error")
 	}
@@ -303,9 +292,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 	}
 
 	resp, err = i.HandleRequest(ctx, lookupReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected an error")
 	}
@@ -316,9 +303,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 	}
 
 	resp, err = i.HandleRequest(ctx, lookupReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected an error")
 	}
@@ -327,9 +312,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 	lookupReq.Data = nil
 
 	resp, err = i.HandleRequest(ctx, lookupReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected an error")
 	}

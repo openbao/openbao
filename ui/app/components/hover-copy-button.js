@@ -22,7 +22,7 @@ export default class HoverCopyButton extends Component {
     return this.args.alwaysShow || false;
   }
   get copyValue() {
-    return this.args.copyValue || false;
+    return this.args.copyValue || '';
   }
 
   @tracked tooltipText = 'Copy';

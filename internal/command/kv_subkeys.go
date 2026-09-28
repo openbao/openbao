@@ -10,6 +10,11 @@ import (
 	"github.com/posener/complete"
 )
 
+const (
+	subkeysAPIPath           = "subkeys"
+	subkeysResponseDataField = "subkeys"
+)
+
 var (
 	_ cli.Command             = (*KVSubkeysCommand)(nil)
 	_ cli.CommandAutocomplete = (*KVSubkeysCommand)(nil)
@@ -43,19 +48,21 @@ func (c *KVSubkeysCommand) Flags() *FlagSets {
 		Usage: `Specifies the path where the KV backend is mounted. If specified,
 		the next argument will be interpreted as the secret path. If this flag is 
 		not specified, the next argument will be interpreted as the combined mount 
-		path and secret path with /subkeys/ automatically inserted`,
+		path and secret path, with /subkeys/ automatically inserted between them`,
 	})
 	f.IntVar(&IntVar{
 		Name:    "version",
 		Target:  &c.flagVersion,
 		Default: 0,
-		Usage:   `Specifies the version of the secret for which the subkeys are returned.`,
+		Usage: `Specifies the version of the secret for which the subkeys are returned.
+		By default, the current version is used.”`,
 	})
 	f.IntVar(&IntVar{
 		Name:    "depth",
 		Target:  &c.flagDepth,
 		Default: 0,
-		Usage:   `Specifies the maximum nesting depth of the returned subkeys.`,
+		Usage: `Specifies the maximum nesting depth of the returned subkeys.
+		By default, no depth limit is applied.`,
 	})
 
 	return set
@@ -156,7 +163,7 @@ func (c *KVSubkeysCommand) Run(args []string) int {
 		partialPath = path.Join(mountPath, partialPath)
 	}
 
-	fullPath := addPrefixToKVPath(partialPath, mountPath, "subkeys", false)
+	fullPath := addPrefixToKVPath(partialPath, mountPath, subkeysAPIPath, false)
 
 	params := make(map[string]string)
 	if c.flagVersion > 0 {
@@ -168,7 +175,7 @@ func (c *KVSubkeysCommand) Run(args []string) int {
 
 	secret, err := kvReadRequest(client, fullPath, params)
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error reading: %s ", err))
+		c.UI.Error(fmt.Sprintf("Error reading %s: %s", fullPath, err))
 		return 2
 	}
 	if secret == nil {
@@ -182,7 +189,7 @@ func (c *KVSubkeysCommand) Run(args []string) int {
 
 	printWarnings(c.UI, secret)
 
-	subkeys, ok := secret.Data["subkeys"]
+	subkeys, ok := secret.Data[subkeysResponseDataField]
 	if !ok || subkeys == nil {
 		c.UI.Error(fmt.Sprintf("No subkeys found at %s", fullPath))
 		return 2

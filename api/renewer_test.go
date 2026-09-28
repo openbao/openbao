@@ -234,6 +234,76 @@ func TestLifetimeWatcher(t *testing.T) {
 	}
 }
 
+func TestLifetimeWatcher_RenewErrorsBackOff(t *testing.T) {
+	client, err := NewClient(DefaultConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	watcher, err := client.NewLifetimeWatcher(&LifetimeWatcherInput{
+		Secret: &Secret{
+			Auth: &SecretAuth{
+				ClientToken:   "mytoken",
+				LeaseDuration: 60,
+				Renewable:     true,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const initialRetryInterval = 200 * time.Millisecond
+	attempts := make(chan time.Time, 2)
+	renewErr := errors.New("renew failure")
+	renew := func(_ string, _ int) (*Secret, error) {
+		select {
+		case attempts <- time.Now():
+		default:
+		}
+		return nil, renewErr
+	}
+
+	doneCh := make(chan error, 1)
+	go func() {
+		doneCh <- watcher.doRenewWithOptions(
+			true, false, 60, "mytoken", renew, initialRetryInterval,
+		)
+	}()
+	defer watcher.Stop()
+
+	waitForAttempt := func(name string) time.Time {
+		t.Helper()
+		select {
+		case attempt := <-attempts:
+			return attempt
+		case <-time.After(2 * time.Second):
+			t.Fatalf("%s renewal attempt didn't happen", name)
+			return time.Time{}
+		}
+	}
+
+	firstAttempt := waitForAttempt("first")
+	secondAttempt := waitForAttempt("second")
+
+	watcher.Stop()
+	select {
+	case err := <-doneCh:
+		if err != nil {
+			t.Fatalf("expected watcher to stop without an error, got: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("watcher didn't stop")
+	}
+
+	// ExponentialBackOff randomizes its interval to no less than half the
+	// configured initial interval. A shorter delay means retries are spinning
+	// without honoring the backoff.
+	if retryDelay := secondAttempt.Sub(firstAttempt); retryDelay < initialRetryInterval/2 {
+		t.Fatalf("renewal retry happened after %s; expected at least %s", retryDelay, initialRetryInterval/2)
+	}
+}
+
 // TestCalcSleepPeriod uses property based testing to evaluate the calculateSleepDuration
 // function of LifeTimeWatchers, but also incidentally tests "calculateGrace".
 // This is on account of "calculateSleepDuration" performing the "calculateGrace"

@@ -26,8 +26,9 @@ import (
 
 func init() {
 	// Ensure our special envvars are not present
-	os.Setenv("BAO_ADDR", "")
-	os.Setenv("BAO_TOKEN", "")
+	_ = os.Unsetenv(EnvVaultAddress)
+	_ = os.Unsetenv(EnvVaultToken)
+	_ = os.Unsetenv(EnvHeaders)
 }
 
 func TestNewConfig_envvar(t *testing.T) {
@@ -64,6 +65,42 @@ func TestDefaultConfig_envvar(t *testing.T) {
 	if token := client.Token(); token != "testing" {
 		t.Fatalf("bad: %s", token)
 	}
+}
+
+func TestNewClient_EnvHeaders(t *testing.T) {
+	t.Run("sets headers from environment", func(t *testing.T) {
+		t.Setenv(EnvHeaders, `{"X-Test":"one","X-Test-2":"two"}`)
+
+		client, err := NewClient(nil)
+		require.NoError(t, err)
+		require.Equal(t, []string{"one"}, client.Headers().Values("X-Test"))
+		require.Equal(t, []string{"two"}, client.Headers().Values("X-Test-2"))
+	})
+
+	t.Run("rejects reserved headers", func(t *testing.T) {
+		const secret = "must-not-appear-in-errors"
+		t.Setenv(EnvHeaders, `{"Allowed":"value","X-Vault-Test":"`+secret+`"}`)
+
+		client, err := NewClient(nil)
+		require.Nil(t, client)
+		require.EqualError(t, err, `BAO_HEADERS contains a header name with reserved prefix "X-Vault-"`)
+		require.NotContains(t, err.Error(), secret)
+	})
+
+	t.Run("ignores environment when disabled", func(t *testing.T) {
+		t.Setenv(EnvHeaders, `{"X-Test":"one"}`)
+
+		client, err := NewClient(&Config{DisableEnvironment: true})
+		require.NoError(t, err)
+		require.NotContains(t, client.Headers(), "X-Test")
+	})
+
+	t.Run("rejects non-flat map", func(t *testing.T) {
+		t.Setenv(EnvHeaders, `{"X-Nested":{"foo":"bar"}}`)
+
+		_, err := NewClient(nil)
+		require.Error(t, err)
+	})
 }
 
 func TestClientDefaultHttpClient(t *testing.T) {

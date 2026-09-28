@@ -48,14 +48,14 @@ func (c *KVSubkeysCommand) Flags() *FlagSets {
 		Usage: `Specifies the path where the KV backend is mounted. If specified,
 		the next argument will be interpreted as the secret path. If this flag is 
 		not specified, the next argument will be interpreted as the combined mount 
-		path and secret path, with /subkeys/ automatically inserted between them`,
+		path and secret path, with /subkeys/ automatically inserted between them.`,
 	})
 	f.IntVar(&IntVar{
 		Name:    "version",
 		Target:  &c.flagVersion,
 		Default: 0,
 		Usage: `Specifies the version of the secret for which the subkeys are returned.
-		By default, the current version is used.”`,
+		By default, the current version is used.`,
 	})
 	f.IntVar(&IntVar{
 		Name:    "depth",
@@ -179,7 +179,7 @@ func (c *KVSubkeysCommand) Run(args []string) int {
 		return 2
 	}
 	if secret == nil {
-		c.UI.Error(fmt.Sprintf("No value found at %s:", fullPath))
+		c.UI.Error(fmt.Sprintf("No value found at %s", fullPath))
 		return 2
 	}
 

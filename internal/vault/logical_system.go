@@ -1057,8 +1057,6 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 		// Only set plugin-name if mount is of type plugin, with apiConfig.PluginName
 		// option taking precedence.
 		switch {
-		case apiConfig.PluginName != "":
-			logicalType = apiConfig.PluginName
 		case pluginName != "":
 			logicalType = pluginName
 		default:
@@ -2298,8 +2296,6 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 		// Only set plugin name if mount is of type plugin, with apiConfig.PluginName
 		// option taking precedence.
 		switch {
-		case apiConfig.PluginName != "":
-			logicalType = apiConfig.PluginName
 		case pluginName != "":
 			logicalType = pluginName
 		default:

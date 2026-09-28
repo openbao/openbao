@@ -284,10 +284,6 @@ type MountInput struct {
 	SealWrap              bool              `json:"seal_wrap" mapstructure:"seal_wrap"`
 	ExternalEntropyAccess bool              `json:"external_entropy_access" mapstructure:"external_entropy_access"`
 	Options               map[string]string `json:"options"`
-
-	// Deprecated: Newer server responses should be returning this information in the
-	// Type field (json: "type") instead.
-	PluginName string `json:"plugin_name,omitempty"`
 }
 
 type MountConfigInput struct {
@@ -305,8 +301,6 @@ type MountConfigInput struct {
 	AllowedManagedKeys        []string                `json:"allowed_managed_keys,omitempty" mapstructure:"allowed_managed_keys"`
 	PluginVersion             string                  `json:"plugin_version,omitempty"`
 	UserLockoutConfig         *UserLockoutConfigInput `json:"user_lockout_config,omitempty"`
-	// Deprecated: This field will always be blank for newer server responses.
-	PluginName string `json:"plugin_name,omitempty" mapstructure:"plugin_name"`
 }
 
 type MountOutput struct {

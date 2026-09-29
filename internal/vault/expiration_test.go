@@ -54,6 +54,7 @@ func mockExpiration(t testing.TB) *ExpirationManager {
 
 func TestExpiration_Metrics(t *testing.T) {
 	testCore := TestCore(t)
+	testCore.baseLogger = logger
 	testCore.logger = logger.Named("core")
 	testCoreUnsealed(t, testCore)
 
@@ -433,7 +434,7 @@ func TestExpiration_Tidy(t *testing.T) {
 	})
 
 	testCore := TestCore(t)
-	testCore.logger = logger
+	testCore.baseLogger = logger
 	testCore.logger = logger.Named("core")
 	testCoreUnsealed(t, testCore)
 

@@ -223,7 +223,7 @@ func (c *Core) startPeriodicRaftTLSRotate(ctx context.Context) error {
 	}
 
 	c.raftTLSRotationStopCh = make(chan struct{})
-	logger := c.WithLogger("raft")
+	logger := c.WithNamedLogger("raft")
 
 	if c.isRaftHAOnly() {
 		return c.raftTLSRotateDirect(ctx, logger, c.raftTLSRotationStopCh)

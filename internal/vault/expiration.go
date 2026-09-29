@@ -394,7 +394,7 @@ func (c *Core) setupExpiration(e ExpireLeaseStrategy, standby bool) error {
 	c.metricsMutex.Lock()
 	defer c.metricsMutex.Unlock()
 
-	expLogger := c.WithLogger("expiration")
+	expLogger := c.WithBaseLogger("expiration")
 
 	// Create the manager
 	c.expiration = NewExpirationManager(c, e, expLogger, slices.Contains(c.detectDeadlocks, "expiration"), !standby)

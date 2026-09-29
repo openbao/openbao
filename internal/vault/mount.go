@@ -1633,7 +1633,7 @@ func (c *Core) newLogicalBackend(ctx context.Context, entry *routing.MountEntry,
 	conf["plugin_type"] = consts.PluginTypeSecrets.String()
 	conf["plugin_version"] = entry.Version
 
-	backendLogger := c.WithLogger(fmt.Sprintf("secrets.%s.%s", t, entry.Accessor))
+	backendLogger := c.WithBaseLogger(fmt.Sprintf("secrets.%s.%s", t, entry.Accessor))
 
 	config := &logical.BackendConfig{
 		StorageView: view,

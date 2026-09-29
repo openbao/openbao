@@ -4,9 +4,9 @@
 package command
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -1542,7 +1542,7 @@ func testKVSubkeysCommand(tb testing.TB) (*cli.MockUi, *KVSubkeysCommand) {
 		BaseCommand: &BaseCommand{
 			UI: &VaultUI{
 				Ui:     ui,
-				format: "json",
+				format: "table",
 			},
 		},
 	}
@@ -1551,12 +1551,25 @@ func testKVSubkeysCommand(tb testing.TB) (*cli.MockUi, *KVSubkeysCommand) {
 func TestKVSubkeysCommand(t *testing.T) {
 	t.Parallel()
 
+	expectedMetadataFields := []string{
+		"created_time",
+		"custom_metadata",
+		"deletion_time",
+		"destroyed",
+		"version",
+	}
+	expectedSecretOutput := append([]string{"kv/subkeys/read/foo"}, expectedMetadataFields...)
+	expectedSubkeyRows := []string{
+		`(?m)^foo +<nil>$`,
+		`(?m)^nested +map\[bar:<nil>\]$`,
+	}
+
 	cases := []struct {
-		name         string
-		args         []string
-		outStrings   []string
-		expectedData map[string]any
-		code         int
+		name        string
+		args        []string
+		outStrings  []string
+		outPatterns []string
+		code        int
 	}{
 		{
 			name:       "not_enough_args",
@@ -1568,6 +1581,24 @@ func TestKVSubkeysCommand(t *testing.T) {
 			name:       "too_many_args",
 			args:       []string{"foo", "bar"},
 			outStrings: []string{"Too many arguments"},
+			code:       1,
+		},
+		{
+			name:       "empty_path",
+			args:       []string{"/"},
+			outStrings: []string{"Secret path must not be empty"},
+			code:       1,
+		},
+		{
+			name:       "negative_version",
+			args:       []string{"-version=-1", "kv/read/foo"},
+			outStrings: []string{"Version must be greater than or equal to zero"},
+			code:       1,
+		},
+		{
+			name:       "negative_depth",
+			args:       []string{"-depth=-1", "kv/read/foo"},
+			outStrings: []string{"Depth must be greater than or equal to zero"},
 			code:       1,
 		},
 		{
@@ -1583,43 +1614,18 @@ func TestKVSubkeysCommand(t *testing.T) {
 			code:       2,
 		},
 		{
-			name: "v2_read",
-			args: []string{"kv/read/foo"},
-			expectedData: map[string]any{
-				"foo": nil,
-				"nested": map[string]any{
-					"bar": nil,
-				},
-			},
-			code: 0,
+			name:        "v2_read",
+			args:        []string{"kv/read/foo"},
+			outStrings:  expectedSecretOutput,
+			outPatterns: expectedSubkeyRows,
+			code:        0,
 		},
 		{
-			name: "v2_mount_flag_syntax",
-			args: []string{"-mount", "kv", "read/foo"},
-			expectedData: map[string]any{
-				"foo": nil,
-				"nested": map[string]any{
-					"bar": nil,
-				},
-			},
-			code: 0,
-		},
-		{
-			name: "v2_read_version",
-			args: []string{"-version", "1", "kv/read/foo"},
-			expectedData: map[string]any{
-				"old": nil,
-			},
-			code: 0,
-		},
-		{
-			name: "v2_read_depth",
-			args: []string{"-depth", "1", "kv/read/foo"},
-			expectedData: map[string]any{
-				"foo":    nil,
-				"nested": nil,
-			},
-			code: 0,
+			name:        "v2_mount_flag_syntax",
+			args:        []string{"-mount", "kv", "read/foo"},
+			outStrings:  expectedSecretOutput,
+			outPatterns: expectedSubkeyRows,
+			code:        0,
 		},
 	}
 
@@ -1631,37 +1637,7 @@ func TestKVSubkeysCommand(t *testing.T) {
 				client, closer := testVaultServer(t)
 				defer closer()
 
-				if err := client.Sys().Mount("kv/", &api.MountInput{
-					Type: "kv-v2",
-				}); err != nil {
-					t.Fatal(err)
-				}
-
-				require.EventuallyWithT(t, func(t *assert.CollectT) {
-					config, err := client.Logical().Read("kv/config")
-					require.NoError(t, err)
-					require.NotNil(t, config)
-				}, 10*time.Second, 10*time.Millisecond,
-					"timed out waiting for KV v2")
-
-				if _, err := client.Logical().Write("kv/data/read/foo", map[string]any{
-					"data": map[string]any{
-						"old": "bar",
-					},
-				}); err != nil {
-					t.Fatal(err)
-				}
-
-				if _, err := client.Logical().Write("kv/data/read/foo", map[string]any{
-					"data": map[string]any{
-						"foo": "bar",
-						"nested": map[string]any{
-							"bar": "baz",
-						},
-					},
-				}); err != nil {
-					t.Fatal(err)
-				}
+				setupKVSubkeysSecrets(t, client)
 
 				ui, cmd := testKVSubkeysCommand(t)
 				cmd.client = client
@@ -1680,13 +1656,44 @@ func TestKVSubkeysCommand(t *testing.T) {
 					}
 				}
 
-				if tc.code == 0 {
-					var actual map[string]any
-					err := json.Unmarshal([]byte(ui.OutputWriter.String()), &actual)
-					require.NoError(t, err)
-					require.Equal(t, tc.expectedData, actual)
+				output := ui.OutputWriter.String()
+				for _, pattern := range tc.outPatterns {
+					if !regexp.MustCompile(pattern).MatchString(output) {
+						t.Errorf("expected %q to match %q", output, pattern)
+					}
 				}
 			})
 		}
 	})
+}
+
+func setupKVSubkeysSecrets(t *testing.T, client *api.Client) {
+	t.Helper()
+
+	require.NoError(t, client.Sys().Mount("kv/", &api.MountInput{
+		Type: "kv-v2",
+	}))
+
+	require.EventuallyWithT(t, func(t *assert.CollectT) {
+		config, err := client.Logical().Read("kv/config")
+		require.NoError(t, err)
+		require.NotNil(t, config)
+	}, 10*time.Second, 10*time.Millisecond, "timed out waiting for KV v2")
+
+	_, err := client.Logical().Write("kv/data/read/foo", map[string]any{
+		"data": map[string]any{
+			"old": "bar",
+		},
+	})
+	require.NoError(t, err)
+
+	_, err = client.Logical().Write("kv/data/read/foo", map[string]any{
+		"data": map[string]any{
+			"foo": "bar",
+			"nested": map[string]any{
+				"bar": "baz",
+			},
+		},
+	})
+	require.NoError(t, err)
 }

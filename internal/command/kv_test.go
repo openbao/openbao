@@ -1563,6 +1563,14 @@ func TestKVSubkeysCommand(t *testing.T) {
 		`(?m)^foo +<nil>$`,
 		`(?m)^nested +map\[bar:<nil>\]$`,
 	}
+	expectedSubkeyVersionRow := []string{
+		`(?m)^old +<nil>$`,
+		`(?m)^version +1$`,
+	}
+	expectedSubkeyDepthLimitOutput := []string{
+		`(?m)^foo +<nil>$`,
+		`(?m)^nested +<nil>$`,
+	}
 
 	cases := []struct {
 		name        string
@@ -1625,6 +1633,20 @@ func TestKVSubkeysCommand(t *testing.T) {
 			args:        []string{"-mount", "kv", "read/foo"},
 			outStrings:  expectedSecretOutput,
 			outPatterns: expectedSubkeyRows,
+			code:        0,
+		},
+		{
+			name:        "v2_specific_version",
+			args:        []string{"-version=1", "kv/read/foo"},
+			outStrings:  expectedSecretOutput,
+			outPatterns: expectedSubkeyVersionRow,
+			code:        0,
+		},
+		{
+			name:        "v2_depth_limit",
+			args:        []string{"-depth=1", "kv/read/foo"},
+			outStrings:  expectedSecretOutput,
+			outPatterns: expectedSubkeyDepthLimitOutput,
 			code:        0,
 		},
 	}

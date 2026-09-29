@@ -628,7 +628,9 @@ func (b *MFABackend) HandleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Con
 		}
 
 		var buff bytes.Buffer
-		png.Encode(&buff, barcode)
+		if err := png.Encode(&buff, barcode); err != nil {
+			return nil, fmt.Errorf("error encoding QR code: %w", err)
+		}
 		totpB64Barcode = base64.StdEncoding.EncodeToString(buff.Bytes())
 	}
 

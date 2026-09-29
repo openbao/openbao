@@ -216,7 +216,7 @@ func (f *BoltSnapshotStore) getMetaFromDB(id string) (*raft.SnapshotMeta, error)
 	if err != nil {
 		return nil, err
 	}
-	defer boltDB.Close()
+	defer boltDB.Close() //nolint:errcheck
 
 	meta := &raft.SnapshotMeta{
 		Version: 1,
@@ -361,12 +361,12 @@ func (s *BoltSnapshotSink) writeBoltDBFile() error {
 	// call to the delimtedreader and the BoltDB file.
 	go func() {
 		defer close(s.doneWritingCh)
-		defer boltDB.Close()
+		defer boltDB.Close() //nolint:errcheck
 
 		// The delimted reader will parse full proto messages from the snapshot
 		// data.
 		protoReader := NewDelimitedReader(reader, math.MaxInt32)
-		defer protoReader.Close()
+		defer protoReader.Close() //nolint:errcheck
 
 		var done bool
 		var keys int
@@ -446,7 +446,7 @@ func (s *BoltSnapshotSink) Close() error {
 	s.closed = true
 
 	if s.writer != nil {
-		s.writer.Close()
+		s.writer.Close() //nolint:errcheck
 		<-s.doneWritingCh
 
 		if s.writeError != nil {
@@ -487,7 +487,7 @@ func (s *BoltSnapshotSink) Cancel() error {
 	s.closed = true
 
 	if s.writer != nil {
-		s.writer.Close()
+		s.writer.Close() //nolint:errcheck
 		<-s.doneWritingCh
 
 		// Attempt to remove all artifacts

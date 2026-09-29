@@ -757,7 +757,7 @@ func (b *SystemBackend) handleStorageRaftSnapshotWrite(force bool) framework.Ope
 			}
 
 			return nil
-		}()
+		}() //nolint:errcheck
 
 		return nil, nil
 	}

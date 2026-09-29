@@ -115,7 +115,7 @@ func (t *TelemetryCollector) OnStart(_ context.Context, s sdktrace.ReadWriteSpan
 	defer t.mu.Unlock()
 	t.spans[s.SpanContext().SpanID()] = s
 	if isMainSection(s) {
-		fmt.Fprint(t.ui, status_unknown+s.Name())
+		fmt.Fprint(t.ui, status_unknown+s.Name()) //nolint:errcheck
 	}
 }
 
@@ -153,7 +153,7 @@ func (t *TelemetryCollector) OnEnd(e sdktrace.ReadOnlySpan) {
 		r := t.getOrBuildResult(e.SpanContext().SpanID())
 		if r != nil {
 			fmt.Print(same_line)
-			fmt.Fprintln(t.ui, r.String())
+			fmt.Fprintln(t.ui, r.String()) //nolint:errcheck
 		}
 	}
 }

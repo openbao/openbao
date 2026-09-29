@@ -22,7 +22,7 @@ func ExecuteDBQuery(ctx context.Context, db *sql.DB, params map[string]string, q
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer stmt.Close() //nolint:errcheck
 
 	return execute(ctx, stmt)
 }
@@ -51,7 +51,7 @@ func ExecuteTxQuery(ctx context.Context, tx *sql.Tx, params map[string]string, q
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer stmt.Close() //nolint:errcheck
 
 	return execute(ctx, stmt)
 }

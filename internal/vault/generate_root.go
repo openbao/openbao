@@ -62,7 +62,9 @@ func (g generateStandardRootToken) generate(ctx context.Context, c *Core) (strin
 	}
 
 	cleanupFunc := func() {
-		c.tokenStore.revokeOrphan(ctx, te.ID)
+		if err := c.tokenStore.revokeOrphan(ctx, te.ID); err != nil {
+			c.logger.Error("error revoking token", "error", err)
+		}
 	}
 
 	return te.ExternalID, cleanupFunc, nil

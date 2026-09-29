@@ -131,7 +131,7 @@ func (c *SQLConnectionProducer) Connection(ctx context.Context) (any, error) {
 		}
 		// If the ping was unsuccessful, close it and ignore errors as we'll be
 		// reestablishing anyways
-		c.db.Close()
+		c.db.Close() //nolint:errcheck
 	}
 
 	// For mssql backend, switch to sqlserver instead
@@ -185,13 +185,14 @@ func (c *SQLConnectionProducer) Close() error {
 	c.Lock()
 	defer c.Unlock()
 
+	var err error
 	if c.db != nil {
-		c.db.Close()
+		err = c.db.Close()
 	}
 
 	c.db = nil
 
-	return nil
+	return err
 }
 
 // SetCredentials uses provided information to set/create a user in the

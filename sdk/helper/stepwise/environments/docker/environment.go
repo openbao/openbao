@@ -629,8 +629,7 @@ func (n *dockerClusterNode) start(cli *docker.Client, caDir, netName string, net
 	}
 	ports := n.container.NetworkSettings.Ports[port]
 	if len(ports) == 0 {
-		n.Cleanup()
-		return errors.New("could not find port binding for 8200/tcp")
+		return errors.Join(errors.New("could not find port binding for 8200/tcp"), n.Cleanup())
 	}
 	n.HostPort = ports[0].HostPort
 

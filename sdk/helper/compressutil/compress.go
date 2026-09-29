@@ -189,7 +189,7 @@ func DecompressWithCanary(data []byte) ([]byte, string, bool, error) {
 	}
 
 	// Close the io.ReadCloser
-	defer reader.Close()
+	defer reader.Close() //nolint:errcheck
 
 	// Read all the compressed data into a buffer
 	var buf bytes.Buffer

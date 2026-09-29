@@ -341,11 +341,13 @@ func ExerciseBackend_ListPrefix(t testing.TB, b Backend) {
 	e2 := &Entry{Key: "foo/bar", Value: []byte("test")}
 	e3 := &Entry{Key: "foo/bar/baz", Value: []byte("test")}
 
-	defer func() {
-		b.Delete(context.Background(), "foo")
-		b.Delete(context.Background(), "foo/bar")
-		b.Delete(context.Background(), "foo/bar/baz")
-	}()
+	defer func(entries ...*Entry) {
+		for _, entry := range entries {
+			if err := b.Delete(context.Background(), entry.Key); err != nil {
+				t.Errorf("failed to clean up key %q: %v", entry.Key, err)
+			}
+		}
+	}(e3, e2, e1)
 
 	err := b.Put(context.Background(), e1)
 	if err != nil {
@@ -456,7 +458,7 @@ func ExerciseHABackend(t testing.TB, b HABackend, b2 HABackend) {
 	}
 
 	// Release the first lock
-	lock.Unlock()
+	require.NoError(t, lock.Unlock(), "error releasing first lock")
 
 	// Attempt to lock should work
 	leaderCh2, err = lock2.Lock(nil)
@@ -485,7 +487,7 @@ func ExerciseHABackend(t testing.TB, b HABackend, b2 HABackend) {
 	}
 
 	// Cleanup
-	lock2.Unlock()
+	require.NoError(t, lock2.Unlock(), "error releasing second lock during cleanup")
 }
 
 func ExerciseTransactionalBackend(t testing.TB, b TransactionalBackend) {

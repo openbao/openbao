@@ -3385,7 +3385,11 @@ func (b *SystemBackend) responseWrappingUnwrap(ctx context.Context, te *logical.
 			return "", fmt.Errorf("error decrementing wrapping token's use-count: %w", err)
 		}
 
-		defer b.Core.tokenStore.revokeOrphan(ctx, tokenID)
+		defer func() {
+			if err := b.Core.tokenStore.revokeOrphan(ctx, tokenID); err != nil {
+				b.Core.logger.Error("error revoking wrapping token", "error", err)
+			}
+		}()
 	}
 
 	cubbyReq := &logical.Request{
@@ -3710,7 +3714,11 @@ func (b *SystemBackend) handleWrappingRewrap(ctx context.Context, req *logical.R
 		if err != nil {
 			return nil, fmt.Errorf("error decrementing wrapping token's use-count: %w", err)
 		}
-		defer b.Core.tokenStore.revokeOrphan(ctx, token)
+		defer func() {
+			if err := b.Core.tokenStore.revokeOrphan(ctx, token); err != nil {
+				b.Core.logger.Error("error revoking wrapping token", "error", err)
+			}
+		}()
 	}
 
 	// Fetch the original TTL

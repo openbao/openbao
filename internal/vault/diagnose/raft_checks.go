@@ -31,12 +31,12 @@ func RaftFileChecks(ctx context.Context, path string) {
 	// Note: Stat does not return information about the symlink itself, in the case where we are dealing with one.
 	info, err := os.Stat(path)
 	if err != nil {
-		//nolint:staticcheck // user-facing error
+		//nolint:staticcheck,errcheck // user-facing error
 		SpotError(ctx, permissionsTestName, fmt.Errorf("Error computing file permissions: %w.", err))
 	}
 
 	if !IsDir(info) {
-		//nolint:staticcheck // user-facing error
+		//nolint:staticcheck,errcheck // user-facing error
 		SpotError(ctx, ownershipTestName, errors.New("Error: Raft storage path variable does not point to a folder."))
 	}
 
@@ -50,6 +50,7 @@ func RaftFileChecks(ctx context.Context, path string) {
 		case strings.Contains(err, FileIsSymlinkWarning) || strings.Contains(err, FileTooPermissiveWarning):
 			SpotWarn(ctx, permissionsTestName, err)
 		case strings.Contains(err, FilePermissionsMissingWarning):
+			//nolint:errcheck
 			SpotError(ctx, permissionsTestName, errors.New(err))
 		}
 	}
@@ -74,7 +75,7 @@ func RaftStorageQuorum(ctx context.Context, b RaftConfigurableStorageBackend) st
 	var err error
 	conf, err = b.GetConfigurationOffline()
 	if err != nil {
-		//nolint:staticcheck // user-facing error
+		//nolint:staticcheck,errcheck // user-facing error
 		SpotError(ctx, raftQuorumTestName, fmt.Errorf("Error retrieving server configuration: %w.", err))
 		return fmt.Sprintf("Error retrieving server configuration: %s.", err.Error())
 	}

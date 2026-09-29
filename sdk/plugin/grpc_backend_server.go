@@ -249,7 +249,7 @@ func (b *backendGRPCPluginServer) Cleanup(ctx context.Context, _ *pb.Empty) (*pb
 	backend.Cleanup(ctx)
 
 	// Close rpc clients
-	brokeredClient.Close()
+	brokeredClient.Close() //nolint:errcheck
 
 	if b.multiplexingSupport {
 		id, err := pluginutil.GetMultiplexIDFromContext(ctx)

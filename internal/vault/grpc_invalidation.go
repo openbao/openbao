@@ -75,6 +75,11 @@ func (i *invalidationPeers) Setup() {
 		close(peer.stopCh)
 	})
 
+	if i.dispatcher != nil {
+		i.dispatcher.Stop()
+		i.dispatcher = nil
+	}
+
 	i.dispatcher = fairshare.NewJobManager("active-grpc-invalidation", 2+32, i.logger, i.core.metricSink)
 	i.dispatcher.Start()
 
@@ -87,6 +92,11 @@ func (i *invalidationPeers) Setup() {
 func (i *invalidationPeers) SetupStandby() {
 	i.l.Lock()
 	defer i.l.Unlock()
+
+	if i.dispatcher != nil {
+		i.dispatcher.Stop()
+		i.dispatcher = nil
+	}
 
 	i.dispatcher = fairshare.NewJobManager("standby-grpc-invalidation", 2, i.logger, i.core.metricSink)
 	i.dispatcher.Start()
@@ -104,11 +114,15 @@ func (i *invalidationPeers) Cleanup() {
 		i.peers.DeleteAll()
 	}
 
-	if i.dispatcher != nil {
+	// On active nodes, we want to proactively stop dispatching events in
+	// case we get contacted in the future. On standby nodes, we don't care,
+	// in part because we need the dispatcher to survive pre-seal, and in part
+	// because we call SetupStandby which will clear an old dispatcher anyways.
+	if i.core.Standby() == false && i.dispatcher != nil {
 		i.dispatcher.Stop()
+		i.dispatcher = nil
 	}
 
-	i.dispatcher = nil
 	i.peers = nil
 }
 

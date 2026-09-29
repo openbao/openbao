@@ -396,10 +396,7 @@ type Core struct {
 	defaultLeaseTTL time.Duration
 	maxLeaseTTL     time.Duration
 
-	// baseLogger is used to avoid ResetNamed as it strips useful prefixes in
-	// e.g. testing
-	baseLogger log.Logger
-	logger     log.Logger
+	logger log.Logger
 
 	// log level provided by config, CLI flag, or env
 	logLevel string
@@ -940,7 +937,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		seal:                conf.Seal,
 		stateLock:           stateLock,
 		router:              routing.NewRouter(routerLogger),
-		baseLogger:          conf.Logger,
 		logger:              coreLogger,
 		logLevel:            conf.LogLevel,
 
@@ -1070,13 +1066,13 @@ func coreInit(c *Core, conf *CoreConfig) error {
 	haEnabled := conf.HAPhysical != nil && conf.HAPhysical.HAEnabled()
 
 	// Wrap the physical backend in a cache layer if enabled
-	cacheLogger := c.baseLogger.Named("storage.cache")
+	cacheLogger := c.logger.Named("storage.cache")
 
 	// Wrap physical for invalidation.
 	if haEnabled && shouldUseGRPCInvalidation(phys) {
 		c.logger.Info("enabling grpc-based invalidation on HA backend which doesn't natively support invalidation notifications")
 
-		grpcLogger := c.baseLogger.Named("storage.grpcinv")
+		grpcLogger := c.logger.Named("storage.grpcinv")
 		c.allLoggers = append(c.allLoggers, grpcLogger)
 
 		phys = physical.NewWriteNotifier(phys, grpcLogger, c.SendInvalidationNotice)
@@ -2267,7 +2263,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	if err := c.setupNamespaceStore(ctx); err != nil {
 		return err
 	}
-	c.externalKeys = ek.NewRegistry(c.kmsPluginCatalog, c.WithBaseLogger("external-keys"))
+	c.externalKeys = ek.NewRegistry(c.kmsPluginCatalog, c.WithLogger("external-keys"))
 	if err := c.loadMounts(ctx, standby); err != nil {
 		return err
 	}
@@ -2802,14 +2798,8 @@ func (c *Core) AddLogger(logger log.Logger) {
 	c.allLoggers = append(c.allLoggers, logger)
 }
 
-func (c *Core) WithNamedLogger(name string) log.Logger {
+func (c *Core) WithLogger(name string) log.Logger {
 	logger := c.logger.Named(name)
-	c.AddLogger(logger)
-	return logger
-}
-
-func (c *Core) WithBaseLogger(name string) log.Logger {
-	logger := c.baseLogger.Named(name)
 	c.AddLogger(logger)
 	return logger
 }
@@ -4071,7 +4061,7 @@ func (c *Core) setupPolicyStore(ctx context.Context, standby bool) error {
 	// Create the policy store
 	var err error
 	sysView := &dynamicSystemView{core: c}
-	c.policyStore, err = policy.NewStore(ctx, c, c.systemBarrierView, sysView, c.WithBaseLogger("policy"))
+	c.policyStore, err = policy.NewStore(ctx, c, c.systemBarrierView, sysView, c.WithLogger("policy"))
 	if err != nil {
 		return err
 	}

@@ -263,7 +263,7 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 func (c *Core) setupNamespaceStore(ctx context.Context) error {
 	// Create the Namespace store
 	var err error
-	nsLogger := c.WithBaseLogger("namespace")
+	nsLogger := c.WithLogger("namespace")
 	c.namespaceStore, err = NewNamespaceStore(ctx, c, nsLogger)
 	return err
 }

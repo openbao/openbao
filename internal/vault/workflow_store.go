@@ -108,7 +108,7 @@ func NewWorkflowStore(c *Core) *WorkflowStore {
 	return &WorkflowStore{
 		core:        c,
 		modifyLocks: locksutil.CreateLocks(),
-		logger:      c.WithBaseLogger("workflow"),
+		logger:      c.WithLogger("workflow"),
 	}
 }
 

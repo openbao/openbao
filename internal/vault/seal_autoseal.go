@@ -101,7 +101,7 @@ func (d *autoSeal) checkCore() error {
 func (d *autoSeal) SetCore(core *Core) {
 	d.core = core
 	if d.logger == nil {
-		d.logger = d.core.WithNamedLogger("autoseal")
+		d.logger = d.core.WithLogger("autoseal")
 	}
 
 	// By default, we assume that seal config information is stored in

@@ -51,23 +51,10 @@ func (c *Core) NewInvalidationPeers() {
 	logger := c.logger.Named("grpc-invalidation")
 	c.AddLogger(logger)
 
-	c.connectedInvalidationPeers = &invalidationPeers{
+	i := &invalidationPeers{
 		core:   c,
 		logger: logger,
 	}
-}
-
-func (c *Core) SetupInvalidationPeers() {
-	c.connectedInvalidationPeers.Setup()
-}
-
-func (c *Core) LocalGRPCDispatching() {
-	c.connectedInvalidationPeers.SetupStandby()
-}
-
-func (i *invalidationPeers) Setup() {
-	i.l.Lock()
-	defer i.l.Unlock()
 
 	i.peers = zcache.New[string, *invalidationPeerInfo](16*i.core.clusterHeartbeatInterval, 1*time.Second)
 	i.peers.OnEvicted(func(uuid string, peer *invalidationPeerInfo) {
@@ -75,31 +62,21 @@ func (i *invalidationPeers) Setup() {
 		close(peer.stopCh)
 	})
 
-	if i.dispatcher != nil {
-		i.dispatcher.Stop()
-		i.dispatcher = nil
-	}
-
-	i.dispatcher = fairshare.NewJobManager("active-grpc-invalidation", 2+32, i.logger, i.core.metricSink)
+	i.dispatcher = fairshare.NewJobManager("grpc-invalidation", 2+32, i.logger, i.core.metricSink)
 	i.dispatcher.Start()
 
+	c.connectedInvalidationPeers = i
+}
+
+func (c *Core) SetupInvalidationPeers() {
+	c.connectedInvalidationPeers.Setup()
+}
+
+func (i *invalidationPeers) Setup() {
 	i.dispatcher.AddJob(&pingInvalidationJob{
 		peers: i,
 		ctx:   i.core.activeContext.Load(),
 	}, "ping")
-}
-
-func (i *invalidationPeers) SetupStandby() {
-	i.l.Lock()
-	defer i.l.Unlock()
-
-	if i.dispatcher != nil {
-		i.dispatcher.Stop()
-		i.dispatcher = nil
-	}
-
-	i.dispatcher = fairshare.NewJobManager("standby-grpc-invalidation", 2, i.logger, i.core.metricSink)
-	i.dispatcher.Start()
 }
 
 func (c *Core) CleanupInvalidationPeers() {
@@ -110,20 +87,7 @@ func (i *invalidationPeers) Cleanup() {
 	i.l.Lock()
 	defer i.l.Unlock()
 
-	if i.peers != nil {
-		i.peers.DeleteAll()
-	}
-
-	// On active nodes, we want to proactively stop dispatching events in
-	// case we get contacted in the future. On standby nodes, we don't care,
-	// in part because we need the dispatcher to survive pre-seal, and in part
-	// because we call SetupStandby which will clear an old dispatcher anyways.
-	if i.core.Standby() == false && i.dispatcher != nil {
-		i.dispatcher.Stop()
-		i.dispatcher = nil
-	}
-
-	i.peers = nil
+	i.peers.DeleteAll()
 }
 
 // SendInvalidationNotice is used by the GRPCInvalidator mechanism to hook
@@ -160,10 +124,6 @@ func (c *Core) SendInvalidationNotice(keys ...string) {
 func (i *invalidationPeers) SendInvalidation(index string, keys []string) error {
 	i.l.RLock()
 	defer i.l.RUnlock()
-
-	if i.peers == nil || i.dispatcher == nil {
-		return errors.New("core is restarting")
-	}
 
 	var failed []string
 	var retErr error
@@ -287,12 +247,6 @@ func (core *Core) AwaitInvalidation(ctx context.Context, cleanup func(), index s
 
 	i.l.RLock()
 	defer i.l.RUnlock()
-
-	if i.dispatcher == nil {
-		i.logger.Error("skipping invalidation as dispatcher is missing", "index", index, "keys", keys)
-		cleanup()
-		return
-	}
 
 	i.dispatcher.AddJob(&awaitInvalidationJob{
 		scheduled: time.Now(),
@@ -444,10 +398,6 @@ func (p *pingInvalidationJob) queueNotifications() error {
 	p.peers.l.RLock()
 	defer p.peers.l.RUnlock()
 
-	if p.peers.peers == nil || p.peers.dispatcher == nil {
-		return errors.New("core is restarting")
-	}
-
 	for peerUUID := range p.peers.peers.Items() {
 		p.peers.dispatcher.AddJob(&dispatchInvalidationToPeer{
 			scheduled: time.Now(),
@@ -465,12 +415,12 @@ func (p *pingInvalidationJob) requeueJob() {
 	go func() {
 		time.Sleep(1 * time.Second)
 
-		p.peers.l.RLock()
-		defer p.peers.l.RUnlock()
-
-		if p.peers.peers == nil || p.peers.dispatcher == nil {
+		if p.ctx.Err() != nil {
 			return
 		}
+
+		p.peers.l.RLock()
+		defer p.peers.l.RUnlock()
 
 		p.peers.dispatcher.AddJob(&pingInvalidationJob{
 			peers: p.peers,

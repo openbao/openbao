@@ -105,12 +105,10 @@ type WorkflowStore struct {
 }
 
 func NewWorkflowStore(c *Core) *WorkflowStore {
-	logger := c.baseLogger.Named("workflow")
-	c.AddLogger(logger)
 	return &WorkflowStore{
 		core:        c,
 		modifyLocks: locksutil.CreateLocks(),
-		logger:      logger,
+		logger:      c.WithBaseLogger("workflow"),
 	}
 }
 

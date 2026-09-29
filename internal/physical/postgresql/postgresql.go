@@ -489,6 +489,10 @@ func (m *PostgreSQLBackend) List(ctx context.Context, prefix string) ([]string, 
 		keys = append(keys, key)
 	}
 
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return keys, nil
 }
 

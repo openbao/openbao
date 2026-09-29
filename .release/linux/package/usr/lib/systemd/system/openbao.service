@@ -1,6 +1,6 @@
 [Unit]
 Description="OpenBao - A tool for managing secrets"
-Documentation=https://github.com/openbao/openbao/tree/main/website/content/docs
+Documentation=https://openbao.org/docs
 Requires=network-online.target
 After=network-online.target
 ConditionFileNotEmpty=/etc/openbao/openbao.hcl
@@ -16,7 +16,6 @@ ProtectSystem=full
 ProtectHome=read-only
 PrivateTmp=yes
 PrivateDevices=yes
-SecureBits=keep-caps
 CapabilityBoundingSet=CAP_SYSLOG
 NoNewPrivileges=yes
 ExecStart=/usr/bin/bao server -config=/etc/openbao/openbao.hcl

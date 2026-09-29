@@ -188,12 +188,6 @@ func (c *KVSubkeysCommand) Run(args []string) int {
 		return OutputSecret(c.UI, secret)
 	}
 
-	subkeysRaw, ok := secret.Data[subkeysResponseDataField]
-	if !ok || subkeysRaw == nil {
-		c.UI.Error(fmt.Sprintf("No subkeys found at %s", fullPath))
-		return 2
-	}
-
 	if Format(c.UI) != "table" {
 		return OutputSecret(c.UI, secret)
 	}
@@ -208,6 +202,11 @@ func (c *KVSubkeysCommand) Run(args []string) int {
 			return code
 		}
 		c.UI.Info("")
+	}
+
+	subkeysRaw := secret.Data[subkeysResponseDataField]
+	if subkeysRaw == nil {
+		return 0
 	}
 
 	subkeys, ok := subkeysRaw.(map[string]any)

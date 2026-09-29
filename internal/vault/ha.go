@@ -907,7 +907,7 @@ func (c *Core) waitForLeadership(manualStepDown *bool, manualStepDownCh, stopCh 
 		if err := c.setupCluster(activeCtx); err != nil {
 			c.heldHALock = nil
 			if unlockErr := lock.Unlock(); unlockErr != nil {
-				c.logger.Error("error releasing lock", "error", unlockErr)
+				c.logger.Error("error releasing HA lock", "error", unlockErr)
 			}
 			c.stateLock.Unlock()
 			c.logger.Error("cluster setup failed", "error", err)
@@ -948,7 +948,7 @@ func (c *Core) waitForLeadership(manualStepDown *bool, manualStepDownCh, stopCh 
 		c.standby.Store(true)
 		c.logger.Error("post-unseal setup failed", "error", err)
 		if unlockErr := lock.Unlock(); unlockErr != nil {
-			c.logger.Error("error releasing lock", "error", unlockErr)
+			c.logger.Error("error releasing HA lock", "error", unlockErr)
 		}
 		metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
 		return false, true

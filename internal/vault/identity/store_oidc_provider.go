@@ -2135,11 +2135,8 @@ func (i *IdentityStore) authorizationCodeFlow(ctx context.Context, req *logical.
 
 	// Get the authorization code entry and defer its deletion (single use)
 	authCodeEntryRaw, ok, err := i.oidcAuthCodeCache.Get(ns, code)
-	defer func() {
-		if err := i.oidcAuthCodeCache.Delete(ns, code); err != nil {
-			i.Logger().Error("failed to delete OIDC authorization code", "error", err)
-		}
-	}()
+	defer i.oidcAuthCodeCache.Delete(ns, code) //nolint:errcheck
+
 	if err != nil {
 		return tokenResponse(nil, ErrTokenServerError, err.Error())
 	}

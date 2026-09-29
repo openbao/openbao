@@ -341,13 +341,13 @@ func ExerciseBackend_ListPrefix(t testing.TB, b Backend) {
 	e2 := &Entry{Key: "foo/bar", Value: []byte("test")}
 	e3 := &Entry{Key: "foo/bar/baz", Value: []byte("test")}
 
-	defer func() {
-		for _, key := range []string{"foo/bar/baz", "foo/bar", "foo"} {
-			if err := b.Delete(context.Background(), key); err != nil {
-				t.Errorf("failed to clean up key %q: %v", key, err)
+	defer func(entries ...*Entry) {
+		for _, entry := range entries {
+			if err := b.Delete(context.Background(), entry.Key); err != nil {
+				t.Errorf("failed to clean up key %q: %v", entry.Key, err)
 			}
 		}
-	}()
+	}(e3, e2, e1)
 
 	err := b.Put(context.Background(), e1)
 	if err != nil {

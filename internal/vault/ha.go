@@ -1173,9 +1173,6 @@ func (c *Core) setupGRPCStandbyInvalidations(ctx context.Context) (bool, bool) {
 	// reached and the startup is complete.
 	c.invalidations.Track()
 
-	// Start the dispatch manager on the standby nodes.
-	c.LocalGRPCDispatching()
-
 	// Start streaming invalidation events from the primary.
 	if err := client.StreamInvalidations(ctx); err != nil {
 		c.logger.Error("failed to begin streaming invalidations", "err", err)

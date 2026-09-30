@@ -34,8 +34,8 @@ func testHTTPServer(
 }
 
 func init() {
-	os.Unsetenv("BAO_TOKEN")   //nolint:errcheck
-	os.Unsetenv("VAULT_TOKEN") //nolint:errcheck
+	_ = os.Unsetenv("BAO_TOKEN")
+	_ = os.Unsetenv("VAULT_TOKEN")
 }
 
 func TestLogin(t *testing.T) {

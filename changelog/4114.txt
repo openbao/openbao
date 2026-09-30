@@ -1,0 +1,3 @@
+```release-note:bug
+core/listeners: Allow setting a Unix listener's `socket_mode`, `socket_user` and `socket_group` individually without requiring all three to be set.
+```

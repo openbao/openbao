@@ -56,7 +56,7 @@ existing and proposed wrappers to determine the operation:
 - **Different key** (key migration): the root key is decrypted under the old
   wrapper and re-encrypted under the new one before the old wrapper is finalized.
 
-Both operations are synchronous. The namespace remains accessible throughout.(the purpose is to rewrap)
+Both operations are synchronous. The namespace remains accessible throughout.
 
 ### Reading Seal Configuration
 
@@ -64,11 +64,12 @@ Both operations are synchronous. The namespace remains accessible throughout.(th
 | ------ | --------------------------------------- |
 | `GET`  | `/v1/sys/namespaces/<path>/config/seal` |
 
-Returns the `WrapperConfig` output produced by `Wrapper.SetConfig()`, which
-provides provider-supplied configuration metadata. Sensitive fields (credentials,
-tokens, passwords) are omitted by the plugin; non-sensitive fields (provider
-type, endpoint, key identifier) are returned. This is the same mechanism used
-to log root seal configuration at startup.
+Returns the `Metadata` map from the `WrapperConfig` produced by
+`Wrapper.SetConfig()`, which provides provider-supplied configuration metadata.
+Sensitive fields (credentials, tokens, passwords) are omitted by the plugin;
+non-sensitive fields (provider type, endpoint, key identifier) are returned.
+This is the same mechanism used to produce the seal information table printed
+at server startup.
 
 This endpoint is distinct from `seal-status`, which reports runtime
 sealed/unsealed state. The response intentionally omits credentials and key
@@ -98,10 +99,8 @@ tracked in https://github.com/openbao/openbao/issues/3333.
 ### Failure Conditions
 
 If the KMS provider is unreachable, the namespace remains sealed until
-connectivity is restored. ~Retry is triggered by calling the namespace unseal
-endpoint again. The [Emergency Seal](emergency-seal.mdx) and
-
-#### [Parallel Unseal](parallel-unseal.mdx) RFCs address persistent failure recovery.~
+connectivity is restored. The [Emergency Seal](emergency-seal.mdx) and
+[Parallel Unseal](parallel-unseal.mdx) RFCs address persistent failure recovery.
 
 
 
@@ -160,11 +159,12 @@ sm.sealByNamespace[ns.UUID] = nsSeal
 
 ### Configuration Metadata (GET /config/seal)
 
-`Wrapper.SetConfig()` returns a `wrapping.WrapperConfig` whose fields are
-chosen by the plugin author to exclude sensitive material. OpenBao already
-uses this output to log root seal configuration at startup (`seal_manager.go`).
-The GET endpoint returns the same struct, requiring no additional redaction
-logic in core and no changes to `go-kms-wrapping`.
+`Wrapper.SetConfig()` returns a `wrapping.WrapperConfig`; the GET endpoint
+exposes its `Metadata` map, whose entries are chosen by the plugin author to
+exclude sensitive material. OpenBao already uses this output to produce the
+seal information table printed at server startup (`seal_manager.go`). The GET
+endpoint returns the same map, requiring no additional redaction logic in core
+and no changes to `go-kms-wrapping`.
 
 ### Seal Type Migration (POST /migrate-seal)
 
@@ -193,7 +193,9 @@ and stored under the new seal via `SetStoredKeys`.
 
 The operation is synchronous. The amount of data written is constant: at most
 three storage entries regardless of namespace size. A migration flag written
-before finalizing the old seal allows crash recovery on restart.
+before finalizing the old seal allows crash recovery on restart. Both the old
+and the new seal must remain reachable until the migration flag is cleared; the
+old seal must not be decommissioned before that point.
 
 ```go
 func (sm *SealManager) MigrateBarrierKey(
@@ -304,25 +306,14 @@ mechanism protecting the namespace, warranting explicit operator intent.
 `WrapperConfig` from `Wrapper.SetConfig()` is preferred for the GET metadata
 response over the external-key mechanism in
 https://github.com/openbao/openbao/pull/3605 because it requires no changes to
-`go-kms-wrapping` and reuses an output already present in root seal log output.
+`go-kms-wrapping` and reuses the output already used for the seal information table printed at server startup.
 The tradeoff is that metadata completeness depends on plugin authors; a
 misconfigured plugin could expose sensitive fields.
 
 ## Downsides
 
-The following are operational notes rather than design downsides:
-
-Key migration via `PUT /config/seal` and seal type migration via
-`POST /migrate-seal` are synchronous. Both operations re-encrypt only the
-stored namespace root key entry; the barrier keyring and all namespace storage
-are untouched. The amount of data written is constant regardless of namespace
-size, so asynchronous execution is unnecessary. Both operations do introduce a
-window during which both the old and new seal must remain reachable; the old
-seal must not be decommissioned until the migration flag is cleared.
-
-Each seal configuration change triggers invalidation across all cluster nodes
-(`buildInvalidateJobForKey` in `invalidation.go`). This is consistent with
-how other configuration changes are handled in a clustered deployment.
+No significant design downsides have been identified. Operational considerations
+are noted inline in the Technical Description sections above.
 
 ## Unresolved Questions
 
@@ -331,9 +322,14 @@ temporarily unreachable), how is the retry scheduled? Manual retry via the
 unseal endpoint is always possible, but an automatic retry with backoff may be
 preferable.
 
-**Recovery key retrieval.** When an Auto Seal-protected namespace is initialized,
-recovery keys are generated and must be distributed to key holders, as they are
-the only mechanism to recover access if the KMS becomes permanently unavailable.
+**Recovery key generation for Auto Seal namespaces.** For Shamir-sealed
+namespaces, `InitializeBarrier` already generates and returns key shares. For
+Auto Seal-protected namespaces, the current PoC does not generate recovery key
+shares at creation time. Mirroring the global Auto Seal behavior, shares should
+be generated and distributed to key holders to authorize future seal migration
+operations (for example, migrating to Shamir if the KMS is decommissioned).
+Recovery key shares do not provide a direct unseal path if the KMS is
+permanently unavailable; Emergency Seal and Parallel Unseal address that case.
 
 ## Related Issues
 

@@ -106,9 +106,7 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 	coreLogger := logging.NewVaultLogger(log.Trace)
 
 	inmha, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	conf := &vault.CoreConfig{
 		Physical:     inmha,
 		HAPhysical:   inmha.(physical.HABackend),
@@ -116,9 +114,7 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 		Logger:       coreLogger.Named("active"),
 	}
 	core1, err := vault.NewCore(conf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer core1.Shutdown()
 	keys, root := vault.TestCoreInit(t, core1)
 	for _, key := range keys {
@@ -139,9 +135,7 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 		Logger:       coreLogger.Named("standby"),
 	}
 	core2, err := vault.NewCore(conf2)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer core2.Shutdown()
 	for _, key := range keys {
 		if _, err := core2.Unseal(vault.TestKeyCopy(key)); err != nil {
@@ -328,9 +322,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
 	lreq, status, err := buildLogicalRequest(core, nil, req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if status != 0 {
 		t.Fatalf("got status %d", status)
 	}
@@ -343,9 +335,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
 	lreq, status, err = buildLogicalRequest(core, nil, req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if status != 0 {
 		t.Fatalf("got status %d", status)
 	}
@@ -363,9 +353,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 	}
 
 	lreq, status, err = buildLogicalRequest(core, nil, req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if status != 0 {
 		t.Fatalf("got status %d", status)
 	}
@@ -434,9 +422,7 @@ func TestLogical_ListWithQueryParameters(t *testing.T) {
 			req.Header.Add(consts.AuthHeaderName, rootToken)
 
 			lreq, status, err := buildLogicalRequest(core, nil, req)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if status != 0 {
 				t.Fatalf("got status %d", status)
 			}
@@ -460,9 +446,7 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
 	lreq, status, err := buildLogicalRequest(core, nil, req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if status != 0 {
 		t.Fatalf("got status %d", status)
 	}
@@ -475,9 +459,7 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
 	lreq, status, err = buildLogicalRequest(core, nil, req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if status != 0 {
 		t.Fatalf("got status %d", status)
 	}
@@ -495,9 +477,7 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	}
 
 	lreq, status, err = buildLogicalRequest(core, nil, req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if status != 0 {
 		t.Fatalf("got status %d", status)
 	}
@@ -566,9 +546,7 @@ func TestLogical_ScanWithQueryParameters(t *testing.T) {
 			req.Header.Add(consts.AuthHeaderName, rootToken)
 
 			lreq, status, err := buildLogicalRequest(core, nil, req)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if status != 0 {
 				t.Fatalf("got status %d", status)
 			}
@@ -593,9 +571,7 @@ func TestLogical_RespondWithStatusCode(t *testing.T) {
 	}
 
 	resp404, err := logical.RespondWithStatusCode(resp, &logical.Request{ID: "id"}, http.StatusNotFound)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	w := httptest.NewRecorder()
 	respondLogical(nil, w, nil, nil, resp404, false)
@@ -605,9 +581,7 @@ func TestLogical_RespondWithStatusCode(t *testing.T) {
 	}
 
 	bodyRaw, err := io.ReadAll(w.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := `{"request_id":"id","lease_id":"","renewable":false,"lease_duration":0,"data":{"test-data":"foo"},"wrap_info":null,"warnings":null,"auth":null}`
 
@@ -756,9 +730,7 @@ func TestLogical_AuditPort(t *testing.T) {
 	}
 
 	auditLogFile, err := os.CreateTemp("", "auditport")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = c.Sys().EnableAuditWithOptions("file", &api.EnableAuditOptions{
 		Type: "file",
@@ -766,9 +738,7 @@ func TestLogical_AuditPort(t *testing.T) {
 			"file_path": auditLogFile.Name(),
 		},
 	})
-	if err != nil {
-		t.Fatalf("failed to enable audit file, err: %#v\n", err)
-	}
+	require.NoError(t, err)
 
 	writeData := map[string]any{
 		"data": map[string]any{
@@ -875,9 +845,7 @@ func TestLogical_AuditEnabled_ShouldLogPluginMetadata_Auth(t *testing.T) {
 	// Enable the audit backend
 	tempDir := t.TempDir()
 	auditLogFile, err := os.CreateTemp(tempDir, "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = c.Sys().EnableAuditWithOptions("file", &api.EnableAuditOptions{
 		Type: "file",
@@ -885,16 +853,12 @@ func TestLogical_AuditEnabled_ShouldLogPluginMetadata_Auth(t *testing.T) {
 			"file_path": auditLogFile.Name(),
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = c.Logical().Write("auth/token/create", map[string]any{
 		"ttl": "10s",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Check the audit trail on request and response
 	decoder := json.NewDecoder(auditLogFile)
@@ -957,9 +921,7 @@ func TestLogical_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T) {
 	// Enable the audit backend
 	tempDir := t.TempDir()
 	auditLogFile, err := os.CreateTemp(tempDir, "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = c.Sys().EnableAuditWithOptions("file", &api.EnableAuditOptions{
 		Type: "file",
@@ -967,9 +929,7 @@ func TestLogical_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T) {
 			"file_path": auditLogFile.Name(),
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	{
 		writeData := map[string]any{
@@ -979,9 +939,7 @@ func TestLogical_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T) {
 		}
 		corehelpers.RetryUntil(t, 10*time.Second, func() error {
 			resp, err := c.Logical().Write("kv/data/foo", writeData)
-			if err != nil {
-				t.Fatalf("write request failed, err: %#v, resp: %#v\n", err, resp)
-			}
+			require.NoErrorf(t, err, "write request failed, err: %#v, resp: %#v\n", err, resp)
 			return nil
 		})
 	}

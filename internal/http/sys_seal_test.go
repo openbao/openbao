@@ -31,9 +31,7 @@ func TestSysSealStatus(t *testing.T) {
 	defer ln.Close()
 
 	resp, err := http.Get(addr + "/v1/sys/seal-status")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	var actual map[string]any
 	expected := map[string]any{
@@ -75,9 +73,7 @@ func TestSysSealStatus_uninit(t *testing.T) {
 	defer ln.Close()
 
 	resp, err := http.Get(addr + "/v1/sys/seal-status")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	testResponseStatus(t, resp, 200)
 }
 
@@ -176,9 +172,7 @@ func subtestBadSingleKey(t *testing.T, seal vault.Seal) {
 			SecretThreshold: 1,
 		},
 	})
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	ln, addr := TestServer(t, core)
 	defer ln.Close()
@@ -261,9 +255,7 @@ func subtestBadMultiKey(t *testing.T, seal vault.Seal) {
 			SecretThreshold: numKeys,
 		},
 	})
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	ln, addr := TestServer(t, core)
 	defer ln.Close()
 
@@ -457,9 +449,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 		ClientToken: root,
 	}
 	resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.IsError() {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -472,9 +462,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 	}
 
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v %v", err, resp)
-	}
+	require.NoErrorf(t, err, "err: %v %v", err, resp)
 	if resp.Auth.ClientToken != "child" {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -495,9 +483,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 		ClientToken: root,
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.IsError() {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -516,9 +502,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 		ClientToken: root,
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.IsError() {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -537,9 +521,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 		ClientToken: root,
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil || resp.IsError() {
 		t.Fatalf("bad: %#v", resp)
 	}

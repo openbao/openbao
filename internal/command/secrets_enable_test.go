@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/v2/internal/helper/builtinplugins"
+	"github.com/stretchr/testify/require"
 )
 
 // logicalBackendAdjustmentFactor is set to plus 1 for the database backend
@@ -129,9 +130,7 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 		}
 
 		mounts, err := client.Sys().ListMounts()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		mountInfo, ok := mounts["mount_integration/"]
 		if !ok {
@@ -203,9 +202,7 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 		defer closer()
 
 		files, err := os.ReadDir("../builtin/logical")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		var backends []string
 		for _, f := range files {
@@ -222,9 +219,7 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 		}
 
 		modFile, err := os.ReadFile("../../go.mod")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		modLines := strings.SplitSeq(string(modFile), "\n")
 		for p := range modLines {
 			splitLine := strings.Split(strings.TrimSpace(p), " ")

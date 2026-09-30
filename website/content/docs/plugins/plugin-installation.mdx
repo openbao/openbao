@@ -59,8 +59,8 @@ Steps to install the plugin:
 1. Obtain the SHA-256 digest for your plugin binary, for example, from the
   [openbao-plugins](https://github.com/openbao/openbao-plugins/releases)
   releases page.
-1. Define a [`plugin` stanza](../configuration/plugins.mdx) with `image` and
-   `sha256sum` fields.
+1. Define a [`plugin` stanza](../configuration/plugins.mdx) with the `image`
+   field set and pinned by digest.
 1. Trigger OpenBao to download the artifact. You have two options:
    1. Run [`bao plugin init`](../commands/plugin/init.mdx), or
    1. Enable auto-download in the config file. Then restart OpenBao or send a SIGHUP.

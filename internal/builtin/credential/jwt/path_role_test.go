@@ -16,6 +16,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
@@ -32,9 +33,7 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 		StorageView: &logical.InmemStorage{},
 	}
 	b, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatalf("unable to create backend: %v", err)
-	}
+	require.NoError(t, err)
 
 	return b, config.StorageView
 }
@@ -60,9 +59,7 @@ func TestPath_Create(t *testing.T) {
 		}
 
 		expectedSockAddr, err := sockaddr.NewSockAddr("127.0.0.1/8")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		expected := &jwtRole{
 			TokenParams: tokenutil.TokenParams{
@@ -106,9 +103,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
 		actual, err := b.(*jwtAuthBackend).role(t.Context(), storage, "plugin-test")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if !reflect.DeepEqual(expected, actual) {
 			t.Fatalf("Unexpected role data: expected %#v\n got %#v\n", expected, actual)
@@ -129,9 +124,7 @@ func TestPath_Create(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp != nil && !resp.IsError() {
 			t.Fatal("expected error")
 		}
@@ -156,9 +149,7 @@ func TestPath_Create(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp != nil && !resp.IsError() {
 			t.Fatal("expected error")
 		}
@@ -184,9 +175,7 @@ func TestPath_Create(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp != nil && resp.IsError() {
 			t.Fatal("did not expect error")
 		}
@@ -210,9 +199,7 @@ func TestPath_Create(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp != nil && resp.IsError() {
 			t.Fatal("did not expect error")
 		}
@@ -236,9 +223,7 @@ func TestPath_Create(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp != nil && resp.IsError() {
 			t.Fatal("did not expect error")
 		}
@@ -264,9 +249,7 @@ func TestPath_Create(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp != nil && resp.IsError() {
 			t.Fatal("did not expect error")
 		}
@@ -295,17 +278,13 @@ func TestPath_Create(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp != nil && resp.IsError() {
 			t.Fatalf("did not expect error:%s", resp.Error().Error())
 		}
 
 		actual, err := b.(*jwtAuthBackend).role(t.Context(), storage, "test8")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		expectedDuration := "5s"
 		if actual.ExpirationLeeway.String() != expectedDuration {
@@ -344,17 +323,13 @@ func TestPath_Create(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp != nil && resp.IsError() {
 			t.Fatalf("did not expect error:%s", resp.Error().Error())
 		}
 
 		actual, err := b.(*jwtAuthBackend).role(t.Context(), storage, "test9")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if actual.ClockSkewLeeway.Seconds() != 0 {
 			t.Fatalf("clock_skew_leeway - expected: 0, got: %v", actual.ClockSkewLeeway.Seconds())
@@ -390,17 +365,13 @@ func TestPath_Create(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp != nil && resp.IsError() {
 			t.Fatalf("did not expect error:%s", resp.Error().Error())
 		}
 
 		actual, err := b.(*jwtAuthBackend).role(t.Context(), storage, "test9")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if actual.ClockSkewLeeway.Seconds() != -1 {
 			t.Fatalf("clock_skew_leeway - expected: -1, got: %v", actual.ClockSkewLeeway.Seconds())
@@ -437,9 +408,7 @@ func TestPath_Create(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp != nil && !resp.IsError() {
 			t.Fatal("expected error")
 		}
@@ -472,9 +441,7 @@ func TestPath_Create(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp != nil && !resp.IsError() {
 			t.Fatal("expected error")
 		}
@@ -506,9 +473,7 @@ func TestPath_Create(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp != nil && !resp.IsError() {
 			t.Fatal("expected error")
 		}
@@ -594,9 +559,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
 			actual, err := b.(*jwtAuthBackend).role(t.Context(), storage, "plugin-test")
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			if diff := deep.Equal(expected, actual); diff != nil {
 				t.Fatal(diff)
@@ -639,9 +602,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp != nil && !resp.IsError() {
 			t.Fatal("expected error")
 		}
@@ -685,9 +646,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp != nil && !resp.IsError() {
 			t.Fatal("expected error")
 		}
@@ -718,17 +677,13 @@ func TestPath_OIDCCreate(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp != nil && resp.IsError() {
 			t.Fatalf("unexpected error: %s", resp.Error().Error())
 		}
 
 		actual, err := b.(*jwtAuthBackend).role(t.Context(), storage, "test3")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		expectedDuration := "5s"
 		if actual.ExpirationLeeway.String() != expectedDuration {
@@ -850,9 +805,7 @@ func TestPath_Read(t *testing.T) {
 	}
 	delete(role, "role_type")
 	entry, err := logical.StorageEntryJSON(rolePath, role)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if err = req.Storage.Put(t.Context(), entry); err != nil {
 		t.Fatal(err)
@@ -870,9 +823,7 @@ func TestPath_Read(t *testing.T) {
 	}
 	delete(role, "bound_claims_type")
 	entry, err = logical.StorageEntryJSON(rolePath, role)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if err = req.Storage.Put(t.Context(), entry); err != nil {
 		t.Fatal(err)

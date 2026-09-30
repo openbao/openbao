@@ -9,15 +9,14 @@ import (
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
+	"github.com/stretchr/testify/require"
 )
 
 // TestLoadConfigFile_ProxyCache tests loading a config file containing a cache
 // as well as a valid proxy config.
 func TestLoadConfigFile_ProxyCache(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config-cache.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -113,9 +112,7 @@ func TestLoadConfigFile_ProxyCache(t *testing.T) {
 	}
 
 	config, err = LoadConfigFile("./test-fixtures/config-cache-embedded-type.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	expected.Vault.TLSSkipVerifyRaw = any(true)
 
 	config.Prune()

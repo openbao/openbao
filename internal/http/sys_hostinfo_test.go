@@ -9,6 +9,7 @@ import (
 
 	"github.com/openbao/openbao/v2/internal/helper/hostutil"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSysHostInfo(t *testing.T) {
@@ -23,17 +24,13 @@ func TestSysHostInfo(t *testing.T) {
 
 	// Query against the active node, should get host information back
 	secret, err := cores[0].Client.Logical().Read("sys/host-info")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret == nil || secret.Data == nil {
 		t.Fatal("expected data in the response")
 	}
 
 	dataBytes, err := json.Marshal(secret.Data)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	var infoActive hostutil.HostInfo
 	if err := json.Unmarshal(dataBytes, &infoActive); err != nil {
@@ -58,17 +55,13 @@ func TestSysHostInfo(t *testing.T) {
 
 	// Query against a standby, should not error and request should be forwarded to active
 	secret, err = cores[1].Client.Logical().Read("sys/host-info")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret == nil || secret.Data == nil {
 		t.Fatal("expected data in the response")
 	}
 
 	dataBytes, err = json.Marshal(secret.Data)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	var infoStandby hostutil.HostInfo
 	if err := json.Unmarshal(dataBytes, &infoStandby); err != nil {

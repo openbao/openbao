@@ -9,6 +9,7 @@ import (
 
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAuthTokenCreate(t *testing.T) {
@@ -20,17 +21,13 @@ func TestAuthTokenCreate(t *testing.T) {
 	config.Address = addr
 
 	client, err := api.NewClient(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client.SetToken(token)
 
 	secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 		Lease: "1h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Auth.LeaseDuration != 3600 {
 		t.Errorf("expected 1h, got %d", secret.Auth.LeaseDuration)
 	}
@@ -41,9 +38,7 @@ func TestAuthTokenCreate(t *testing.T) {
 	}
 
 	secret, err = client.Auth().Token().Create(renewCreateRequest)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Auth.LeaseDuration != 3600 {
 		t.Errorf("expected 1h, got %d", secret.Auth.LeaseDuration)
 	}
@@ -53,9 +48,7 @@ func TestAuthTokenCreate(t *testing.T) {
 
 	*renewCreateRequest.Renewable = true
 	secret, err = client.Auth().Token().Create(renewCreateRequest)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Auth.LeaseDuration != 3600 {
 		t.Errorf("expected 1h, got %d", secret.Auth.LeaseDuration)
 	}
@@ -69,18 +62,14 @@ func TestAuthTokenCreate(t *testing.T) {
 	}
 
 	secret, err = client.Auth().Token().Create(explicitMaxCreateRequest)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Auth.LeaseDuration != 1800 {
 		t.Errorf("expected 1800 seconds, got %d", secret.Auth.LeaseDuration)
 	}
 
 	explicitMaxCreateRequest.ExplicitMaxTTL = "2h"
 	secret, err = client.Auth().Token().Create(explicitMaxCreateRequest)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Auth.LeaseDuration != 3600 {
 		t.Errorf("expected 3600 seconds, got %d", secret.Auth.LeaseDuration)
 	}
@@ -95,24 +84,18 @@ func TestAuthTokenLookup(t *testing.T) {
 	config.Address = addr
 
 	client, err := api.NewClient(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client.SetToken(token)
 
 	// Create a new token ...
 	secret2, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 		Lease: "1h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// lookup details of this token
 	secret, err := client.Auth().Token().Lookup(secret2.Auth.ClientToken)
-	if err != nil {
-		t.Fatalf("unable to lookup details of token, err = %v", err)
-	}
+	require.NoError(t, err)
 
 	if secret.Data["id"] != secret2.Auth.ClientToken {
 		t.Errorf("Did not get back details about our provided token, id returned=%s", secret.Data["id"])
@@ -128,16 +111,12 @@ func TestAuthTokenLookupSelf(t *testing.T) {
 	config.Address = addr
 
 	client, err := api.NewClient(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client.SetToken(token)
 
 	// you should be able to lookup your own token
 	secret, err := client.Auth().Token().LookupSelf()
-	if err != nil {
-		t.Fatalf("should be allowed to lookup self, err = %v", err)
-	}
+	require.NoError(t, err)
 
 	if secret.Data["id"] != token {
 		t.Errorf("Did not get back details about our own (self) token, id returned=%s", secret.Data["id"])
@@ -156,9 +135,7 @@ func TestAuthTokenRenew(t *testing.T) {
 	config.Address = addr
 
 	client, err := api.NewClient(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client.SetToken(token)
 
 	// The default root token is not renewable, so this should not work
@@ -174,16 +151,12 @@ func TestAuthTokenRenew(t *testing.T) {
 	secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 		Lease: "1h",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client.SetToken(secret.Auth.ClientToken)
 
 	// Now attempt a renew with the new token
 	secret, err = client.Auth().Token().Renew(secret.Auth.ClientToken, 3600)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if secret.Auth.LeaseDuration != 3600 {
 		t.Errorf("expected 1h, got %v", secret.Auth.LeaseDuration)
@@ -195,9 +168,7 @@ func TestAuthTokenRenew(t *testing.T) {
 
 	// Do the same thing with the self variant
 	secret, err = client.Auth().Token().RenewSelf(3600)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if secret.Auth.LeaseDuration != 3600 {
 		t.Errorf("expected 1h, got %v", secret.Auth.LeaseDuration)

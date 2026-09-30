@@ -11,6 +11,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared/auth"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewTokenFileAuthMethodEmptyConfig(t *testing.T) {
@@ -40,9 +41,7 @@ func TestNewTokenFileEmptyFilePath(t *testing.T) {
 func TestNewTokenFileAuthenticate(t *testing.T) {
 	tokenFile, err := os.Create(filepath.Join(t.TempDir(), "token_file"))
 	tokenFileContents := "super-secret-token"
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	tokenFileName := tokenFile.Name()
 	tokenFile.Close() // WriteFile doesn't need it open
 	os.WriteFile(tokenFileName, []byte(tokenFileContents), 0o666)
@@ -55,14 +54,10 @@ func TestNewTokenFileAuthenticate(t *testing.T) {
 			"token_file_path": tokenFileName,
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	path, headers, data, err := am.Authenticate(t.Context(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if path != "auth/token/lookup-self" {
 		t.Fatalf("Incorrect path, was %s", path)
 	}
@@ -78,7 +73,5 @@ func TestNewTokenFileAuthenticate(t *testing.T) {
 	}
 
 	_, err = os.Stat(tokenFileName)
-	if err != nil {
-		t.Fatal("Token file removed")
-	}
+	require.NoError(t, err)
 }

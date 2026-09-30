@@ -19,6 +19,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 // Tests the regression in
@@ -53,9 +54,7 @@ func TestKVv2_UpgradePaths(t *testing.T) {
 	err := client.Sys().Mount("kv", &api.MountInput{
 		Type: "kv-v2",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	cluster.EnsureCoresSealed(t)
 
@@ -64,20 +63,14 @@ func TestKVv2_UpgradePaths(t *testing.T) {
 	// Delete the policy from storage, to trigger the clean slate necessary for
 	// the error
 	mounts, err := core.UnderlyingRawStorage.List(ctx, "logical/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	kvMount := mounts[0]
 	basePaths, err := core.UnderlyingRawStorage.List(ctx, "logical/"+kvMount)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	basePath := basePaths[0]
 
 	beforeList, err := core.UnderlyingRawStorage.List(ctx, "logical/"+kvMount+basePath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	t.Log(pretty.Sprint(beforeList))
 
 	// Delete policy/archive
@@ -89,9 +82,7 @@ func TestKVv2_UpgradePaths(t *testing.T) {
 	}
 
 	afterList, err := core.UnderlyingRawStorage.List(ctx, "logical/"+kvMount+basePath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	t.Log(pretty.Sprint(afterList))
 
 	testhelpers.EnsureCoresUnsealed(t, cluster)

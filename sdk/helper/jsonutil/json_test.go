@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/helper/compressutil"
+	"github.com/stretchr/testify/require"
 )
 
 func TestJSONUtil_CompressDecompressJSON(t *testing.T) {
@@ -22,9 +23,7 @@ func TestJSONUtil_CompressDecompressJSON(t *testing.T) {
 
 	// Compress an object
 	compressedBytes, err := EncodeJSONAndCompress(expected, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(compressedBytes) == 0 {
 		t.Fatal("expected compressed data")
 	}
@@ -64,9 +63,7 @@ func TestJSONUtil_CompressDecompressJSON(t *testing.T) {
 		Type:                 compressutil.CompressionTypeGzip,
 		GzipCompressionLevel: gzip.BestSpeed,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(compressedBytes) == 0 {
 		t.Fatal("expected compressed data")
 	}
@@ -93,9 +90,7 @@ func TestJSONUtil_EncodeJSON(t *testing.T) {
 	}
 
 	actualBytes, err := EncodeJSON(input)
-	if err != nil {
-		t.Fatalf("failed to encode JSON: %v", err)
-	}
+	require.NoError(t, err)
 
 	actual := strings.TrimSpace(string(actualBytes))
 	expected := `{"test":"data","validation":"process"}`

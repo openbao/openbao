@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/cli"
+	"github.com/stretchr/testify/require"
 )
 
 func testPolicyFmtCommand(tb testing.TB) (*cli.MockUi, *PolicyFmtCommand) {
@@ -82,9 +83,7 @@ path "secret" {
 `)
 
 		f, err := os.CreateTemp("", "")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer os.Remove(f.Name())
 		if _, err := f.Write([]byte(policy)); err != nil {
 			t.Fatal(err)
@@ -111,9 +110,7 @@ path "secret" {
 `) + "\n"
 
 		contents, err := os.ReadFile(f.Name())
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if string(contents) != expected {
 			t.Errorf("expected %q to be %q", string(contents), expected)
 		}
@@ -125,9 +122,7 @@ path "secret" {
 		policy := `dafdaf`
 
 		f, err := os.CreateTemp("", "")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer os.Remove(f.Name())
 		if _, err := f.Write([]byte(policy)); err != nil {
 			t.Fatal(err)
@@ -160,9 +155,7 @@ path "secret" {
 		policy := `banana "foo" {}`
 
 		f, err := os.CreateTemp("", "")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer os.Remove(f.Name())
 		if _, err := f.Write([]byte(policy)); err != nil {
 			t.Fatal(err)
@@ -195,9 +188,7 @@ path "secret" {
 		policy := `path "secret/" { capabilities = ["bogus"] }`
 
 		f, err := os.CreateTemp("", "")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer os.Remove(f.Name())
 		if _, err := f.Write([]byte(policy)); err != nil {
 			t.Fatal(err)

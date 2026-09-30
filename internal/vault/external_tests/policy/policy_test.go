@@ -237,9 +237,7 @@ func TestPolicy_TokenRenewal(t *testing.T) {
 			err := client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
 				Type: "userpass",
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			// Add a user to userpass backend
 			data := map[string]any{
@@ -249,25 +247,19 @@ func TestPolicy_TokenRenewal(t *testing.T) {
 				data["token_policies"] = tc.tokenPolicies
 			}
 			_, err = client.Logical().Write("auth/userpass/users/testuser", data)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			// Set up entity if we're testing against an identity_policies
 			if len(tc.identityPolicies) > 0 {
 				auths, err := client.Sys().ListAuth()
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				userpassAccessor := auths["userpass/"].Accessor
 
 				resp, err := client.Logical().Write("identity/entity", map[string]any{
 					"name":     "test-entity",
 					"policies": tc.identityPolicies,
 				})
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				entityID := resp.Data["id"].(string)
 
 				// Create an alias
@@ -276,18 +268,14 @@ func TestPolicy_TokenRenewal(t *testing.T) {
 					"mount_accessor": userpassAccessor,
 					"canonical_id":   entityID,
 				})
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 			}
 
 			// Authenticate
 			secret, err := client.Logical().Write("auth/userpass/login/testuser", map[string]any{
 				"password": "testpassword",
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			clientToken := secret.Auth.ClientToken
 
 			// Verify the policies exist in the login response
@@ -309,9 +297,7 @@ func TestPolicy_TokenRenewal(t *testing.T) {
 			secret, err = client.Logical().Write("auth/token/renew", map[string]any{
 				"token": clientToken,
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			// Verify the policies exist in the renewal response
 			if !strutil.EquivalentSlices(secret.Auth.TokenPolicies, expectedTokenPolicies) {

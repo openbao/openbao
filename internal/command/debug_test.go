@@ -21,6 +21,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 func testDebugCommand(tb testing.TB) (*cli.MockUi, *DebugCommand) {
@@ -174,15 +175,11 @@ func TestDebugCommand_Archive(t *testing.T) {
 			}
 
 			input, err := os.Open(bundlePath)
-			if err != nil {
-				t.Fatalf("failed opening file for reading: %v", err)
-			}
+			require.NoError(t, err)
 			defer input.Close()
 
 			gunzipped, err := gzip.NewReader(input)
-			if err != nil {
-				t.Fatalf("failed reading gzip header: %v", err)
-			}
+			require.NoError(t, err)
 			defer gunzipped.Close()
 
 			unarchived := tar.NewReader(gunzipped)
@@ -284,20 +281,14 @@ func TestDebugCommand_CaptureTargets(t *testing.T) {
 
 			bundlePath := filepath.Join(testDir, basePath+debugCompressionExt)
 			_, err := os.Open(bundlePath)
-			if err != nil {
-				t.Fatalf("failed to open archive: %s", err)
-			}
+			require.NoError(t, err)
 
 			input, err := os.Open(bundlePath)
-			if err != nil {
-				t.Fatalf("failed opening file for reading: %v", err)
-			}
+			require.NoError(t, err)
 			defer input.Close()
 
 			gunzipped, err := gzip.NewReader(input)
-			if err != nil {
-				t.Fatalf("failed reading gzip header: %v", err)
-			}
+			require.NoError(t, err)
 			defer gunzipped.Close()
 
 			unarchived := tar.NewReader(gunzipped)
@@ -420,9 +411,7 @@ func TestDebugCommand_IndexFile(t *testing.T) {
 	}
 
 	content, err := os.ReadFile(filepath.Join(outputPath, "index.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	index := &debugIndex{}
 	if err := json.Unmarshal(content, index); err != nil {
@@ -537,9 +526,7 @@ func TestDebugCommand_NoConnection(t *testing.T) {
 	t.Parallel()
 
 	client, err := api.NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if err := client.SetAddress(""); err != nil {
 		t.Fatal(err)
@@ -602,14 +589,10 @@ func TestDebugCommand_OutputExists(t *testing.T) {
 			// Create a conflicting file/directory
 			if tc.compress {
 				_, err = os.Create(outputPath)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 			} else {
 				err = os.Mkdir(outputPath, 0o700)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 			}
 
 			args := []string{
@@ -647,9 +630,7 @@ func TestDebugCommand_PartialPermissions(t *testing.T) {
 	resp, err := client.Logical().Write("auth/token/create", map[string]any{
 		"policies": "default",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	client.SetToken(resp.Auth.ClientToken)
 
@@ -671,20 +652,14 @@ func TestDebugCommand_PartialPermissions(t *testing.T) {
 
 	bundlePath := filepath.Join(testDir, basePath+debugCompressionExt)
 	_, err = os.Open(bundlePath)
-	if err != nil {
-		t.Fatalf("failed to open archive: %s", err)
-	}
+	require.NoError(t, err)
 
 	input, err := os.Open(bundlePath)
-	if err != nil {
-		t.Fatalf("failed opening file for reading: %v", err)
-	}
+	require.NoError(t, err)
 	defer input.Close()
 
 	gunzipped, err := gzip.NewReader(input)
-	if err != nil {
-		t.Fatalf("failed reading gzip header: %v", err)
-	}
+	require.NoError(t, err)
 	defer gunzipped.Close()
 
 	unarchived := tar.NewReader(gunzipped)
@@ -789,23 +764,17 @@ func TestDebugCommand_InsecureUmask(t *testing.T) {
 			}
 			// check permissions of the parent debug directory
 			err = isValidFilePermissions(stat.Mode(), stat.Name())
-			if err != nil {
-				t.Fatal(err.Error())
-			}
+			require.NoError(t, err)
 
 			// check permissions of the files within the parent directory
 			switch tc.compress {
 			case true:
 				input, err := os.Open(bundlePath)
-				if err != nil {
-					t.Fatalf("failed opening file for reading: %v", err)
-				}
+				require.NoError(t, err)
 				defer input.Close()
 
 				gunzipped, err := gzip.NewReader(input)
-				if err != nil {
-					t.Fatalf("failed reading gzip header: %v", err)
-				}
+				require.NoError(t, err)
 				defer gunzipped.Close()
 
 				unarchived := tar.NewReader(gunzipped)
@@ -825,16 +794,12 @@ func TestDebugCommand_InsecureUmask(t *testing.T) {
 			case false:
 				err = filepath.Walk(bundlePath, func(path string, info os.FileInfo, _ error) error {
 					err := isValidFilePermissions(info.Mode(), info.Name())
-					if err != nil {
-						t.Fatal(err.Error())
-					}
+					require.NoError(t, err)
 					return nil
 				})
 			}
 
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		})
 	}
 }

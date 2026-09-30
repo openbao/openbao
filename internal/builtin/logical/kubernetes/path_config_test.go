@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/fileutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -20,16 +21,12 @@ const (
 
 func setupLocalFiles(t *testing.T, b logical.Backend) func() {
 	cert, err := os.CreateTemp("", "ca.crt")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cert.WriteString(testLocalCACert)
 	cert.Close()
 
 	token, err := os.CreateTemp("", "token")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	token.WriteString(testLocalJWT)
 	token.Close()
 	b.(*backend).localCACertReader = fileutil.NewCachingFileReader(cert.Name(), caReloadPeriod)
@@ -159,9 +156,7 @@ func Test_configWithDynamicValues(t *testing.T) {
 			}
 
 			conf, err := b.configWithDynamicValues(t.Context(), storage)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			assert.Equal(t, tc.expected, conf, "expected kubeconfig did not match the return from configWithDynamicValues()")
 

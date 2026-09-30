@@ -12,6 +12,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
+	"github.com/stretchr/testify/require"
 
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers"
@@ -44,9 +45,7 @@ func TestMountTableMetrics(t *testing.T) {
 	// Verify that the nonlocal logical mount table has 3 entries -- cubbyhole, identity, and kv
 
 	data, err := testhelpers.SysMetricsReq(client, cluster, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	nonlocalLogicalMountsize, err := gaugeSearchHelper(data, 3)
 	if err != nil {
@@ -68,9 +67,7 @@ func TestMountTableMetrics(t *testing.T) {
 	}
 
 	data, err = testhelpers.SysMetricsReq(client, cluster, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Notably, the gauge only reports the size of the new table entry; it
 	// does not report the total size on a transactional storage backend.
@@ -142,13 +139,9 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 	r := client.NewRequest("GET", "/v1/sys/metrics")
 	r.Headers.Set(consts.AuthHeaderName, cluster.RootToken)
 	respo, err := client.RawRequest(r)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	bodyBytes, err := io.ReadAll(respo.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if respo != nil {
 		defer respo.Body.Close() //nolint:errcheck
 	}
@@ -177,22 +170,16 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 	}
 
 	err = client.Sys().StepDown()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// Wait for core to become active
 	vault.TestWaitActive(t, cores[1].Core)
 
 	r = standbyClient.NewRequest("GET", "/v1/sys/metrics")
 	r.Headers.Set(consts.AuthHeaderName, cluster.RootToken)
 	respo, err = standbyClient.RawRequest(r)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	bodyBytes, err = io.ReadAll(respo.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if err := json.Unmarshal(bodyBytes, &data); err != nil {
 		t.Fatal("failed to unmarshal:", err)
 	} else {

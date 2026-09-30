@@ -686,6 +686,7 @@ func TestCertStorageMetrics(t *testing.T) {
 
 	// backendUUID should exist, we need this for metrics
 	backendUUID = tidyStatus.Data["internal_backend_uuid"].(string)
+	require.NotEmpty(t, backendUUID)
 	// "current_cert_store_count", "current_revoked_cert_count"
 	certStoreCount, ok := tidyStatus.Data["current_cert_store_count"]
 	require.True(t, ok, "Certificate counting has been turned on, but current cert store count does not appear in tidy status")

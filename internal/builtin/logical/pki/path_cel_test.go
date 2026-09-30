@@ -224,9 +224,7 @@ func TestCRUDCelRoles(t *testing.T) {
 	}
 
 	_, err = b.HandleRequest(t.Context(), roleReqDel)
-	if err != nil {
-		t.Fatalf("bad: err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify deletion by listing remaining CEL roles
 	listResp, err = b.HandleRequest(t.Context(), &logical.Request{

@@ -4,12 +4,15 @@
  */
 
 import Route from '@ember/routing/route';
+import { inject as service } from '@ember/service';
 
 export default Route.extend({
+  router: service(),
+
   beforeModel: function (transition) {
     if (transition.targetName === this.routeName) {
       transition.abort();
-      return this.replaceWith('vault.cluster.settings.mount-secret-backend');
+      return this.router.replaceWith('vault.cluster.settings.mount-secret-backend');
     }
   },
 });

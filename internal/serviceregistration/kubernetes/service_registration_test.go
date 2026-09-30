@@ -13,6 +13,7 @@ import (
 	sr "github.com/openbao/openbao/v2/internal/serviceregistration"
 	"github.com/openbao/openbao/v2/internal/serviceregistration/kubernetes/client"
 	kubetest "github.com/openbao/openbao/v2/internal/serviceregistration/kubernetes/testing"
+	"github.com/stretchr/testify/require"
 )
 
 var testVersion = "version1"
@@ -48,9 +49,7 @@ func TestServiceRegistration(t *testing.T) {
 		IsPerformanceStandby: true,
 	}
 	reg, err := NewServiceRegistration(config, logger, state)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if err := reg.Run(shutdownCh, &sync.WaitGroup{}, ""); err != nil {
 		t.Fatal(err)
 	}

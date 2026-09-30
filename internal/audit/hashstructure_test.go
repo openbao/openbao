@@ -34,9 +34,7 @@ func TestCopy_auth(t *testing.T) {
 
 	// Copy it
 	dup, err := copystructure.Copy(&auth)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Check equality
 	auth2 := dup.(*logical.Auth)
@@ -59,9 +57,7 @@ func TestCopy_request(t *testing.T) {
 
 	// Copy it
 	dup, err := copystructure.Copy(&arg)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Check equality
 	arg2 := dup.(*logical.Request)
@@ -87,9 +83,7 @@ func TestCopy_response(t *testing.T) {
 
 	// Copy it
 	dup, err := copystructure.Copy(&arg)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Check equality
 	arg2 := dup.(*logical.Response)
@@ -104,16 +98,12 @@ func TestHashString(t *testing.T) {
 		Key:   "salt",
 		Value: []byte("foo"),
 	})
-	if err != nil {
-		t.Fatalf("Error storing salt: %s", err)
-	}
+	require.NoError(t, err)
 	localSalt, err := salt.NewSalt(t.Context(), inmemStorage, &salt.Config{
 		HMAC:     sha256.New,
 		HMACType: "hmac-sha256",
 	})
-	if err != nil {
-		t.Fatalf("Error instantiating salt: %s", err)
-	}
+	require.NoError(t, err)
 	out := HashString(localSalt, "foo")
 	if out != "hmac-sha256:08ba357e274f528065766c770a639abf6809b39ccfd37c2a3157c7f51954da0a" {
 		t.Fatal("err: HashString output did not match expected")
@@ -155,22 +145,16 @@ func TestHashAuth(t *testing.T) {
 		Key:   "salt",
 		Value: []byte("foo"),
 	})
-	if err != nil {
-		t.Fatalf("Error storing salt: %s", err)
-	}
+	require.NoError(t, err)
 	localSalt, err := salt.NewSalt(t.Context(), inmemStorage, &salt.Config{
 		HMAC:     sha256.New,
 		HMACType: "hmac-sha256",
 	})
-	if err != nil {
-		t.Fatalf("Error instantiating salt: %s", err)
-	}
+	require.NoError(t, err)
 	for _, tc := range cases {
 		input := fmt.Sprintf("%#v", tc.Input)
 		out, err := HashAuth(localSalt, tc.Input, tc.HMACAccessor)
-		if err != nil {
-			t.Fatalf("err: %s\n\n%s", err, input)
-		}
+		require.NoErrorf(t, err, "err: %s\n\n%s", err, input)
 		if !reflect.DeepEqual(out, tc.Output) {
 			t.Fatalf("bad:\nInput:\n%s\nOutput:\n%#v\nExpected output:\n%#v", input, out, tc.Output)
 		}
@@ -220,22 +204,16 @@ func TestHashRequest(t *testing.T) {
 		Key:   "salt",
 		Value: []byte("foo"),
 	})
-	if err != nil {
-		t.Fatalf("Error storing salt: %s", err)
-	}
+	require.NoError(t, err)
 	localSalt, err := salt.NewSalt(t.Context(), inmemStorage, &salt.Config{
 		HMAC:     sha256.New,
 		HMACType: "hmac-sha256",
 	})
-	if err != nil {
-		t.Fatalf("Error instantiating salt: %s", err)
-	}
+	require.NoError(t, err)
 	for _, tc := range cases {
 		input := fmt.Sprintf("%#v", tc.Input)
 		out, err := HashRequest(localSalt, tc.Input, tc.HMACAccessor, tc.NonHMACDataKeys)
-		if err != nil {
-			t.Fatalf("err: %s\n\n%s", err, input)
-		}
+		require.NoErrorf(t, err, "err: %s\n\n%s", err, input)
 		if diff := deep.Equal(out, tc.Output); len(diff) > 0 {
 			t.Fatalf("bad:\nInput:\n%s\nDiff:\n%#v", input, diff)
 		}
@@ -488,15 +466,11 @@ func TestHashResponse(t *testing.T) {
 		HMAC:     sha256.New,
 		HMACType: "hmac-sha256",
 	})
-	if err != nil {
-		t.Fatalf("Error instantiating salt: %s", err)
-	}
+	require.NoError(t, err)
 	for _, tc := range cases {
 		input := fmt.Sprintf("%#v", tc.Input)
 		out, err := HashResponse(localSalt, tc.Input, tc.HMACAccessor, tc.NonHMACDataKeys, false)
-		if err != nil {
-			t.Fatalf("err: %s\n\n%s", err, input)
-		}
+		require.NoErrorf(t, err, "err: %s\n\n%s", err, input)
 		if diff := deep.Equal(out, tc.Output); len(diff) > 0 {
 			t.Fatalf("bad:\nOutput:\n%#v\nExpected:\n%#v\nDiff:\n%#v", tc.Output, out, diff)
 		}
@@ -534,9 +508,7 @@ func TestHashWalker(t *testing.T) {
 		err := HashStructure(data, func(string) string {
 			return replaceText
 		}, nil, false)
-		if err != nil {
-			t.Fatalf("err: %s\n\n%#v", err, tc.Input)
-		}
+		require.NoErrorf(t, err, "err: %s\n\n%#v", err, tc.Input)
 		if !reflect.DeepEqual(data, tc.Output) {
 			t.Fatalf("bad:\n\n%#v\n\n%#v", data, tc.Output)
 		}
@@ -576,9 +548,7 @@ func TestHashWalker_TimeStructs(t *testing.T) {
 		err := HashStructure(data, func(s string) string {
 			return s + replaceText
 		}, nil, false)
-		if err != nil {
-			t.Fatalf("err: %v\n\n%#v", err, tc.Input)
-		}
+		require.NoErrorf(t, err, "err: %v\n\n%#v", err, tc.Input)
 		if !reflect.DeepEqual(data, tc.Output) {
 			t.Fatalf("bad:\n\n%#v\n\n%#v", data, tc.Output)
 		}

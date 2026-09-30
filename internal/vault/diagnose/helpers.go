@@ -96,7 +96,7 @@ func CurrentSession(ctx context.Context) *Session {
 // Finalize ends the Diagnose session, returning the root of the result tree.  This will be empty until
 // the outermost span ends.
 func (s *Session) Finalize(ctx context.Context) *Result {
-	s.tp.ForceFlush(ctx)
+	s.tp.ForceFlush(ctx) //nolint:errcheck
 	return s.tc.RootResult
 }
 
@@ -199,7 +199,7 @@ func SpotCheck(ctx context.Context, checkName string, f func() error) error {
 
 	err := f()
 	if err != nil {
-		SpotError(ctx, checkName, err)
+		SpotError(ctx, checkName, err) //nolint:errcheck
 		return err
 	} else {
 		SpotOk(ctx, checkName, "")

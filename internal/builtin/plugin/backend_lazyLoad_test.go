@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/stretchr/testify/require"
 
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 
@@ -64,9 +65,7 @@ func testLazyLoad(t *testing.T, methodWrapper func() error) *PluginBackend {
 
 	// this is a dummy plugin that hasn't really been loaded yet
 	orig, err := plugin.NewBackend(ctx, "test-plugin", consts.PluginTypeSecrets, sysView, config, true)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	b := &PluginBackend{
 		Backend: orig,
@@ -75,9 +74,7 @@ func testLazyLoad(t *testing.T, methodWrapper func() error) *PluginBackend {
 
 	// lazy load
 	err = b.lazyLoadBackend(ctx, &logical.InmemStorage{}, methodWrapper)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if !b.loaded {
 		t.Fatal("not loaded")
 	}

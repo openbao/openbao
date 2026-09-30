@@ -227,9 +227,7 @@ func testExternalPlugin_ContinueOnError(t *testing.T, mismatch bool, pluginType 
 		}
 	} else {
 		err := os.Remove(filepath.Join(cluster.TempDir, filepath.Base(command)))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	// Seal and unseal the cluster
@@ -296,9 +294,7 @@ func testExternalPlugin_ContinueOnError(t *testing.T, mismatch bool, pluginType 
 	req = logical.TestRequest(t, logical.ReadOperation, pluginPath)
 	req.ClientToken = core.Client.Token()
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("bad: response should not be nil")
 	}
@@ -366,9 +362,7 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 				secretID := secret.Data["secret_id"].(string)
 
 				secret, err = client.Logical().Read("auth/" + pluginPath + "/role/role1/role-id")
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				roleID := secret.Data["role_id"].(string)
 
 				// Login - expect SUCCESS
@@ -377,25 +371,17 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 					&approle.SecretID{FromString: secretID},
 					approle.WithMountPath(pluginPath),
 				)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				_, err = client.Auth().Login(t.Context(), authMethod)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				// Renew
 				_, err = client.Auth().Token().RenewSelf(30)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				// Login - expect SUCCESS
 				resp, err := client.Auth().Login(t.Context(), authMethod)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				revokeToken := resp.Auth.ClientToken
 				// Revoke
@@ -445,20 +431,14 @@ func TestExternalPlugin_AuthMethodReload(t *testing.T) {
 		"bind_secret_id": "true",
 		"period":         "300",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	secret, err := client.Logical().Write("auth/"+plugin.Name+"/role/role1/secret-id", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	secretID := secret.Data["secret_id"].(string)
 
 	secret, err = client.Logical().Read("auth/" + plugin.Name + "/role/role1/role-id")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	roleID := secret.Data["role_id"].(string)
 
 	// Login - expect SUCCESS
@@ -467,13 +447,9 @@ func TestExternalPlugin_AuthMethodReload(t *testing.T) {
 		&approle.SecretID{FromString: secretID},
 		approle.WithMountPath(plugin.Name),
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	_, err = client.Auth().Login(t.Context(), authMethod)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Reset root token
 	client.SetToken(cluster.RootToken)
@@ -486,9 +462,7 @@ func TestExternalPlugin_AuthMethodReload(t *testing.T) {
 	}
 
 	_, err = client.Auth().Login(t.Context(), authMethod)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Reset root token
 	client.SetToken(cluster.RootToken)
@@ -546,14 +520,10 @@ func TestExternalPlugin_SecretsEngine(t *testing.T) {
 					"address": "localhost:8300",
 					"token":   "devcreds",
 				})
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				resp, err := client.Logical().Read(pluginPath + "/data/creds")
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				if resp == nil {
 					t.Fatal("read creds response is nil")
 				}
@@ -587,14 +557,10 @@ func TestExternalPlugin_SecretsEngineReload(t *testing.T) {
 		"address": "localhost:8300",
 		"token":   "testtoken",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err := client.Logical().Read(plugin.Name + "/data/creds")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("read creds response is nil")
 	}
@@ -607,9 +573,7 @@ func TestExternalPlugin_SecretsEngineReload(t *testing.T) {
 	}
 
 	resp, err = client.Logical().Read(plugin.Name + "/data/creds")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("read creds response is nil")
 	}
@@ -674,51 +638,37 @@ func TestExternalPlugin_Database(t *testing.T) {
 					"username":       "vaultadmin",
 					"password":       "vaultpass",
 				})
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				_, err = client.Logical().Write("database/rotate-root/"+dbName, map[string]any{})
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				_, err = client.Logical().Write("database/roles/"+roleName, map[string]any{
 					"db_name":             dbName,
 					"creation_statements": testRole,
 					"max_ttl":             "10m",
 				})
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				// Generate credentials
 				resp, err := client.Logical().Read("database/creds/" + roleName)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				if resp == nil {
 					t.Fatal("read creds response is nil")
 				}
 
 				_, err = client.Logical().Write("database/reset/"+dbName, map[string]any{})
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				// Generate credentials
 				resp, err = client.Logical().Read("database/creds/" + roleName)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				if resp == nil {
 					t.Fatal("read creds response is nil")
 				}
 
 				resp, err = client.Logical().Read("database/creds/" + roleName)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				if resp == nil {
 					t.Fatal("read creds response is nil")
 				}
@@ -726,9 +676,7 @@ func TestExternalPlugin_Database(t *testing.T) {
 				revokeLease := resp.LeaseID
 				// Lookup - expect SUCCESS
 				resp, err = client.Sys().Lookup(revokeLease)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				if resp == nil {
 					t.Fatal("lease lookup response is nil")
 				}
@@ -804,23 +752,17 @@ func TestExternalPlugin_DatabaseReload(t *testing.T) {
 		"username":       "vaultadmin",
 		"password":       "vaultpass",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("database/roles/"+roleName, map[string]any{
 		"db_name":             dbName,
 		"creation_statements": testRole,
 		"max_ttl":             "10m",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err := client.Logical().Read("database/creds/" + roleName)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("read creds response is nil")
 	}
@@ -834,9 +776,7 @@ func TestExternalPlugin_DatabaseReload(t *testing.T) {
 
 	// Generate credentials after reload
 	resp, err = client.Logical().Read("database/creds/" + roleName)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("read creds response is nil")
 	}
@@ -892,9 +832,7 @@ func TestExternalPlugin_AuditEnabled_ShouldLogPluginMetadata_Auth(t *testing.T) 
 	// Enable the audit backend
 	tempDir := t.TempDir()
 	auditLogFile, err := os.CreateTemp(tempDir, "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = client.Sys().EnableAuditWithOptions("file", &api.EnableAuditOptions{
 		Type: "file",
@@ -902,17 +840,13 @@ func TestExternalPlugin_AuditEnabled_ShouldLogPluginMetadata_Auth(t *testing.T) 
 			"file_path": auditLogFile.Name(),
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("auth/"+plugin.Name+"/role/role1", map[string]any{
 		"bind_secret_id": "true",
 		"period":         "300",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Check the audit trail on request and response
 	decoder := json.NewDecoder(auditLogFile)
@@ -962,9 +896,7 @@ func TestExternalPlugin_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T
 	// Enable the audit backend
 	tempDir := t.TempDir()
 	auditLogFile, err := os.CreateTemp(tempDir, "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = client.Sys().EnableAuditWithOptions("file", &api.EnableAuditOptions{
 		Type: "file",
@@ -972,18 +904,14 @@ func TestExternalPlugin_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T
 			"file_path": auditLogFile.Name(),
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Configure
 	_, err = client.Logical().Write(plugin.Name+"/data/creds", map[string]any{
 		"address": "localhost:8300",
 		"token":   "devcreds",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Check the audit trail on request and response
 	decoder := json.NewDecoder(auditLogFile)

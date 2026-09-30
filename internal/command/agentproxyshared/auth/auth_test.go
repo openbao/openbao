@@ -16,6 +16,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 type userpassTestMethod struct{}
@@ -28,9 +29,7 @@ func newUserpassTestMethod(t *testing.T, client *api.Client) AuthMethod {
 			MaxLeaseTTL:     "3s",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return &userpassTestMethod{}
 }
@@ -95,9 +94,7 @@ consumption:
 	for {
 		select {
 		case err := <-errCh:
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			break consumption
 		case <-ah.OutputCh:
 		case <-ah.TemplateTokenCh:

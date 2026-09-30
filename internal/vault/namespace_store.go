@@ -519,7 +519,9 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		ns.creationDeletionMap[entry.UUID] = true
 	}
 
-	ns.namespacesByPath.Insert(entry)
+	if err := ns.namespacesByPath.Insert(entry); err != nil {
+		return nil, fmt.Errorf("failed to insert namespace entry: %w", err)
+	}
 	ns.namespacesByUUID[entry.UUID] = entry
 	ns.namespacesByAccessor[entry.ID] = entry
 

@@ -48,9 +48,9 @@ func (s *SealAccess) VerifyRecoveryKey(ctx context.Context, key []byte) error {
 
 // TODO(SEALHA): This looks like it belongs in Seal instead, it only has two callers
 func (s *SealAccess) ClearCaches(ctx context.Context) {
-	s.seal.SetBarrierConfig(ctx, nil)
+	s.seal.SetBarrierConfig(ctx, nil) //nolint:errcheck
 	if s.RecoveryKeySupported() {
-		s.seal.SetRecoveryConfig(ctx, nil)
+		s.seal.SetRecoveryConfig(ctx, nil) //nolint:errcheck
 	}
 }
 

@@ -14,6 +14,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/policy"
 	"github.com/openbao/openbao/v2/internal/vault/policy/policytest"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCapabilities_DerivedPolicies(t *testing.T) {
@@ -45,21 +46,15 @@ path "secret/sample" {
 	// Create the above policies
 	pol, _ := policy.ParseACLPolicy(namespace.RootNamespace, policy1)
 	err = c.policyStore.SetPolicy(ctx, pol, nil)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	pol, _ = policy.ParseACLPolicy(namespace.RootNamespace, policy2)
 	err = c.policyStore.SetPolicy(ctx, pol, nil)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	pol, _ = policy.ParseACLPolicy(namespace.RootNamespace, policy3)
 	err = c.policyStore.SetPolicy(ctx, pol, nil)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Create an entity and assign policy1 to it
 	entityReq := &logical.Request{
@@ -86,9 +81,7 @@ path "secret/sample" {
 	testMakeTokenDirectly(t, ctx, c.tokenStore, ent)
 
 	actual, err := c.Capabilities(ctx, "capabilitiestoken", "secret/sample")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	expected := []string{"create", "read", "sudo", "delete", "update"}
 	sort.Strings(actual)
 	sort.Strings(expected)
@@ -111,9 +104,7 @@ path "secret/sample" {
 	}
 
 	actual, err = c.Capabilities(namespace.RootContext(t.Context()), "capabilitiestoken", "secret/sample")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	expected = []string{"create", "read", "sudo", "delete", "update", "list"}
 	sort.Strings(actual)
 	sort.Strings(expected)
@@ -177,17 +168,11 @@ func TestCapabilities_TemplatedPolicies(t *testing.T) {
 	for _, tCase := range tCases {
 		// Create the above policies
 		policy, err := policy.ParseACLPolicy(namespace.RootNamespace, tCase.policy)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		err = c.policyStore.SetPolicy(ctx, policy, nil)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		actual, err := c.Capabilities(ctx, "capabilitiestoken", tCase.path)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		sort.Strings(actual)
 		sort.Strings(tCase.expected)
 		if !reflect.DeepEqual(actual, tCase.expected) {
@@ -201,9 +186,7 @@ func TestCapabilities(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
 
 	actual, err := c.Capabilities(ctx, token, "path")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	expected := []string{"root"}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("bad: got\n%#v\nexpected\n%#v\n", actual, expected)
@@ -212,9 +195,7 @@ func TestCapabilities(t *testing.T) {
 	// Create a policy
 	policy, _ := policy.ParseACLPolicy(namespace.RootNamespace, policytest.ACLPolicy)
 	err = c.policyStore.SetPolicy(ctx, policy, nil)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Create a token for the policy
 	ent := &logical.TokenEntry{
@@ -226,9 +207,7 @@ func TestCapabilities(t *testing.T) {
 	testMakeTokenDirectly(t, ctx, c.tokenStore, ent)
 
 	actual, err = c.Capabilities(ctx, "capabilitiestoken", "foo/bar")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	expected = []string{"create", "read", "sudo"}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("bad: got\n%#v\nexpected\n%#v\n", actual, expected)

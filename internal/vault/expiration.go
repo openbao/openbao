@@ -416,7 +416,7 @@ func (c *Core) setupExpiration(e ExpireLeaseStrategy, standby bool) error {
 			c.logger.Error("error shutting down core", "error", err)
 		}
 	}
-	go c.expiration.Restore(errorFunc)
+	go c.expiration.Restore(errorFunc) //nolint:errcheck
 
 	quit := c.expiration.quitCh
 	go func() {
@@ -2584,7 +2584,9 @@ func (m *ExpirationManager) markLeaseIrrevocable(ctx context.Context, le *leaseE
 	}
 
 	le.RevokeErr = errStr
-	m.persistEntry(ctx, le)
+	if err := m.persistEntry(ctx, le); err != nil {
+		m.logger.Error("error persisting irrevocable lease", "error", err)
+	}
 
 	m.irrevocable.Store(le.LeaseID, m.inMemoryLeaseInfo(le))
 	m.irrevocableLeaseCount++

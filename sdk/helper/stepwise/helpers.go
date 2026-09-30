@@ -46,7 +46,7 @@ func CompilePlugin(name, pluginName, srcDir, tmpDir string) (string, string, str
 		return "", "", "", err
 	}
 
-	defer f.Close()
+	defer f.Close() //nolint:errcheck
 
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {

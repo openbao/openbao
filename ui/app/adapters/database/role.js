@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { assign } from '@ember/polyfills';
 import { assert } from '@ember/debug';
 import ApplicationAdapter from '../application';
 import { allSettled } from 'rsvp';
@@ -93,7 +92,7 @@ export default ApplicationAdapter.extend({
           type,
         };
 
-        resp.data = assign({}, successful.data);
+        resp.data = { ...successful.data };
 
         return resp;
       }
@@ -126,7 +125,7 @@ export default ApplicationAdapter.extend({
         dynamicRoles = dynamicResp.value.data.keys;
       }
 
-      resp.data = assign(
+      resp.data = Object.assign(
         {},
         resp.data,
         { keys: [...staticRoles, ...dynamicRoles] },
@@ -168,7 +167,7 @@ export default ApplicationAdapter.extend({
     return this.ajax(this.urlFor(backend, id, roleType), 'POST', { data }).then(() => {
       // ember data doesn't like 204s if it's not a DELETE
       return {
-        data: assign({}, data, { id }),
+        data: Object.assign({}, data, { id }),
       };
     });
   },

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 var compilerOpt []string
@@ -62,9 +63,7 @@ func TestEncrytedKeysStorage_BadPolicy(t *testing.T) {
 		Policy: policy,
 		Prefix: "prefix",
 	})
-	if err != nil {
-		t.Fatalf("Unexpected Error: %s", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestEncryptedKeysStorage_List(t *testing.T) {
@@ -81,46 +80,34 @@ func TestEncryptedKeysStorage_List(t *testing.T) {
 	ctx := t.Context()
 
 	err := policy.Rotate(ctx, s, rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	es, err := NewEncryptedKeyStorageWrapper(EncryptedKeyStorageConfig{
 		Policy: policy,
 		Prefix: "prefix",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = es.Wrap(s).Put(ctx, &logical.StorageEntry{
 		Key:   "test",
 		Value: []byte("test"),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = es.Wrap(s).Put(ctx, &logical.StorageEntry{
 		Key:   "test/foo",
 		Value: []byte("test"),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = es.Wrap(s).Put(ctx, &logical.StorageEntry{
 		Key:   "test/foo1/test",
 		Value: []byte("test"),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	keys, err := es.Wrap(s).List(ctx, "test/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if len(keys) != 2 || keys[1] != "foo1/" || keys[0] != "foo" {
 		t.Fatalf("bad keys: %#v", keys)
@@ -128,26 +115,20 @@ func TestEncryptedKeysStorage_List(t *testing.T) {
 
 	// Test prefixed with "/"
 	keys, err = es.Wrap(s).List(ctx, "/test/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if len(keys) != 2 || keys[1] != "foo1/" || keys[0] != "foo" {
 		t.Fatalf("bad keys: %#v", keys)
 	}
 
 	keys, err = es.Wrap(s).List(ctx, "/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(keys) != 2 || keys[0] != "test" || keys[1] != "test/" {
 		t.Fatalf("bad keys: %#v", keys)
 	}
 
 	keys, err = es.Wrap(s).List(ctx, "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(keys) != 2 || keys[0] != "test" || keys[1] != "test/" {
 		t.Fatalf("bad keys: %#v", keys)
 	}
@@ -167,38 +148,28 @@ func TestEncryptedKeysStorage_CRUD(t *testing.T) {
 	ctx := t.Context()
 
 	err := policy.Rotate(ctx, s, rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	es, err := NewEncryptedKeyStorageWrapper(EncryptedKeyStorageConfig{
 		Policy: policy,
 		Prefix: "prefix",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = es.Wrap(s).Put(ctx, &logical.StorageEntry{
 		Key:   "test/foo",
 		Value: []byte("test"),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = es.Wrap(s).Put(ctx, &logical.StorageEntry{
 		Key:   "test/foo1/test",
 		Value: []byte("test"),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	keys, err := es.Wrap(s).List(ctx, "test/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if len(keys) != 2 || !slices.Contains(keys, "foo1/") || !slices.Contains(keys, "foo") {
 		t.Fatalf("bad keys: %#v", keys)
@@ -206,9 +177,7 @@ func TestEncryptedKeysStorage_CRUD(t *testing.T) {
 
 	// Test prefixed with "/"
 	keys, err = es.Wrap(s).List(ctx, "/test/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if len(keys) != 2 || !slices.Contains(keys, "foo1/") || !slices.Contains(keys, "foo") {
 		t.Fatalf("bad keys: %#v", keys)
@@ -216,31 +185,23 @@ func TestEncryptedKeysStorage_CRUD(t *testing.T) {
 
 	// Test the cached value is correct
 	keys, err = es.Wrap(s).List(ctx, "test/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if len(keys) != 2 || !slices.Contains(keys, "foo1/") || !slices.Contains(keys, "foo") {
 		t.Fatalf("bad keys: %#v", keys)
 	}
 
 	data, err := es.Wrap(s).Get(ctx, "test/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if !reflect.DeepEqual(data.Value, []byte("test")) {
 		t.Fatalf("bad data: %#v", data)
 	}
 
 	err = es.Wrap(s).Delete(ctx, "test/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	data, err = es.Wrap(s).Get(ctx, "test/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if data != nil {
 		t.Fatal("data should be nil")
 	}
@@ -260,34 +221,26 @@ func BenchmarkEncrytedKeyStorage_List(b *testing.B) {
 	ctx := b.Context()
 
 	err := policy.Rotate(ctx, s, rand.Reader)
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err)
 
 	es, err := NewEncryptedKeyStorageWrapper(EncryptedKeyStorageConfig{
 		Policy: policy,
 		Prefix: "prefix",
 	})
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err)
 
 	for i := range 10000 {
 		err = es.Wrap(s).Put(ctx, &logical.StorageEntry{
 			Key:   fmt.Sprintf("test/%d", i),
 			Value: []byte("test"),
 		})
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(b, err)
 	}
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		keys, err := es.Wrap(s).List(ctx, "test/")
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(b, err)
 		compilerOpt = keys
 	}
 }
@@ -306,17 +259,13 @@ func BenchmarkEncrytedKeyStorage_Put(b *testing.B) {
 	ctx := b.Context()
 
 	err := policy.Rotate(ctx, s, rand.Reader)
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err)
 
 	es, err := NewEncryptedKeyStorageWrapper(EncryptedKeyStorageConfig{
 		Policy: policy,
 		Prefix: "prefix",
 	})
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err)
 
 	b.ResetTimer()
 
@@ -325,8 +274,6 @@ func BenchmarkEncrytedKeyStorage_Put(b *testing.B) {
 			Key:   fmt.Sprintf("test/%d", i),
 			Value: []byte("test"),
 		})
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(b, err)
 	}
 }

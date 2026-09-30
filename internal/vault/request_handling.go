@@ -383,7 +383,16 @@ func (c *Core) fetchACLTokenEntryAndEntity(ctx context.Context, req *logical.Req
 	acl, err := c.policyStore.ACL(tokenCtx, entity, policyNames, policies...)
 	if err != nil {
 		c.logger.Error("failed to construct ACL", "error", err)
-		return nil, nil, nil, nil, ErrInternalError
+		retErr := ErrInternalError
+
+		// If we have a coded error, prefer its generic text over the
+		// incorrect "internal error" text. We don't want to share err's
+		// message verbatim, though.
+		if coded := logical.HTTPCodedError(nil); errors.As(err, &coded) {
+			retErr = logical.CodedError(coded.Code(), http.StatusText(coded.Code()))
+		}
+
+		return nil, nil, nil, nil, retErr
 	}
 
 	return acl, te, entity, identityPolicies, nil
@@ -863,6 +872,13 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 	// MountPoint will not always be set at this point, so we ensure the req contains it
 	// as it is depended on by some functionality (e.g. quotas)
 	req.MountPoint = c.router.MatchingMount(ctx, req.Path)
+
+	// Resolve the path suffix after the mount point. This ensures we use the
+	// canonical URL for any ACL resolution.
+	req.Path, err = c.router.ResolvePath(ctx, req.MountPoint, req.Path, req.Data)
+	if err != nil {
+		return nil, err
+	}
 
 	err = c.PopulateTokenEntry(ctx, req)
 	if err != nil {
@@ -1489,7 +1505,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 		}
 
 		switch matchingMountEntry.Type {
-		case "kv", "generic":
+		case routing.MountTypeKV, "generic":
 			// If we are kv type, first see if we are an older passthrough
 			// backend, and otherwise check the mount entry options.
 			matchingBackend := c.router.MatchingBackend(ctx, req.Path)
@@ -1505,14 +1521,6 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 					resp.Secret.Renewable = false
 				}
 			} else if matchingMountEntry.Options == nil || matchingMountEntry.Options["leased_passthrough"] != "true" {
-				registerLease = false
-				resp.Secret.Renewable = false
-			}
-
-		case "plugin":
-			// If we are a plugin type and the plugin name is "kv" check the
-			// mount entry options.
-			if matchingMountEntry.Config.PluginName == "kv" && (matchingMountEntry.Options == nil || matchingMountEntry.Options["leased_passthrough"] != "true") {
 				registerLease = false
 				resp.Secret.Renewable = false
 			}

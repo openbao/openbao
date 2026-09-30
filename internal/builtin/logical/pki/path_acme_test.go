@@ -1196,7 +1196,7 @@ func markAuthorizationSuccess(t *testing.T, client *api.Client, acmeClient *acme
 
 			var authz ACMEAuthorization
 			err = jsonutil.DecodeJSON([]byte(resp.Data["value"].(string)), &authz)
-			require.NoError(t, err, "error decoding authorization: %w", err)
+			require.NoError(t, err)
 			authz.Status = ACMEAuthorizationValid
 			for _, challenge := range authz.Challenges {
 				challenge.Status = ACMEChallengeValid

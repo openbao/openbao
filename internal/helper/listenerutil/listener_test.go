@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestCurveIDsMatchGoStdLib(t *testing.T) {
@@ -42,23 +44,17 @@ func TestCurveIDsMatchGoStdLib(t *testing.T) {
 func TestUnixSocketListener(t *testing.T) {
 	t.Run("ids", func(t *testing.T) {
 		socket, err := os.CreateTemp("", "socket")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer os.Remove(socket.Name())
 
 		uid, gid := os.Getuid(), os.Getgid()
 
 		u, err := osuser.LookupId(strconv.Itoa(uid))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		user := u.Username
 
 		g, err := osuser.LookupGroupId(strconv.Itoa(gid))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		group := g.Name
 
 		l, err := UnixSocketListener(socket.Name(), &UnixSocketsConfig{
@@ -66,29 +62,21 @@ func TestUnixSocketListener(t *testing.T) {
 			Group: group,
 			Mode:  "644",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer l.Close()
 
 		fi, err := os.Stat(socket.Name())
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		mode, err := strconv.ParseUint("644", 8, 32)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if fi.Mode().Perm() != os.FileMode(mode) {
 			t.Fatal("failed to set permissions on the socket file")
 		}
 	})
 	t.Run("names", func(t *testing.T) {
 		socket, err := os.CreateTemp("", "socket")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer os.Remove(socket.Name())
 
 		uid, gid := os.Getuid(), os.Getgid()
@@ -97,20 +85,14 @@ func TestUnixSocketListener(t *testing.T) {
 			Group: strconv.Itoa(gid),
 			Mode:  "644",
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer l.Close()
 
 		fi, err := os.Stat(socket.Name())
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		mode, err := strconv.ParseUint("644", 8, 32)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if fi.Mode().Perm() != os.FileMode(mode) {
 			t.Fatal("failed to set permissions on the socket file")
 		}

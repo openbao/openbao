@@ -12,6 +12,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/random"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTransit_Random(t *testing.T) {
@@ -64,9 +65,7 @@ func TestTransit_Random(t *testing.T) {
 			default:
 				t.Fatal("unknown format")
 			}
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			return outputBytes
 		}

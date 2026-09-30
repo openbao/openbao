@@ -183,7 +183,7 @@ func (b *backendGRPCPluginClient) Cleanup(ctx context.Context) {
 	defer close(quitCh)
 	defer cancel()
 
-	b.client.Cleanup(ctx, &pb.Empty{})
+	b.client.Cleanup(ctx, &pb.Empty{}) //nolint:errcheck
 
 	// This will block until Setup has run the function to create a new server
 	// in b.server. If we stop here before it has a chance to actually start
@@ -206,9 +206,11 @@ func (b *backendGRPCPluginClient) InvalidateKey(ctx context.Context, key string)
 	defer close(quitCh)
 	defer cancel()
 
-	b.client.InvalidateKey(ctx, &pb.InvalidateKeyArgs{
+	if _, err := b.client.InvalidateKey(ctx, &pb.InvalidateKeyArgs{
 		Key: key,
-	})
+	}); err != nil {
+		b.Logger().Warn("error invalidating key", "error", err)
+	}
 }
 
 func (b *backendGRPCPluginClient) Setup(ctx context.Context, config *logical.BackendConfig) error {

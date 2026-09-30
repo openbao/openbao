@@ -20,6 +20,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -69,9 +70,7 @@ func TestSystemBackend_Plugin_secret(t *testing.T) {
 			req := logical.TestRequest(t, logical.ReadOperation, "mock-0/internal")
 			req.ClientToken = core.Client.Token()
 			resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("bad: response should not be nil")
 			}
@@ -84,9 +83,7 @@ func TestSystemBackend_Plugin_secret(t *testing.T) {
 			for _, core := range cluster.Cores {
 				for _, key := range barrierKeys {
 					_, err := core.Unseal(vault.TestKeyCopy(key))
-					if err != nil {
-						t.Fatal(err)
-					}
+					require.NoError(t, err)
 				}
 				if core.Sealed() {
 					t.Fatal("should not be sealed")
@@ -127,9 +124,7 @@ func TestSystemBackend_Plugin_auth(t *testing.T) {
 			req := logical.TestRequest(t, logical.ReadOperation, "auth/mock-0/internal")
 			req.ClientToken = core.Client.Token()
 			resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("bad: response should not be nil")
 			}
@@ -142,9 +137,7 @@ func TestSystemBackend_Plugin_auth(t *testing.T) {
 			for _, core := range cluster.Cores {
 				for _, key := range barrierKeys {
 					_, err := core.Unseal(vault.TestKeyCopy(key))
-					if err != nil {
-						t.Fatal(err)
-					}
+					require.NoError(t, err)
 				}
 				if core.Sealed() {
 					t.Fatal("should not be sealed")
@@ -185,9 +178,7 @@ func TestSystemBackend_Plugin_MissingBinary(t *testing.T) {
 			req := logical.TestRequest(t, logical.ReadOperation, "mock-0/internal")
 			req.ClientToken = core.Client.Token()
 			resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("bad: response should not be nil")
 			}
@@ -200,9 +191,7 @@ func TestSystemBackend_Plugin_MissingBinary(t *testing.T) {
 			// helper.
 			pluginFileName := filepath.Base(os.Args[0])
 			err = os.Remove(filepath.Join(cluster.TempDir, pluginFileName))
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			// Unseal the cluster
 			cluster.UnsealCores(t)
@@ -249,9 +238,7 @@ func TestSystemBackend_Plugin_MismatchType(t *testing.T) {
 			req := logical.TestRequest(t, logical.ReadOperation, "mock-0/internal")
 			req.ClientToken = core.Client.Token()
 			_, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-			if err != nil {
-				t.Fatalf("adding a same-named plugin of a different type should be no problem: %s", err)
-			}
+			require.NoError(t, err)
 
 			// Sleep a bit before cleanup is called
 			time.Sleep(1 * time.Second)
@@ -320,9 +307,7 @@ func testPlugin_CatalogRemoved(t *testing.T, btype logical.BackendType, testMoun
 			for _, core := range cluster.Cores {
 				for _, key := range barrierKeys {
 					_, err := core.Unseal(vault.TestKeyCopy(key))
-					if err != nil {
-						t.Fatal(err)
-					}
+					require.NoError(t, err)
 				}
 				if core.Sealed() {
 					t.Fatal("should not be sealed")
@@ -388,9 +373,7 @@ func TestSystemBackend_Plugin_autoReload(t *testing.T) {
 			req.ClientToken = core.Client.Token()
 			req.Data["value"] = "baz"
 			resp, err := core.HandleRequest(namespace.RootContext(t.Context()), req)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
+			require.NoError(t, err)
 			if resp != nil {
 				t.Fatalf("bad: %v", resp)
 			}
@@ -407,9 +390,7 @@ func TestSystemBackend_Plugin_autoReload(t *testing.T) {
 			req = logical.TestRequest(t, logical.ReadOperation, "mock-0/internal")
 			req.ClientToken = core.Client.Token()
 			resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatal("bad: response should not be nil")
 			}
@@ -449,9 +430,7 @@ func TestSystemBackend_Plugin_SealUnseal(t *testing.T) {
 			for _, core := range cluster.Cores {
 				for _, key := range barrierKeys {
 					_, err := core.Unseal(vault.TestKeyCopy(key))
-					if err != nil {
-						t.Fatal(err)
-					}
+					require.NoError(t, err)
 				}
 				if core.Sealed() {
 					t.Fatal("should not be sealed")
@@ -541,9 +520,7 @@ func testSystemBackend_PluginReload(t *testing.T, reqData map[string]any, backen
 				resp, err := client.Logical().Write(fmt.Sprintf("%s%d/internal", pathPrefix, i), map[string]any{
 					"value": "baz",
 				})
-				if err != nil {
-					t.Fatalf("err: %v", err)
-				}
+				require.NoError(t, err)
 				if resp != nil {
 					t.Fatalf("bad: %v", resp)
 				}
@@ -551,9 +528,7 @@ func testSystemBackend_PluginReload(t *testing.T, reqData map[string]any, backen
 
 			// Perform plugin reload
 			resp, err := client.Logical().Write("sys/plugins/reload/backend", reqData)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
+			require.NoError(t, err)
 			if resp == nil {
 				t.Fatalf("bad: %v", resp)
 			}
@@ -564,9 +539,7 @@ func testSystemBackend_PluginReload(t *testing.T, reqData map[string]any, backen
 			for i := range 2 {
 				// Ensure internal backed value is reset
 				resp, err := client.Logical().Read(fmt.Sprintf("%s%d/internal", pathPrefix, i))
-				if err != nil {
-					t.Fatalf("err: %v", err)
-				}
+				require.NoError(t, err)
 				if resp == nil {
 					t.Fatal("bad: response should not be nil")
 				}
@@ -619,9 +592,7 @@ func testSystemBackendMock(t *testing.T, numCores, numMounts int, backendType lo
 				"type": "mock-plugin",
 			}
 			resp, err := client.Logical().Write(fmt.Sprintf("sys/mounts/mock-%d", i), options)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
+			require.NoError(t, err)
 			if resp != nil {
 				t.Fatalf("bad: %v", resp)
 			}
@@ -635,9 +606,7 @@ func testSystemBackendMock(t *testing.T, numCores, numMounts int, backendType lo
 				"type": "mock-plugin",
 			}
 			resp, err := client.Logical().Write(fmt.Sprintf("sys/auth/mock-%d", i), options)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
+			require.NoError(t, err)
 			if resp != nil {
 				t.Fatalf("bad: %v", resp)
 			}
@@ -684,9 +653,7 @@ func testSystemBackend_SingleCluster_Env(t *testing.T, env []string) *vault.Test
 	}
 
 	resp, err := client.Logical().Write("sys/mounts/mock", options)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("bad: %v", resp)
 	}
@@ -726,9 +693,7 @@ func TestBackend_PluginMain_V4_Logical(t *testing.T) {
 		BackendFactoryFunc: factoryFunc,
 		TLSProviderFunc:    tlsProviderFunc,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestBackend_PluginMain_Multiplexed_Logical(t *testing.T) {
@@ -752,9 +717,7 @@ func TestBackend_PluginMain_Multiplexed_Logical(t *testing.T) {
 	err := lplugin.ServeMultiplex(&lplugin.ServeOpts{
 		BackendFactoryFunc: factoryFunc,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestBackend_PluginMainLogical(t *testing.T) {
@@ -778,9 +741,7 @@ func TestBackend_PluginMainLogical(t *testing.T) {
 	err := lplugin.Serve(&lplugin.ServeOpts{
 		BackendFactoryFunc: factoryFunc,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestBackend_PluginMain_V4_Credentials(t *testing.T) {
@@ -815,9 +776,7 @@ func TestBackend_PluginMain_V4_Credentials(t *testing.T) {
 		BackendFactoryFunc: factoryFunc,
 		TLSProviderFunc:    tlsProviderFunc,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestBackend_PluginMain_Multiplexed_Credentials(t *testing.T) {
@@ -841,9 +800,7 @@ func TestBackend_PluginMain_Multiplexed_Credentials(t *testing.T) {
 	err := lplugin.ServeMultiplex(&lplugin.ServeOpts{
 		BackendFactoryFunc: factoryFunc,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestBackend_PluginMainCredentials(t *testing.T) {
@@ -867,9 +824,7 @@ func TestBackend_PluginMainCredentials(t *testing.T) {
 	err := lplugin.Serve(&lplugin.ServeOpts{
 		BackendFactoryFunc: factoryFunc,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 // TestBackend_PluginMainEnv is a mock plugin that simply checks for the existence of FOO env var.
@@ -900,7 +855,5 @@ func TestBackend_PluginMainEnv(t *testing.T) {
 	err := lplugin.Serve(&lplugin.ServeOpts{
 		BackendFactoryFunc: factoryFunc,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }

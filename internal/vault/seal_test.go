@@ -6,6 +6,8 @@ package vault
 import (
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 // TestDefaultSeal_Config exercises Shamir SetBarrierConfig and BarrierConfig.
@@ -23,14 +25,10 @@ func TestDefaultSeal_Config(t *testing.T) {
 	defSeal := NewDefaultSeal(nil)
 	defSeal.SetCore(core)
 	err := defSeal.SetBarrierConfig(t.Context(), bc)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	newBc, err := defSeal.BarrierConfig(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if !reflect.DeepEqual(*bc, *newBc) {
 		t.Fatal("config mismatch")
 	}
@@ -39,9 +37,7 @@ func TestDefaultSeal_Config(t *testing.T) {
 	defSeal = NewDefaultSeal(nil)
 	defSeal.SetCore(core)
 	newBc, err = defSeal.BarrierConfig(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if !reflect.DeepEqual(*bc, *newBc) {
 		t.Fatal("config mismatch")
 	}

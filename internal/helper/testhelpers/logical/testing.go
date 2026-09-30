@@ -142,7 +142,11 @@ func Test(tt TestT, c TestCase) {
 
 	// Defer on the teardown, regardless of pass/fail at this point
 	if c.Teardown != nil {
-		defer c.Teardown()
+		defer func() {
+			if err := c.Teardown(); err != nil {
+				tt.Error(fmt.Sprintf("error during test teardown: %s", err))
+			}
+		}()
 	}
 
 	// Check that something is provided

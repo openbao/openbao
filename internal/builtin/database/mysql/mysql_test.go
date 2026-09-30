@@ -520,9 +520,7 @@ func TestMySQL_RotateRootCredentials(t *testing.T) {
 			db := newMySQL(DefaultUserNameTemplate)
 			defer db.Close()
 			_, err := db.Initialize(t.Context(), initReq)
-			if err != nil {
-				t.Fatalf("err: %s", err)
-			}
+			require.NoError(t, err)
 
 			if !db.Initialized {
 				t.Fatal("Database should be initialized")
@@ -539,13 +537,9 @@ func TestMySQL_RotateRootCredentials(t *testing.T) {
 			}
 
 			_, err = db.UpdateUser(ctx, updateReq)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
+			require.NoError(t, err)
 			err = mysqlhelper.TestCredsExist(t, connURL, updateReq.Username, updateReq.Password.NewPassword)
-			if err != nil {
-				t.Fatalf("Could not connect with new credentials: %s", err)
-			}
+			require.NoError(t, err)
 
 			// verify old password doesn't work
 			if err := mysqlhelper.TestCredsExist(t, connURL, updateReq.Username, "secret"); err == nil {
@@ -553,9 +547,7 @@ func TestMySQL_RotateRootCredentials(t *testing.T) {
 			}
 
 			err = db.Close()
-			if err != nil {
-				t.Fatalf("err: %s", err)
-			}
+			require.NoError(t, err)
 		})
 	}
 }
@@ -599,16 +591,12 @@ func TestMySQL_DeleteUser(t *testing.T) {
 	db := newMySQL(DefaultUserNameTemplate)
 	defer db.Close()
 	_, err := db.Initialize(t.Context(), initReq)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			password, err := credsutil.RandomAlphaNumeric(32, false)
-			if err != nil {
-				t.Fatalf("unable to generate password: %s", err)
-			}
+			require.NoError(t, err)
 
 			createReq := dbplugin.NewUserRequest{
 				UsernameConfig: dbplugin.UsernameMetadata{
@@ -631,9 +619,7 @@ func TestMySQL_DeleteUser(t *testing.T) {
 			defer cancel()
 
 			userResp, err := db.NewUser(ctx, createReq)
-			if err != nil {
-				t.Fatalf("err: %s", err)
-			}
+			require.NoError(t, err)
 
 			if err := mysqlhelper.TestCredsExist(t, connURL, userResp.Username, password); err != nil {
 				t.Fatalf("Could not connect with new credentials: %s", err)
@@ -646,9 +632,7 @@ func TestMySQL_DeleteUser(t *testing.T) {
 				},
 			}
 			_, err = db.DeleteUser(t.Context(), deleteReq)
-			if err != nil {
-				t.Fatalf("err: %s", err)
-			}
+			require.NoError(t, err)
 
 			if err := mysqlhelper.TestCredsExist(t, connURL, userResp.Username, password); err == nil {
 				t.Fatal("Credentials were not revoked!")
@@ -657,9 +641,7 @@ func TestMySQL_DeleteUser(t *testing.T) {
 			if test.deleteTwice { // revoke again https://openbao.org/docs/plugins/plugin-authors-guide/#revoke-operations-should-ignore-not-found-errors
 				t.Log("calling delete again")
 				_, err = db.DeleteUser(t.Context(), deleteReq)
-				if err != nil {
-					t.Fatalf("err: %s", err)
-				}
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -718,14 +700,10 @@ func TestMySQL_UpdateUser(t *testing.T) {
 			db := newMySQL(DefaultUserNameTemplate)
 			defer db.Close()
 			_, err := db.Initialize(t.Context(), initReq)
-			if err != nil {
-				t.Fatalf("err: %s", err)
-			}
+			require.NoError(t, err)
 
 			newPassword, err := credsutil.RandomAlphaNumeric(32, false)
-			if err != nil {
-				t.Fatalf("unable to generate password: %s", err)
-			}
+			require.NoError(t, err)
 
 			updateReq := dbplugin.UpdateUserRequest{
 				Username: dbUser,
@@ -738,9 +716,7 @@ func TestMySQL_UpdateUser(t *testing.T) {
 			}
 
 			_, err = db.UpdateUser(ctx, updateReq)
-			if err != nil {
-				t.Fatalf("err: %s", err)
-			}
+			require.NoError(t, err)
 
 			// verify new password works
 			if err := mysqlhelper.TestCredsExist(t, connURL, dbUser, newPassword); err != nil {
@@ -758,17 +734,13 @@ func TestMySQL_UpdateUser(t *testing.T) {
 func createTestMySQLUser(t *testing.T, connURL, username, password, query string) {
 	t.Helper()
 	db, err := sql.Open("mysql", connURL)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer db.Close()
 
 	// Start a transaction
 	ctx := t.Context()
 	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer func() {
 		_ = tx.Rollback()
 	}()
@@ -788,9 +760,7 @@ func createTestMySQLUser(t *testing.T, connURL, username, password, query string
 		if err != nil {
 			if e, ok := err.(*stdmysql.MySQLError); ok && e.Number == 1295 {
 				_, err = tx.ExecContext(ctx, query)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				stmt.Close()
 				continue
 			}

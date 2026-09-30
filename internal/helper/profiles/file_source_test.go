@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestFileSourceBuilder_Success(t *testing.T) {
@@ -45,9 +47,7 @@ func TestFileSource_Validate_Success(t *testing.T) {
 
 	src := &FileSource{field: map[string]any{"path": fname}}
 	deps, provides, err := src.Validate()
-	if err != nil {
-		t.Fatalf("Validate, error: %v", err)
-	}
+	require.NoError(t, err)
 	if deps != nil || provides != nil {
 		t.Errorf("expected deps,provides=nil; got %v,%v", deps, provides)
 	}
@@ -101,9 +101,7 @@ func TestFileSource_Evaluate_Read(t *testing.T) {
 	}
 
 	out, err := src.Evaluate(t.Context(), nil)
-	if err != nil {
-		t.Fatalf("Evaluate returned error: %v", err)
-	}
+	require.NoError(t, err)
 	got, ok := out.([]byte)
 	if !ok {
 		t.Fatalf("expected []byte result, got %T", out)
@@ -116,9 +114,7 @@ func TestFileSource_Evaluate_Read(t *testing.T) {
 	}
 
 	out2, err := src.Evaluate(t.Context(), nil)
-	if err != nil {
-		t.Fatalf("second Evaluate error: %v", err)
-	}
+	require.NoError(t, err)
 	if !reflect.DeepEqual(out2, got) {
 		t.Errorf("second Evaluate returned %v; want %v", out2, got)
 	}
@@ -135,9 +131,7 @@ func TestFileSource_Close_OpenFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	fname := filepath.Join(tmpDir, "close.txt")
 	f, err := os.Create(fname)
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
+	require.NoError(t, err)
 
 	src := &FileSource{file: f}
 	if err := src.Close(t.Context()); err != nil {
@@ -150,13 +144,9 @@ func TestFileSource_Close_OpenFile(t *testing.T) {
 
 func TestFileSource_Evaluate_ReadError(t *testing.T) {
 	tmp, err := os.CreateTemp("", "errtest")
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
+	require.NoError(t, err)
 	err = tmp.Close()
-	if err != nil {
-		t.Fatalf("failed to close temp file: %v", err)
-	}
+	require.NoError(t, err)
 	src := &FileSource{
 		file: tmp,
 	}

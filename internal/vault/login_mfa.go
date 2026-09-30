@@ -183,7 +183,25 @@ func (b *LoginMFABackend) invalidate(ctx context.Context, ns *namespace.Namespac
 		key, _ := strings.CutPrefix(path, barrier.SystemBarrierPrefix+loginMFAConfigPrefix)
 		barrierView := b.Core.NamespaceView(ns).SubView(barrier.SystemBarrierPrefix + loginMFAConfigPrefix)
 
-		return b.loadMFAMethodConfig(ctx, ns, barrierView, key)
+		mConfig, err := b.getMFAConfig(ctx, key, barrierView)
+		if err != nil {
+			return err
+		}
+
+		if mConfig == nil {
+			// Config doesn't exist so remove it from memdb also.
+			txn := b.db.Txn(true)
+			defer txn.Abort()
+
+			if _, err = txn.DeleteAll(ident.MemDBLoginMFAConfigsTable, "id", key); err != nil {
+				return fmt.Errorf("failed to delete MFA config from memdb: %w", err)
+			}
+
+			txn.Commit()
+			return nil
+		}
+
+		return b.MemDBUpsertMFAConfig(ctx, mConfig)
 	case strings.HasPrefix(path, barrier.SystemBarrierPrefix+mfaLoginEnforcementPrefix):
 		key, _ := strings.CutPrefix(path, barrier.SystemBarrierPrefix+mfaLoginEnforcementPrefix)
 		barrierView := b.Core.NamespaceView(ns).SubView(barrier.SystemBarrierPrefix + mfaLoginEnforcementPrefix)
@@ -194,6 +212,15 @@ func (b *LoginMFABackend) invalidate(ctx context.Context, ns *namespace.Namespac
 		}
 
 		if mConfig == nil {
+			// Config doesn't exist so remove it from memdb also.
+			txn := b.db.Txn(true)
+			defer txn.Abort()
+
+			if _, err = txn.DeleteAll(memDBMFALoginEnforcementsTable, "id", key); err != nil {
+				return fmt.Errorf("failed to delete MFA login enforcement config from memdb: %w", err)
+			}
+
+			txn.Commit()
 			return nil
 		}
 
@@ -601,7 +628,9 @@ func (b *MFABackend) HandleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Con
 		}
 
 		var buff bytes.Buffer
-		png.Encode(&buff, barcode)
+		if err := png.Encode(&buff, barcode); err != nil {
+			return nil, fmt.Errorf("error encoding QR code: %w", err)
+		}
 		totpB64Barcode = base64.StdEncoding.EncodeToString(buff.Bytes())
 	}
 
@@ -1887,6 +1916,11 @@ func (b *LoginMFABackend) DeleteMFALoginEnforcementConfigByNameAndNamespace(ctx 
 
 	if eConfig == nil {
 		return nil
+	}
+
+	view := b.Core.NamespaceView(ns).SubView(barrier.SystemBarrierPrefix + mfaLoginEnforcementPrefix)
+	if err = view.Delete(ctx, eConfig.ID); err != nil {
+		return err
 	}
 
 	// create a memdb transaction to delete config

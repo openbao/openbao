@@ -44,14 +44,10 @@ func (w *nilResponseWriter) WriteHeader(statusCode int) {}
 
 func TestHandler_HostHeader(t *testing.T) {
 	r, err := http.NewRequest(http.MethodGet, "http://domain.example/v1/path", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	r.Header.Add("user-agent", "Test")
 	req, status, err := buildLogicalRequestNoAuth(&nilResponseWriter{}, r)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if status != 0 {
 		t.Fatalf("status: %d", status)
 	}
@@ -70,22 +66,16 @@ func TestHandler_cors(t *testing.T) {
 	// Enable CORS and allow from any origin for testing.
 	corsConfig := core.CORSConfig()
 	err := corsConfig.Enable(t.Context(), []string{addr}, nil, false)
-	if err != nil {
-		t.Fatalf("Error enabling CORS: %s", err)
-	}
+	require.NoError(t, err)
 
 	req, err := http.NewRequest(http.MethodOptions, addr+"/v1/sys/seal-status", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	req.Header.Set("Origin", "BAD ORIGIN")
 
 	// Requests from unacceptable origins will be rejected with a 403.
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("Bad status:\nexpected: 403 Forbidden\nactual: %s", resp.Status)
@@ -103,9 +93,7 @@ func TestHandler_cors(t *testing.T) {
 
 	client = cleanhttp.DefaultClient()
 	resp, err = client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	// Fail if an arbitrary method is accepted.
 	if resp.StatusCode != http.StatusMethodNotAllowed {
@@ -117,9 +105,7 @@ func TestHandler_cors(t *testing.T) {
 
 	client = cleanhttp.DefaultClient()
 	resp, err = client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	//
 	// Test that the CORS headers are applied correctly.
@@ -144,15 +130,11 @@ func TestHandler_cors(t *testing.T) {
 
 	// Test that the Access-Control-Allow-Credentials is set correctly when configured
 	err = corsConfig.Enable(t.Context(), []string{addr}, nil, true)
-	if err != nil {
-		t.Fatalf("Error enabling CORS: %s", err)
-	}
+	require.NoError(t, err)
 
 	client = cleanhttp.DefaultClient()
 	resp, err = client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	expHeaders["Access-Control-Allow-Credentials"] = "true"
 
@@ -203,15 +185,11 @@ func TestHandler_HostnameHeader(t *testing.T) {
 			defer ln.Close()
 
 			req, err := http.NewRequest("GET", addr+"/v1/sys/seal-status", nil)
-			if err != nil {
-				t.Fatalf("err: %s", err)
-			}
+			require.NoError(t, err)
 
 			client := cleanhttp.DefaultClient()
 			resp, err := client.Do(req)
-			if err != nil {
-				t.Fatalf("err: %s", err)
-			}
+			require.NoError(t, err)
 
 			if resp == nil {
 				t.Fatal("nil response")
@@ -240,17 +218,13 @@ func TestHandler_CacheControlNoStore(t *testing.T) {
 	defer ln.Close()
 
 	req, err := http.NewRequest("GET", addr+"/v1/sys/mounts", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	req.Header.Set(consts.AuthHeaderName, token)
 	req.Header.Set(consts.WrapTTLHeaderName, "60s")
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if resp == nil {
 		t.Fatal("nil response")
@@ -274,16 +248,12 @@ func TestHandler_InFlightRequest(t *testing.T) {
 	TestServerAuth(t, addr, token)
 
 	req, err := http.NewRequest("GET", addr+"/v1/sys/in-flight-req", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	req.Header.Set(consts.AuthHeaderName, token)
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if resp == nil {
 		t.Fatal("nil response")
@@ -316,17 +286,13 @@ func TestHandler_MissingToken(t *testing.T) {
 	defer ln.Close()
 
 	req, err := http.NewRequest("GET", addr+"/v1/sys/internal/ui/mounts/cubbyhole", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	req.Header.Set(consts.WrapTTLHeaderName, "60s")
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.StatusCode != 403 {
 		t.Fatalf("expected code 403, got: %d", resp.StatusCode)
 	}
@@ -338,16 +304,12 @@ func TestHandler_Accepted(t *testing.T) {
 	defer ln.Close()
 
 	req, err := http.NewRequest("POST", addr+"/v1/auth/token/tidy", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	req.Header.Set(consts.AuthHeaderName, token)
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	testResponseStatus(t, resp, 202)
 }
@@ -359,16 +321,12 @@ func TestSysMounts_headerAuth(t *testing.T) {
 	defer ln.Close()
 
 	req, err := http.NewRequest("GET", addr+"/v1/sys/mounts", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	req.Header.Set(consts.AuthHeaderName, token)
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	var actual map[string]any
 	expected := map[string]any{
@@ -545,17 +503,13 @@ func TestSysMounts_headerAuth_Wrapped(t *testing.T) {
 	defer ln.Close()
 
 	req, err := http.NewRequest("GET", addr+"/v1/sys/mounts", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	req.Header.Set(consts.AuthHeaderName, token)
 	req.Header.Set(consts.WrapTTLHeaderName, "60s")
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	var actual map[string]any
 	expected := map[string]any{
@@ -611,9 +565,7 @@ func TestHandler_sealed(t *testing.T) {
 	core.Seal(token)
 
 	resp, err := http.Get(addr + "/v1/secret/foo")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	testResponseStatus(t, resp, 503)
 }
 
@@ -623,9 +575,7 @@ func TestHandler_ui_default(t *testing.T) {
 	defer ln.Close()
 
 	resp, err := http.Get(addr + "/ui/")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	testResponseStatus(t, resp, 404)
 }
 
@@ -635,9 +585,7 @@ func TestHandler_ui_enabled(t *testing.T) {
 	defer ln.Close()
 
 	resp, err := http.Get(addr + "/ui/")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	testResponseStatus(t, resp, 200)
 }
 
@@ -676,20 +624,14 @@ func TestHandler_requestAuth(t *testing.T) {
 
 	rootCtx := namespace.RootContext(t.Context())
 	te, err := core.LookupToken(rootCtx, token)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	rWithAuthorization, err := http.NewRequest("GET", "v1/test/path", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	rWithAuthorization.Header.Set("Authorization", "Bearer "+token)
 
 	rWithVault, err := http.NewRequest("GET", "v1/test/path", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	rWithVault.Header.Set(consts.AuthHeaderName, token)
 
 	for _, r := range []*http.Request{rWithVault, rWithAuthorization} {
@@ -697,9 +639,7 @@ func TestHandler_requestAuth(t *testing.T) {
 		r = r.WithContext(rootCtx)
 		requestAuth(r, req)
 		err = core.PopulateTokenEntry(rootCtx, req)
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
+		require.NoError(t, err)
 
 		if req.ClientToken != token {
 			t.Fatalf("client token should be filled with %s, got %s", token, req.ClientToken)
@@ -716,16 +656,12 @@ func TestHandler_requestAuth(t *testing.T) {
 	}
 
 	rNothing, err := http.NewRequest("GET", "v1/test/path", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	req := logical.TestRequest(t, logical.ReadOperation, "test/path")
 
 	requestAuth(rNothing, req)
 	err = core.PopulateTokenEntry(rootCtx, req)
-	if err != nil {
-		t.Fatalf("expected no error, got %s", err)
-	}
+	require.NoError(t, err)
 	if req.ClientToken != "" {
 		t.Fatalf("client token should not be filled, got %s", req.ClientToken)
 	}
@@ -785,16 +721,12 @@ func testNonPrintable(t *testing.T, disable bool) {
 	defer ln.Close()
 
 	req, err := http.NewRequest("PUT", addr+"/v1/cubbyhole/foo\u2028bar", strings.NewReader(`{"zip": "zap"}`))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	req.Header.Set(consts.AuthHeaderName, token)
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if disable {
 		testResponseStatus(t, resp, 204)
@@ -829,16 +761,12 @@ func TestHandler_Parse_Form(t *testing.T) {
 		"empty": []string{},
 	}
 	req, err := http.NewRequest("POST", cores[0].Client.Address()+"/v1/secret/foo", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	req.Body = io.NopCloser(strings.NewReader(values.Encode()))
 	req.Header.Set("x-vault-token", cluster.RootToken)
 	req.Header.Set("content-type", "application/x-www-form-urlencoded")
 	resp, err := c.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if resp.StatusCode != 204 {
 		t.Fatalf("bad response: %#v\nrequest was: %#v\nurl was: %#v", *resp, *req, req.URL)
@@ -848,9 +776,7 @@ func TestHandler_Parse_Form(t *testing.T) {
 	client.SetToken(cluster.RootToken)
 
 	apiResp, err := client.Logical().Read("secret/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if apiResp == nil {
 		t.Fatal("api resp is nil")
 	}

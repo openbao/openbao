@@ -6,7 +6,41 @@ package shamir
 import (
 	"bytes"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
+
+func TestShares_Has(t *testing.T) {
+	shares := Shares{[]byte("first share"), []byte("other share"), []byte("final share")}
+	tests := []struct {
+		name   string
+		shares Shares
+		share  []byte
+		want   bool
+	}{
+		{"nil shares", nil, shares[0], false},
+		{"empty shares", Shares{}, shares[0], false},
+		{"absent", shares, []byte("extra share"), false},
+		{"first", shares, shares[0], true},
+		{"middle", shares, shares[1], true},
+		{"last", shares, shares[2], true},
+		{"matching prefix", shares, []byte("first sharf"), false},
+		{"shorter share", shares, []byte("first"), false},
+		{"longer share", shares, []byte("first share!"), false},
+		{"different share lengths", Shares{[]byte("first"), shares[0]}, shares[0], true},
+		{"multiple matches", Shares{shares[0], shares[0]}, shares[0], true},
+		{"nil share", shares, nil, false},
+		{"empty share", Shares{nil, {}}, []byte{}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.shares.Has(tt.share); got != tt.want {
+				t.Fatalf("Has() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 
 func TestSplit_invalid(t *testing.T) {
 	secret := []byte("test")
@@ -36,9 +70,7 @@ func TestSplit(t *testing.T) {
 	secret := []byte("test")
 
 	out, err := Split(secret, 5, 3)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	if len(out) != 5 {
 		t.Fatalf("bad: %v", out)
@@ -88,9 +120,7 @@ func TestCombine(t *testing.T) {
 	secret := []byte("test")
 
 	out, err := Split(secret, 5, 3)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// There is 5*4*3 possible choices,
 	// we will just brute force try them all
@@ -106,9 +136,7 @@ func TestCombine(t *testing.T) {
 
 				parts := [][]byte{out[i], out[j], out[k]}
 				recomb, err := Combine(parts)
-				if err != nil {
-					t.Fatalf("err: %v", err)
-				}
+				require.NoError(t, err)
 
 				if !bytes.Equal(recomb, secret) {
 					t.Errorf("parts: (i:%d, j:%d, k:%d) %v", i, j, k, parts)
@@ -159,9 +187,7 @@ func TestField_Divide(t *testing.T) {
 
 func TestPolynomial_Random(t *testing.T) {
 	p, err := makePolynomial(42, 2)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	if p.coefficients[0] != 42 {
 		t.Fatalf("bad: %v", p.coefficients)
@@ -170,9 +196,7 @@ func TestPolynomial_Random(t *testing.T) {
 
 func TestPolynomial_Eval(t *testing.T) {
 	p, err := makePolynomial(42, 1)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	func() {
 		defer func() {
@@ -197,9 +221,7 @@ func TestPolynomial_Eval(t *testing.T) {
 func TestInterpolate_Rand(t *testing.T) {
 	for i := range 256 {
 		p, err := makePolynomial(uint8(i), 2)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		x_vals := []uint8{1, 2, 3}
 		y_vals := []uint8{p.evaluate(1), p.evaluate(2), p.evaluate(3)}

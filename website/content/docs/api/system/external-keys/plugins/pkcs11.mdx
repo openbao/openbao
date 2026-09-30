@@ -1,0 +1,131 @@
+---
+description: >-
+  The PKCS#11 plugin for OpenBao's External Keys offloads cryptographic
+  operations to PKCS#11 tokens.
+---
+
+# PKCS#11
+
+The PKCS#11 plugin offloads cryptographic operations to PKCS#11 tokens by
+loading vendor-specific shared libraries.
+
+## Requirements
+
+This plugin is not built into OpenBao and must be installed externally. It is
+available in [openbao-plugins](https://github.com/openbao/openbao-plugins). A
+minimum plugin version of v0.2.0 is required; prior versions only provided Auto
+Unseal functionality.
+
+Additionally, the following software packages are required on Linux:
+
+- PKCS#11 compatible HSM integration library including any additional system
+  libraries it requires.
+- A version of libc (likely `glibc` or `musl` with `gcompat`; The plugin as
+  released upstream is linked against Glibc but works on Musl with `gcompat`
+  which is pre-installed in Alpine-based OpenBao container images).
+
+The file paths of any PKCS#11 shared libraries to use must additionally be
+registered as [library aliases](#library-aliasing).
+
+## Parameters
+
+The following parameters are set per-config:
+
+- `lib` `(string: <required>)` - The name of the [library
+  alias](#library-aliasing) to use, indicating the path to the PKCS#11 shared
+  library.
+
+- `slot` `(string: <optional>)` - The slot number to use, specified as a string
+  (e.g., a decimal `"2305843009213693953"` or a hex `"0x2000000000000001"`).
+
+- `serial` `(string: <optional>)` - The token serial number to use.
+
+- `token_label` `(string: <optional>)` - The token label to use.
+
+  :::info
+
+  One of `slot`, `serial` and `token_label` is required. If more than one option
+  is set, a token is only selected if it matches all provided parameters.
+
+  :::
+
+- `pin` `(string: <optional>)` - The PIN for `CKU_USER` login.
+
+- `disable_software_encryption` `(bool: false)` - If set to `true`, perform
+  encryption via public keys (e.g., RSA-OAEP) via PKCS#11 instead of exporting
+  the public key and encrypting in software. This defaults to `false` because
+  some HSMs implement RSA-based decryption but not encryption.
+
+The following parameters are set per-key:
+
+- `label` `(string: <optional>)` - The label (`CKA_LABEL`) of the key to use.
+
+- `id` `(string: <optional>)` - The ID (`CKA_ID`) of the key to use. The value
+  should be a hexadecimal string (e.g., `"0x33333435363434373537"`).
+
+- `mechanism` `(string: <best available>)` - Enforce that all usage of this key
+  uses the specified PKCS#11 mechanism, specified either by name, or by decimal
+  or hexadecimal (prefixed by `0x`) string. Currently supported mechanisms are:
+
+  - Names: `CKM_ECDSA`, Hexadecimal: `0x1041`
+  - Names: `CKM_AES_GCM`, Hexadecimal: `0x1087`
+  - Names: `CKM_RSA_PKCS_PSS`, Hexadecimal: `0x000D`
+  - Names: `CKM_RSA_PKCS_OAEP`, Hexadecimal: `0x0009`
+
+  All mechanism names are case-insensitive, treat `-` and `_` as equal and
+  may optionally be prefixed with `CKM_`. That is, `CKM_AES_GCM` may also be
+  expressed as `aes-gcm`.
+
+  Support for algorithms defined by PKCS#11 v3.0+ only (e.g., `CKM_ML_DSA`,
+  `CKM_EDDSA`) is currently lacking, but is planned.
+
+- `rsa_oaep_hash` `(string: "sha256")` - Specify the hash function to use for
+  RSA-OAEP. Available are `sha1`, `sha224`, `sha256`, `sha384`, and `sha512`.
+
+## Library aliasing
+
+To separate concerns between users of the HTTP API and operators of the OpenBao
+server's underlying platform, PKCS#11 shared library paths cannot be set
+arbitrarily via the API. Instead, operators must configure a set of library
+alias mappings that make a set of library paths available as opaque identifiers.
+
+Aliases can be configured via a repeatable `-alias` flag passed to the plugin
+itself:
+
+```hcl
+plugin "kms" "pkcs11" {
+  command = "<...>" # or `image`.
+  args = [
+    "-alias=softhsm=/usr/lib/softhsm/libsofthsm2.so",
+    "-alias=foobar=/usr/lib/other.so",
+  ]
+}
+```
+
+or, alternatively, by setting the `BAO_PKCS11_ALIASES` environment variable:
+
+```hcl
+plugin "kms" "pkcs11" {
+  command = "<...>" # or `image`.
+  env = [
+    "BAO_PKCS11_ALIASES=softhsm=/usr/lib/softhsm/libsofthsm2.so,other=/usr/lib/other.so",
+  ]
+}
+```
+
+It is also possible to set `BAO_PKCS11_ALIASES` globally as plugins inherit
+environment variables from the main server process as long as the `plugin`
+stanza's `env` is unset. This may be useful when a configuration system
+has pre-generated the `plugin` stanza and does not allow straightforward
+customization of its `env` or `args` parameters.
+
+Aliases set via the environment and aliases set via command-line flags are
+merged. An alias may be defined more than once, in which case the path that
+was supplied last takes precedence. Moreover, flags take precedence over the
+environment.
+
+Once set up, reference library aliases via the API:
+
+```shell-session
+$ bao write sys/external-keys/configs/my-hsm plugin=pkcs11 lib=<alias name> ...
+```

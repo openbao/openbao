@@ -552,8 +552,6 @@ type Core struct {
 	// rawConfig stores the config as-is from the provided server configuration.
 	rawConfig atomic.Pointer[server.Config]
 
-	coreNumber int
-
 	recoveryMode bool
 
 	clusterNetworkLayer cluster.NetworkLayer

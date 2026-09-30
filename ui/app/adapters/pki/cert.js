@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { assign } from '@ember/polyfills';
 import Adapter from '../pki';
 
 export default Adapter.extend({
@@ -37,7 +36,7 @@ export default Adapter.extend({
         data.id = id;
         data.id_for_nav = `cert/${id}`;
       }
-      return assign({}, resp, data);
+      return Object.assign({}, resp, data);
     });
   },
 
@@ -64,7 +63,7 @@ export default Adapter.extend({
         serial_number: id,
         backend,
       };
-      return assign({}, resp, data);
+      return Object.assign({}, resp, data);
     });
   },
 });

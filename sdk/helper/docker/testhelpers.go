@@ -666,7 +666,7 @@ func copyToContainer(ctx context.Context, dapi *client.Client, containerID, from
 	if err != nil {
 		return fmt.Errorf("error creating tar from source %q: %v", from, err)
 	}
-	defer srcArchive.Close()
+	defer srcArchive.Close() //nolint:errcheck
 
 	dstInfo := archive.CopyInfo{Path: to}
 
@@ -674,7 +674,7 @@ func copyToContainer(ctx context.Context, dapi *client.Client, containerID, from
 	if err != nil {
 		return fmt.Errorf("error preparing copy from %q -> %q: %v", from, to, err)
 	}
-	defer content.Close()
+	defer content.Close() //nolint:errcheck
 	_, err = dapi.CopyToContainer(ctx, containerID, client.CopyToContainerOptions{
 		DestinationPath: dstDir,
 		Content:         content,
@@ -866,7 +866,7 @@ func (bCtx *BuildContext) ToTarball() (io.Reader, error) {
 	var err error
 	buffer := new(bytes.Buffer)
 	tarBuilder := tar.NewWriter(buffer)
-	defer tarBuilder.Close()
+	defer tarBuilder.Close() //nolint:errcheck
 
 	now := time.Now()
 	for filepath, contents := range *bCtx {

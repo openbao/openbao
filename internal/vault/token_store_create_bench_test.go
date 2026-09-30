@@ -6,6 +6,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/benchhelpers"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
+	"github.com/stretchr/testify/require"
 )
 
 func BenchmarkTokenStore_HandleCreateCommon(b *testing.B) {
@@ -26,9 +27,7 @@ func BenchmarkTokenStore_HandleCreateCommon(b *testing.B) {
 		}
 
 		resp, err := ts.HandleRequest(ctx, req)
-		if err != nil {
-			b.Fatalf("err: %v", err)
-		}
+		require.NoErrorf(b, err, "err: %v", err)
 		if resp != nil && resp.IsError() {
 			b.Fatalf("resp err: %v", resp.Error())
 		}

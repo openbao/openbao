@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/cli"
+	"github.com/stretchr/testify/require"
 )
 
 func testOperatorRotateCommand(tb testing.TB) (*cli.MockUi, *OperatorRotateCommand) {
@@ -85,9 +86,7 @@ func TestOperatorRotateCommand_Run(t *testing.T) {
 		}
 
 		status, err := client.Sys().KeyStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if exp := 1; status.Term < exp {
 			t.Errorf("expected %d to be less than %d", status.Term, exp)
 		}

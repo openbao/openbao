@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/cli"
+	"github.com/stretchr/testify/require"
 
 	httpAudit "github.com/openbao/openbao/v2/internal/builtin/audit/http"
 )
@@ -113,9 +114,7 @@ func TestAuditEnableCommand_Run(t *testing.T) {
 		}
 
 		audits, err := client.Sys().ListAudit()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		auditInfo, ok := audits["audit_enable_integration/"]
 		if !ok {
@@ -181,9 +180,7 @@ func TestAuditEnableCommand_Run(t *testing.T) {
 		httpUrl := testServer.URL + logRoute
 
 		files, err := os.ReadDir("../builtin/audit")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		var backends []string
 		for _, f := range files {

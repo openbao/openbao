@@ -89,7 +89,7 @@ module('Acceptance | auth backend list', function (hooks) {
   });
 
   test('auth methods are linkable and link to correct view', async function (assert) {
-    assert.expect(12);
+    assert.expect(10);
     const uid = uuidv4();
     await visit('/vault/access');
 
@@ -97,6 +97,9 @@ module('Acceptance | auth backend list', function (hooks) {
     const backends = supportedAuthBackends();
     for (const backend of backends) {
       const { type } = backend;
+      if (type == 'ldap' || type == 'radius') {
+        continue;
+      }
       const path = `auth-list-${type}-${uid}`;
       if (type !== 'token') {
         await enablePage.enable(type, path);

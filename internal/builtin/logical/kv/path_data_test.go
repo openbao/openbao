@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
+	"github.com/stretchr/testify/require"
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
@@ -24,9 +25,7 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 	}
 
 	b, err := VersionedKVFactory(t.Context(), config)
-	if err != nil {
-		t.Fatalf("unable to create backend: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Wait for the upgrade to finish
 	timeout := time.After(20 * time.Second)
@@ -44,10 +43,7 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 			}
 
 			resp, err := b.HandleRequest(t.Context(), req)
-			if err != nil {
-				t.Fatalf("unable to read config: %s", err.Error())
-				return nil, nil
-			}
+			require.NoErrorf(t, err, "unable to read config: %s", err)
 
 			if resp != nil && !resp.IsError() {
 				return b, config.StorageView
@@ -305,9 +301,7 @@ func TestVersionedKV_Data_Get(t *testing.T) {
 	}
 
 	parsed, err := time.Parse(time.RFC3339Nano, respMetadata["created_time"].(string))
-	if err != nil {
-		t.Fatalf("failed to parse created_time: %#v", respMetadata["created_time"])
-	}
+	require.NoErrorf(t, err, "failed to parse created_time: %#v", respMetadata["created_time"])
 
 	if !parsed.After(time.Now().Add(-1*time.Minute)) || !parsed.Before(time.Now()) {
 		t.Fatalf("invalid created_time value: %#v", respMetadata["created_time"])
@@ -367,18 +361,14 @@ func TestVersionedKV_Data_Delete(t *testing.T) {
 
 	var httpResp logical.HTTPResponse
 	err = json.Unmarshal([]byte(resp.Data["http_raw_body"].(string)), &httpResp)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if uint64(httpResp.Data["metadata"].(map[string]any)["version"].(float64)) != uint64(1) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
 	parsed, err := time.Parse(time.RFC3339Nano, httpResp.Data["metadata"].(map[string]any)["deletion_time"].(string))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !parsed.After(time.Now().Add(-1*time.Minute)) || !parsed.Before(time.Now()) {
 		t.Fatalf("Bad response: %#v", resp)
@@ -458,14 +448,10 @@ func TestVersionedKV_Data_Put_CleanupOldVersions(t *testing.T) {
 	// Make sure versions 1-9 were cleaned up.
 	for i := 1; i <= 9; i++ {
 		versionKey, err := b.(*versionedKVBackend).getVersionKey(t.Context(), "foo", uint64(i), storage)
-		if err != nil {
-			t.Fatalf("error getting version key for version %d, err: %#v\n", i, err)
-		}
+		require.NoErrorf(t, err, "error getting version key for version %d, err: %#v\n", i, err)
 
 		v, err := storage.Get(t.Context(), versionKey)
-		if err != nil {
-			t.Fatalf("error getting entry for key %s, err: %#v\n", versionKey, err)
-		}
+		require.NoErrorf(t, err, "error getting entry for key %s, err: %#v\n", versionKey, err)
 
 		if v != nil {
 			t.Fatalf("version not cleaned up %d", i)
@@ -546,14 +532,10 @@ func TestVersionedKV_Data_Patch_CleanupOldVersions(t *testing.T) {
 	// Make sure versions 1-9 were cleaned up.
 	for i := 1; i <= 9; i++ {
 		versionKey, err := b.(*versionedKVBackend).getVersionKey(t.Context(), "foo", uint64(i), storage)
-		if err != nil {
-			t.Fatalf("error getting version key for version %d, err: %#v\n", i, err)
-		}
+		require.NoErrorf(t, err, "error getting version key for version %d, err: %#v\n", i, err)
 
 		v, err := storage.Get(t.Context(), versionKey)
-		if err != nil {
-			t.Fatalf("error getting entry for key %s, err: %#v\n", versionKey, err)
-		}
+		require.NoErrorf(t, err, "error getting entry for key %s, err: %#v\n", versionKey, err)
 
 		if v != nil {
 			t.Fatalf("version not cleaned up %d", i)
@@ -594,9 +576,7 @@ func TestVersionedKV_Reload_Policy(t *testing.T) {
 	}
 
 	b, err := VersionedKVFactory(t.Context(), config)
-	if err != nil {
-		t.Fatalf("unable to create backend: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Read values back out
 	for i := range 10 {
@@ -794,9 +774,7 @@ func TestVersionedKV_Patch_NoData(t *testing.T) {
 	}
 
 	resp, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("CreateOperation request failed - err:%s resp:%#v\n", err, resp)
-	}
+	require.NoErrorf(t, err, "CreateOperation request failed - err:%s resp:%#v\n", err, resp)
 
 	req = &logical.Request{
 		Operation: logical.PatchOperation,
@@ -985,9 +963,7 @@ func TestVersionedKV_Patch_CurrentVersionDeleted(t *testing.T) {
 
 	if rawRespBody, ok := resp.Data[logical.HTTPRawBody]; ok {
 		err = json.Unmarshal([]byte(rawRespBody.(string)), &respBody)
-		if err != nil {
-			t.Fatalf("Failed to unmarshal response body: %#v\n", err)
-		}
+		require.NoError(t, err)
 	}
 
 	respDataRaw, ok := respBody["data"]
@@ -1028,9 +1004,7 @@ func TestVersionedKV_Patch_CurrentVersionDeleted(t *testing.T) {
 
 	if rawRespBody, ok := resp.Data[logical.HTTPRawBody]; ok {
 		err = json.Unmarshal([]byte(rawRespBody.(string)), &respBody)
-		if err != nil {
-			t.Fatalf("Failed to unmarshal response body: %v\n", err)
-		}
+		require.NoError(t, err)
 	}
 
 	respDataRaw, ok = respBody["data"]
@@ -1104,9 +1078,7 @@ func TestVersionedKV_Patch_CurrentVersionDestroyed(t *testing.T) {
 
 	if rawRespBody, ok := resp.Data[logical.HTTPRawBody]; ok {
 		err = json.Unmarshal([]byte(rawRespBody.(string)), &respBody)
-		if err != nil {
-			t.Fatalf("Failed to unmarshal response body: %v\n", err)
-		}
+		require.NoError(t, err)
 	}
 
 	respDataRaw, ok := respBody["data"]
@@ -1147,9 +1119,7 @@ func TestVersionedKV_Patch_CurrentVersionDestroyed(t *testing.T) {
 
 	if rawRespBody, ok := resp.Data[logical.HTTPRawBody]; ok {
 		err = json.Unmarshal([]byte(rawRespBody.(string)), &respBody)
-		if err != nil {
-			t.Fatalf("Failed to unmarshal response body: %v\n", err)
-		}
+		require.NoError(t, err)
 	}
 
 	respDataRaw, ok = respBody["data"]

@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -29,9 +30,7 @@ func getFSM(t testing.TB) *FSM {
 	})
 
 	fsm, err := NewFSM(raftDir, "", logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return fsm
 }
@@ -78,9 +77,7 @@ func TestFSM_Batching(t *testing.T) {
 			}
 		}
 		commandBytes, err := proto.Marshal(command)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		return len(command.Operations), &raft.Log{
 			Index: i,
 			Term:  term,
@@ -117,9 +114,7 @@ func TestFSM_Batching(t *testing.T) {
 	}, time.Second, time.Millisecond)
 
 	keys, err := fsm.List(t.Context(), "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if len(keys) != totalKeys {
 		t.Fatalf("incorrect number of keys: got %d expected %d", len(keys), totalKeys)
@@ -148,21 +143,15 @@ func TestFSM_List(t *testing.T) {
 	var sorted []string
 	for _, k := range keys {
 		err := fsm.Put(ctx, &physical.Entry{Key: fmt.Sprintf("foo/%d/bar", k)})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		err = fsm.Put(ctx, &physical.Entry{Key: fmt.Sprintf("foo/%d/baz", k)})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		sorted = append(sorted, fmt.Sprintf("%d/", k))
 	}
 	sort.Strings(sorted)
 
 	got, err := fsm.List(ctx, "foo/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	sort.Strings(got)
 	if diff := deep.Equal(sorted, got); len(diff) > 0 {
 		t.Fatal(diff)

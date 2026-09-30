@@ -5,7 +5,6 @@
 
 import AdapterError from '@ember-data/adapter/error';
 import { inject as service } from '@ember/service';
-import { assign } from '@ember/polyfills';
 import { hash, resolve } from 'rsvp';
 import { pluralize } from 'ember-inflector';
 
@@ -29,9 +28,9 @@ export default ApplicationAdapter.extend({
         id,
         name: snapshot.attr('name'),
       };
-      ret = assign(ret, health);
+      ret = Object.assign(ret, health);
       if (sealStatus instanceof AdapterError === false) {
-        ret = assign(ret, { nodes: [sealStatus] });
+        ret = Object.assign(ret, { nodes: [sealStatus] });
       }
       return resolve(ret);
     });

@@ -16,6 +16,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/v2/internal/helper/timeutil"
+	"github.com/stretchr/testify/require"
 )
 
 // SimulatedTime maintains a virtual clock so the test isn't
@@ -116,9 +117,7 @@ func TestGauge_Creation(t *testing.T) {
 		c.EmptyCollectionFunction,
 		log.Default(),
 	)
-	if err != nil {
-		t.Fatalf("Error creating collection process: %v", err)
-	}
+	require.NoError(t, err)
 
 	if _, ok := p.clock.(timeutil.DefaultClock); !ok {
 		t.Error("Default clock not installed.")
@@ -159,9 +158,7 @@ func TestGauge_StartDelay(t *testing.T) {
 		log.Default(),
 		s,
 	)
-	if err != nil {
-		t.Fatalf("Error creating collection process: %v", err)
-	}
+	require.NoError(t, err)
 	go p.Run()
 
 	delayTicker := s.waitForTicker(t)
@@ -224,9 +221,7 @@ func TestGauge_StoppedDuringInitialDelay(t *testing.T) {
 		log.Default(),
 		s,
 	)
-	if err != nil {
-		t.Fatalf("Error creating collection process: %v", err)
-	}
+	require.NoError(t, err)
 	go p.Run()
 
 	// Stop during the initial delay, check that goroutine exits
@@ -253,9 +248,7 @@ func TestGauge_StoppedAfterInitialDelay(t *testing.T) {
 		log.Default(),
 		s,
 	)
-	if err != nil {
-		t.Fatalf("Error creating collection process: %v", err)
-	}
+	require.NoError(t, err)
 	go p.Run()
 
 	// Get through initial delay, wait for interval ticker
@@ -294,9 +287,7 @@ func TestGauge_Backoff(t *testing.T) {
 		log.Default(),
 		s,
 	)
-	if err != nil {
-		t.Fatalf("Error creating collection process: %v", err)
-	}
+	require.NoError(t, err)
 	// Do not run, we'll just going to call an internal function.
 	p.collectAndFilterGauges()
 
@@ -323,9 +314,7 @@ func TestGauge_RestartTimer(t *testing.T) {
 		log.Default(),
 		s,
 	)
-	if err != nil {
-		t.Fatalf("Error creating collection process: %v", err)
-	}
+	require.NoError(t, err)
 
 	p.resetTicker()
 	t1 := s.waitForTicker(t)
@@ -397,9 +386,7 @@ func TestGauge_InterruptedStreaming(t *testing.T) {
 		log.Default(),
 		s,
 	)
-	if err != nil {
-		t.Fatalf("Error creating collection process: %v", err)
-	}
+	require.NoError(t, err)
 
 	// We'll queue up at least two batches; only one will be sent
 	// unless we give a ticker.
@@ -475,9 +462,7 @@ func TestGauge_MaximumMeasurements(t *testing.T) {
 		log.Default(),
 		s,
 	)
-	if err != nil {
-		t.Fatalf("Error creating collection process: %v", err)
-	}
+	require.NoError(t, err)
 
 	// This needs a ticker in order to do its thing,
 	// so run it in the background and we'll send the ticks
@@ -557,9 +542,7 @@ func TestGauge_MeasurementError(t *testing.T) {
 		log.Default(),
 		s,
 	)
-	if err != nil {
-		t.Fatalf("Error creating collection process: %v", err)
-	}
+	require.NoError(t, err)
 
 	p.collectAndFilterGauges()
 

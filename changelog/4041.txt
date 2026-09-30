@@ -1,0 +1,3 @@
+```release-note:bug
+core/identity: Fix group entity memberships being dropped on unseal when `unsafe_cross_namespace_identity` flag is enabled.
+```

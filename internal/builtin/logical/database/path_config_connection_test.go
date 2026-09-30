@@ -11,6 +11,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/helper/versions"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWriteConfig_PluginVersionInStorage(t *testing.T) {
@@ -22,9 +23,7 @@ func TestWriteConfig_PluginVersionInStorage(t *testing.T) {
 	config.System = sys
 
 	b, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer b.Cleanup(t.Context())
 
 	const mdb = "mysql-database-plugin"
@@ -77,9 +76,7 @@ func TestWriteConfig_PluginVersionInStorage(t *testing.T) {
 		PluginName:    mdb,
 		PluginVersion: mdbBuiltin,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Now replay the read request, and we still shouldn't get the builtin version back.
 	pluginVersion = getPluginVersionFromAPI()
@@ -91,9 +88,7 @@ func TestWriteConfig_PluginVersionInStorage(t *testing.T) {
 	getPluginVersionFromStorage := func() string {
 		t.Helper()
 		entry, err := config.StorageView.Get(t.Context(), "config/plugin-test")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if entry == nil {
 			t.Fatal()
 		}
@@ -134,9 +129,7 @@ func TestWriteConfig_HelpfulErrorMessageWhenBuiltinOverridden(t *testing.T) {
 	config.System = sys
 
 	b, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer b.Cleanup(t.Context())
 
 	const pg = "postgresql-database-plugin"
@@ -156,9 +149,7 @@ func TestWriteConfig_HelpfulErrorMessageWhenBuiltinOverridden(t *testing.T) {
 		Data:      data,
 	}
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatalf("resp:%#v", resp)
 	}

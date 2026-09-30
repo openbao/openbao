@@ -1741,7 +1741,7 @@ func (b *SystemBackend) pluginsCatalogCRUDPath() *framework.Path {
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: b.handlePluginCatalogUpdate,
+				Callback: handleRootNamespaceOnly(b.handlePluginCatalogUpdate),
 				DisplayAttrs: &framework.DisplayAttributes{
 					OperationVerb:   "register",
 					OperationSuffix: "plugin|plugin-with-type|plugin-with-type-and-name",
@@ -1754,7 +1754,7 @@ func (b *SystemBackend) pluginsCatalogCRUDPath() *framework.Path {
 				Summary: "Register a new plugin, or updates an existing one with the supplied name.",
 			},
 			logical.DeleteOperation: &framework.PathOperation{
-				Callback: b.handlePluginCatalogDelete,
+				Callback: handleRootNamespaceOnly(b.handlePluginCatalogDelete),
 				DisplayAttrs: &framework.DisplayAttributes{
 					OperationVerb:   "remove",
 					OperationSuffix: "plugin|plugin-with-type|plugin-with-type-and-name",
@@ -1768,7 +1768,7 @@ func (b *SystemBackend) pluginsCatalogCRUDPath() *framework.Path {
 				Summary: "Remove the plugin with the given name.",
 			},
 			logical.ReadOperation: &framework.PathOperation{
-				Callback: b.handlePluginCatalogRead,
+				Callback: handleRootNamespaceOnly(b.handlePluginCatalogRead),
 				DisplayAttrs: &framework.DisplayAttributes{
 					OperationVerb:   "read",
 					OperationSuffix: "plugin-configuration|plugin-configuration-with-type|plugin-configuration-with-type-and-name",
@@ -3641,6 +3641,9 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.handlePoliciesResolvePath(policy.TypeACL),
+				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handlePoliciesRead(policy.TypeACL),
 					Responses: map[int][]framework.Response{
@@ -3807,6 +3810,9 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.handlePoliciesResolvePath(policy.TypeACL),
+				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handlePoliciesRead(policy.TypeACL),
 					Responses: map[int][]framework.Response{

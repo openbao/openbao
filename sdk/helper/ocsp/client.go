@@ -449,7 +449,7 @@ func (c *Client) GetRevocationStatus(ctx context.Context, subject, issuer *x509.
 		}
 		if conf.QueryAllServers {
 			wg.Add(1)
-			go doRequest()
+			go doRequest() //nolint:errcheck
 		} else {
 			err = doRequest()
 			if err == nil {

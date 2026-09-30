@@ -868,9 +868,9 @@ func (c *Core) waitForLeadership(manualStepDown *bool, manualStepDownCh, stopCh 
 	// everything is sane. If we have no sanity in the barrier, we actually
 	// seal, as there's little we can do.
 	{
-		c.seal.SetBarrierConfig(activeCtx, nil)
+		c.seal.SetBarrierConfig(activeCtx, nil) //nolint:errcheck
 		if c.seal.RecoveryKeySupported() {
-			c.seal.SetRecoveryConfig(activeCtx, nil)
+			c.seal.SetRecoveryConfig(activeCtx, nil) //nolint:errcheck
 		}
 
 		if err := c.performKeyUpgrades(activeCtx); err != nil {
@@ -883,7 +883,11 @@ func (c *Core) waitForLeadership(manualStepDown *bool, manualStepDownCh, stopCh 
 				// statelock and have this shut us down; sealInternal has a
 				// workflow where it watches for the stopCh to close so we want
 				// to return from here
-				go c.Shutdown()
+				go func() {
+					if err := c.Shutdown(); err != nil {
+						c.logger.Error("error shutting down core", "error", err)
+					}
+				}()
 			}
 
 			c.heldHALock = nil
@@ -912,7 +916,9 @@ func (c *Core) waitForLeadership(manualStepDown *bool, manualStepDownCh, stopCh 
 
 		if err := c.setupCluster(activeCtx); err != nil {
 			c.heldHALock = nil
-			lock.Unlock()
+			if unlockErr := lock.Unlock(); unlockErr != nil {
+				c.logger.Error("error releasing HA lock", "error", unlockErr)
+			}
 			c.stateLock.Unlock()
 			c.logger.Error("cluster setup failed", "error", err)
 			metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
@@ -953,7 +959,9 @@ func (c *Core) waitForLeadership(manualStepDown *bool, manualStepDownCh, stopCh 
 		c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformanceStandby))
 		c.standby.Store(true)
 		c.logger.Error("post-unseal setup failed", "error", err)
-		lock.Unlock()
+		if unlockErr := lock.Unlock(); unlockErr != nil {
+			c.logger.Error("error releasing HA lock", "error", unlockErr)
+		}
 		metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
 		return false, true
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 func testAuthMoveCommand(tb testing.TB) (*cli.MockUi, *AuthMoveCommand) {
@@ -106,9 +107,7 @@ func TestAuthMoveCommand_Run(t *testing.T) {
 		}
 
 		mounts, err := client.Sys().ListAuth()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if _, ok := mounts["my-auth-2/"]; !ok {
 			t.Errorf("expected mount at my-auth-2/: %#v", mounts)

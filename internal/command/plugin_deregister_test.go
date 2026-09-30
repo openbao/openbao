@@ -11,6 +11,7 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
+	"github.com/stretchr/testify/require"
 )
 
 func testPluginDeregisterCommand(tb testing.TB) (*cli.MockUi, *PluginDeregisterCommand) {
@@ -116,9 +117,7 @@ func TestPluginDeregisterCommand_Run(t *testing.T) {
 		resp, err := client.Sys().ListPlugins(&api.ListPluginsInput{
 			Type: api.PluginTypeCredential,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		found := false
 		for _, plugins := range resp.PluginsByType {
@@ -166,9 +165,7 @@ func TestPluginDeregisterCommand_Run(t *testing.T) {
 		resp, err := client.Sys().ListPlugins(&api.ListPluginsInput{
 			Type: api.PluginTypeUnknown,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		found := false
 		for _, p := range resp.Details {
@@ -213,9 +210,7 @@ func TestPluginDeregisterCommand_Run(t *testing.T) {
 		resp, err := client.Sys().ListPlugins(&api.ListPluginsInput{
 			Type: api.PluginTypeUnknown,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		found := false
 		for _, p := range resp.Details {

@@ -13,6 +13,7 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
+	"github.com/stretchr/testify/require"
 )
 
 func testPluginRegisterCommand(tb testing.TB) (*cli.MockUi, *PluginRegisterCommand) {
@@ -110,9 +111,7 @@ func TestPluginRegisterCommand_Run(t *testing.T) {
 		resp, err := client.Sys().ListPlugins(&api.ListPluginsInput{
 			Type: api.PluginTypeCredential,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		found := false
 		for _, plugins := range resp.PluginsByType {
@@ -167,18 +166,14 @@ func TestPluginRegisterCommand_Run(t *testing.T) {
 		resp, err := client.Sys().ListPlugins(&api.ListPluginsInput{
 			Type: api.PluginTypeUnknown,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		found := make(map[api.PluginType]int)
 		versionsFound := make(map[api.PluginType][]string)
 		for _, p := range resp.Details {
 			if p.Name == pluginName {
 				typ, err := api.ParsePluginType(p.Type)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				found[typ]++
 				versionsFound[typ] = append(versionsFound[typ], p.Version)
 			}

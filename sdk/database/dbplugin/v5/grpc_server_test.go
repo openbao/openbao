@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -675,9 +676,7 @@ func marshal(t *testing.T, m map[string]any) *structpb.Struct {
 	t.Helper()
 
 	strct, err := mapToStruct(m)
-	if err != nil {
-		t.Fatalf("unable to marshal to protobuf: %s", err)
-	}
+	require.NoError(t, err)
 	return strct
 }
 

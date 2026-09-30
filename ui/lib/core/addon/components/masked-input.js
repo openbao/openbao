@@ -37,6 +37,12 @@ export default class MaskedInputComponent extends Component {
   @tracked modalOpen = false;
   @tracked stringifyDownload = false;
 
+  get copyValue() {
+    const value = this.args.value;
+    if (typeof value === 'string' || typeof value === 'function') return value;
+    return value == null ? '' : String(value);
+  }
+
   constructor() {
     super(...arguments);
     if (!this.args.onChange && !this.args.displayOnly) {

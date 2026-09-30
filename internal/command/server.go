@@ -183,7 +183,8 @@ func (c *ServerCommand) Flags() *FlagSets {
 		Usage: "Path to a configuration file or directory of configuration " +
 			"files. This flag can be specified multiple times to load multiple " +
 			"configurations. If the path is a directory, all files which end in " +
-			".hcl or .json are loaded.",
+			".hcl or .json are loaded. If the path is \"-\", the configuration " +
+			"is read from stdin.",
 	})
 
 	f.BoolVar(&BoolVar{
@@ -464,10 +465,8 @@ func (c *ServerCommand) runRecoveryMode() int {
 	}
 
 	configSeal := config.Seals[0]
-	sealType := configSeal.Type
 	if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
-		sealType = api.ReadBaoVariable("BAO_SEAL_TYPE")
-		configSeal.Type = sealType
+		configSeal.Type = api.ReadBaoVariable("BAO_SEAL_TYPE")
 	}
 
 	var seal vault.Seal
@@ -1481,7 +1480,7 @@ func (c *ServerCommand) Run(args []string) int {
 			var config *server.Config
 			var configErrors []configutil.ConfigError
 			for _, path := range c.flagConfigs {
-				current, err := server.LoadConfig(path, c.flagConfigs)
+				current, err := c.loadServerConfigPath(path, c.flagConfigs)
 				if err != nil {
 					c.logger.Error("could not reload config", "path", path, "error", err)
 					goto RUNRELOADFUNCS
@@ -2442,7 +2441,7 @@ func (c *ServerCommand) downloadOCIPlugins(ctx context.Context, config *server.C
 	logger.Info("starting OCI plugin downloading")
 	defer logger.Info("OCI plugin downloading completed")
 
-	return oci.NewPluginDownloader(config.PluginDirectory, config, logger).ReconcilePlugins(ctx)
+	return oci.NewPluginDownloader(config.PluginDirectory, config, logger).Reconcile(ctx)
 }
 
 // storageMigrationActive checks and warns against in-progress storage migrations.
@@ -2530,10 +2529,8 @@ func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, in
 	}
 	createdSeals := make([]vault.Seal, len(config.Seals))
 	for _, configSeal := range config.Seals {
-		sealType := configSeal.Type
 		if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
-			sealType = api.ReadBaoVariable("BAO_SEAL_TYPE")
-			configSeal.Type = sealType
+			configSeal.Type = api.ReadBaoVariable("BAO_SEAL_TYPE")
 		}
 
 		var seal vault.Seal

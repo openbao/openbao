@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDeletionTimeCalc(t *testing.T) {
@@ -55,9 +56,7 @@ func getTime(t *testing.T, k string, d map[string]any) time.Time {
 
 func wantNoResponse(t *testing.T, resp *logical.Response, err error) {
 	t.Helper()
-	if err != nil {
-		t.Fatalf("want no error, got err: %s", err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("want no response, got response: %#v", resp)
 	}
@@ -65,9 +64,7 @@ func wantNoResponse(t *testing.T, resp *logical.Response, err error) {
 
 func wantResponse(t *testing.T, resp *logical.Response, err error) {
 	t.Helper()
-	if err != nil {
-		t.Fatalf("want no error, got err: %#v", err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("want response, got no response")
 	}

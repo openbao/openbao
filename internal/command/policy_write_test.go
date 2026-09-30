@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/cli"
+	"github.com/stretchr/testify/require"
 )
 
 func testPolicyWriteCommand(tb testing.TB) (*cli.MockUi, *PolicyWriteCommand) {
@@ -93,9 +94,7 @@ func TestPolicyWriteCommand_Run(t *testing.T) {
 
 		policy := testPolicyWritePolicyContents(t)
 		f, err := os.CreateTemp("", "vault-policy-write")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if _, err := f.Write(policy); err != nil {
 			t.Fatal(err)
 		}
@@ -124,9 +123,7 @@ func TestPolicyWriteCommand_Run(t *testing.T) {
 		}
 
 		policies, err := client.Sys().ListPolicies()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		list := []string{"default", "my-policy", "root"}
 		if !reflect.DeepEqual(policies, list) {
@@ -165,9 +162,7 @@ func TestPolicyWriteCommand_Run(t *testing.T) {
 		}
 
 		policies, err := client.Sys().ListPolicies()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		list := []string{"default", "my-policy", "root"}
 		if !reflect.DeepEqual(policies, list) {

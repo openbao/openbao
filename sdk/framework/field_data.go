@@ -376,10 +376,10 @@ func (d *FieldData) getPrimitive(k string, schema *FieldSchema) (any, bool, erro
 		}
 
 		result := make(map[string]string, len(listResult))
-		for _, keyPair := range listResult {
+		for index, keyPair := range listResult {
 			keyPairSlice := strings.SplitN(keyPair, "=", 2)
 			if len(keyPairSlice) != 2 || keyPairSlice[0] == "" {
-				return nil, false, fmt.Errorf("invalid key pair %q", keyPair)
+				return nil, false, fmt.Errorf("invalid key pair at index %v in field %q", index, k)
 			}
 			result[keyPairSlice[0]] = keyPairSlice[1]
 		}
@@ -434,7 +434,7 @@ func (d *FieldData) getPrimitive(k string, schema *FieldSchema) (any, bool, erro
 						}
 					}
 				default:
-					return nil, fmt.Errorf("unrecognized type for %s", headerValGroup)
+					return nil, fmt.Errorf("unrecognized type %T for header value group; expected string, []string, json.Number, or []json.Number", headerValGroup)
 				}
 			}
 			return header, nil
@@ -472,20 +472,20 @@ func (d *FieldData) getPrimitive(k string, schema *FieldSchema) (any, bool, erro
 		// 3. Are we getting an array of fields like "content-type:encoding/json" from the CLI?
 		var keyPairs []any
 		if err := mapstructure.WeakDecode(raw, &keyPairs); err == nil {
-			for _, keyPairIfc := range keyPairs {
+			for index, keyPairIfc := range keyPairs {
 				keyPair, ok := keyPairIfc.(string)
 				if !ok {
-					return nil, false, fmt.Errorf("invalid key pair %q", keyPair)
+					return nil, false, fmt.Errorf("invalid key pair at index %v in header field %q", index, k)
 				}
 				keyPairSlice := strings.SplitN(keyPair, ":", 2)
 				if len(keyPairSlice) != 2 || keyPairSlice[0] == "" {
-					return nil, false, fmt.Errorf("invalid key pair %q", keyPair)
+					return nil, false, fmt.Errorf("invalid key pair at index %v in header field %q", index, k)
 				}
 				result.Add(keyPairSlice[0], keyPairSlice[1])
 			}
 			return result, true, nil
 		}
-		return nil, false, fmt.Errorf("%s not provided an expected format", raw)
+		return nil, false, fmt.Errorf("header field %q not provided in an expected format", k)
 
 	default:
 		panic(fmt.Sprintf("Unknown type: %s", schema.Type))

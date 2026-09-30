@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -262,9 +263,7 @@ func TestTracingMiddleware(t *testing.T) {
 			logger: logger,
 		}
 		_, err := mw.Initialize(t.Context(), InitializeRequest{})
-		if err != nil {
-			t.Fatalf("Expected no error, but got: %s", err)
-		}
+		require.NoError(t, err)
 		assertEquals(t, db.initializeCalls, 1)
 		assertEquals(t, db.newUserCalls, 0)
 		assertEquals(t, db.updateUserCalls, 0)
@@ -281,9 +280,7 @@ func TestTracingMiddleware(t *testing.T) {
 			logger: logger,
 		}
 		_, err := mw.NewUser(t.Context(), NewUserRequest{})
-		if err != nil {
-			t.Fatalf("Expected no error, but got: %s", err)
-		}
+		require.NoError(t, err)
 		assertEquals(t, db.initializeCalls, 0)
 		assertEquals(t, db.newUserCalls, 1)
 		assertEquals(t, db.updateUserCalls, 0)
@@ -300,9 +297,7 @@ func TestTracingMiddleware(t *testing.T) {
 			logger: logger,
 		}
 		_, err := mw.UpdateUser(t.Context(), UpdateUserRequest{})
-		if err != nil {
-			t.Fatalf("Expected no error, but got: %s", err)
-		}
+		require.NoError(t, err)
 		assertEquals(t, db.initializeCalls, 0)
 		assertEquals(t, db.newUserCalls, 0)
 		assertEquals(t, db.updateUserCalls, 1)
@@ -319,9 +314,7 @@ func TestTracingMiddleware(t *testing.T) {
 			logger: logger,
 		}
 		_, err := mw.DeleteUser(t.Context(), DeleteUserRequest{})
-		if err != nil {
-			t.Fatalf("Expected no error, but got: %s", err)
-		}
+		require.NoError(t, err)
 		assertEquals(t, db.initializeCalls, 0)
 		assertEquals(t, db.newUserCalls, 0)
 		assertEquals(t, db.updateUserCalls, 0)
@@ -338,9 +331,7 @@ func TestTracingMiddleware(t *testing.T) {
 			logger: logger,
 		}
 		_, err := mw.Type()
-		if err != nil {
-			t.Fatalf("Expected no error, but got: %s", err)
-		}
+		require.NoError(t, err)
 		assertEquals(t, db.initializeCalls, 0)
 		assertEquals(t, db.newUserCalls, 0)
 		assertEquals(t, db.updateUserCalls, 0)
@@ -357,9 +348,7 @@ func TestTracingMiddleware(t *testing.T) {
 			logger: logger,
 		}
 		err := mw.Close()
-		if err != nil {
-			t.Fatalf("Expected no error, but got: %s", err)
-		}
+		require.NoError(t, err)
 		assertEquals(t, db.initializeCalls, 0)
 		assertEquals(t, db.newUserCalls, 0)
 		assertEquals(t, db.updateUserCalls, 0)
@@ -377,9 +366,7 @@ func TestMetricsMiddleware(t *testing.T) {
 			typeStr: "metrics",
 		}
 		_, err := mw.Initialize(t.Context(), InitializeRequest{})
-		if err != nil {
-			t.Fatalf("Expected no error, but got: %s", err)
-		}
+		require.NoError(t, err)
 		assertEquals(t, db.initializeCalls, 1)
 		assertEquals(t, db.newUserCalls, 0)
 		assertEquals(t, db.updateUserCalls, 0)
@@ -395,9 +382,7 @@ func TestMetricsMiddleware(t *testing.T) {
 			typeStr: "metrics",
 		}
 		_, err := mw.NewUser(t.Context(), NewUserRequest{})
-		if err != nil {
-			t.Fatalf("Expected no error, but got: %s", err)
-		}
+		require.NoError(t, err)
 		assertEquals(t, db.initializeCalls, 0)
 		assertEquals(t, db.newUserCalls, 1)
 		assertEquals(t, db.updateUserCalls, 0)
@@ -413,9 +398,7 @@ func TestMetricsMiddleware(t *testing.T) {
 			typeStr: "metrics",
 		}
 		_, err := mw.UpdateUser(t.Context(), UpdateUserRequest{})
-		if err != nil {
-			t.Fatalf("Expected no error, but got: %s", err)
-		}
+		require.NoError(t, err)
 		assertEquals(t, db.initializeCalls, 0)
 		assertEquals(t, db.newUserCalls, 0)
 		assertEquals(t, db.updateUserCalls, 1)
@@ -431,9 +414,7 @@ func TestMetricsMiddleware(t *testing.T) {
 			typeStr: "metrics",
 		}
 		_, err := mw.DeleteUser(t.Context(), DeleteUserRequest{})
-		if err != nil {
-			t.Fatalf("Expected no error, but got: %s", err)
-		}
+		require.NoError(t, err)
 		assertEquals(t, db.initializeCalls, 0)
 		assertEquals(t, db.newUserCalls, 0)
 		assertEquals(t, db.updateUserCalls, 0)
@@ -449,9 +430,7 @@ func TestMetricsMiddleware(t *testing.T) {
 			typeStr: "metrics",
 		}
 		_, err := mw.Type()
-		if err != nil {
-			t.Fatalf("Expected no error, but got: %s", err)
-		}
+		require.NoError(t, err)
 		assertEquals(t, db.initializeCalls, 0)
 		assertEquals(t, db.newUserCalls, 0)
 		assertEquals(t, db.updateUserCalls, 0)
@@ -467,9 +446,7 @@ func TestMetricsMiddleware(t *testing.T) {
 			typeStr: "metrics",
 		}
 		err := mw.Close()
-		if err != nil {
-			t.Fatalf("Expected no error, but got: %s", err)
-		}
+		require.NoError(t, err)
 		assertEquals(t, db.initializeCalls, 0)
 		assertEquals(t, db.newUserCalls, 0)
 		assertEquals(t, db.updateUserCalls, 0)

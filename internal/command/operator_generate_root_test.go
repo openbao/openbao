@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/sdk/v2/helper/xor"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func testOperatorGenerateRootCommand(tb testing.TB) (*cli.MockUi, *OperatorGenerateRootCommand) {
@@ -136,9 +137,7 @@ func TestOperatorGenerateRootCommand_Run(t *testing.T) {
 		// Simulate piped output to print raw output
 		old := os.Stdout
 		_, w, err := os.Pipe()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		os.Stdout = w
 
 		code := cmd.Run([]string{
@@ -181,9 +180,7 @@ func TestOperatorGenerateRootCommand_Run(t *testing.T) {
 		// Simulate piped output to print raw output
 		old := os.Stdout
 		_, w, err := os.Pipe()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		os.Stdout = w
 
 		code := cmd.Run([]string{
@@ -226,9 +223,7 @@ func TestOperatorGenerateRootCommand_Run(t *testing.T) {
 		// Simulate piped output to print raw output
 		old := os.Stdout
 		_, w, err := os.Pipe()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		os.Stdout = w
 
 		code := cmd.Run([]string{
@@ -277,9 +272,7 @@ func TestOperatorGenerateRootCommand_Run(t *testing.T) {
 		}
 
 		status, err := client.Sys().GenerateRootStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if status.Started {
 			t.Errorf("expected status to be canceled: %#v", status)
@@ -309,9 +302,7 @@ func TestOperatorGenerateRootCommand_Run(t *testing.T) {
 		}
 
 		status, err := client.Sys().GenerateRootStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if !status.Started {
 			t.Errorf("expected status to be started: %#v", status)
@@ -345,9 +336,7 @@ func TestOperatorGenerateRootCommand_Run(t *testing.T) {
 		}
 
 		status, err := client.Sys().GenerateRootStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if !status.Started {
 			t.Errorf("expected status to be started: %#v", status)
@@ -388,9 +377,7 @@ func TestOperatorGenerateRootCommand_Run(t *testing.T) {
 
 		// Initialize a generation
 		status, err := client.Sys().GenerateRootInit("", "")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		nonce := status.Nonce
 		otp := status.OTP
 
@@ -427,14 +414,10 @@ func TestOperatorGenerateRootCommand_Run(t *testing.T) {
 		}
 
 		tokenBytes, err := base64.RawStdEncoding.DecodeString(match[0][1])
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		token, err := xor.XORBytes(tokenBytes, []byte(otp))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if l, exp := len(token), vault.TokenLength+vault.TokenPrefixLength; l != exp {
 			t.Errorf("expected %d to be %d: %s", l, exp, token)
@@ -449,9 +432,7 @@ func TestOperatorGenerateRootCommand_Run(t *testing.T) {
 
 		// Initialize a generation
 		status, err := client.Sys().GenerateRootInit("", "")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		nonce := status.Nonce
 		otp := status.OTP
 
@@ -513,14 +494,10 @@ func TestOperatorGenerateRootCommand_Run(t *testing.T) {
 		// }
 
 		tokenBytes, err := base64.RawStdEncoding.DecodeString(match[0][1])
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		token, err := xor.XORBytes(tokenBytes, []byte(otp))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if l, exp := len(token), vault.TokenLength+vault.TokenPrefixLength; l != exp {
 			t.Errorf("expected %d to be %d: %s", l, exp, token)

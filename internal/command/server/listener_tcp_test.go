@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/pires/go-proxyproto"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTCPListener(t *testing.T) {
@@ -21,9 +22,7 @@ func TestTCPListener(t *testing.T) {
 		Address:    "127.0.0.1:0",
 		TLSDisable: true,
 	}, nil, cli.NewMockUi())
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	connFn := func(lnReal net.Listener) (net.Conn, error) {
 		return net.Dial("tcp", ln.Addr().String())
@@ -52,9 +51,7 @@ func TestTCPListener_tls(t *testing.T) {
 		TLSRequireAndVerifyClientCert: true,
 		TLSClientCAFile:               wd + "reload_ca.pem",
 	}, nil, cli.NewMockUi())
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	cwd, _ := os.Getwd()
 
 	clientCert, _ := tls.LoadX509KeyPair(
@@ -102,9 +99,7 @@ func TestTCPListener_tls(t *testing.T) {
 		TLSDisableClientCerts: true,
 		TLSClientCAFile:       wd + "reload_ca.pem",
 	}, nil, cli.NewMockUi())
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	testListenerImpl(t, ln, connFn(false), "foo.example.com", 0, "127.0.0.1", false)
 }
@@ -129,9 +124,7 @@ func TestTCPListener_tls13(t *testing.T) {
 		TLSClientCAFile:               wd + "reload_ca.pem",
 		TLSMinVersion:                 "tls13",
 	}, nil, cli.NewMockUi())
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	cwd, _ := os.Getwd()
 
 	clientCert, _ := tls.LoadX509KeyPair(
@@ -181,9 +174,7 @@ func TestTCPListener_tls13(t *testing.T) {
 		TLSClientCAFile:       wd + "reload_ca.pem",
 		TLSMinVersion:         "tls13",
 	}, nil, cli.NewMockUi())
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	testListenerImpl(t, ln, connFn(false), "foo.example.com", tls.VersionTLS13, "127.0.0.1", false)
 
@@ -195,9 +186,7 @@ func TestTCPListener_tls13(t *testing.T) {
 		TLSClientCAFile:       wd + "reload_ca.pem",
 		TLSMaxVersion:         "tls12",
 	}, nil, cli.NewMockUi())
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	testListenerImpl(t, ln, connFn(false), "foo.example.com", tls.VersionTLS12, "127.0.0.1", false)
 }
@@ -415,9 +404,7 @@ func TestTCPListener_proxyProtocol(t *testing.T) {
 			proxyProtocolAuthorizedAddrs := []*sockaddr.SockAddrMarshaler{}
 			if tc.AuthorizedAddr != "" {
 				sockAddr, err := sockaddr.NewSockAddr(tc.AuthorizedAddr)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				proxyProtocolAuthorizedAddrs = append(
 					proxyProtocolAuthorizedAddrs,
 					&sockaddr.SockAddrMarshaler{SockAddr: sockAddr},
@@ -430,9 +417,7 @@ func TestTCPListener_proxyProtocol(t *testing.T) {
 				ProxyProtocolBehavior:        tc.Behavior,
 				ProxyProtocolAuthorizedAddrs: proxyProtocolAuthorizedAddrs,
 			}, nil, cli.NewMockUi())
-			if err != nil {
-				t.Fatalf("err: %s", err)
-			}
+			require.NoError(t, err)
 
 			connFn := func(lnReal net.Listener) (net.Conn, error) {
 				conn, err := net.Dial("tcp", ln.Addr().String())

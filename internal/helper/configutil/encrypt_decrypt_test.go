@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -38,9 +39,7 @@ telemetry {
 
 	reverser := new(reversingWrapper)
 	out, err := EncryptDecrypt(rawStr, false, false, reverser)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	first := true
 	locs := decryptRegex.FindAllIndex([]byte(out), -1)
@@ -48,9 +47,7 @@ telemetry {
 		matchBytes := []byte(out)[match[0]:match[1]]
 		matchBytes = bytes.TrimSuffix(bytes.TrimPrefix(matchBytes, []byte("{{decrypt(")), []byte(")}}"))
 		inMsg, err := base64.RawURLEncoding.DecodeString(string(matchBytes))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		inBlob := new(wrapping.BlobInfo)
 		if err := proto.Unmarshal(inMsg, inBlob); err != nil {
 			t.Fatal(err)
@@ -69,18 +66,14 @@ telemetry {
 	}
 
 	decOut, err := EncryptDecrypt(out, true, false, reverser)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if decOut != rawStr {
 		t.Fatal(decOut)
 	}
 
 	decOut, err = EncryptDecrypt(out, true, true, reverser)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if decOut != finalStr {
 		t.Fatal(decOut)

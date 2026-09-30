@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
+	"github.com/stretchr/testify/require"
 )
 
 func testContextInfo(t *testing.T) *ContextInfo {
@@ -22,16 +23,12 @@ func testContextInfo(t *testing.T) *ContextInfo {
 
 func TestNew(t *testing.T) {
 	_, err := New()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestCacheMemDB_Get(t *testing.T) {
 	cache, err := New()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Test invalid index name
 	_, err = cache.Get("foo", "bar")
@@ -41,9 +38,7 @@ func TestCacheMemDB_Get(t *testing.T) {
 
 	// Test on empty cache
 	index, err := cache.Get(IndexNameID, "foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if index != nil {
 		t.Fatalf("expected nil index, got: %v", index)
 	}
@@ -98,9 +93,7 @@ func TestCacheMemDB_Get(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			out, err := cache.Get(tc.indexName, tc.indexValues...)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if diff := deep.Equal(in, out); diff != nil {
 				t.Fatal(diff)
 			}
@@ -110,9 +103,7 @@ func TestCacheMemDB_Get(t *testing.T) {
 
 func TestCacheMemDB_GetByPrefix(t *testing.T) {
 	cache, err := New()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Test invalid index name
 	_, err = cache.GetByPrefix("foo", "bar", "baz")
@@ -122,9 +113,7 @@ func TestCacheMemDB_GetByPrefix(t *testing.T) {
 
 	// Test on empty cache
 	index, err := cache.GetByPrefix(IndexNameRequestPath, "foo", "bar")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if index != nil {
 		t.Fatalf("expected nil index, got: %v", index)
 	}
@@ -193,9 +182,7 @@ func TestCacheMemDB_GetByPrefix(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			out, err := cache.GetByPrefix(tc.indexName, tc.indexValues...)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			if diff := deep.Equal([]*Index{in, in2}, out); diff != nil {
 				t.Fatal(diff)
@@ -206,9 +193,7 @@ func TestCacheMemDB_GetByPrefix(t *testing.T) {
 
 func TestCacheMemDB_Set(t *testing.T) {
 	cache, err := New()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	testCases := []struct {
 		name    string
@@ -258,9 +243,7 @@ func TestCacheMemDB_Set(t *testing.T) {
 
 func TestCacheMemDB_Evict(t *testing.T) {
 	cache, err := New()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Test on empty cache
 	if err := cache.Evict(IndexNameID, "foo"); err != nil {
@@ -362,9 +345,7 @@ func TestCacheMemDB_Evict(t *testing.T) {
 
 func TestCacheMemDB_Flush(t *testing.T) {
 	cache, err := New()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Populate cache
 	in := &Index{
@@ -387,9 +368,7 @@ func TestCacheMemDB_Flush(t *testing.T) {
 
 	// Check the cache doesn't contain inserted index
 	out, err := cache.Get(IndexNameID, "test_id")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if out != nil {
 		t.Fatalf("expected cache to be empty, got = %v", out)
 	}

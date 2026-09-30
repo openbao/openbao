@@ -14,6 +14,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 // Test to check if the API errors out when wrong number of PGP keys are
@@ -53,9 +54,7 @@ func TestSysRekey_Init_Status(t *testing.T) {
 		cl := cluster.Cores[0].Client
 
 		resp, err := cl.Logical().Read("sys/rekey/init")
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
+		require.NoError(t, err)
 
 		actual := resp.Data
 		expected := map[string]any{
@@ -96,9 +95,7 @@ func TestSysRekey_Init_Setup(t *testing.T) {
 			"secret_shares":    5,
 			"secret_threshold": 3,
 		})
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
+		require.NoError(t, err)
 
 		actual := resp.Data
 		expected := map[string]any{
@@ -122,9 +119,7 @@ func TestSysRekey_Init_Setup(t *testing.T) {
 
 		// Get rekey status
 		resp, err = cl.Logical().Read("sys/rekey/init")
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
+		require.NoError(t, err)
 
 		actual = resp.Data
 		expected = map[string]any{
@@ -169,19 +164,13 @@ func TestSysRekey_Init_Cancel(t *testing.T) {
 			"secret_shares":    5,
 			"secret_threshold": 3,
 		})
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
+		require.NoError(t, err)
 
 		_, err = cl.Logical().Delete("sys/rekey/init")
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
+		require.NoError(t, err)
 
 		resp, err := cl.Logical().Read("sys/rekey/init")
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
+		require.NoError(t, err)
 
 		actual := resp.Data
 		expected := map[string]any{

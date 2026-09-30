@@ -2626,9 +2626,7 @@ func TestOIDC_pathOIDCClientExistenceCheck(t *testing.T) {
 			},
 		},
 	)
-	if err != nil {
-		t.Fatalf("Error during existence check on an expected nil entry, err:\n%#v", err)
-	}
+	require.NoError(t, err)
 	if exists {
 		t.Fatalf("Expected existence check to return false but instead returned: %t", exists)
 	}
@@ -2655,9 +2653,7 @@ func TestOIDC_pathOIDCClientExistenceCheck(t *testing.T) {
 			},
 		},
 	)
-	if err != nil {
-		t.Fatalf("Error during existence check on an expected nil entry, err:\n%#v", err)
-	}
+	require.NoError(t, err)
 	if !exists {
 		t.Fatalf("Expected existence check to return true but instead returned: %t", exists)
 	}
@@ -2971,9 +2967,7 @@ func TestOIDC_pathOIDCScopeExistenceCheck(t *testing.T) {
 			},
 		},
 	)
-	if err != nil {
-		t.Fatalf("Error during existence check on an expected nil entry, err:\n%#v", err)
-	}
+	require.NoError(t, err)
 	if exists {
 		t.Fatalf("Expected existence check to return false but instead returned: %t", exists)
 	}
@@ -3000,9 +2994,7 @@ func TestOIDC_pathOIDCScopeExistenceCheck(t *testing.T) {
 			},
 		},
 	)
-	if err != nil {
-		t.Fatalf("Error during existence check on an expected nil entry, err:\n%#v", err)
-	}
+	require.NoError(t, err)
 	if !exists {
 		t.Fatalf("Expected existence check to return true but instead returned: %t", exists)
 	}
@@ -3337,9 +3329,7 @@ func TestOIDC_pathOIDCAssignmentExistenceCheck(t *testing.T) {
 			},
 		},
 	)
-	if err != nil {
-		t.Fatalf("Error during existence check on an expected nil entry, err:\n%#v", err)
-	}
+	require.NoError(t, err)
 	if exists {
 		t.Fatalf("Expected existence check to return false but instead returned: %t", exists)
 	}
@@ -3366,9 +3356,7 @@ func TestOIDC_pathOIDCAssignmentExistenceCheck(t *testing.T) {
 			},
 		},
 	)
-	if err != nil {
-		t.Fatalf("Error during existence check on an expected nil entry, err:\n%#v", err)
-	}
+	require.NoError(t, err)
 	if !exists {
 		t.Fatalf("Expected existence check to return true but instead returned: %t", exists)
 	}

@@ -141,7 +141,9 @@ func (dc *DockerCluster) GetCACertPEMFile() string {
 }
 
 func (dc *DockerCluster) Cleanup() {
-	dc.cleanup()
+	if err := dc.cleanup(); err != nil {
+		dc.Logger.Warn("error cleaning up cluster", "error", err)
+	}
 }
 
 func (dc *DockerCluster) cleanup() error {
@@ -554,7 +556,9 @@ func (n *DockerClusterNode) newAPIClient() (*api.Client, error) {
 
 // Cleanup kills the container of the node and deletes its data volume
 func (n *DockerClusterNode) Cleanup() {
-	n.cleanup()
+	if err := n.cleanup(); err != nil {
+		n.Logger.Warn("error cleaning up cluster node", "error", err)
+	}
 }
 
 // Stop kills the container of the node
@@ -1291,7 +1295,7 @@ func (dc *DockerCluster) setupImage(ctx context.Context, opts *DockerClusterOpti
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck
 	data, err := io.ReadAll(f)
 	if err != nil {
 		return "", err
@@ -1307,7 +1311,7 @@ func (dc *DockerCluster) setupImage(ctx context.Context, opts *DockerClusterOpti
 		if err != nil {
 			return "", err
 		}
-		defer ef.Close()
+		defer ef.Close() //nolint:errcheck
 
 		edata, err := io.ReadAll(ef)
 		if err != nil {

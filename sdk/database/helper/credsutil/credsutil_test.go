@@ -6,21 +6,19 @@ package credsutil
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestRandomAlphaNumeric(t *testing.T) {
 	s, err := RandomAlphaNumeric(10, true)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err)
-	}
+	require.NoError(t, err)
 	if len(s) != 10 {
 		t.Fatalf("Unexpected length of string, expected 10, got string: %s", s)
 	}
 
 	s, err = RandomAlphaNumeric(20, true)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err)
-	}
+	require.NoError(t, err)
 	if len(s) != 20 {
 		t.Fatalf("Unexpected length of string, expected 20, got string: %s", s)
 	}
@@ -30,9 +28,7 @@ func TestRandomAlphaNumeric(t *testing.T) {
 	}
 
 	s, err = RandomAlphaNumeric(20, false)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err)
-	}
+	require.NoError(t, err)
 	if len(s) != 20 {
 		t.Fatalf("Unexpected length of string, expected 20, got string: %s", s)
 	}

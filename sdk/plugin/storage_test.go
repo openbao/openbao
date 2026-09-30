@@ -14,6 +14,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStorage_GRPC_ReturnsErrIfStorageNil(t *testing.T) {
@@ -43,9 +44,7 @@ func TestStorage_GRPC(t *testing.T) {
 
 func TestStorage_GRPCTransaction(t *testing.T) {
 	physical, err := inmem.NewInmem(nil, logging.NewVaultLogger(log.Trace))
-	if err != nil {
-		t.Fatalf("failed to create backend: %v", err)
-	}
+	require.NoError(t, err)
 
 	storage := logical.NewLogicalStorage(physical)
 
@@ -57,9 +56,7 @@ func TestStorage_GRPCTransaction(t *testing.T) {
 	defer client.Close()
 
 	testStorage, err := newGRPCStorageClient(t.Context(), client)
-	if err != nil {
-		t.Fatalf("failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 
 	if _, ok := storage.(logical.Transactional); !ok {
 		t.Fatal("expected base storage to be transactional but wasn't")

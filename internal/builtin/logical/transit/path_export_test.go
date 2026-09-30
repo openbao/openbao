@@ -63,9 +63,7 @@ func verifyExportsCorrectVersion(t *testing.T, exportType, keyType string) {
 		req.Data["key_size"] = 32
 	}
 	_, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	verifyVersion := func(versionRequest string, expectedVersion int) {
 		req := &logical.Request{
@@ -74,9 +72,7 @@ func verifyExportsCorrectVersion(t *testing.T, exportType, keyType string) {
 			Path:      fmt.Sprintf("export/%s/foo/%s", exportType, versionRequest),
 		}
 		rsp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		typRaw, ok := rsp.Data["type"]
 		if !ok {
@@ -116,9 +112,7 @@ func verifyExportsCorrectVersion(t *testing.T, exportType, keyType string) {
 	req.Path = "keys/foo/rotate"
 	// v2
 	_, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	verifyVersion("v1", 1)
 	verifyVersion("1", 1)
@@ -128,9 +122,7 @@ func verifyExportsCorrectVersion(t *testing.T, exportType, keyType string) {
 
 	// v3
 	_, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	verifyVersion("v1", 1)
 	verifyVersion("1", 1)
@@ -152,21 +144,15 @@ func TestTransit_Export_ValidVersionsOnly(t *testing.T) {
 		"exportable": true,
 	}
 	_, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	req.Path = "keys/foo/rotate"
 	// v2
 	_, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// v3
 	_, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	verifyExport := func(validVersions []int) {
 		req = &logical.Request{
@@ -175,9 +161,7 @@ func TestTransit_Export_ValidVersionsOnly(t *testing.T) {
 			Path:      "export/encryption-key/foo",
 		}
 		rsp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if _, ok := rsp.Data["keys"]; !ok {
 			t.Error("no keys returned from export")
 		}
@@ -207,9 +191,7 @@ func TestTransit_Export_ValidVersionsOnly(t *testing.T) {
 		"min_decryption_version": 3,
 	}
 	_, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	verifyExport([]int{3})
 
 	req = &logical.Request{
@@ -221,9 +203,7 @@ func TestTransit_Export_ValidVersionsOnly(t *testing.T) {
 		"min_decryption_version": 2,
 	}
 	_, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	verifyExport([]int{2, 3})
 
 	req = &logical.Request{
@@ -233,9 +213,7 @@ func TestTransit_Export_ValidVersionsOnly(t *testing.T) {
 	}
 	// v4
 	_, err = b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	verifyExport([]int{2, 3, 4})
 }
 
@@ -251,9 +229,7 @@ func TestTransit_Export_KeysNotMarkedExportable_ReturnsError(t *testing.T) {
 		"exportable": false,
 	}
 	_, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	req = &logical.Request{
 		Storage:   storage,
@@ -261,9 +237,7 @@ func TestTransit_Export_KeysNotMarkedExportable_ReturnsError(t *testing.T) {
 		Path:      "export/encryption-key/foo",
 	}
 	rsp, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if !rsp.IsError() {
 		t.Fatal("Key not marked as exportable but was exported.")
 	}
@@ -282,9 +256,7 @@ func TestTransit_Export_SigningDoesNotSupportSigning_ReturnsError(t *testing.T) 
 		"type":       "aes256-gcm96",
 	}
 	_, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	req = &logical.Request{
 		Storage:   storage,
@@ -317,9 +289,7 @@ func testTransit_Export_EncryptionDoesNotSupportEncryption_ReturnsError(t *testi
 		"type":       keyType,
 	}
 	_, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	req = &logical.Request{
 		Storage:   storage,
@@ -360,9 +330,7 @@ func TestTransit_Export_EncryptionKey_DoesNotExportHMACKey(t *testing.T) {
 		"type":       "aes256-gcm96",
 	}
 	_, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	req = &logical.Request{
 		Storage:   storage,
@@ -370,14 +338,10 @@ func TestTransit_Export_EncryptionKey_DoesNotExportHMACKey(t *testing.T) {
 		Path:      "export/encryption-key/foo",
 	}
 	encryptionKeyRsp, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	req.Path = "export/hmac-key/foo"
 	hmacKeyRsp, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	encryptionKeys, ok := encryptionKeyRsp.Data["keys"].(map[string]string)
 	if !ok {
@@ -450,9 +414,7 @@ func verifyExportsCorrectFormat(t *testing.T, exportType, keyType string) {
 		req.Data["key_size"] = 32
 	}
 	_, err := b.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	verifyFormat := func(formatRequest string) {
 		t.Logf("handling key: %v / %v / %v", exportType, keyType, formatRequest)
@@ -467,9 +429,7 @@ func verifyExportsCorrectFormat(t *testing.T, exportType, keyType string) {
 		}
 
 		rsp, err := b.HandleRequest(t.Context(), req)
-		if err != nil {
-			t.Fatalf("on req to %v: %v", req.Path, err)
-		}
+		require.NoErrorf(t, err, "on req to %v: %v", req.Path, err)
 
 		keysRaw, ok := rsp.Data["keys"]
 		if !ok {
@@ -514,9 +474,7 @@ func verifyExportsCorrectFormat(t *testing.T, exportType, keyType string) {
 
 				if formatRequest == "der" {
 					keyData, err = base64.StdEncoding.DecodeString(k)
-					if err != nil {
-						t.Fatalf("error decoding der key (%v): %v", k, err)
-					}
+					require.NoErrorf(t, err, "error decoding der key (%v): %v", k, err)
 				} else {
 					block, rest := pem.Decode([]byte(k))
 					if len(strings.TrimSpace(string(rest))) > 0 {
@@ -532,14 +490,10 @@ func verifyExportsCorrectFormat(t *testing.T, exportType, keyType string) {
 
 				if exportType == "public-key" {
 					_, err := x509.ParsePKIXPublicKey(keyData)
-					if err != nil {
-						t.Fatalf("error decoding `%v` key (%v): %v", formatRequest, k, err)
-					}
+					require.NoErrorf(t, err, "error decoding `%v` key (%v): %v", formatRequest, k, err)
 				} else {
 					_, err := x509.ParsePKCS8PrivateKey(keyData)
-					if err != nil {
-						t.Fatalf("error decoding `%v` key (%v): %v", formatRequest, k, err)
-					}
+					require.NoErrorf(t, err, "error decoding `%v` key (%v): %v", formatRequest, k, err)
 				}
 			} else {
 				if _, err := base64.StdEncoding.DecodeString(k); err != nil {

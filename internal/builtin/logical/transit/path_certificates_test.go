@@ -99,14 +99,10 @@ func testTransit_Certificates_CreateCSR(t *testing.T, keyType string, pemTemplat
 		}
 
 		signedCSR, err := parseCSR(signedCSRBytes.(string))
-		if err != nil {
-			t.Fatalf("failed to parse returned CSR, err:%v", err)
-		}
+		require.NoError(t, err)
 
 		templateCSR, err := parseCSR(pemTemplateCSR)
-		if err != nil {
-			t.Fatalf("failed to parse returned template CSR, err:%v", err)
-		}
+		require.NoError(t, err)
 
 		if !reflect.DeepEqual(signedCSR.Subject, templateCSR.Subject) {
 			t.Fatal("CSR subjects should have matched")

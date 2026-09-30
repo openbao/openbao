@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/cli"
+	"github.com/stretchr/testify/require"
 )
 
 func testSecretsMoveCommand(tb testing.TB) (*cli.MockUi, *SecretsMoveCommand) {
@@ -99,9 +100,7 @@ func TestSecretsMoveCommand_Run(t *testing.T) {
 		}
 
 		mounts, err := client.Sys().ListMounts()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if _, ok := mounts["generic/"]; !ok {
 			t.Errorf("expected mount at generic/: %#v", mounts)

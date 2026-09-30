@@ -19,13 +19,9 @@ func TestExtractVersionMetadata(t *testing.T) {
 	inputCreatedTimeStr := "2022-05-06T23:02:04.865025Z"
 	inputDeletionTimeStr := "2022-06-17T01:15:03.279013Z"
 	expectedCreatedTimeParsed, err := time.Parse(time.RFC3339, inputCreatedTimeStr)
-	if err != nil {
-		t.Fatalf("unable to parse expected created time: %v", err)
-	}
+	require.NoError(t, err)
 	expectedDeletionTimeParsed, err := time.Parse(time.RFC3339, inputDeletionTimeStr)
-	if err != nil {
-		t.Fatalf("unable to parse expected created time: %v", err)
-	}
+	require.NoError(t, err)
 
 	testCases := []struct {
 		name     string
@@ -100,9 +96,7 @@ func TestExtractVersionMetadata(t *testing.T) {
 
 	for _, tc := range testCases {
 		versionMetadata, err := extractVersionMetadata(tc.input)
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
+		require.NoError(t, err)
 
 		if !reflect.DeepEqual(versionMetadata, tc.expected) {
 			t.Fatalf("%s: got\n%#v\nexpected\n%#v\n", tc.name, versionMetadata, tc.expected)
@@ -116,13 +110,9 @@ func TestExtractDataAndVersionMetadata(t *testing.T) {
 	inputCreatedTimeStr := "2022-05-06T23:02:04.865025Z"
 	inputDeletionTimeStr := "2022-06-17T01:15:03.279013Z"
 	expectedCreatedTimeParsed, err := time.Parse(time.RFC3339, inputCreatedTimeStr)
-	if err != nil {
-		t.Fatalf("unable to parse expected created time: %v", err)
-	}
+	require.NoError(t, err)
 	expectedDeletionTimeParsed, err := time.Parse(time.RFC3339, inputDeletionTimeStr)
-	if err != nil {
-		t.Fatalf("unable to parse expected created time: %v", err)
-	}
+	require.NoError(t, err)
 
 	readResp := &Secret{
 		Data: map[string]any{
@@ -197,9 +187,7 @@ func TestExtractDataAndVersionMetadata(t *testing.T) {
 
 	for _, tc := range testCases {
 		dvm, err := extractDataAndVersionMetadata(tc.input)
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
+		require.NoError(t, err)
 
 		if !reflect.DeepEqual(dvm, tc.expected) {
 			t.Fatalf("%s: got\n%#v\nexpected\n%#v\n", tc.name, dvm, tc.expected)
@@ -210,21 +198,15 @@ func TestExtractDataAndVersionMetadata(t *testing.T) {
 func TestExtractFullMetadata(t *testing.T) {
 	inputCreatedTimeStr := "2022-05-20T00:51:49.419794Z"
 	expectedCreatedTimeParsed, err := time.Parse(time.RFC3339, inputCreatedTimeStr)
-	if err != nil {
-		t.Fatalf("unable to parse expected created time: %v", err)
-	}
+	require.NoError(t, err)
 
 	inputUpdatedTimeStr := "2022-05-20T20:23:43.284488Z"
 	expectedUpdatedTimeParsed, err := time.Parse(time.RFC3339, inputUpdatedTimeStr)
-	if err != nil {
-		t.Fatalf("unable to parse expected updated time: %v", err)
-	}
+	require.NoError(t, err)
 
 	inputDeletedTimeStr := "2022-05-21T00:05:49.521697Z"
 	expectedDeletedTimeParsed, err := time.Parse(time.RFC3339, inputDeletedTimeStr)
-	if err != nil {
-		t.Fatalf("unable to parse expected deletion time: %v", err)
-	}
+	require.NoError(t, err)
 
 	metadataResp := map[string]any{
 		"cas_required":    true,
@@ -288,9 +270,7 @@ func TestExtractFullMetadata(t *testing.T) {
 
 	for _, tc := range testCases {
 		md, err := extractFullMetadata(tc.input)
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
+		require.NoError(t, err)
 
 		if !reflect.DeepEqual(md, tc.expected) {
 			t.Fatalf("%s: got\n%#v\nexpected\n%#v\n", tc.name, md, tc.expected)

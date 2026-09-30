@@ -41,6 +41,9 @@ func buildPathIssuerSignIntermediateRaw(b *backend, pattern string, displayAttrs
 		DisplayAttrs: displayAttrs,
 		Fields:       fields,
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.resolvePathIssuerKey,
+			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathIssuerSignIntermediate,
 				Responses: map[int][]framework.Response{
@@ -206,6 +209,9 @@ func buildPathIssuerSignSelfIssued(b *backend, pattern string, displayAttrs *fra
 		DisplayAttrs: displayAttrs,
 		Fields:       fields,
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.resolvePathIssuerKey,
+			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathIssuerSignSelfIssued,
 				Responses: map[int][]framework.Response{

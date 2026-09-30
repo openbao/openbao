@@ -13,6 +13,7 @@ import (
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
 	"github.com/openbao/openbao/v2/internal/vault/backend"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRouter_MountSubpath_Checks(t *testing.T) {
@@ -46,9 +47,7 @@ func testRouter_MountSubpath(t *testing.T, mountPoints []string) {
 	for _, mp := range mountPoints {
 		t.Logf("mounting %s", "auth/"+mp)
 		err := client.Sys().EnableAuthWithOptions("auth/"+mp, authInput)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 	}
 
 	// Test secrets
@@ -58,9 +57,7 @@ func testRouter_MountSubpath(t *testing.T, mountPoints []string) {
 	for _, mp := range mountPoints {
 		t.Logf("mounting %s", "s/"+mp)
 		err := client.Sys().Mount("s/"+mp, mountInput)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 	}
 
 	cluster.EnsureCoresSealed(t)

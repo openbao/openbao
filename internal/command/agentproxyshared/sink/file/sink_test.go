@@ -16,6 +16,7 @@ import (
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared/sink"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSinkServer(t *testing.T) {
@@ -48,15 +49,11 @@ func TestSinkServer(t *testing.T) {
 	defer timer.Stop()
 
 	err := <-errCh
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	for _, path := range []string{path1, path2} {
 		fileBytes, err := os.ReadFile(fmt.Sprintf("%s/token", path))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if string(fileBytes) != uuidStr {
 			t.Fatalf("expected %s, got %s", uuidStr, string(fileBytes))
@@ -128,7 +125,5 @@ func TestSinkServerRetry(t *testing.T) {
 	// Tell it to shut down and give it time to do so
 	cancelFunc()
 	err := <-errCh
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }

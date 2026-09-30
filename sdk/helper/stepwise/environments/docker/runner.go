@@ -94,7 +94,7 @@ func (d *Runner) Start(ctx context.Context) (*container.InspectResponse, error) 
 		if err != nil {
 			return nil, fmt.Errorf("error creating tar from source %q: %v", from, err)
 		}
-		defer srcArchive.Close()
+		defer srcArchive.Close() //nolint:errcheck
 
 		dstInfo := archive.CopyInfo{Path: to}
 
@@ -102,7 +102,7 @@ func (d *Runner) Start(ctx context.Context) (*container.InspectResponse, error) 
 		if err != nil {
 			return nil, fmt.Errorf("error preparing copy from %q -> %q: %v", from, to, err)
 		}
-		defer content.Close()
+		defer content.Close() //nolint:errcheck
 		_, err = d.dockerAPI.CopyToContainer(ctx, containerObj.ID, docker.CopyToContainerOptions{
 			DestinationPath: dstDir,
 			Content:         content,

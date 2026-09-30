@@ -35,9 +35,7 @@ func TestTokenStore_CreateOrphanResponse(t *testing.T) {
 	secret, err := client.Auth().Token().CreateOrphan(&api.TokenCreateRequest{
 		Policies: []string{"default"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if !secret.Auth.Orphan {
 		t.Fatalf("failed to set orphan as true, got: %#v", secret.Auth)
 	}
@@ -63,39 +61,29 @@ func TestTokenStore_TokenInvalidEntityID(t *testing.T) {
 	err := client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
 		Type: "userpass",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Add a user to userpass backend
 	_, err = client.Logical().Write("auth/userpass/users/testuser", map[string]any{
 		"password": "testpassword",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	secret, err := client.Logical().Write("auth/userpass/login/testuser", map[string]any{
 		"password": "testpassword",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	clientToken := secret.Auth.ClientToken
 
 	secret, err = client.Logical().Write("auth/token/lookup", map[string]any{
 		"token": clientToken,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	entityID := secret.Data["entity_id"].(string)
 
 	_, err = client.Logical().Delete("identity/entity/id/" + entityID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	client.SetToken(clientToken)
 
@@ -398,28 +386,20 @@ path "auth/token/create" {
 	_, err = client.Logical().Write("sys/policies/acl/test", map[string]any{
 		"policy": testPolicy,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Test normally
 	_, err = client.Logical().Write("auth/token/roles/testrole", map[string]any{
 		"bound_cidrs": []string{},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	secret, err = client.Auth().Token().CreateWithRole(&api.TokenCreateRequest{
 		Policies: []string{"default"},
 	}, "testrole")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client.SetToken(secret.Auth.ClientToken)
 	_, err = client.Auth().Token().LookupSelf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// CIDR blocks, containing localhost
 	client.SetToken(rootToken)
@@ -427,20 +407,14 @@ path "auth/token/create" {
 		"bound_cidrs":      []string{"127.0.0.1/32", "1.2.3.4/8", "5.6.7.8/24"},
 		"allowed_policies": "test",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	secret, err = client.Auth().Token().CreateWithRole(&api.TokenCreateRequest{
 		Policies: []string{"test", "default"},
 	}, "testrole")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client.SetToken(secret.Auth.ClientToken)
 	_, err = client.Auth().Token().LookupSelf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Before moving on, validate that a child token created from this token
 	// inherits the bound cidr blocks
@@ -448,15 +422,11 @@ path "auth/token/create" {
 	childSecret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 		Policies: []string{"default"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	client.SetToken(childSecret.Auth.ClientToken)
 	childInfo, err := client.Auth().Token().LookupSelf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(childInfo.Data["bound_cidrs"], []any{"127.0.0.1", "1.2.3.4/8", "5.6.7.8/24"}); diff != nil {
 		t.Fatal(diff)
 	}
@@ -466,15 +436,11 @@ path "auth/token/create" {
 	_, err = client.Logical().Write("auth/token/roles/testrole", map[string]any{
 		"bound_cidrs": []string{"1.2.3.4/8", "5.6.7.8/24"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	secret, err = client.Auth().Token().CreateWithRole(&api.TokenCreateRequest{
 		Policies: []string{"default"},
 	}, "testrole")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client.SetToken(secret.Auth.ClientToken)
 	_, err = client.Auth().Token().LookupSelf()
 	if err == nil {
@@ -490,18 +456,12 @@ path "auth/token/create" {
 		"bound_cidrs":      []string{"1.2.3.4/8", "5.6.7.8/24"},
 		"allowed_policies": "",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	secret, err = client.Auth().Token().CreateWithRole(&api.TokenCreateRequest{}, "testrole")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client.SetToken(secret.Auth.ClientToken)
 	_, err = client.Auth().Token().LookupSelf()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Root token, ttl, should not work
 	client.SetToken(rootToken)
@@ -509,13 +469,9 @@ path "auth/token/create" {
 		"bound_cidrs": []string{"1.2.3.4/8", "5.6.7.8/24"},
 		"period":      3600,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	secret, err = client.Auth().Token().CreateWithRole(&api.TokenCreateRequest{}, "testrole")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client.SetToken(secret.Auth.ClientToken)
 	_, err = client.Auth().Token().LookupSelf()
 	if err == nil {
@@ -559,25 +515,19 @@ func TestTokenStore_RevocationOnStartup(t *testing.T) {
 		secret, err = client.Auth().Token().Create(&api.TokenCreateRequest{
 			Policies: []string{"default"},
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		tokens = append(tokens, secret.Auth.ClientToken)
 	}
 
 	const tokenPath string = "sys/raw/sys/token/id/"
 	secret, err = client.Logical().List(tokenPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	totalTokens := len(secret.Data["keys"].([]any))
 
 	// Get the list of leases
 	const leasePath string = "sys/raw/sys/expire/id/auth/token/create/"
 	secret, err = client.Logical().List(leasePath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	leases := secret.Data["keys"].([]any)
 	if len(leases) != 500 {
 		t.Fatalf("unexpected number of leases: %d", len(leases))
@@ -588,9 +538,7 @@ func TestTokenStore_RevocationOnStartup(t *testing.T) {
 	// Fake times in the past
 	for _, lease := range leases {
 		secret, err = client.Logical().Read(leasePath + lease.(string))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		var entry leaseEntry
 		if err := jsonutil.DecodeJSON([]byte(secret.Data["value"].(string)), &entry); err != nil {
 			t.Fatal(err)
@@ -602,9 +550,7 @@ func TestTokenStore_RevocationOnStartup(t *testing.T) {
 		entry.IssueTime = entry.IssueTime.Add(-1 * time.Hour * 24 * 365)
 		entry.ExpireTime = entry.ExpireTime.Add(-1 * time.Hour * 24 * 365)
 		jsonEntry, err := jsonutil.EncodeJSON(&entry)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if _, err := client.Logical().Write(leasePath+lease.(string), map[string]any{
 			"value": string(jsonEntry),
 		}); err != nil {
@@ -619,9 +565,7 @@ func TestTokenStore_RevocationOnStartup(t *testing.T) {
 	var status *api.SealStatusResponse
 	for i := 0; i < len(cluster.BarrierKeys); i++ {
 		status, err = client.Sys().Unseal(string(base64.StdEncoding.EncodeToString(cluster.BarrierKeys[i])))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !status.Sealed {
 			break
 		}
@@ -647,9 +591,7 @@ func TestTokenStore_RevocationOnStartup(t *testing.T) {
 
 	client.SetToken(rootToken)
 	secret, err = client.Logical().List(leasePath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	switch {
 	case secret == nil:
@@ -671,9 +613,7 @@ func TestTokenStore_RevocationOnStartup(t *testing.T) {
 
 	expectedTokens := totalTokens - len(validLeases)
 	secret, err = client.Logical().List(tokenPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	tokensLeft := len(secret.Data["keys"].([]any))
 	if tokensLeft != expectedTokens {
 		t.Fatalf("found %d tokens left, expected %d", tokensLeft, expectedTokens)

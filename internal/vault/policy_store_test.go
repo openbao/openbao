@@ -41,9 +41,7 @@ func testPolicyRoot(t *testing.T, ps *policy.Store, ns *namespace.Namespace, exp
 	// Get should return a special policy
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	p, err := ps.GetPolicy(ctx, "root", policy.TypeToken)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Handle whether a root token is expected
 	if expectFound {
@@ -142,9 +140,7 @@ func testPolicyStoreCRUDOneShot(t *testing.T, ps *policy.Store, ns *namespace.Na
 
 	// Get should return nothing
 	p, err := ps.GetPolicy(ctx, "Dev", policy.TypeToken)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if p != nil {
 		t.Fatalf("bad: %v", p)
 	}
@@ -152,16 +148,12 @@ func testPolicyStoreCRUDOneShot(t *testing.T, ps *policy.Store, ns *namespace.Na
 	// Delete should be no-op
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	err = ps.DeletePolicy(ctx, "deV", policy.TypeACL)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// List should be blank
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	out, err := ps.ListPolicies(ctx, policy.TypeACL, true)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(out) != 1 {
 		t.Fatalf("bad: %v", out)
 	}
@@ -170,16 +162,12 @@ func testPolicyStoreCRUDOneShot(t *testing.T, ps *policy.Store, ns *namespace.Na
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	pol, _ := policy.ParseACLPolicy(ns, policytest.ACLPolicy)
 	err = ps.SetPolicy(ctx, pol, nil)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Get should work
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	p, err = ps.GetPolicy(ctx, "dEv", policy.TypeToken)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if !reflect.DeepEqual(p, pol) {
 		t.Fatalf("bad: %v", p)
 	}
@@ -187,9 +175,7 @@ func testPolicyStoreCRUDOneShot(t *testing.T, ps *policy.Store, ns *namespace.Na
 	// List should contain two elements
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	out, err = ps.ListPolicies(ctx, policy.TypeACL, true)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(out) != 2 {
 		t.Fatalf("bad: %v", out)
 	}
@@ -202,16 +188,12 @@ func testPolicyStoreCRUDOneShot(t *testing.T, ps *policy.Store, ns *namespace.Na
 	// Delete should be clear the entry
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	err = ps.DeletePolicy(ctx, "Dev", policy.TypeACL)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// List should contain one element
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	out, err = ps.ListPolicies(ctx, policy.TypeACL, true)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(out) != 1 || out[0] != "default" {
 		t.Fatalf("bad: %v", out)
 	}
@@ -219,9 +201,7 @@ func testPolicyStoreCRUDOneShot(t *testing.T, ps *policy.Store, ns *namespace.Na
 	// Get should fail
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	p, err = ps.GetPolicy(ctx, "deV", policy.TypeToken)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if p != nil {
 		t.Fatalf("bad: %v", p)
 	}
@@ -249,9 +229,7 @@ func testPolicyStorePredefined(t *testing.T, ps *policy.Store, ns *namespace.Nam
 	// List should be two elements
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	out, err := ps.ListPolicies(ctx, policy.TypeACL, true)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	// This shouldn't contain response-wrapping since it's non-assignable
 	if len(out) != 1 || out[0] != "default" {
 		t.Fatalf("bad: %v", out)
@@ -260,9 +238,7 @@ func testPolicyStorePredefined(t *testing.T, ps *policy.Store, ns *namespace.Nam
 	// Response-wrapping policy checks
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	pCubby, err := ps.GetPolicy(ctx, "response-wrapping", policy.TypeToken)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if pCubby == nil {
 		t.Fatal("nil cubby policy")
 	}
@@ -283,9 +259,7 @@ func testPolicyStorePredefined(t *testing.T, ps *policy.Store, ns *namespace.Nam
 	// Root policy checks, behavior depending on namespace
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	pRoot, err := ps.GetPolicy(ctx, "root", policy.TypeToken)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if ns.ID == namespace.RootNamespaceID {
 		if pRoot == nil {
 			t.Fatal("nil root policy")
@@ -321,21 +295,15 @@ func testPolicyStoreACL(t *testing.T, ps *policy.Store, ns *namespace.Namespace)
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	pol, _ := policy.ParseACLPolicy(ns, policytest.ACLPolicy)
 	err := ps.SetPolicy(ctx, pol, nil)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	pol, _ = policy.ParseACLPolicy(ns, policytest.ACLPolicy2)
 	err = ps.SetPolicy(ctx, pol, nil)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	acl, err := ps.ACL(ctx, nil, map[string][]string{ns.ID: {"dev", "ops"}})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	policytest.TestLayeredACL(t, acl, ns)
 }
 
@@ -343,13 +311,9 @@ func TestDefaultPolicy(t *testing.T) {
 	ctx := namespace.ContextWithNamespace(t.Context(), namespace.RootNamespace)
 
 	pol, err := policy.ParseACLPolicy(namespace.RootNamespace, policy.DefaultPolicy)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	acl, err := policy.NewACL(ctx, []*policy.Policy{pol})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	for name, tc := range map[string]struct {
 		op            logical.Operation
@@ -384,13 +348,9 @@ func TestResponseWrappingPolicy(t *testing.T) {
 	ctx := namespace.ContextWithNamespace(t.Context(), namespace.RootNamespace)
 
 	pol, err := policy.ParseACLPolicy(namespace.RootNamespace, policy.ResponseWrappingPolicy)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	acl, err := policy.NewACL(ctx, []*policy.Policy{pol})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	for name, tc := range map[string]struct {
 		op            logical.Operation

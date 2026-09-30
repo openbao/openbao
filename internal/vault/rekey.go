@@ -334,10 +334,8 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 	}
 
 	// Check if we already have this piece
-	for _, existing := range c.rootRotationConfig.RotationProgress {
-		if subtle.ConstantTimeCompare(existing, key) == 1 {
-			return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this generation operation")
-		}
+	if c.rootRotationConfig.RotationProgress.Has(key) {
+		return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this generation operation")
 	}
 
 	// Store this key
@@ -571,10 +569,8 @@ func (c *Core) RecoveryRekeyUpdate(ctx context.Context, key []byte, nonce string
 	}
 
 	// Check if we already have this piece
-	for _, existing := range c.recoveryRotationConfig.RotationProgress {
-		if subtle.ConstantTimeCompare(existing, key) == 1 {
-			return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this rekey operation")
-		}
+	if c.recoveryRotationConfig.RotationProgress.Has(key) {
+		return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this rekey operation")
 	}
 
 	// Store this key
@@ -757,10 +753,8 @@ func (c *Core) RekeyVerify(ctx context.Context, key []byte, nonce string, recove
 	}
 
 	// Check if we already have this piece
-	for _, existing := range config.VerificationProgress {
-		if subtle.ConstantTimeCompare(existing, key) == 1 {
-			return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this verify operation")
-		}
+	if config.VerificationProgress.Has(key) {
+		return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this verify operation")
 	}
 
 	// Store this key

@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/v2/internal/version"
+	"github.com/stretchr/testify/require"
 )
 
 func testVersionHistoryCommand(tb testing.TB) (*cli.MockUi, *VersionHistoryCommand) {
@@ -83,9 +84,7 @@ func TestVersionHistoryCommand_JsonOutput(t *testing.T) {
 
 	var versionHistoryResp map[string]any
 	err := json.Unmarshal(stdoutBytes, &versionHistoryResp)
-	if err != nil {
-		t.Fatalf("failed to unmarshal json from STDOUT, err: %s", err.Error())
-	}
+	require.NoErrorf(t, err, "failed to unmarshal json from STDOUT, err: %s", err)
 
 	var respData map[string]any
 	var ok bool

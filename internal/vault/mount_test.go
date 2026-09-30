@@ -48,9 +48,7 @@ func TestMount_ReadOnlyViewDuringMount(t *testing.T) {
 		Type:  "noop",
 	}
 	err := c.mount(namespace.RootContext(t.Context()), me)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestLogicalMountMetrics(t *testing.T) {
@@ -75,9 +73,7 @@ func TestLogicalMountMetrics(t *testing.T) {
 		Type:  "noop",
 	}
 	err := c.mount(namespace.RootContext(t.Context()), me)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	mountMetrics = &c.metricsHelper.LoopMetrics.Metrics
 	loadMetric, ok = mountMetrics.Load(mountKeyName)
 	numEntriesMetric = loadMetric.(metricsutil.GaugeMetric)
@@ -132,15 +128,11 @@ func TestCore_DefaultMountTable(t *testing.T) {
 		MetricsHelper:   metricsutil.NewMetricsHelper(inmemSink, false),
 	}
 	c2, err := NewCore(conf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer c2.Shutdown()
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c2, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("should be unsealed")
 		}
@@ -159,9 +151,7 @@ func TestCore_Mount(t *testing.T) {
 		Type:  "kv",
 	}
 	err := c.mount(namespace.RootContext(t.Context()), me)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "foo/bar")
 	if match != "foo/" {
@@ -176,15 +166,11 @@ func TestCore_Mount(t *testing.T) {
 		MetricsHelper:   metricsutil.NewMetricsHelper(inmemSink, false),
 	}
 	c2, err := NewCore(conf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer c2.Shutdown()
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c2, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("should be unsealed")
 		}
@@ -204,9 +190,7 @@ func TestCore_Mount_secrets_builtin_RunningVersion(t *testing.T) {
 		Type:  "generic",
 	}
 	err := c.mount(namespace.RootContext(t.Context()), me)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "foo/bar")
 	if match != "foo/" {
@@ -230,9 +214,7 @@ func TestCore_Mount_kv_generic(t *testing.T) {
 		Type:  "generic",
 	}
 	err := c.mount(namespace.RootContext(t.Context()), me)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "foo/bar")
 	if match != "foo/" {
@@ -247,15 +229,11 @@ func TestCore_Mount_kv_generic(t *testing.T) {
 		MetricsHelper:   metricsutil.NewMetricsHelper(inmemSink, false),
 	}
 	c2, err := NewCore(conf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer c2.Shutdown()
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c2, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("should be unsealed")
 		}
@@ -303,25 +281,19 @@ func TestCore_Mount_Local(t *testing.T) {
 
 	// Both should set up successfully
 	err := c.setupMounts(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(c.mounts.Entries) != 2 {
 		t.Fatalf("expected two entries, got %d", len(c.mounts.Entries))
 	}
 
 	localEntries, err := c.barrier.List(ctx, coreLocalMountConfigPath+"/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(localEntries) != 1 {
 		t.Fatalf("expected one entry in local mount table, got %#v", localEntries)
 	}
 	for _, localEntry := range localEntries {
 		rawLocal, err := c.barrier.Get(ctx, coreLocalMountConfigPath+"/"+localEntry)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if rawLocal == nil {
 			t.Fatal("expected non-nil local mounts")
 		}
@@ -346,17 +318,13 @@ func TestCore_Mount_Local(t *testing.T) {
 	// above, but then we overwrite it with our own table with one local entry,
 	// so we should now only expect the noop2 entry
 	localEntries, err = c.barrier.List(ctx, coreLocalMountConfigPath+"/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(localEntries) != 1 {
 		t.Fatalf("expected one entry in local mount table, got %#v", localEntries)
 	}
 	for _, localEntry := range localEntries {
 		rawLocal, err := c.barrier.Get(ctx, coreLocalMountConfigPath+"/"+localEntry)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if rawLocal == nil {
 			t.Fatal("expected non-nil local mounts")
 		}
@@ -466,9 +434,7 @@ func TestCore_FindOps(t *testing.T) {
 func TestCore_Unmount(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
 	err := c.unmount(namespace.RootContext(t.Context()), "secret")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "secret/foo")
 	if match != "" {
@@ -483,15 +449,11 @@ func TestCore_Unmount(t *testing.T) {
 		MetricsHelper:   metricsutil.NewMetricsHelper(inmemSink, false),
 	}
 	c2, err := NewCore(conf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer c2.Shutdown()
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c2, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("should be unsealed")
 		}
@@ -558,9 +520,7 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 	}
 	r.SetTokenEntry(&logical.TokenEntry{ID: root, NamespaceID: "root", Policies: []string{"root"}})
 	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), r)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp.Secret.LeaseID == "" {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -594,9 +554,7 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 
 	// View should be empty
 	out, err := logical.CollectKeys(t.Context(), view)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	switch {
 	case len(out) == 1 && causeFailure:
 	case len(out) == 0 && causeFailure:
@@ -620,9 +578,7 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 func TestCore_Remount(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
 	err := c.remountSecretsEngineCurrentNamespace(namespace.RootContext(t.Context()), "secret", "foo", true)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "foo/bar")
 	if match != "foo/" {
@@ -632,9 +588,7 @@ func TestCore_Remount(t *testing.T) {
 	c.sealInternal()
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if i+1 == len(keys) && !unseal {
 			t.Fatal("should be unsealed")
 		}
@@ -696,9 +650,7 @@ func TestCore_Remount_Cleanup(t *testing.T) {
 	}
 	r.SetTokenEntry(&logical.TokenEntry{ID: root, NamespaceID: "root", Policies: []string{"root"}})
 	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), r)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if resp.Secret.LeaseID == "" {
 		t.Fatalf("bad: %#v", resp)
 	}
@@ -723,9 +675,7 @@ func TestCore_Remount_Cleanup(t *testing.T) {
 
 	// View should not be empty
 	out, err := logical.CollectKeys(t.Context(), view)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if len(out) != 1 && out[0] != "plstokeep" {
 		t.Fatalf("bad: %#v", out)
 	}
@@ -880,9 +830,7 @@ func TestCore_MountTable_UpgradeToTyped(t *testing.T) {
 		Type:  "noop",
 	}
 	err := c.enableAudit(namespace.RootContext(t.Context()), me, true)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	c.credentialBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
 		return &be.Noop{
@@ -896,9 +844,7 @@ func TestCore_MountTable_UpgradeToTyped(t *testing.T) {
 		Type:  "noop",
 	}
 	err = c.enableCredential(namespace.RootContext(t.Context()), me)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	testCore_MountTable_UpgradeToTyped_Common(t, c, "mounts")
 	testCore_MountTable_UpgradeToTyped_Common(t, c, "audits")
@@ -937,9 +883,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 
 	// Save the expected table
 	goodJson, err := json.Marshal(mt)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a pre-typed version
 	mt.Type = ""
@@ -948,9 +892,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	}
 
 	raw, err := json.Marshal(mt)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if reflect.DeepEqual(raw, goodJson) {
 		t.Fatal("bad: values here should be different")
@@ -962,9 +904,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	// table with a pre-transactional variant to force upgrades to be run.
 	if _, ok := c.barrier.(logical.TransactionalStorage); ok && testType != "audits" {
 		postTxnEntries, err := c.barrier.List(ctx, path+"/")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		for _, txnEntry := range postTxnEntries {
 			t.Logf("removing entry: %v", path+"/"+txnEntry)
@@ -1006,25 +946,19 @@ func testCore_MountTable_UpgradeToTyped_Common(
 		}
 		mt = c.audit
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// If we are using a transactional backend, validate the migrated path.
 	var actual []byte
 	if _, ok := c.barrier.(logical.TransactionalStorage); ok && testType != "audits" {
 		// Assume we got the outer, implicit type correct.
 		postTxnEntries, err := c.barrier.List(ctx, path+"/")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		mapEntries := make(map[string]string)
 		for _, txnEntry := range postTxnEntries {
 			entry, err = c.barrier.Get(ctx, path+"/"+txnEntry)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if entry == nil {
 				t.Fatal("nil value")
 			}
@@ -1050,25 +984,19 @@ func testCore_MountTable_UpgradeToTyped_Common(
 
 		// Read the old mount table entry and ensure it was deleted.
 		entry, err = c.barrier.Get(ctx, path)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if entry != nil && len(entry.Value) > 0 {
 			t.Fatalf("expected empty entry at non-transactional mount table path: %v\n\tentry: %#v", path, string(entry.Value))
 		}
 	} else {
 		entry, err = c.barrier.Get(ctx, path)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if entry == nil {
 			t.Fatal("nil value")
 		}
 
 		decompressedBytes, uncompressed, err := compressutil.Decompress(entry.Value)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		actual = decompressedBytes
 		if uncompressed {
@@ -1234,9 +1162,7 @@ func TestCore_MountInitialize(t *testing.T) {
 		}
 
 		err := c.setupMounts(namespace.RootContext(t.Context()))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// run the postUnseal funcs, so that the backend will be inited
 		for _, f := range c.postUnsealFuncs {

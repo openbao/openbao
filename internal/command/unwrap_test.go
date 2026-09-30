@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 func testUnwrapCommand(tb testing.TB) (*cli.MockUi, *UnwrapCommand) {
@@ -26,9 +27,7 @@ func testUnwrapWrappedToken(tb testing.TB, client *api.Client, data map[string]a
 	tb.Helper()
 
 	wrapped, err := client.Logical().Write("sys/wrapping/wrap", data)
-	if err != nil {
-		tb.Fatal(err)
-	}
+	require.NoError(tb, err)
 	if wrapped == nil || wrapped.WrapInfo == nil || wrapped.WrapInfo.Token == "" {
 		tb.Fatalf("missing wrap info: %v", wrapped)
 	}

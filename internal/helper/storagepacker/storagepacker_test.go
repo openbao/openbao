@@ -11,6 +11,7 @@ import (
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/identity"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -18,29 +19,21 @@ import (
 
 func BenchmarkStoragePacker(b *testing.B) {
 	storagePacker, err := NewStoragePacker(&logical.InmemStorage{}, log.New(&log.LoggerOptions{Name: "storagepackertest"}), "")
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {
 		itemID, err := uuid.GenerateUUID()
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(b, err)
 
 		item := &Item{
 			ID: itemID,
 		}
 
 		err = storagePacker.PutItem(b.Context(), item)
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(b, err)
 
 		fetchedItem, err := storagePacker.GetItem(itemID)
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(b, err)
 
 		if fetchedItem == nil {
 			b.Fatalf("failed to read stored item with ID: %q, iteration: %d", item.ID, i)
@@ -51,14 +44,10 @@ func BenchmarkStoragePacker(b *testing.B) {
 		}
 
 		err = storagePacker.DeleteItem(b.Context(), item.ID)
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(b, err)
 
 		fetchedItem, err = storagePacker.GetItem(item.ID)
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(b, err)
 		if fetchedItem != nil {
 			b.Fatalf("failed to delete item")
 		}
@@ -67,9 +56,7 @@ func BenchmarkStoragePacker(b *testing.B) {
 
 func TestStoragePacker(t *testing.T) {
 	storagePacker, err := NewStoragePacker(&logical.InmemStorage{}, log.New(&log.LoggerOptions{Name: "storagepackertest"}), "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	ctx := t.Context()
 
@@ -79,15 +66,11 @@ func TestStoragePacker(t *testing.T) {
 	}
 
 	err = storagePacker.PutItem(ctx, item1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Verify that it can be read
 	fetchedItem, err := storagePacker.GetItem(item1.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if fetchedItem == nil {
 		t.Fatal("failed to read the stored item")
 	}
@@ -98,15 +81,11 @@ func TestStoragePacker(t *testing.T) {
 
 	// Delete item1
 	err = storagePacker.DeleteItem(ctx, item1.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Check that the deletion was successful
 	fetchedItem, err = storagePacker.GetItem(item1.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if fetchedItem != nil {
 		t.Fatal("failed to delete item")
@@ -115,9 +94,7 @@ func TestStoragePacker(t *testing.T) {
 
 func TestStoragePacker_SerializeDeserializeComplexItem(t *testing.T) {
 	storagePacker, err := NewStoragePacker(&logical.InmemStorage{}, log.New(&log.LoggerOptions{Name: "storagepackertest"}), "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	ctx := t.Context()
 
@@ -153,27 +130,19 @@ func TestStoragePacker_SerializeDeserializeComplexItem(t *testing.T) {
 	}
 
 	marshaledEntity, err := anypb.New(entity)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = storagePacker.PutItem(ctx, &Item{
 		ID:      entity.ID,
 		Message: marshaledEntity,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	itemFetched, err := storagePacker.GetItem(entity.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	itemDecoded := &identity.Entity{}
 	err = itemFetched.Message.UnmarshalTo(itemDecoded)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !proto.Equal(itemDecoded, entity) {
 		t.Fatalf("bad: expected: %#v\nactual: %#v\n", entity, itemDecoded)
@@ -182,9 +151,7 @@ func TestStoragePacker_SerializeDeserializeComplexItem(t *testing.T) {
 
 func TestStoragePacker_DeleteMultiple(t *testing.T) {
 	storagePacker, err := NewStoragePacker(&logical.InmemStorage{}, log.New(&log.LoggerOptions{Name: "storagepackertest"}), "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	ctx := t.Context()
 
@@ -195,15 +162,11 @@ func TestStoragePacker_DeleteMultiple(t *testing.T) {
 		}
 
 		err = storagePacker.PutItem(ctx, item)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// Verify that it can be read
 		fetchedItem, err := storagePacker.GetItem(item.ID)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if fetchedItem == nil {
 			t.Fatal("failed to read the stored item")
 		}
@@ -219,16 +182,12 @@ func TestStoragePacker_DeleteMultiple(t *testing.T) {
 	}
 
 	err = storagePacker.DeleteMultipleItems(ctx, nil, itemsToDelete)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Check that the deletion was successful
 	for i := range 100 {
 		fetchedItem, err := storagePacker.GetItem(fmt.Sprintf("item%d", i))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if i%2 == 0 && fetchedItem == nil {
 			t.Fatal("expected item not found")
@@ -241,9 +200,7 @@ func TestStoragePacker_DeleteMultiple(t *testing.T) {
 
 func TestStoragePacker_DeleteMultiple_ALL(t *testing.T) {
 	storagePacker, err := NewStoragePacker(&logical.InmemStorage{}, log.New(&log.LoggerOptions{Name: "storagepackertest"}), "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	ctx := t.Context()
 
@@ -255,15 +212,11 @@ func TestStoragePacker_DeleteMultiple_ALL(t *testing.T) {
 		}
 
 		err = storagePacker.PutItem(ctx, item)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// Verify that it can be read
 		fetchedItem, err := storagePacker.GetItem(item.ID)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if fetchedItem == nil {
 			t.Fatal("failed to read the stored item")
 		}
@@ -276,16 +229,12 @@ func TestStoragePacker_DeleteMultiple_ALL(t *testing.T) {
 	}
 
 	err = storagePacker.DeleteMultipleItems(ctx, nil, itemsToDelete)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Check that the deletion was successful
 	for _, item := range itemsToDelete {
 		fetchedItem, err := storagePacker.GetItem(item)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if fetchedItem != nil {
 			t.Fatal("item not deleted")
 		}

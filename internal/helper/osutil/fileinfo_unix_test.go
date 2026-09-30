@@ -10,6 +10,8 @@ import (
 	"os/user"
 	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestFileUIDEqual(t *testing.T) {
@@ -38,9 +40,7 @@ func TestFileUIDEqual(t *testing.T) {
 
 	for _, tc := range testCases {
 		err := os.Mkdir("testFile", 0o777)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		info, err := os.Stat("testFile")
 		if err != nil {
 			t.Errorf("error stating %q: %v", "testFile", err)
@@ -51,9 +51,7 @@ func TestFileUIDEqual(t *testing.T) {
 			t.Errorf("invalid result. expected %t for uid %v", tc.expected, tc.uid)
 		}
 		err = os.RemoveAll("testFile")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 }
 
@@ -83,9 +81,7 @@ func TestFileGIDEqual(t *testing.T) {
 
 	for _, tc := range testCases {
 		err := os.Mkdir("testFile", 0o777)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		info, err := os.Stat("testFile")
 		if err != nil {
 			t.Errorf("error stating %q: %v", "testFile", err)
@@ -96,8 +92,6 @@ func TestFileGIDEqual(t *testing.T) {
 			t.Errorf("invalid result. expected %t for gid %v", tc.expected, tc.gid)
 		}
 		err = os.RemoveAll("testFile")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 }

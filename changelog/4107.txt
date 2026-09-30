@@ -1,0 +1,3 @@
+```release-note:bug
+core/barrier: Persist updates to key rotation config on changes to `disabled` field.
+```

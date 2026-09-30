@@ -13,6 +13,7 @@ import (
 
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSysMonitorUnknownLogLevel(t *testing.T) {
@@ -85,9 +86,7 @@ func TestSysMonitorStreamingLogs(t *testing.T) {
 			defer cancel()
 
 			logCh, err := client.Sys().Monitor(ctx, "DEBUG", lf)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			type jsonlog struct {
 				Level     string `json:"@level"`
@@ -103,9 +102,7 @@ func TestSysMonitorStreamingLogs(t *testing.T) {
 				case log := <-logCh:
 					if lf == "json" {
 						err := json.Unmarshal([]byte(log), jsonLog)
-						if err != nil {
-							t.Fatal("Expected JSON log from channel")
-						}
+						require.NoError(t, err)
 						if strings.Contains(jsonLog.Level, "debug") {
 							debugCount++
 						}

@@ -5,6 +5,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -40,9 +41,7 @@ func TestParseSecret(t *testing.T) {
 	rawTime, _ := time.Parse(time.RFC3339, "2016-06-07T15:52:10-04:00")
 
 	secret, err := api.ParseSecret(strings.NewReader(raw))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := &api.Secret{
 		LeaseID:       "foo",
@@ -187,9 +186,7 @@ func TestSecret_TokenID(t *testing.T) {
 		token := secret.Auth.ClientToken
 
 		tokenID, err := secret.TokenID()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if tokenID != token {
 			t.Errorf("expected %q to be %q", tokenID, token)
 		}
@@ -204,15 +201,11 @@ func TestSecret_TokenID(t *testing.T) {
 		secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 			Policies: []string{"default"},
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		tokenID, err := secret.TokenID()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if tokenID != token {
 			t.Errorf("expected %q to be %q", tokenID, token)
 		}
@@ -227,20 +220,14 @@ func TestSecret_TokenID(t *testing.T) {
 		secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 			Policies: []string{"default"},
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		secret, err = client.Auth().Token().Lookup(token)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tokenID, err := secret.TokenID()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if tokenID != token {
 			t.Errorf("expected %q to be %q", tokenID, token)
 		}
@@ -255,21 +242,15 @@ func TestSecret_TokenID(t *testing.T) {
 		secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 			Policies: []string{"default"},
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		client.SetToken(token)
 		secret, err = client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tokenID, err := secret.TokenID()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if tokenID != token {
 			t.Errorf("expected %q to be %q", tokenID, token)
 		}
@@ -284,20 +265,14 @@ func TestSecret_TokenID(t *testing.T) {
 		secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 			Policies: []string{"default"},
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		secret, err = client.Auth().Token().Renew(token, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tokenID, err := secret.TokenID()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if tokenID != token {
 			t.Errorf("expected %q to be %q", tokenID, token)
 		}
@@ -312,21 +287,15 @@ func TestSecret_TokenID(t *testing.T) {
 		secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 			Policies: []string{"default"},
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		client.SetToken(token)
 		secret, err = client.Auth().Token().RenewSelf(0)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tokenID, err := secret.TokenID()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if tokenID != token {
 			t.Errorf("expected %q to be %q", tokenID, token)
 		}
@@ -453,9 +422,7 @@ func TestSecret_TokenAccessor(t *testing.T) {
 		_, accessor := secret.Auth.ClientToken, secret.Auth.Accessor
 
 		newAccessor, err := secret.TokenAccessor()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if newAccessor != accessor {
 			t.Errorf("expected %q to be %q", newAccessor, accessor)
 		}
@@ -470,15 +437,11 @@ func TestSecret_TokenAccessor(t *testing.T) {
 		secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 			Policies: []string{"default"},
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		_, accessor := secret.Auth.ClientToken, secret.Auth.Accessor
 
 		newAccessor, err := secret.TokenAccessor()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if newAccessor != accessor {
 			t.Errorf("expected %q to be %q", newAccessor, accessor)
 		}
@@ -493,20 +456,14 @@ func TestSecret_TokenAccessor(t *testing.T) {
 		secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 			Policies: []string{"default"},
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token, accessor := secret.Auth.ClientToken, secret.Auth.Accessor
 
 		secret, err = client.Auth().Token().Lookup(token)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		newAccessor, err := secret.TokenAccessor()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if newAccessor != accessor {
 			t.Errorf("expected %q to be %q", newAccessor, accessor)
 		}
@@ -521,21 +478,15 @@ func TestSecret_TokenAccessor(t *testing.T) {
 		secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 			Policies: []string{"default"},
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token, accessor := secret.Auth.ClientToken, secret.Auth.Accessor
 
 		client.SetToken(token)
 		secret, err = client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		newAccessor, err := secret.TokenAccessor()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if newAccessor != accessor {
 			t.Errorf("expected %q to be %q", newAccessor, accessor)
 		}
@@ -550,20 +501,14 @@ func TestSecret_TokenAccessor(t *testing.T) {
 		secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 			Policies: []string{"default"},
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token, accessor := secret.Auth.ClientToken, secret.Auth.Accessor
 
 		secret, err = client.Auth().Token().Renew(token, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		newAccessor, err := secret.TokenAccessor()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if newAccessor != accessor {
 			t.Errorf("expected %q to be %q", newAccessor, accessor)
 		}
@@ -578,21 +523,15 @@ func TestSecret_TokenAccessor(t *testing.T) {
 		secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 			Policies: []string{"default"},
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token, accessor := secret.Auth.ClientToken, secret.Auth.Accessor
 
 		client.SetToken(token)
 		secret, err = client.Auth().Token().RenewSelf(0)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		newAccessor, err := secret.TokenAccessor()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if newAccessor != accessor {
 			t.Errorf("expected %q to be %q", newAccessor, accessor)
 		}
@@ -689,9 +628,7 @@ func TestSecret_TokenRemainingUses(t *testing.T) {
 		// Remaining uses is not returned from this API
 		uses = -1
 		remaining, err := secret.TokenRemainingUses()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if remaining != uses {
 			t.Errorf("expected %d to be %d", remaining, uses)
 		}
@@ -709,16 +646,12 @@ func TestSecret_TokenRemainingUses(t *testing.T) {
 			Policies: []string{"default"},
 			NumUses:  uses,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// /auth/token/create does not return the number of uses
 		uses = -1
 		remaining, err := secret.TokenRemainingUses()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if remaining != uses {
 			t.Errorf("expected %d to be %d", remaining, uses)
 		}
@@ -736,20 +669,14 @@ func TestSecret_TokenRemainingUses(t *testing.T) {
 			Policies: []string{"default"},
 			NumUses:  uses,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		secret, err = client.Auth().Token().Lookup(token)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		remaining, err := secret.TokenRemainingUses()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if remaining != uses {
 			t.Errorf("expected %d to be %d", remaining, uses)
 		}
@@ -767,22 +694,16 @@ func TestSecret_TokenRemainingUses(t *testing.T) {
 			Policies: []string{"default"},
 			NumUses:  uses,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		client.SetToken(token)
 		secret, err = client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		uses = uses - 1 // we just used it
 		remaining, err := secret.TokenRemainingUses()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if remaining != uses {
 			t.Errorf("expected %d to be %d", remaining, uses)
 		}
@@ -800,22 +721,16 @@ func TestSecret_TokenRemainingUses(t *testing.T) {
 			Policies: []string{"default"},
 			NumUses:  uses,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		secret, err = client.Auth().Token().Renew(token, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// /auth/token/renew does not return the number of uses
 		uses = -1
 		remaining, err := secret.TokenRemainingUses()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if remaining != uses {
 			t.Errorf("expected %d to be %d", remaining, uses)
 		}
@@ -833,23 +748,17 @@ func TestSecret_TokenRemainingUses(t *testing.T) {
 			Policies: []string{"default"},
 			NumUses:  uses,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		client.SetToken(token)
 		secret, err = client.Auth().Token().RenewSelf(0)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// /auth/token/renew-self does not return the number of uses
 		uses = -1
 		remaining, err := secret.TokenRemainingUses()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if remaining != uses {
 			t.Errorf("expected %d to be %d", remaining, uses)
 		}
@@ -987,9 +896,7 @@ func TestSecret_TokenPolicies(t *testing.T) {
 		}
 
 		tPol, err := secret.TokenPolicies()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !reflect.DeepEqual(tPol, policies) {
 			t.Errorf("expected %#v to be %#v", tPol, policies)
 		}
@@ -1006,14 +913,10 @@ func TestSecret_TokenPolicies(t *testing.T) {
 		secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 			Policies: policies,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tPol, err := secret.TokenPolicies()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !reflect.DeepEqual(tPol, policies) {
 			t.Errorf("expected %#v to be %#v", tPol, policies)
 		}
@@ -1030,20 +933,14 @@ func TestSecret_TokenPolicies(t *testing.T) {
 		secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 			Policies: policies,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		secret, err = client.Auth().Token().Lookup(token)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tPol, err := secret.TokenPolicies()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !reflect.DeepEqual(tPol, policies) {
 			t.Errorf("expected %#v to be %#v", tPol, policies)
 		}
@@ -1060,21 +957,15 @@ func TestSecret_TokenPolicies(t *testing.T) {
 		secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 			Policies: policies,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		client.SetToken(token)
 		secret, err = client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tPol, err := secret.TokenPolicies()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !reflect.DeepEqual(tPol, policies) {
 			t.Errorf("expected %#v to be %#v", tPol, policies)
 		}
@@ -1091,20 +982,14 @@ func TestSecret_TokenPolicies(t *testing.T) {
 		secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 			Policies: policies,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		secret, err = client.Auth().Token().Renew(token, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tPol, err := secret.TokenPolicies()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !reflect.DeepEqual(tPol, policies) {
 			t.Errorf("expected %#v to be %#v", tPol, policies)
 		}
@@ -1121,21 +1006,15 @@ func TestSecret_TokenPolicies(t *testing.T) {
 		secret, err := client.Auth().Token().Create(&api.TokenCreateRequest{
 			Policies: policies,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		client.SetToken(token)
 		secret, err = client.Auth().Token().RenewSelf(0)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tPol, err := secret.TokenPolicies()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !reflect.DeepEqual(tPol, policies) {
 			t.Errorf("expected %#v to be %#v", tPol, policies)
 		}
@@ -1283,9 +1162,7 @@ func TestSecret_TokenMetadata(t *testing.T) {
 		}
 
 		tMeta, err := secret.TokenMetadata()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !reflect.DeepEqual(tMeta, metadata) {
 			t.Errorf("expected %#v to be %#v", tMeta, metadata)
 		}
@@ -1303,14 +1180,10 @@ func TestSecret_TokenMetadata(t *testing.T) {
 			Metadata: metadata,
 			Policies: []string{"default"},
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tMeta, err := secret.TokenMetadata()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !reflect.DeepEqual(tMeta, metadata) {
 			t.Errorf("expected %#v to be %#v", tMeta, metadata)
 		}
@@ -1328,20 +1201,14 @@ func TestSecret_TokenMetadata(t *testing.T) {
 			Metadata: metadata,
 			Policies: []string{"default"},
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		secret, err = client.Auth().Token().Lookup(token)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tMeta, err := secret.TokenMetadata()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !reflect.DeepEqual(tMeta, metadata) {
 			t.Errorf("expected %#v to be %#v", tMeta, metadata)
 		}
@@ -1359,21 +1226,15 @@ func TestSecret_TokenMetadata(t *testing.T) {
 			Metadata: metadata,
 			Policies: []string{"default"},
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		client.SetToken(token)
 		secret, err = client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tMeta, err := secret.TokenMetadata()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !reflect.DeepEqual(tMeta, metadata) {
 			t.Errorf("expected %#v to be %#v", tMeta, metadata)
 		}
@@ -1391,20 +1252,14 @@ func TestSecret_TokenMetadata(t *testing.T) {
 			Metadata: metadata,
 			Policies: []string{"default"},
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		secret, err = client.Auth().Token().Renew(token, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tMeta, err := secret.TokenMetadata()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !reflect.DeepEqual(tMeta, metadata) {
 			t.Errorf("expected %#v to be %#v", tMeta, metadata)
 		}
@@ -1422,21 +1277,15 @@ func TestSecret_TokenMetadata(t *testing.T) {
 			Metadata: metadata,
 			Policies: []string{"default"},
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		client.SetToken(token)
 		secret, err = client.Auth().Token().RenewSelf(0)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tMeta, err := secret.TokenMetadata()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !reflect.DeepEqual(tMeta, metadata) {
 			t.Errorf("expected %#v to be %#v", tMeta, metadata)
 		}
@@ -1538,9 +1387,7 @@ func TestSecret_TokenIsRenewable(t *testing.T) {
 			t.Parallel()
 
 			act, err := tc.secret.TokenIsRenewable()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if act != tc.exp {
 				t.Errorf("expected %t to be %t", act, tc.exp)
 			}
@@ -1573,9 +1420,7 @@ func TestSecret_TokenIsRenewable(t *testing.T) {
 		}
 
 		tRenew, err := secret.TokenIsRenewable()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if tRenew != renewable {
 			t.Errorf("expected %t to be %t", tRenew, renewable)
 		}
@@ -1593,14 +1438,10 @@ func TestSecret_TokenIsRenewable(t *testing.T) {
 			Policies:  []string{"default"},
 			Renewable: &renewable,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tRenew, err := secret.TokenIsRenewable()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if tRenew != renewable {
 			t.Errorf("expected %t to be %t", tRenew, renewable)
 		}
@@ -1618,20 +1459,14 @@ func TestSecret_TokenIsRenewable(t *testing.T) {
 			Policies:  []string{"default"},
 			Renewable: &renewable,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		secret, err = client.Auth().Token().Lookup(token)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tRenew, err := secret.TokenIsRenewable()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if tRenew != renewable {
 			t.Errorf("expected %t to be %t", tRenew, renewable)
 		}
@@ -1649,21 +1484,15 @@ func TestSecret_TokenIsRenewable(t *testing.T) {
 			Policies:  []string{"default"},
 			Renewable: &renewable,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		client.SetToken(token)
 		secret, err = client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tRenew, err := secret.TokenIsRenewable()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if tRenew != renewable {
 			t.Errorf("expected %t to be %t", tRenew, renewable)
 		}
@@ -1681,20 +1510,14 @@ func TestSecret_TokenIsRenewable(t *testing.T) {
 			Policies:  []string{"default"},
 			Renewable: &renewable,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		secret, err = client.Auth().Token().Renew(token, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tRenew, err := secret.TokenIsRenewable()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if tRenew != renewable {
 			t.Errorf("expected %t to be %t", tRenew, renewable)
 		}
@@ -1712,21 +1535,15 @@ func TestSecret_TokenIsRenewable(t *testing.T) {
 			Policies:  []string{"default"},
 			Renewable: &renewable,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		client.SetToken(token)
 		secret, err = client.Auth().Token().RenewSelf(0)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tRenew, err := secret.TokenIsRenewable()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if tRenew != renewable {
 			t.Errorf("expected %t to be %t", tRenew, renewable)
 		}
@@ -1810,9 +1627,7 @@ func TestSecret_TokenTTL(t *testing.T) {
 			t.Parallel()
 
 			act, err := tc.secret.TokenTTL()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if act != tc.exp {
 				t.Errorf("expected %q to be %q", act, tc.exp)
 			}
@@ -1847,9 +1662,7 @@ func TestSecret_TokenTTL(t *testing.T) {
 		}
 
 		tokenTTL, err := secret.TokenTTL()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if tokenTTL == 0 || tokenTTL > ttl {
 			t.Errorf("expected %q to non-zero and less than %q", tokenTTL, ttl)
 		}
@@ -1868,14 +1681,10 @@ func TestSecret_TokenTTL(t *testing.T) {
 			TTL:            ttl.String(),
 			ExplicitMaxTTL: ttl.String(),
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tokenTTL, err := secret.TokenTTL()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if tokenTTL == 0 || tokenTTL > ttl {
 			t.Errorf("expected %q to non-zero and less than %q", tokenTTL, ttl)
 		}
@@ -1894,20 +1703,14 @@ func TestSecret_TokenTTL(t *testing.T) {
 			TTL:            ttl.String(),
 			ExplicitMaxTTL: ttl.String(),
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		secret, err = client.Auth().Token().Lookup(token)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tokenTTL, err := secret.TokenTTL()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if tokenTTL == 0 || tokenTTL > ttl {
 			t.Errorf("expected %q to non-zero and less than %q", tokenTTL, ttl)
 		}
@@ -1926,21 +1729,15 @@ func TestSecret_TokenTTL(t *testing.T) {
 			TTL:            ttl.String(),
 			ExplicitMaxTTL: ttl.String(),
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		client.SetToken(token)
 		secret, err = client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tokenTTL, err := secret.TokenTTL()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if tokenTTL == 0 || tokenTTL > ttl {
 			t.Errorf("expected %q to non-zero and less than %q", tokenTTL, ttl)
 		}
@@ -1959,20 +1756,14 @@ func TestSecret_TokenTTL(t *testing.T) {
 			TTL:            ttl.String(),
 			ExplicitMaxTTL: ttl.String(),
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		secret, err = client.Auth().Token().Renew(token, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tokenTTL, err := secret.TokenTTL()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if tokenTTL == 0 || tokenTTL > ttl {
 			t.Errorf("expected %q to non-zero and less than %q", tokenTTL, ttl)
 		}
@@ -1991,21 +1782,15 @@ func TestSecret_TokenTTL(t *testing.T) {
 			TTL:            ttl.String(),
 			ExplicitMaxTTL: ttl.String(),
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		token := secret.Auth.ClientToken
 
 		client.SetToken(token)
 		secret, err = client.Auth().Token().RenewSelf(0)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tokenTTL, err := secret.TokenTTL()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if tokenTTL == 0 || tokenTTL > ttl {
 			t.Errorf("expected %q to non-zero and less than %q", tokenTTL, ttl)
 		}
@@ -2019,18 +1804,28 @@ func TestInlineAuth(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	// Set up authentication with permissive policy
-	err := client.Sys().EnableAuth("userpass", "userpass", "")
+	_, err := client.Sys().CreateNamespace("testing", nil)
 	require.NoError(t, err)
 
-	_, err = client.Logical().Write("auth/userpass/users/admin", map[string]any{
-		"password":       "admin",
-		"token_policies": []string{"my-admin"},
-		"token_ttl":      "15s",
-	})
+	_, err = client.Sys().CreateNamespace("testing-slash", nil)
 	require.NoError(t, err)
 
-	err = client.Sys().PutPolicy("my-admin", `
+	for index, nsPath := range []string{"", "testing", "testing-slash/"} {
+		t.Run(fmt.Sprintf("ns:%d:%v", index, nsPath), func(t *testing.T) {
+			client = client.WithNamespace(nsPath)
+
+			// Set up authentication with permissive policy
+			err := client.Sys().EnableAuth("userpass", "userpass", "")
+			require.NoError(t, err)
+
+			_, err = client.Logical().Write("auth/userpass/users/admin", map[string]any{
+				"password":       "admin",
+				"token_policies": []string{"my-admin"},
+				"token_ttl":      "15s",
+			})
+			require.NoError(t, err)
+
+			err = client.Sys().PutPolicy("my-admin", `
 path "pki/*" {
 	capabilities = ["create", "read", "update", "scan", "list", "delete", "sudo"]
 }
@@ -2042,95 +1837,110 @@ path "sys/mounts/pki" {
 }
 `)
 
-	require.NoError(t, err)
+			require.NoError(t, err)
 
-	// Try inline authentication.
-	inlineClient, err := client.WithInlineAuth("auth/userpass/login/admin", map[string]any{
-		"password": "admin",
-	})
-	require.NoError(t, err)
+			// Try inline authentication.
+			inlineClient, err := client.WithInlineAuth("auth/userpass/login/admin", map[string]any{
+				"password": "admin",
+			}, api.InlineWithNamespace(nsPath))
+			require.NoError(t, err)
 
-	logical := inlineClient.Logical()
+			logical := inlineClient.WithNamespace(nsPath).Logical()
 
-	resp, err := logical.Read("sys/policies/acl/my-admin")
-	require.NoError(t, err)
-	require.NotNil(t, resp)
-	require.Contains(t, resp.Data, "policy")
+			resp, err := logical.Read("sys/policies/acl/my-admin")
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			require.Contains(t, resp.Data, "policy")
 
-	// Ensure the request does not work with alias lookahead.
-	inlineClient, err = client.WithInlineAuth("auth/userpass/login/admin", map[string]any{
-		"password": "admin",
-	}, api.InlineWithOperation("alias-lookahead"))
-	require.NoError(t, err)
-	logical = inlineClient.Logical()
+			// Ensure the request works with mixed-case policy paths.
+			resp, err = logical.Read("sys/policies/acl/My-AdMiN")
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			require.Contains(t, resp.Data, "policy")
 
-	resp, err = logical.Read("sys/policies/acl/my-admin")
-	require.ErrorContains(t, err, "expected a valid login operation")
-	require.Nil(t, resp)
+			// Ensure the request does not work with alias lookahead.
+			inlineClient, err = client.WithInlineAuth("auth/userpass/login/admin", map[string]any{
+				"password": "admin",
+			}, api.InlineWithOperation("alias-lookahead"), api.InlineWithNamespace(nsPath))
+			require.NoError(t, err)
+			logical = inlineClient.WithNamespace(nsPath).Logical()
 
-	// Reset our client.
-	inlineClient, err = client.WithInlineAuth("auth/userpass/login/admin", map[string]any{
-		"password": "admin",
-	})
-	require.NoError(t, err)
-	logical = inlineClient.Logical()
+			resp, err = logical.Read("sys/policies/acl/my-admin")
+			require.ErrorContains(t, err, "expected a valid login operation")
+			require.Nil(t, resp)
 
-	// Performing a read on a different policy should fail; our inline token does not have permissions.
-	resp, err = logical.Read("sys/policies/acl/default")
-	t.Logf("resp=%#v / err=%#v", resp, err)
-	require.Error(t, err)
-	require.Nil(t, resp)
+			// Reset our client.
+			inlineClient, err = client.WithInlineAuth("auth/userpass/login/admin", map[string]any{
+				"password": "admin",
+			})
+			require.NoError(t, err)
+			logical = inlineClient.WithNamespace(nsPath).Logical()
 
-	// Make sure auth still works after some time goes by.
-	time.Sleep(5 * time.Second)
+			// Performing a read on a different policy should fail; our inline token does not have permissions.
+			resp, err = logical.Read("sys/policies/acl/default")
+			t.Logf("resp=%#v / err=%#v", resp, err)
+			require.Error(t, err)
+			require.Nil(t, resp)
 
-	// These operation perform writes, but should still work.
-	_, err = logical.Write("sys/mounts/pki", map[string]any{
-		"type": "pki",
-	})
-	require.NoError(t, err)
+			// Make sure auth still works after some time goes by.
+			time.Sleep(5 * time.Second)
 
-	time.Sleep(5 * time.Second)
+			// These operation perform writes, but should still work.
+			_, err = logical.Write("sys/mounts/pki", map[string]any{
+				"type": "pki",
+			})
+			require.NoError(t, err)
 
-	_, err = logical.Write("pki/root/generate/internal", map[string]any{
-		"common_name": "Root R1",
-		"key_type":    "ec",
-	})
-	require.NoError(t, err)
+			time.Sleep(5 * time.Second)
 
-	time.Sleep(5 * time.Second)
+			_, err = logical.Write("pki/root/generate/internal", map[string]any{
+				"common_name": "Root R1",
+				"key_type":    "ec",
+			})
+			require.NoError(t, err)
 
-	_, err = logical.Write("pki/roles/testing", map[string]any{
-		"allow_any_name": true,
-		"generate_lease": true,
-		"ttl":            "1m",
-	})
-	require.NoError(t, err)
+			time.Sleep(5 * time.Second)
 
-	// After this point, we definitely would've outlived any token created by
-	// the first request; this proves that we are not simply reusing an existing
-	// token.
-	time.Sleep(5 * time.Second)
+			_, err = logical.Write("pki/roles/testing", map[string]any{
+				"allow_any_name": true,
+				"generate_lease": true,
+				"ttl":            "1m",
+			})
+			require.NoError(t, err)
 
-	// This operation should create a lease and thus fail.
-	resp, err = logical.Write("pki/issue/testing", map[string]any{
-		"common_name": "alex",
-	})
-	require.Error(t, err)
-	require.Nil(t, resp)
+			// After this point, we definitely would've outlived any token created by
+			// the first request; this proves that we are not simply reusing an existing
+			// token.
+			time.Sleep(5 * time.Second)
 
-	// Removing the lease option should succeed.
-	_, err = logical.Write("pki/roles/testing", map[string]any{
-		"allow_any_name": true,
-		"generate_lease": false,
-		"ttl":            "1m",
-	})
-	require.NoError(t, err)
+			// This operation should create a lease and thus fail.
+			resp, err = logical.Write("pki/issue/testing", map[string]any{
+				"common_name": "alex",
+			})
+			require.Error(t, err)
+			require.Nil(t, resp)
 
-	resp, err = logical.Write("pki/issue/testing", map[string]any{
-		"common_name": "alex",
-	})
-	require.NoError(t, err)
-	require.NotNil(t, resp)
-	require.Contains(t, resp.Data, "certificate")
+			// Removing the lease option should succeed.
+			_, err = logical.Write("pki/roles/testing", map[string]any{
+				"allow_any_name": true,
+				"generate_lease": false,
+				"ttl":            "1m",
+			})
+			require.NoError(t, err)
+
+			resp, err = logical.Write("pki/issue/testing", map[string]any{
+				"common_name": "alex",
+			})
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			require.Contains(t, resp.Data, "certificate")
+
+			// We should be able to list roles.
+			resp, err = logical.List("pki/roles")
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			require.Contains(t, resp.Data, "keys")
+			require.NotEmpty(t, resp.Data["keys"])
+		})
+	}
 }

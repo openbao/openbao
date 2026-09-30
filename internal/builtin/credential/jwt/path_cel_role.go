@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"time"
 
+	"cel.dev/cel-go/cel"
+	"cel.dev/cel-go/common/types"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common/types"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/logical"

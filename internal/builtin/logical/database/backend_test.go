@@ -64,7 +64,7 @@ func TestBackend_PluginMain_Postgres(t *testing.T) {
 	}
 
 	dbType, err := postgresql.New()
-	require.NoErrorf(t, err, "Failed to initialize postgres: %s", err)
+	require.NoError(t, err)
 
 	v5.Serve(dbType.(v5.Database))
 }
@@ -1081,7 +1081,7 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	dbConfig, err := b.(*databaseBackend).DatabaseConfig(t.Context(), config.StorageView, "plugin-test")
-	require.NoErrorf(t, err, "err: %#v", err)
+	require.NoError(t, err)
 	require.NotEqualf(t, dbConfig.ConnectionDetails["password"].(string), "secret", "root credentials not rotated")
 
 	// Get creds to make sure it still works

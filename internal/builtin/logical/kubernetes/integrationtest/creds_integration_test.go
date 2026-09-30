@@ -16,9 +16,7 @@ import (
 func TestCreds_ttl(t *testing.T) {
 	// Pick up VAULT_ADDR and VAULT_TOKEN from env vars
 	client, err := api.NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	path, umount := mountHelper(t, client)
 	defer umount()
@@ -129,9 +127,7 @@ func TestCreds_ttl(t *testing.T) {
 func TestCreds_audiences(t *testing.T) {
 	// Pick up VAULT_ADDR and VAULT_TOKEN from env vars
 	client, err := api.NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	path, umount := mountHelper(t, client)
 	defer umount()
@@ -203,9 +199,7 @@ func TestCreds_audiences(t *testing.T) {
 func TestCreds_service_account_name(t *testing.T) {
 	// Pick up VAULT_ADDR and VAULT_TOKEN from env vars
 	client, err := api.NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	path, umount := mountHelper(t, client)
 	defer umount()
@@ -274,9 +268,7 @@ func TestCreds_service_account_name(t *testing.T) {
 func TestCreds_kubernetes_role_name(t *testing.T) {
 	// Pick up VAULT_ADDR and VAULT_TOKEN from env vars
 	client, err := api.NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	path, umount := mountHelper(t, client)
 	defer umount()
@@ -361,9 +353,7 @@ func TestCreds_kubernetes_role_name(t *testing.T) {
 func TestCreds_generated_role_rules(t *testing.T) {
 	// Pick up VAULT_ADDR and VAULT_TOKEN from env vars
 	client, err := api.NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	path, umount := mountHelper(t, client)
 	defer umount()
@@ -468,9 +458,7 @@ func TestCreds_generated_role_rules(t *testing.T) {
 func TestCreds_kubernetes_namespace(t *testing.T) {
 	// Pick up VAULT_ADDR and VAULT_TOKEN from env vars
 	client, err := api.NewClient(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	path, umount := mountHelper(t, client)
 	defer umount()

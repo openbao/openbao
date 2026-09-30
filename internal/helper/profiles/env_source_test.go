@@ -3,6 +3,8 @@ package profiles
 import (
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestEnvSourceBuilder_Success(t *testing.T) {
@@ -21,14 +23,10 @@ func TestEnvSource_Validate_SuccessRequired(t *testing.T) {
 	const name = "REQ_VAR"
 	const val = "value"
 	err := os.Setenv(name, val)
-	if err != nil {
-		t.Fatalf("Setenv, error: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() {
 		err := os.Unsetenv(name)
-		if err != nil {
-			t.Fatalf("Unsetenv, error: %v", err)
-		}
+		require.NoError(t, err)
 	}()
 	src := &EnvSource{field: map[string]any{
 		"env_var":         name,
@@ -36,9 +34,7 @@ func TestEnvSource_Validate_SuccessRequired(t *testing.T) {
 	}}
 
 	deps, provides, err := src.Validate()
-	if err != nil {
-		t.Fatalf("Validate, error: %v", err)
-	}
+	require.NoError(t, err)
 	if deps != nil {
 		t.Errorf("Expected deps=nil, got %v", deps)
 	}
@@ -55,9 +51,7 @@ func TestEnvSource_Validate_OptionalMissing(t *testing.T) {
 		"env_var": "MISSING_VAR",
 	}}
 	deps, provides, err := src.Validate()
-	if err != nil {
-		t.Fatalf("Validate, error: %v", err)
-	}
+	require.NoError(t, err)
 	if src.value != "" {
 		t.Errorf("Expected empty value, got %q", src.value)
 	}
@@ -108,9 +102,7 @@ func TestEnvSource_EvaluateAndClose(t *testing.T) {
 	src := &EnvSource{value: "v"}
 
 	out, err := src.Evaluate(t.Context(), nil)
-	if err != nil {
-		t.Fatalf("Evaluate, error: %v", err)
-	}
+	require.NoError(t, err)
 	if out != "v" {
 		t.Errorf("Expected Evaluate->%q, got %q", "v", out)
 	}

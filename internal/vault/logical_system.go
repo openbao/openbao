@@ -439,6 +439,19 @@ func sortVersionedPlugins(versionedPlugins []pluginutil.VersionedPlugin) {
 	})
 }
 
+func handleRootNamespaceOnly(f framework.OperationFunc) framework.OperationFunc {
+	return func(ctx context.Context, r *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+		ns, err := namespace.FromContext(ctx)
+		switch {
+		case err != nil:
+			return handleError(err)
+		case ns.ID != namespace.RootNamespaceID:
+			return nil, logical.ErrUnsupportedPath
+		}
+		return f(ctx, r, d)
+	}
+}
+
 func (b *SystemBackend) handlePluginCatalogUpdate(ctx context.Context, _ *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	pluginName := d.Get("name").(string)
 	if pluginName == "" {
@@ -1044,8 +1057,6 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 		// Only set plugin-name if mount is of type plugin, with apiConfig.PluginName
 		// option taking precedence.
 		switch {
-		case apiConfig.PluginName != "":
-			logicalType = apiConfig.PluginName
 		case pluginName != "":
 			logicalType = pluginName
 		default:
@@ -2285,8 +2296,6 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 		// Only set plugin name if mount is of type plugin, with apiConfig.PluginName
 		// option taking precedence.
 		switch {
-		case apiConfig.PluginName != "":
-			logicalType = apiConfig.PluginName
 		case pluginName != "":
 			logicalType = pluginName
 		default:
@@ -2490,6 +2499,26 @@ func (b *SystemBackend) handlePoliciesList(policyType policy.Type) framework.Ope
 		}
 
 		return logical.ErrorResponse("unknown policy type"), nil
+	}
+}
+
+func (b *SystemBackend) handlePoliciesResolvePath(policyType policy.Type) framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		name := data.Get("name").(string)
+		name = b.Core.policyStore.SanitizeName(name)
+
+		result := fmt.Sprintf("policies/%s/%s", policyType.String(), name)
+		if policyType == policy.TypeACL && strings.HasPrefix(req.Path, "policy") {
+			result = "policy/" + name
+		}
+
+		if strings.HasSuffix(req.Path, "/") {
+			// GenericNameRegex does not include the trailing '/' present when
+			// listing a subset of policies.
+			result += "/"
+		}
+
+		return logical.ResolvePathResponse(result)
 	}
 }
 
@@ -3356,7 +3385,11 @@ func (b *SystemBackend) responseWrappingUnwrap(ctx context.Context, te *logical.
 			return "", fmt.Errorf("error decrementing wrapping token's use-count: %w", err)
 		}
 
-		defer b.Core.tokenStore.revokeOrphan(ctx, tokenID)
+		defer func() {
+			if err := b.Core.tokenStore.revokeOrphan(ctx, tokenID); err != nil {
+				b.Core.logger.Error("error revoking wrapping token", "error", err)
+			}
+		}()
 	}
 
 	cubbyReq := &logical.Request{
@@ -3681,7 +3714,11 @@ func (b *SystemBackend) handleWrappingRewrap(ctx context.Context, req *logical.R
 		if err != nil {
 			return nil, fmt.Errorf("error decrementing wrapping token's use-count: %w", err)
 		}
-		defer b.Core.tokenStore.revokeOrphan(ctx, token)
+		defer func() {
+			if err := b.Core.tokenStore.revokeOrphan(ctx, token); err != nil {
+				b.Core.logger.Error("error revoking wrapping token", "error", err)
+			}
+		}()
 	}
 
 	// Fetch the original TTL

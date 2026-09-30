@@ -24,6 +24,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/command/agentproxyshared/sink/file"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAppRoleEndToEnd(t *testing.T) {
@@ -93,9 +94,7 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 	err = client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
 		Type: "approle",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("auth/approle/role/test1", addConstraints(!bindSecretID, map[string]any{
 		"bind_secret_id": bindSecretID,
@@ -105,26 +104,20 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 
 	logger.Trace("vault configured with", "bind_secret_id", bindSecretID)
 
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	secret := ""
 	secretID1 := ""
 	secretID2 := ""
 	if bindSecretID {
 		resp, err := client.Logical().Write("auth/approle/role/test1/secret-id", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		secretID1 = resp.Data["secret_id"].(string)
 	} else {
 		logger.Trace("skipped write to auth/approle/role/test1/secret-id")
 	}
 	resp, err := client.Logical().Read("auth/approle/role/test1/role-id")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	roleID1 := resp.Data["role_id"].(string)
 
 	_, err = client.Logical().Write("auth/approle/role/test2", addConstraints(!bindSecretID, map[string]any{
@@ -132,37 +125,27 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 		"token_ttl":      "6s",
 		"token_max_ttl":  "10s",
 	}))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if bindSecretID {
 		resp, err = client.Logical().Write("auth/approle/role/test2/secret-id", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		secretID2 = resp.Data["secret_id"].(string)
 	} else {
 		logger.Trace("skipped write to auth/approle/role/test2/secret-id")
 	}
 	resp, err = client.Logical().Read("auth/approle/role/test2/role-id")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	roleID2 := resp.Data["role_id"].(string)
 
 	rolef, err := os.CreateTemp("", "auth.role-id.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	role := rolef.Name()
 	rolef.Close() // WriteFile doesn't need it open
 	defer os.Remove(role)
 	t.Logf("input role_id_file_path: %s", role)
 	if bindSecretID {
 		secretf, err := os.CreateTemp("", "auth.secret-id.test.")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		secret = secretf.Name()
 		secretf.Close()
 		defer os.Remove(secret)
@@ -173,9 +156,7 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 	// We close these right away because we're just basically testing
 	// permissions and finding a usable file name
 	ouf, err := os.CreateTemp("", "auth.tokensink.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	out := ouf.Name()
 	ouf.Close()
 	os.Remove(out)
@@ -190,9 +171,7 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 	if !bindSecretID && !secretIDLess {
 		logger.Trace("agent is providing an invalid secret that should be ignored")
 		secretf, err := os.CreateTemp("", "auth.secret-id.test.")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		secretFromAgent = secretf.Name()
 		secretf.Close()
 		defer os.Remove(secretFromAgent)
@@ -216,9 +195,7 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 		MountPath: "auth/approle",
 		Config:    conf,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	ahConfig := &auth.AuthHandlerConfig{
 		Logger: logger.Named("auth.handler"),
 		Client: client,
@@ -232,9 +209,7 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 		select {
 		case <-ctx.Done():
 		case err := <-errCh:
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}()
 
@@ -245,9 +220,7 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 		},
 	}
 	fs, err := file.NewFileSink(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config.Sink = fs
 
 	ss := sink.NewSinkServer(&sink.SinkServerConfig{
@@ -262,9 +235,7 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 		select {
 		case <-ctx.Done():
 		case err := <-errCh:
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}()
 
@@ -326,9 +297,7 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 				}
 				client.SetToken(string(val))
 				secret, err := client.Auth().Token().LookupSelf()
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				return secret.Data["entity_id"].(string)
 			}
 			time.Sleep(250 * time.Millisecond)
@@ -347,13 +316,9 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 	timeout := time.Now().Add(4 * time.Second)
 	for time.Now().Before(timeout) {
 		secret, err := client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		ttl, err := secret.Data["ttl"].(json.Number).Int64()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if ttl > 6 {
 			t.Fatalf("unexpected ttl: %v", secret.Data["ttl"])
 		}
@@ -384,13 +349,9 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 	timeout = time.Now().Add(4 * time.Second)
 	for time.Now().Before(timeout) {
 		secret, err := client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		ttl, err := secret.Data["ttl"].(json.Number).Int64()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if ttl > 6 {
 			t.Fatalf("unexpected ttl: %v", secret.Data["ttl"])
 		}
@@ -427,9 +388,7 @@ func TestAppRoleLongRoleName(t *testing.T) {
 	err := client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
 		Type: "approle",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write(fmt.Sprintf("auth/approle/role/%s", approleName), map[string]any{
 		"token_ttl":     "6s",
@@ -493,18 +452,14 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 	err = client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
 		Type: "approle",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = client.Logical().Write("auth/approle/role/test1", addConstraints(!bindSecretID, map[string]any{
 		"bind_secret_id": bindSecretID,
 		"token_ttl":      "6s",
 		"token_max_ttl":  "10s",
 	}))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	client.SetWrappingLookupFunc(func(operation, path string) string {
 		if path == "auth/approle/role/test1/secret-id" {
@@ -517,23 +472,17 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 	secretID1 := ""
 	if bindSecretID {
 		resp, err := client.Logical().Write("auth/approle/role/test1/secret-id", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		secretID1 = resp.WrapInfo.Token
 	} else {
 		logger.Trace("skipped write to auth/approle/role/test1/secret-id")
 	}
 	resp, err := client.Logical().Read("auth/approle/role/test1/role-id")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	roleID1 := resp.Data["role_id"].(string)
 
 	rolef, err := os.CreateTemp("", "auth.role-id.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	role := rolef.Name()
 	rolef.Close() // WriteFile doesn't need it open
 	defer os.Remove(role)
@@ -541,9 +490,7 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 
 	if bindSecretID {
 		secretf, err := os.CreateTemp("", "auth.secret-id.test.")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		secret = secretf.Name()
 		secretf.Close()
 		defer os.Remove(secret)
@@ -555,9 +502,7 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 	// We close these right away because we're just basically testing
 	// permissions and finding a usable file name
 	ouf, err := os.CreateTemp("", "auth.tokensink.test.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	out := ouf.Name()
 	ouf.Close()
 	os.Remove(out)
@@ -572,9 +517,7 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 	if !bindSecretID && !secretIDLess {
 		logger.Trace("agent is providing an invalid secret that should be ignored")
 		secretf, err := os.CreateTemp("", "auth.secret-id.test.")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		secretFromAgent = secretf.Name()
 		secretf.Close()
 		defer os.Remove(secretFromAgent)
@@ -598,9 +541,7 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 		MountPath: "auth/approle",
 		Config:    conf,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	ahConfig := &auth.AuthHandlerConfig{
 		Logger: logger.Named("auth.handler"),
 		Client: client,
@@ -614,9 +555,7 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 		select {
 		case <-ctx.Done():
 		case err := <-errCh:
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}()
 
@@ -627,9 +566,7 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 		},
 	}
 	fs, err := file.NewFileSink(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	config.Sink = fs
 
 	ss := sink.NewSinkServer(&sink.SinkServerConfig{
@@ -644,9 +581,7 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 		select {
 		case <-ctx.Done():
 		case err := <-errCh:
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		}
 	}()
 
@@ -707,9 +642,7 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 
 				client.SetToken(string(val))
 				secret, err := client.Auth().Token().LookupSelf()
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				return secret.Data["entity_id"].(string)
 			}
 			time.Sleep(250 * time.Millisecond)
@@ -730,13 +663,9 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 	timeout := time.Now().Add(4 * time.Second)
 	for time.Now().Before(timeout) {
 		secret, err := client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		ttl, err := secret.Data["ttl"].(json.Number).Int64()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if ttl > 6 {
 			t.Fatalf("unexpected ttl: %v", secret.Data["ttl"])
 		}
@@ -748,9 +677,7 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 
 	if bindSecretID {
 		resp, err = client.Logical().Write("auth/approle/role/test1/secret-id", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		secretID2 := resp.WrapInfo.Token
 		if err := os.WriteFile(secret, []byte(secretID2), 0o600); err != nil {
 			t.Fatal(err)
@@ -769,13 +696,9 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 	timeout = time.Now().Add(4 * time.Second)
 	for time.Now().Before(timeout) {
 		secret, err := client.Auth().Token().LookupSelf()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		ttl, err := secret.Data["ttl"].(json.Number).Int64()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if ttl > 6 {
 			t.Fatalf("unexpected ttl: %v", secret.Data["ttl"])
 		}

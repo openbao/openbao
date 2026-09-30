@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/cli"
+	"github.com/stretchr/testify/require"
 )
 
 func testAuthDisableCommand(tb testing.TB) (*cli.MockUi, *AuthDisableCommand) {
@@ -97,9 +98,7 @@ func TestAuthDisableCommand_Run(t *testing.T) {
 		}
 
 		auths, err := client.Sys().ListAuth()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if auth, ok := auths["my-auth/"]; ok {
 			t.Errorf("expected auth to be disabled: %#v", auth)

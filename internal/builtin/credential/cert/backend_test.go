@@ -226,18 +226,14 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 			MaxLeaseTTL:     "32h",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Set the cluster's certificate as the root CA in /pki
 	pemBundleRootCA := string(cluster.CACertPEM) + string(cluster.CAKeyPEM)
 	_, err = client.Logical().Write("pki/config/ca", map[string]any{
 		"pem_bundle": pemBundleRootCA,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Mount /pki2 to operate as an intermediate CA
 	err = client.Sys().Mount("pki2", &api.MountInput{
@@ -247,15 +243,11 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 			MaxLeaseTTL:     "32h",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a CSR for the intermediate CA
 	secret, err := client.Logical().Write("pki2/intermediate/generate/internal", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	intermediateCSR := secret.Data["csr"].(string)
 
 	// Sign the intermediate CSR using /pki
@@ -263,18 +255,14 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 		"permitted_dns_domains": ".example.com",
 		"csr":                   intermediateCSR,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	intermediateCertPEM := secret.Data["certificate"].(string)
 
 	// Configure the intermediate cert as the CA in /pki2
 	_, err = client.Logical().Write("pki2/intermediate/set-signed", map[string]any{
 		"certificate": intermediateCertPEM,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a role on the intermediate CA mount
 	_, err = client.Logical().Write("pki2/roles/openbao-cert", map[string]any{
@@ -282,9 +270,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 		"allow_subdomains": "true",
 		"max_ttl":          "5m",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Issue a leaf cert using the intermediate CA
 	secret, err = client.Logical().Write("pki2/issue/openbao-cert", map[string]any{
@@ -292,9 +278,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 		"format":      "pem",
 		"ip_sans":     "127.0.0.1",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	leafCertPEM := secret.Data["certificate"].(string)
 	leafCertKeyPEM := secret.Data["private_key"].(string)
 
@@ -302,9 +286,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 	err = client.Sys().EnableAuthWithOptions("cert", &api.EnableAuthOptions{
 		Type: "cert",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Set the intermediate CA cert as a trusted certificate in the backend
 	_, err = client.Logical().Write("auth/cert/certs/openbao-cert", map[string]any{
@@ -312,9 +294,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 		"policies":     "default",
 		"certificate":  intermediateCertPEM,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create temporary files for CA cert, client cert and client cert key.
 	// This is used to configure TLS in the api client.
@@ -355,14 +335,10 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 			ClientCert: leafCertFile,
 			ClientKey:  leafCertKeyFile,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		apiClient, err := api.NewClient(config)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		return apiClient
 	}
 
@@ -372,9 +348,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 	secret, err = newClient.Logical().Write("auth/cert/login", map[string]any{
 		"name": "openbao-cert",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Auth == nil || secret.Auth.ClientToken == "" {
 		t.Fatal("expected a successful authentication")
 	}
@@ -386,9 +360,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 		"accessor":  secret.Auth.Accessor,
 		"increment": 3600,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if secret.Auth == nil || secret.Auth.ClientToken != "" || secret.Auth.LeaseDuration != 3600 || secret.Auth.Accessor != oldAccessor {
 		t.Fatal("unexpected accessor renewal")
@@ -438,23 +410,17 @@ func TestBackend_MetadataBasedACLPolicy(t *testing.T) {
 	err = client.Sys().EnableAuthWithOptions("cert", &api.EnableAuthOptions{
 		Type: "cert",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Enable metadata in aliases
 	_, err = client.Logical().Write("auth/cert/config", map[string]any{
 		"enable_identity_alias_metadata": true,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Retrieve its accessor id
 	auths, err := client.Sys().ListAuth()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	var accessor string
 
@@ -477,9 +443,7 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 	capabilities = ["read"]
 }
 `, accessor, accessor))
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Set the trusted certificate in the backend
 	_, err = client.Logical().Write("auth/cert/certs/test", map[string]any{
@@ -488,9 +452,7 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 		"certificate":                 string(tc.exampleCA.CertPEM()),
 		"allowed_metadata_extensions": "2.1.1.1,1.2.3.45",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// This function is a copy-paste from the NewTestCluster, with the
 	// modification to reconfigure the TLS on the api client with a
@@ -521,14 +483,10 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 			ClientCert:  exCertFile,
 			ClientKey:   exCertKeyFile,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		apiClient, err := api.NewClient(config)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		return apiClient
 	}
 
@@ -540,9 +498,7 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 	secret, err = newClient.Logical().Write("auth/cert/login", map[string]any{
 		"name": "test",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Auth == nil || secret.Auth.ClientToken == "" {
 		t.Fatal("expected a successful authentication")
 	}
@@ -551,9 +507,7 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 	newClient.SetToken(secret.Auth.ClientToken)
 
 	_, err = newClient.Logical().Read("kv/cn/example.com")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = newClient.Logical().Read("kv/cn/not.example.com")
 	if err == nil {
@@ -561,9 +515,7 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 	}
 
 	_, err = newClient.Logical().Read("kv/ext/A UTF8String Extension")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = newClient.Logical().Read("kv/ext/bar")
 	if err == nil {
@@ -592,9 +544,7 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 	config.StorageView = storage
 
 	b, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Register the Non-CA certificate of the client key pair
 	certData := map[string]any{
@@ -617,9 +567,7 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 
 	// Create connection state using the certificates generated
 	connState, err := connectionState(ca, ca, issuedCert)
-	if err != nil {
-		t.Fatalf("error testing connection state:%v", err)
-	}
+	require.NoError(t, err)
 
 	loginReq := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -653,9 +601,7 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 	config.StorageView = storage
 
 	b, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Register the Non-CA certificate of the client key pair
 	certData := map[string]any{
@@ -679,9 +625,7 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 	// Connection state is presenting the client Non-CA cert and its key.
 	// This is exactly what is registered at the backend.
 	connState, err := connectionState(tc.exampleCA, tc.exampleCert, tc.clientCert)
-	if err != nil {
-		t.Fatalf("error testing connection state:%v", err)
-	}
+	require.NoError(t, err)
 	loginReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
@@ -734,9 +678,7 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 
 	// Attempt login with the same connection state but with the CRL registered
 	resp, err = b.HandleRequest(t.Context(), loginReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected failure due to revoked certificate")
 	}
@@ -749,9 +691,7 @@ func TestBackend_CRLs(t *testing.T) {
 	config.StorageView = storage
 
 	b, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Register the CA certificate of the client key pair
 	certData := map[string]any{
@@ -776,9 +716,7 @@ func TestBackend_CRLs(t *testing.T) {
 	// Connection state is presenting the client CA cert and its key.
 	// This is exactly what is registered at the backend.
 	connState, err := connectionState(tc.exampleCA, tc.exampleCert, tc.clientCA)
-	if err != nil {
-		t.Fatalf("error testing connection state:%v", err)
-	}
+	require.NoError(t, err)
 	loginReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
@@ -795,9 +733,7 @@ func TestBackend_CRLs(t *testing.T) {
 	// Now, without changing the registered client CA cert, present from
 	// the client side, a cert issued using the registered CA.
 	connState, err = connectionState(tc.exampleCA, tc.exampleCert, tc.clientCert)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 	loginReq.Connection = &logical.Connection{
 		ConnState: &connState,
 	}
@@ -832,9 +768,7 @@ func TestBackend_CRLs(t *testing.T) {
 
 	// Attempt login with the revoked certificate.
 	resp, err = b.HandleRequest(t.Context(), loginReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected failure due to revoked certificate")
 	}
@@ -848,9 +782,7 @@ func TestBackend_CRLs(t *testing.T) {
 
 	// Test login using a different client CA cert pair.
 	connState, err = connectionState(tc.exampleCA, tc.exampleCert, tc.client2Cert)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 	loginReq.Connection = &logical.Connection{
 		ConnState: &connState,
 	}
@@ -875,9 +807,7 @@ func TestBackend_CRLs(t *testing.T) {
 
 	// Attempt login with the same connection state but with the CRL registered
 	resp, err = b.HandleRequest(t.Context(), loginReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected failure due to revoked certificate")
 	}
@@ -893,9 +823,7 @@ func testFactory(t *testing.T) logical.Backend {
 		},
 		StorageView: storage,
 	})
-	if err != nil {
-		t.Fatalf("error: %s", err)
-	}
+	require.NoError(t, err)
 	if err := b.Initialize(ctx, &logical.InitializationRequest{
 		Storage: storage,
 	}); err != nil {
@@ -933,9 +861,7 @@ func TestBackend_basic_CA(t *testing.T) {
 	tc := setupTestCerts(t)
 
 	connState, err := testConnState(tc.exampleCert, tc.exampleCA)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
@@ -970,9 +896,7 @@ func TestBackend_Basic_CRLs(t *testing.T) {
 	cert, _ := tc.exampleCert.X509Certificate()
 
 	connState, err := testConnState(tc.exampleCert, tc.exampleCA)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
@@ -992,9 +916,7 @@ func TestBackend_Basic_CRLs(t *testing.T) {
 func TestBackend_basic_singleCert(t *testing.T) {
 	tc := setupTestCerts(t)
 	connState, err := testConnState(tc.exampleCA, tc.exampleCA)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
@@ -1013,9 +935,7 @@ func TestBackend_basic_singleCert(t *testing.T) {
 func TestBackend_common_name_singleCert(t *testing.T) {
 	tc := setupTestCerts(t)
 	connState, err := testConnState(tc.exampleCA, tc.exampleCA)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
@@ -1054,9 +974,7 @@ func TestBackend_ext_singleCert(t *testing.T) {
 		},
 	}
 	connState, err := testConnState(extCert, tc.exampleCA)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 	ca := tc.exampleCA.CertPEM()
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
@@ -1123,9 +1041,7 @@ func TestBackend_dns_singleCert(t *testing.T) {
 	}
 
 	connState, err := testConnState(cert, ca)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
@@ -1159,9 +1075,7 @@ func TestBackend_email_singleCert(t *testing.T) {
 	}
 
 	connState, err := testConnState(cert, ca)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
@@ -1187,9 +1101,7 @@ func TestBackend_organizationalUnit_singleCert(t *testing.T) {
 		SubjectAltNames: []string{"IP:127.0.0.1"},
 	}
 	connState, err := testConnState(cert, cert)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
@@ -1219,9 +1131,7 @@ func TestBackend_uri_singleCert(t *testing.T) {
 	}
 
 	connState, err := testConnState(cert, ca)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
@@ -1244,9 +1154,7 @@ func TestBackend_uri_singleCert(t *testing.T) {
 func TestBackend_mixed_constraints(t *testing.T) {
 	tc := setupTestCerts(t)
 	connState, err := testConnState(tc.exampleCert, tc.exampleCA)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
@@ -1265,9 +1173,7 @@ func TestBackend_mixed_constraints(t *testing.T) {
 func TestBackend_untrusted(t *testing.T) {
 	tc := setupTestCerts(t)
 	connState, err := testConnState(tc.exampleCert, tc.exampleCA)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
@@ -1283,14 +1189,10 @@ func TestBackend_validCIDR(t *testing.T) {
 	config.StorageView = storage
 
 	b, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	connState, err := testConnState(tc.exampleCert, tc.exampleCA)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 
 	name := "web"
 	boundCIDRs := []string{"127.0.0.1", "128.252.0.0/16"}
@@ -1312,9 +1214,7 @@ func TestBackend_validCIDR(t *testing.T) {
 	}
 
 	_, err = b.HandleRequest(t.Context(), addCertReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	readCertReq := &logical.Request{
 		Operation:  logical.ReadOperation,
@@ -1324,9 +1224,7 @@ func TestBackend_validCIDR(t *testing.T) {
 	}
 
 	readResult, err := b.HandleRequest(t.Context(), readCertReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cidrsResult := readResult.Data["bound_cidrs"].([]*sockaddr.SockAddrMarshaler)
 
 	if cidrsResult[0].String() != boundCIDRs[0] ||
@@ -1349,9 +1247,7 @@ func TestBackend_validCIDR(t *testing.T) {
 	loginReq.Connection.RemoteAddr = "127.0.0.1/32"
 
 	_, err = b.HandleRequest(t.Context(), loginReq)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+	require.NoError(t, err)
 }
 
 func TestBackend_invalidCIDR(t *testing.T) {
@@ -1361,14 +1257,10 @@ func TestBackend_invalidCIDR(t *testing.T) {
 	config.StorageView = storage
 
 	b, err := Factory(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	connState, err := testConnState(tc.exampleCert, tc.exampleCA)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 
 	name := "web"
 
@@ -1389,9 +1281,7 @@ func TestBackend_invalidCIDR(t *testing.T) {
 	}
 
 	_, err = b.HandleRequest(t.Context(), addCertReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	loginReq := &logical.Request{
 		Operation:       logical.UpdateOperation,
@@ -1432,9 +1322,7 @@ func testAccStepReadCRL(t *testing.T, connState tls.ConnectionState, expectedSer
 		Check: func(resp *logical.Response) error {
 			crlInfo := CRLInfo{}
 			err := mapstructure.Decode(resp.Data, &crlInfo)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
+			require.NoError(t, err)
 			if len(crlInfo.Serials) != 1 {
 				t.Fatalf("bad: expected CRL with length 1, got %d", len(crlInfo.Serials))
 			}
@@ -1878,15 +1766,11 @@ func Test_Renew(t *testing.T) {
 		},
 		StorageView: storage,
 	})
-	if err != nil {
-		t.Fatalf("error: %s", err)
-	}
+	require.NoError(t, err)
 
 	b := lb.(*backend)
 	connState, err := testConnState(tc.exampleCert, tc.exampleCA)
-	if err != nil {
-		t.Fatalf("error testing connection state: %v", err)
-	}
+	require.NoError(t, err)
 
 	req := &logical.Request{
 		Connection: &logical.Connection{
@@ -1906,18 +1790,14 @@ func Test_Renew(t *testing.T) {
 	}
 
 	_, err = b.pathCertWrite(t.Context(), req, fd)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	empty_login_fd := &framework.FieldData{
 		Raw:    map[string]any{},
 		Schema: pathLogin(b).Fields,
 	}
 	resp, err := b.pathLogin(t.Context(), req, empty_login_fd)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.IsError() {
 		t.Fatalf("got error: %#v", *resp)
 	}
@@ -1930,9 +1810,7 @@ func Test_Renew(t *testing.T) {
 
 	// Normal renewal
 	resp, err = b.pathLoginRenew(t.Context(), req, empty_login_fd)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("got nil response from renew")
 	}
@@ -1943,9 +1821,7 @@ func Test_Renew(t *testing.T) {
 	// Change the policies -- this should fail
 	fd.Raw["policies"] = "zip,zap"
 	_, err = b.pathCertWrite(t.Context(), req, fd)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = b.pathLoginRenew(t.Context(), req, empty_login_fd)
 	if err == nil {
@@ -1955,14 +1831,10 @@ func Test_Renew(t *testing.T) {
 	// Put the policies back, this should be okay
 	fd.Raw["policies"] = "bar,foo"
 	_, err = b.pathCertWrite(t.Context(), req, fd)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err = b.pathLoginRenew(t.Context(), req, empty_login_fd)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("got nil response from renew")
 	}
@@ -1974,14 +1846,10 @@ func Test_Renew(t *testing.T) {
 	period := 350 * time.Second
 	fd.Raw["period"] = period.String()
 	_, err = b.pathCertWrite(t.Context(), req, fd)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err = b.pathLoginRenew(t.Context(), req, empty_login_fd)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp == nil {
 		t.Fatal("got nil response from renew")
 	}
@@ -1995,14 +1863,10 @@ func Test_Renew(t *testing.T) {
 
 	// Delete CA, make sure we can't renew
 	_, err = b.pathCertDelete(t.Context(), req, fd)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err = b.pathLoginRenew(t.Context(), req, empty_login_fd)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp != nil {
 		t.Fatalf("got non-nil response from renew: %v", resp)
 	}
@@ -2033,18 +1897,12 @@ func TestBackend_CertUpgrade(t *testing.T) {
 	}
 
 	entry, err := logical.StorageEntryJSON("cert/foo", foo)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = s.Put(ctx, entry)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	certEntry, err := b.Cert(ctx, s, "foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	exp := &CertEntry{
 		Policies:   []string{"foo"},
@@ -2092,9 +1950,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	err = client.Sys().EnableAuthWithOptions("cert", &api.EnableAuthOptions{
 		Type: "cert",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Set the first leaf cert as a trusted certificate in the backend
 	_, err = client.Logical().Write("auth/cert/certs/trusted-leaf", map[string]any{
@@ -2102,9 +1958,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 		"policies":     "default",
 		"certificate":  string(leafA.CertPEM()),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Parse the leaf and create a cloned copy of it with a different subject
 	// name to validate against HCSEC-2025-18 (CVE-2025-6037).
@@ -2186,14 +2040,10 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 			ClientCert: leafCert,
 			ClientKey:  leafKey,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		apiClient, err := api.NewClient(config)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		return apiClient
 	}
 
@@ -2216,9 +2066,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	secret, err = newAClient.Logical().Write("auth/cert/login", map[string]any{
 		"name": "trusted-leaf",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret.Auth == nil || secret.Auth.ClientToken == "" {
 		t.Fatal("expected a successful authentication")
 	}
@@ -2279,9 +2127,7 @@ func TestBackend_IntegrationForwardedCerts(t *testing.T) {
 	config.Address = addr
 
 	client, err := api.NewClient(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client.SetToken(root)
 
 	// Enable the cert auth method

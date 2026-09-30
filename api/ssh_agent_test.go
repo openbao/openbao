@@ -8,14 +8,14 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSSH_CreateTLSClient(t *testing.T) {
 	// load the default configuration
 	config, err := LoadSSHHelperConfig("./test-fixtures/agent_config.hcl")
-	if err != nil {
-		t.Fatalf("error loading agent's config file: %s", err)
-	}
+	require.NoError(t, err)
 
 	_, err = config.NewClient()
 	if err != nil {
@@ -26,9 +26,7 @@ func TestSSH_CreateTLSClient(t *testing.T) {
 	config.CACert = "./test-fixtures/vault.crt"
 
 	client, err := config.NewClient()
-	if err != nil {
-		t.Fatalf("error creating the client: %s", err)
-	}
+	require.NoError(t, err)
 	if client.config.HttpClient.Transport == nil {
 		t.Fatal("error creating client with TLS transport")
 	}
@@ -42,14 +40,10 @@ func TestSSH_CreateTLSClient_tlsServerName(t *testing.T) {
 vault_addr = "1.2.3.4"
 tls_server_name = "%s"
 `, tlsServerName))
-	if err != nil {
-		t.Fatalf("error loading config: %s", err)
-	}
+	require.NoError(t, err)
 
 	client, err := config.NewClient()
-	if err != nil {
-		t.Fatalf("error creating the client: %s", err)
-	}
+	require.NoError(t, err)
 
 	actualTLSServerName := client.config.HttpClient.Transport.(*http.Transport).TLSClientConfig.ServerName
 	if actualTLSServerName != tlsServerName {
@@ -61,9 +55,7 @@ func TestParseSSHHelperConfig(t *testing.T) {
 	config, err := ParseSSHHelperConfig(`
 		vault_addr = "1.2.3.4"
 `)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if config.SSHMountPoint != SSHHelperDefaultMountPoint {
 		t.Errorf("expected %q to be %q", config.SSHMountPoint, SSHHelperDefaultMountPoint)
@@ -102,9 +94,7 @@ func TestParseSSHHelperConfig_tlsServerName(t *testing.T) {
 vault_addr = "1.2.3.4"
 tls_server_name = "%s"
 `, tlsServerName))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if config.TLSServerName != tlsServerName {
 		t.Errorf("incorrect TLS server name. expected: %s actual: %s", tlsServerName, config.TLSServerName)

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
+	"github.com/stretchr/testify/require"
 
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
@@ -49,18 +50,14 @@ func testCore_Rekey_Lifecycle_Common(t *testing.T, c *Core, recovery bool) {
 
 	// Should be no config
 	conf, err := c.RekeyConfig(recovery)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if conf != nil {
 		t.Fatalf("bad: %v", conf)
 	}
 
 	// Cancel should be idempotent
 	err = c.RekeyCancel(false)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Start a rekey
 	newConf := &SealConfig{
@@ -68,15 +65,11 @@ func testCore_Rekey_Lifecycle_Common(t *testing.T, c *Core, recovery bool) {
 		SecretShares:    5,
 	}
 	err = c.RekeyInit(newConf, recovery)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Should get config
 	conf, err = c.RekeyConfig(recovery)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	newConf.Nonce = conf.Nonce
 	if !reflect.DeepEqual(conf, newConf) {
 		t.Fatalf("bad: %v", conf)
@@ -84,15 +77,11 @@ func testCore_Rekey_Lifecycle_Common(t *testing.T, c *Core, recovery bool) {
 
 	// Cancel should be clear
 	err = c.RekeyCancel(recovery)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Should be no config
 	conf, err = c.RekeyConfig(recovery)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if conf != nil {
 		t.Fatalf("bad: %v", conf)
 	}
@@ -129,9 +118,7 @@ func testCore_Rekey_Init_Common(t *testing.T, c *Core, recovery bool) {
 	}
 
 	err = c.RekeyInit(newConf, recovery)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Second should fail
 	err = c.RekeyInit(newConf, recovery)
@@ -182,9 +169,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	var result *RekeyResult
 	for _, key := range keys {
 		result, err = c.RekeyUpdate(t.Context(), key, rkconf.Nonce, recovery)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if result != nil {
 			break
 		}
@@ -214,9 +199,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	} else {
 		sealConf, err = c.seal.BarrierConfig(t.Context())
 	}
-	if err != nil {
-		t.Fatalf("seal config retrieval error: %v", err)
-	}
+	require.NoError(t, err)
 	if sealConf == nil {
 		t.Fatal("seal configuration is nil")
 	}
@@ -235,14 +218,10 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	// Attempt unseal if this was not recovery mode
 	if !recovery {
 		err = c.Seal(root)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		for i := 0; i < newConf.SecretThreshold; i++ {
 			_, err = TestCoreUnseal(c, TestKeyCopy(result.SecretShares[i]))
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
+			require.NoError(t, err)
 		}
 		if c.Sealed() {
 			t.Fatal("should be unsealed")
@@ -256,15 +235,11 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 		SecretShares:    1,
 	}
 	err = c.RekeyInit(newConf, recovery)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Fetch new config with generated nonce
 	rkconf, err = c.RekeyConfig(recovery)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if rkconf == nil {
 		t.Fatal("bad: no rekey config received")
 	}
@@ -273,16 +248,12 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	oldResult := result
 	for i := range 3 {
 		result, err = c.RekeyUpdate(t.Context(), TestKeyCopy(oldResult.SecretShares[i]), rkconf.Nonce, recovery)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 
 		// Should be progress
 		if i < 2 {
 			_, num, err := c.RekeyProgress(recovery, false)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
+			require.NoError(t, err)
 			if num != i+1 {
 				t.Fatalf("bad: %d", num)
 			}
@@ -295,13 +266,9 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	// Attempt unseal if this was not recovery mode
 	if !recovery {
 		err = c.Seal(root)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		unseal, err := TestCoreUnseal(c, result.SecretShares[0])
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 		if !unseal {
 			t.Fatal("should be unsealed")
 		}
@@ -313,9 +280,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	} else {
 		sealConf, err = c.seal.BarrierConfig(t.Context())
 	}
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	if !reflect.DeepEqual(sealConf, newConf) {
 		t.Fatalf("bad: %#v", sealConf)
@@ -338,15 +303,11 @@ func testCore_Rekey_Invalid_Common(t *testing.T, c *Core, keys [][]byte, recover
 		SecretShares:    5,
 	}
 	err := c.RekeyInit(newConf, recovery)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Fetch new config with generated nonce
 	rkconf, err := c.RekeyConfig(recovery)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if rkconf == nil {
 		t.Fatal("bad: no rekey config received")
 	}
@@ -369,9 +330,7 @@ func testCore_Rekey_Invalid_Common(t *testing.T, c *Core, keys [][]byte, recover
 
 	// Check progress has been reset
 	_, num, err := c.RekeyProgress(recovery, false)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if num != 0 {
 		t.Fatalf("rekey progress should be 0, got: %d", num)
 	}
@@ -382,13 +341,9 @@ func TestCore_Rekey_Standby(t *testing.T) {
 	logger := logging.NewVaultLogger(log.Trace)
 
 	inm, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	inmha, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	redirectOriginal := "http://127.0.0.1:8200"
 	core, err := NewCore(&CoreConfig{
@@ -397,9 +352,7 @@ func TestCore_Rekey_Standby(t *testing.T) {
 		RedirectAddr: redirectOriginal,
 		DisableCache: true,
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer core.Shutdown()
 	keys, root := TestCoreInit(t, core)
 	for _, key := range keys {
@@ -419,9 +372,7 @@ func TestCore_Rekey_Standby(t *testing.T) {
 		RedirectAddr: redirectOriginal2,
 		DisableCache: true,
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	defer core2.Shutdown()
 	for _, key := range keys {
 		if _, err := TestCoreUnseal(core2, TestKeyCopy(key)); err != nil {
@@ -435,23 +386,17 @@ func TestCore_Rekey_Standby(t *testing.T) {
 		SecretThreshold: 1,
 	}
 	err = core.RekeyInit(newConf, false)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	// Fetch new config with generated nonce
 	rkconf, err := core.RekeyConfig(false)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if rkconf == nil {
 		t.Fatal("bad: no rekey config received")
 	}
 	var rekeyResult *RekeyResult
 	for _, key := range keys {
 		rekeyResult, err = core.RekeyUpdate(t.Context(), key, rkconf.Nonce, false)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 	}
 	if rekeyResult == nil {
 		t.Fatal("rekey failed")
@@ -459,32 +404,24 @@ func TestCore_Rekey_Standby(t *testing.T) {
 
 	// Seal the first core, should step down
 	err = core.Seal(root)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Wait for core2 to become active
 	TestWaitActive(t, core2)
 
 	// Rekey the root key again
 	err = core2.RekeyInit(newConf, false)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	// Fetch new config with generated nonce
 	rkconf, err = core2.RekeyConfig(false)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if rkconf == nil {
 		t.Fatal("bad: no rekey config received")
 	}
 	var rekeyResult2 *RekeyResult
 	for _, key := range rekeyResult.SecretShares {
 		rekeyResult2, err = core2.RekeyUpdate(t.Context(), key, rkconf.Nonce, false)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 	}
 	if rekeyResult2 == nil {
 		t.Fatal("rekey failed")

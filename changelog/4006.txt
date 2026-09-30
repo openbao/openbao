@@ -1,0 +1,3 @@
+```release-note:bug
+database/postgresql: Allow multiline statements in database static roles user configurations.
+```

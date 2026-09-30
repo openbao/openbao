@@ -48,9 +48,7 @@ func TestKeyManager_PassthrougKeyManager(t *testing.T) {
 			}
 
 			token, err := m.RetrievalToken(ctx)
-			if err != nil {
-				t.Fatalf("unable to retrieve token: %s", err)
-			}
+			require.NoError(t, err)
 
 			if len(tc.key) != 0 && !bytes.Equal(tc.key, token) {
 				t.Fatalf("expected key bytes: %x, got: %x", tc.key, token)

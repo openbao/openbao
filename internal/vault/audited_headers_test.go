@@ -31,9 +31,7 @@ func TestAuditedHeadersConfig_CRUD(t *testing.T) {
 
 func testAuditedHeadersConfig_Add(t *testing.T, conf *AuditedHeadersConfig) {
 	err := conf.add(t.Context(), "X-Test-Header", false)
-	if err != nil {
-		t.Fatalf("Error when adding header to config: %s", err)
-	}
+	require.NoError(t, err)
 
 	settings, ok := conf.Headers["x-test-header"]
 	if !ok {
@@ -45,18 +43,14 @@ func testAuditedHeadersConfig_Add(t *testing.T, conf *AuditedHeadersConfig) {
 	}
 
 	out, err := conf.view.Get(t.Context(), auditedHeadersEntry)
-	if err != nil {
-		t.Fatalf("Could not retrieve headers entry from config: %s", err)
-	}
+	require.NoError(t, err)
 	if out == nil {
 		t.Fatal("nil value")
 	}
 
 	headers := make(map[string]*auditedHeaderSettings)
 	err = out.DecodeJSON(&headers)
-	if err != nil {
-		t.Fatalf("Error decoding header view: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := map[string]*auditedHeaderSettings{
 		"x-test-header": {
@@ -69,9 +63,7 @@ func testAuditedHeadersConfig_Add(t *testing.T, conf *AuditedHeadersConfig) {
 	}
 
 	err = conf.add(t.Context(), "X-Vault-Header", true)
-	if err != nil {
-		t.Fatalf("Error when adding header to config: %s", err)
-	}
+	require.NoError(t, err)
 
 	settings, ok = conf.Headers["x-vault-header"]
 	if !ok {
@@ -83,18 +75,14 @@ func testAuditedHeadersConfig_Add(t *testing.T, conf *AuditedHeadersConfig) {
 	}
 
 	out, err = conf.view.Get(t.Context(), auditedHeadersEntry)
-	if err != nil {
-		t.Fatalf("Could not retrieve headers entry from config: %s", err)
-	}
+	require.NoError(t, err)
 	if out == nil {
 		t.Fatal("nil value")
 	}
 
 	headers = make(map[string]*auditedHeaderSettings)
 	err = out.DecodeJSON(&headers)
-	if err != nil {
-		t.Fatalf("Error decoding header view: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected["x-vault-header"] = &auditedHeaderSettings{
 		HMAC: true,
@@ -107,9 +95,7 @@ func testAuditedHeadersConfig_Add(t *testing.T, conf *AuditedHeadersConfig) {
 
 func testAuditedHeadersConfig_Remove(t *testing.T, conf *AuditedHeadersConfig) {
 	err := conf.remove(t.Context(), "X-Test-Header")
-	if err != nil {
-		t.Fatalf("Error when adding header to config: %s", err)
-	}
+	require.NoError(t, err)
 
 	_, ok := conf.Headers["x-Test-HeAder"]
 	if ok {
@@ -117,18 +103,14 @@ func testAuditedHeadersConfig_Remove(t *testing.T, conf *AuditedHeadersConfig) {
 	}
 
 	out, err := conf.view.Get(t.Context(), auditedHeadersEntry)
-	if err != nil {
-		t.Fatalf("Could not retrieve headers entry from config: %s", err)
-	}
+	require.NoError(t, err)
 	if out == nil {
 		t.Fatal("nil value")
 	}
 
 	headers := make(map[string]*auditedHeaderSettings)
 	err = out.DecodeJSON(&headers)
-	if err != nil {
-		t.Fatalf("Error decoding header view: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := map[string]*auditedHeaderSettings{
 		"x-vault-header": {
@@ -141,9 +123,7 @@ func testAuditedHeadersConfig_Remove(t *testing.T, conf *AuditedHeadersConfig) {
 	}
 
 	err = conf.remove(t.Context(), "x-VaulT-Header")
-	if err != nil {
-		t.Fatalf("Error when adding header to config: %s", err)
-	}
+	require.NoError(t, err)
 
 	_, ok = conf.Headers["x-vault-header"]
 	if ok {
@@ -151,18 +131,14 @@ func testAuditedHeadersConfig_Remove(t *testing.T, conf *AuditedHeadersConfig) {
 	}
 
 	out, err = conf.view.Get(t.Context(), auditedHeadersEntry)
-	if err != nil {
-		t.Fatalf("Could not retrieve headers entry from config: %s", err)
-	}
+	require.NoError(t, err)
 	if out == nil {
 		t.Fatal("nil value")
 	}
 
 	headers = make(map[string]*auditedHeaderSettings)
 	err = out.DecodeJSON(&headers)
-	if err != nil {
-		t.Fatalf("Error decoding header view: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected = make(map[string]*auditedHeaderSettings)
 
@@ -186,9 +162,7 @@ func TestAuditedHeadersConfig_ApplyConfig(t *testing.T) {
 	hashFunc := func(ctx context.Context, s string) (string, error) { return "hashed", nil }
 
 	result, err := conf.ApplyConfig(t.Context(), reqHeaders, hashFunc)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expected := map[string][]string{
 		"x-test-header":  {"foo"},
@@ -229,9 +203,7 @@ func BenchmarkAuditedHeaderConfig_ApplyConfig(b *testing.B) {
 	}
 
 	salter, err := salt.NewSalt(b.Context(), nil, nil)
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err)
 
 	hashFunc := func(ctx context.Context, s string) (string, error) { return salter.GetIdentifiedHMAC(s), nil }
 

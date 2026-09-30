@@ -17,13 +17,12 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/salt"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFormatJSON_formatRequest(t *testing.T) {
 	salter, err := salt.NewSalt(t.Context(), nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	saltFunc := func(context.Context) (*salt.Salt, error) {
 		return salter, nil
 	}
@@ -141,9 +140,7 @@ func TestFormatJSON_formatRequest(t *testing.T) {
 		expectedjson.Time = actualjson.Time
 
 		expectedBytes, err := json.Marshal(expectedjson)
-		if err != nil {
-			t.Fatalf("unable to marshal json: %s", err)
-		}
+		require.NoError(t, err)
 
 		if !strings.HasSuffix(strings.TrimSpace(buf.String()), string(expectedBytes)) {
 			t.Fatalf(

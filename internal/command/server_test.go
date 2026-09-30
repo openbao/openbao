@@ -48,6 +48,10 @@ backend "inmem_ha" {
   advertise_addr       = "http://127.0.0.1:8200"
 }
 `
+	inmemNoHaHCL = `
+backend "inmem" {}
+`
+
 	haInmemHCL = `
 ha_backend "inmem_ha" {
   redirect_addr        = "http://127.0.0.1:8200"
@@ -288,7 +292,7 @@ func TestServer(t *testing.T) {
 			ui, cmd := testServerCommand(t)
 
 			f, err := os.CreateTemp(t.TempDir(), "")
-			require.NoErrorf(t, err, "error creating temp dir: %v", err)
+			require.NoError(t, err)
 
 			_, err = f.WriteString(tc.contents)
 			require.NoErrorf(t, err, "cannot write temp file contents")
@@ -303,6 +307,30 @@ func TestServer(t *testing.T) {
 			require.Contains(t, output, tc.exp, "expected %q to contain %q", output, tc.exp)
 		})
 	}
+}
+
+// TestServer_ConfigStdin verifies that the server config is read via
+// BaseCommand.stdin repeatedly if passed a file path of "-".
+func TestServer_ConfigStdin(t *testing.T) {
+	_, cmd := testServerCommand(t)
+	cmd.stdin = func() ([]byte, error) {
+		return []byte(testBaseHCL(t, "")), nil
+	}
+
+	configFile := path.Join(t.TempDir(), "config.hcl")
+	require.NoError(t, os.WriteFile(configFile, []byte(inmemHCL), 0o600))
+	config, _, err := cmd.ParseServerConfig([]string{"-", configFile})
+	require.NoError(t, err)
+	require.Len(t, config.Listeners, 1)
+	require.Equal(t, "inmem_ha", config.Storage.Type)
+
+	// On second parse (as is triggered by runtime config reloads via SIGHUP),
+	// we expect to reuse stdin contents but reload file contents.
+	require.NoError(t, os.WriteFile(configFile, []byte(inmemNoHaHCL), 0o600))
+	newConfig, _, err := cmd.ParseServerConfig([]string{"-", configFile})
+	require.NoError(t, err)
+	require.Len(t, newConfig.Listeners, 1)
+	require.Equal(t, "inmem", newConfig.Storage.Type)
 }
 
 // TestServer_DevTLS verifies that a vault server starts up correctly with the -dev-tls flag

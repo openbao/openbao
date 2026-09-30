@@ -15,6 +15,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	be "github.com/openbao/openbao/v2/internal/vault/backend"
 	"github.com/openbao/openbao/v2/internal/vault/routing"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIdentityStore_CaseInsensitiveGroupAliasName(t *testing.T) {
@@ -94,14 +95,10 @@ func TestIdentityStore_CaseInsensitiveGroupAliasName(t *testing.T) {
 
 func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 	err := be.AddTestCredentialBackend("userpass", credUserpass.Factory)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = be.AddTestCredentialBackend("approle", credApprole.Factory)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	defer be.ClearTestCredentialBackends()
 
@@ -116,9 +113,7 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 		Description: "userpass",
 	}
 	err = c.enableCredential(ctx, userpassMe)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	approleMe := &routing.MountEntry{
 		Table:       routing.CredentialTableType,
@@ -127,9 +122,7 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 		Description: "approle",
 	}
 	err = c.enableCredential(ctx, approleMe)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Create a group
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
@@ -372,35 +365,25 @@ func TestIdentityStore_GroupAliases_MemDBIndexes(t *testing.T) {
 	txn := i.Txn(ctx, true)
 	defer txn.Abort()
 	err = i.MemDBUpsertAliasInTxn(txn, group.Alias, true)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = i.MemDBUpsertGroupInTxn(txn, group)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	txn.Commit()
 
 	alias, err := i.MemDBAliasByID(ctx, "testgroupaliasid", false, true)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if alias.ID != "testgroupaliasid" {
 		t.Fatalf("bad: group alias: %#v\n", alias)
 	}
 
 	group, err = i.MemDBGroupByAliasID(ctx, "testgroupaliasid", false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if group.ID != "testgroupid" {
 		t.Fatalf("bad: group: %#v\n", group)
 	}
 
 	aliasByFactors, err := i.MemDBAliasByFactors(ctx, group.Alias.MountAccessor, group.Alias.Name, false, true)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if aliasByFactors.ID != "testgroupaliasid" {
 		t.Fatalf("bad: group alias: %#v\n", aliasByFactors)
 	}
@@ -433,9 +416,7 @@ func TestIdentityStore_GroupAliases_AliasOnInternalGroup(t *testing.T) {
 		},
 	}
 	resp, err = i.HandleRequest(ctx, aliasReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if !resp.IsError() {
 		t.Fatal("expected an error")
 	}
@@ -453,9 +434,7 @@ func TestIdentityStore_GroupAliasesUpdate(t *testing.T) {
 	}
 
 	err := c.enableCredential(ctx, ghme2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	accessor2 := ghme2.Accessor
 
 	// Create two groups

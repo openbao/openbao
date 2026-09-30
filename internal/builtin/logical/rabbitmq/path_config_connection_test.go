@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBackend_ConfigConnection_DefaultUsernameTemplate(t *testing.T) {
@@ -41,9 +42,7 @@ func TestBackend_ConfigConnection_DefaultUsernameTemplate(t *testing.T) {
 	}
 
 	actualConfig, err := readConfig(t.Context(), config.StorageView)
-	if err != nil {
-		t.Fatalf("unable to read configuration: %v", err)
-	}
+	require.NoError(t, err)
 
 	expectedConfig := connectionConfig{
 		URI:              "uri",
@@ -89,9 +88,7 @@ func TestBackend_ConfigConnection_CustomUsernameTemplate(t *testing.T) {
 	}
 
 	actualConfig, err := readConfig(t.Context(), config.StorageView)
-	if err != nil {
-		t.Fatalf("unable to read configuration: %v", err)
-	}
+	require.NoError(t, err)
 
 	expectedConfig := connectionConfig{
 		URI:              "uri",

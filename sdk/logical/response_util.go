@@ -192,7 +192,7 @@ func RespondError(w http.ResponseWriter, status int, err error) {
 	}
 
 	enc := json.NewEncoder(w)
-	enc.Encode(resp)
+	enc.Encode(resp) //nolint:errcheck
 }
 
 func RespondErrorAndData(w http.ResponseWriter, status int, data any, err error) {
@@ -212,5 +212,5 @@ func RespondErrorAndData(w http.ResponseWriter, status int, data any, err error)
 	resp.Data = data
 
 	enc := json.NewEncoder(w)
-	enc.Encode(resp)
+	enc.Encode(resp) //nolint:errcheck
 }

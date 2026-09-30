@@ -4,9 +4,12 @@
  */
 
 import Route from '@ember/routing/route';
+import { inject as service } from '@ember/service';
 
 export default Route.extend({
+  router: service(),
+
   beforeModel() {
-    return this.replaceWith('vault.cluster.settings.auth.enable');
+    return this.router.replaceWith('vault.cluster.settings.auth.enable');
   },
 });

@@ -5,7 +5,6 @@
 
 import Ember from 'ember';
 import { resolve, reject } from 'rsvp';
-import { assign } from '@ember/polyfills';
 import { isArray } from '@ember/array';
 import { computed, get } from '@ember/object';
 import { capitalize } from '@ember/string';
@@ -118,7 +117,7 @@ export default Service.extend({
     const backend = this.backendFromTokenName(token);
     const stored = this.getTokenData(token);
 
-    return assign(stored, {
+    return Object.assign(stored, {
       backend: BACKENDS.find((x) => x.type === backend),
     });
   }),
@@ -183,7 +182,7 @@ export default Service.extend({
     if (namespace) {
       defaults.headers['X-Vault-Namespace'] = namespace;
     }
-    const opts = assign(defaults, options);
+    const opts = Object.assign(defaults, options);
 
     return fetch(url, {
       method: opts.method || 'GET',
@@ -284,7 +283,7 @@ export default Service.extend({
     );
 
     if (resp.renewable) {
-      assign(data, this.calculateExpiration(resp));
+      Object.assign(data, this.calculateExpiration(resp));
     }
 
     if (!data.displayName) {

@@ -330,3 +330,13 @@ func ResolveRoleResponse(roleName string) (*Response, error) {
 		},
 	}, nil
 }
+
+// ResolvePathResponse returns a standard response to be returned by functions
+// handling a ResolvePathOperation.
+func ResolvePathResponse(path string) (*Response, error) {
+	return &Response{
+		Data: map[string]any{
+			"path": path,
+		},
+	}, nil
+}

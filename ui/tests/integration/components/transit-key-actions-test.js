@@ -5,7 +5,6 @@
 
 import { run } from '@ember/runloop';
 import { resolve } from 'rsvp';
-import { assign } from '@ember/polyfills';
 import Service from '@ember/service';
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
@@ -24,12 +23,12 @@ const storeStub = Service.extend({
       keyAction(action, { backend, id, payload }, options) {
         self.set('callArgs', { action, backend, id, payload });
         self.set('callArgsOptions', options);
-        const rootResp = assign({}, self.rootKeyActionReturnVal);
+        const rootResp = Object.assign({}, self.rootKeyActionReturnVal);
         const resp =
           Object.keys(rootResp).length > 0
             ? rootResp
             : {
-                data: assign({}, self.keyActionReturnVal),
+                data: Object.assign({}, self.keyActionReturnVal),
               };
         return resolve(resp);
       },
@@ -122,7 +121,7 @@ module('Integration | Component | transit key actions', function (hooks) {
   async function doEncrypt(assert, actions = [], keyattrs = {}) {
     const keyDefaults = { backend: 'transit', id: 'akey', supportedActions: ['encrypt'].concat(actions) };
 
-    const key = assign({}, keyDefaults, keyattrs);
+    const key = Object.assign({}, keyDefaults, keyattrs);
     this.set('key', key);
     this.set('selectedAction', 'encrypt');
     this.set('storeService.keyActionReturnVal', { ciphertext: 'secret' });
@@ -175,7 +174,7 @@ module('Integration | Component | transit key actions', function (hooks) {
   test('it shows key version selection', async function (assert) {
     const keyDefaults = { backend: 'transit', id: 'akey', supportedActions: ['encrypt'].concat([]) };
     const keyattrs = { keysForEncryption: [3, 2, 1], latestVersion: 3 };
-    const key = assign({}, keyDefaults, keyattrs);
+    const key = Object.assign({}, keyDefaults, keyattrs);
     this.set('key', key);
     this.set('storeService.keyActionReturnVal', { ciphertext: 'secret' });
     await render(hbs`
@@ -206,7 +205,7 @@ module('Integration | Component | transit key actions', function (hooks) {
   test('it hides key version selection', async function (assert) {
     const keyDefaults = { backend: 'transit', id: 'akey', supportedActions: ['encrypt'].concat([]) };
     const keyattrs = { keysForEncryption: [1] };
-    const key = assign({}, keyDefaults, keyattrs);
+    const key = Object.assign({}, keyDefaults, keyattrs);
     this.set('key', key);
     this.set('storeService.keyActionReturnVal', { ciphertext: 'secret' });
     await render(hbs`

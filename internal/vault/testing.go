@@ -859,7 +859,11 @@ func (c *TestCluster) start(t testing.T) {
 		if core.Server != nil {
 			for _, ln := range core.Listeners {
 				c.Logger.Info("starting listener for test core", "core", i, "port", ln.Address.Port)
-				go core.Server.Serve(ln)
+				go func(server *http.Server, ln net.Listener) {
+					if err := server.Serve(ln); err != nil && !errors.Is(err, net.ErrClosed) && !errors.Is(err, http.ErrServerClosed) {
+						c.Logger.Error("HTTP test server exited with error", "error", err)
+					}
+				}(core.Server, ln.Listener)
 			}
 		}
 	}
@@ -1021,10 +1025,12 @@ func (c *TestClusterCore) stop() error {
 	c.Logger().Info("stopping vault test core")
 
 	if c.Listeners != nil {
+		c.Logger().Info("shutting down listeners")
 		for _, ln := range c.Listeners {
-			ln.Close()
+			if err := ln.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+				c.Logger().Error("error closing test listener", "error", err)
+			}
 		}
-		c.Logger().Info("listeners successfully shut down")
 	}
 
 	if err := c.Shutdown(); err != nil {
@@ -1483,7 +1489,9 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		}
 		certGetter := reloadutil.NewCertificateGetter(certFile, keyFile, "")
 		certGetters = append(certGetters, certGetter)
-		certGetter.Reload()
+		if err := certGetter.Reload(); err != nil {
+			t.Fatal("error loading TLS certificate: ", err)
+		}
 		tlsConfig := &tls.Config{
 			Certificates:   []tls.Certificate{tlsCert},
 			RootCAs:        testCluster.RootCAs,
@@ -1859,7 +1867,11 @@ func (cluster *TestCluster) StartCore(t testing.T, idx int, opts *TestClusterOpt
 	// Start listeners
 	for _, ln := range tcc.Listeners {
 		tcc.Logger().Info("starting listener for core", "port", ln.Address.Port)
-		go tcc.Server.Serve(ln)
+		go func(server *http.Server, ln net.Listener) {
+			if err := server.Serve(ln); err != nil && !errors.Is(err, net.ErrClosed) && !errors.Is(err, http.ErrServerClosed) {
+				cluster.Logger.Error("HTTP test server exited with error", "error", err)
+			}
+		}(tcc.Server, ln.Listener)
 	}
 
 	tcc.Logger().Info("restarted test core", "core", idx)
@@ -1869,11 +1881,6 @@ func (testCluster *TestCluster) newCore(t testing.T, idx int, coreConfig *CoreCo
 	localConfig := *coreConfig
 	cleanupFunc := func() {}
 	var handler http.Handler
-
-	var firstCoreNumber int
-	if opts != nil {
-		firstCoreNumber = opts.FirstCoreNumber
-	}
 
 	localConfig.RedirectAddr = fmt.Sprintf("https://127.0.0.1:%d", listeners[0].Address.Port)
 
@@ -1955,7 +1962,6 @@ func (testCluster *TestCluster) newCore(t testing.T, idx int, coreConfig *CoreCo
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	c.coreNumber = firstCoreNumber + idx
 	if opts != nil && opts.HandlerFunc != nil {
 		props := opts.DefaultHandlerProperties
 		props.Core = c

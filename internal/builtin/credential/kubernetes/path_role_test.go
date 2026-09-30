@@ -15,6 +15,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -299,9 +300,7 @@ func TestPath_Create(t *testing.T) {
 				}
 
 				actual, err := b.(*kubeAuthBackend).role(t.Context(), storage, name)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				if diff := deep.Equal(tc.expected, actual); diff != nil {
 					t.Fatal(diff)
@@ -551,9 +550,7 @@ func TestPath_Update(t *testing.T) {
 			path := fmt.Sprintf("role/%s", name)
 
 			data, err := json.Marshal(tc.storageData)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			entry := &logical.StorageEntry{
 				Key:      path,
@@ -592,9 +589,7 @@ func TestPath_Update(t *testing.T) {
 				}
 
 				actual, err := b.(*kubeAuthBackend).role(t.Context(), storage, name)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 
 				if diff := deep.Equal(tc.expected, actual); diff != nil {
 					t.Fatal(diff)

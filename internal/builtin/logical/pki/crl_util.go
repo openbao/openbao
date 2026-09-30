@@ -884,8 +884,8 @@ func buildAnyLocalCRLs(
 		}
 	}
 
-	var unassignedCerts []pkix.RevokedCertificate
-	var revokedCertsMap map[issuerID][]pkix.RevokedCertificate
+	var unassignedCerts []x509.RevocationListEntry
+	var revokedCertsMap map[issuerID][]x509.RevocationListEntry
 
 	// If the CRL is disabled do not bother reading in all the revoked certificates.
 	if !globalCRLConfig.Disable {
@@ -972,8 +972,8 @@ func buildAnyCRLsWithCerts(
 	issuers []issuerID,
 	issuerIDEntryMap map[issuerID]*issuerEntry,
 	keySubjectIssuersMap map[keyID]map[string][]issuerID,
-	unassignedCerts []pkix.RevokedCertificate,
-	revokedCertsMap map[issuerID][]pkix.RevokedCertificate,
+	unassignedCerts []x509.RevocationListEntry,
+	revokedCertsMap map[issuerID][]x509.RevocationListEntry,
 	forceNew bool,
 	isDelta bool,
 ) ([]string, error) {
@@ -986,7 +986,7 @@ func buildAnyCRLsWithCerts(
 				continue
 			}
 
-			var revokedCerts []pkix.RevokedCertificate
+			var revokedCerts []x509.RevocationListEntry
 			representative := issuerID("")
 			var crlIdentifier crlID
 			var crlIdIssuer issuerID
@@ -1174,9 +1174,9 @@ func associateRevokedCertWithIsssuer(revInfo *revocationInfo, revokedCert *x509.
 	return false
 }
 
-func getLocalRevokedCertEntries(sc *storageContext, issuerIDCertMap map[issuerID]*x509.Certificate, isDelta bool) ([]pkix.RevokedCertificate, map[issuerID][]pkix.RevokedCertificate, error) {
-	var unassignedCerts []pkix.RevokedCertificate
-	revokedCertsMap := make(map[issuerID][]pkix.RevokedCertificate)
+func getLocalRevokedCertEntries(sc *storageContext, issuerIDCertMap map[issuerID]*x509.Certificate, isDelta bool) ([]x509.RevocationListEntry, map[issuerID][]x509.RevocationListEntry, error) {
+	var unassignedCerts []x509.RevocationListEntry
+	revokedCertsMap := make(map[issuerID][]x509.RevocationListEntry)
 
 	listingPath := revokedPath
 	if isDelta {
@@ -1257,7 +1257,7 @@ func getLocalRevokedCertEntries(sc *storageContext, issuerIDCertMap map[issuerID
 
 		// NOTE: We have to change this to UTC time because the CRL standard
 		// mandates it but Go will happily encode the CRL without this.
-		newRevCert := pkix.RevokedCertificate{
+		newRevCert := x509.RevocationListEntry{
 			SerialNumber: revokedCert.SerialNumber,
 		}
 		if !revInfo.RevocationTimeUTC.IsZero() {
@@ -1303,7 +1303,7 @@ func getLocalRevokedCertEntries(sc *storageContext, issuerIDCertMap map[issuerID
 	return unassignedCerts, revokedCertsMap, nil
 }
 
-func augmentWithRevokedIssuers(issuerIDEntryMap map[issuerID]*issuerEntry, issuerIDCertMap map[issuerID]*x509.Certificate, revokedCertsMap map[issuerID][]pkix.RevokedCertificate) error {
+func augmentWithRevokedIssuers(issuerIDEntryMap map[issuerID]*issuerEntry, issuerIDCertMap map[issuerID]*x509.Certificate, revokedCertsMap map[issuerID][]x509.RevocationListEntry) error {
 	// When setup our maps with the legacy CA bundle, we only have a
 	// single entry here. This entry is never revoked, so the outer loop
 	// will exit quickly.
@@ -1313,7 +1313,7 @@ func augmentWithRevokedIssuers(issuerIDEntryMap map[issuerID]*issuerEntry, issue
 		}
 
 		ourCert := issuerIDCertMap[ourIssuerID]
-		ourRevCert := pkix.RevokedCertificate{
+		ourRevCert := x509.RevocationListEntry{
 			SerialNumber:   ourCert.SerialNumber,
 			RevocationTime: ourIssuer.RevocationTimeUTC,
 		}
@@ -1339,8 +1339,8 @@ func augmentWithRevokedIssuers(issuerIDEntryMap map[issuerID]*issuerEntry, issue
 
 // Builds a CRL by going through the list of revoked certificates and building
 // a new CRL with the stored revocation times and serial numbers.
-func buildCRL(sc *storageContext, crlInfo *crlConfig, forceNew bool, thisIssuerId issuerID, revoked []pkix.RevokedCertificate, identifier crlID, crlNumber int64, isDelta bool, lastCompleteNumber int64) (*time.Time, error) {
-	var revokedCerts []pkix.RevokedCertificate
+func buildCRL(sc *storageContext, crlInfo *crlConfig, forceNew bool, thisIssuerId issuerID, revoked []x509.RevocationListEntry, identifier crlID, crlNumber int64, isDelta bool, lastCompleteNumber int64) (*time.Time, error) {
+	var entries []x509.RevocationListEntry
 
 	crlLifetime, err := parseutil.ParseDurationSecond(crlInfo.Expiry)
 	if err != nil {
@@ -1363,7 +1363,7 @@ func buildCRL(sc *storageContext, crlInfo *crlConfig, forceNew bool, thisIssuerI
 		goto WRITE
 	}
 
-	revokedCerts = revoked
+	entries = revoked
 
 WRITE:
 	signingBundle, caErr := sc.fetchCAInfoByIssuerId(thisIssuerId, CRLSigningUsage)
@@ -1397,12 +1397,12 @@ WRITE:
 	}
 
 	revocationListTemplate := &x509.RevocationList{
-		RevokedCertificates: revokedCerts,
-		Number:              big.NewInt(crlNumber),
-		ThisUpdate:          now,
-		NextUpdate:          nextUpdate,
-		SignatureAlgorithm:  signingBundle.RevocationSigAlg,
-		ExtraExtensions:     extensions,
+		RevokedCertificateEntries: entries,
+		Number:                    big.NewInt(crlNumber),
+		ThisUpdate:                now,
+		NextUpdate:                nextUpdate,
+		SignatureAlgorithm:        signingBundle.RevocationSigAlg,
+		ExtraExtensions:           extensions,
 	}
 
 	crlBytes, err := x509.CreateRevocationList(rand.Reader, revocationListTemplate, signingBundle.Certificate, signingBundle.PrivateKey)

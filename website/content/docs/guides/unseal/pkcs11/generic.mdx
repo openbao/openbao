@@ -77,7 +77,7 @@ $ pkcs11-tool --module "/path/to/libpkcs11.so" \
   --pin "4321" \
   --keygen \
   --key-type aes:32 \
-  --label "bao-root-key-1" \
+  --label "bao-seal-key-1" \
   --sensitive \
   --undestroyable
 ```
@@ -90,7 +90,7 @@ $ pkcs11-tool --module "/path/to/libpkcs11.so" \
 | `--pin "4321"` | User PIN to log into your token. |
 | `--keygen` | Command to generate a key. |
 | `--key-type aes:32` | Specifies an AES-256 key (recommended). To use RSA, specify `rsa:4096` and swap `--keygen` for `--keypairgen`. |
-| `--label "bao-root-key-1"` | Sets the label of the key on the token. |
+| `--label "bao-seal-key-1"` | Sets the label of the key on the token. |
 | `--sensitive` | Sets the `CKA_SENSITIVE` attribute, preventing the key from being revealed in plaintext. |
 | `--undestroyable` | Unsets the `CKA_DESTROYABLE` attribute, preventing the key from being deleted. |
 

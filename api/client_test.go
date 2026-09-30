@@ -176,7 +176,7 @@ func TestClientToken(t *testing.T) {
 func TestClientHostHeader(t *testing.T) {
 	handler := func(w http.ResponseWriter, req *http.Request) {
 		if _, err := w.Write([]byte(req.Host)); err != nil {
-			t.Errorf("err: %s", err)
+			t.Errorf("error writing request host to response: %s", err)
 			return
 		}
 	}
@@ -200,7 +200,7 @@ func TestClientHostHeader(t *testing.T) {
 	// Copy the response
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, resp.Body); err != nil {
-		t.Fatalf("err: %s", err)
+		t.Fatalf("error copying response body to buffer: %s", err)
 	}
 
 	// Verify we got the response from the primary
@@ -298,7 +298,7 @@ func TestClientDisableRedirects(t *testing.T) {
 func TestClientRedirect(t *testing.T) {
 	primary := func(w http.ResponseWriter, req *http.Request) {
 		if _, err := w.Write([]byte("test")); err != nil {
-			t.Errorf("err: %s", err)
+			t.Errorf("error writing response body: %s", err)
 		}
 	}
 	config, ln := testHTTPServer(t, http.HandlerFunc(primary))
@@ -328,7 +328,7 @@ func TestClientRedirect(t *testing.T) {
 	// Copy the response
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, resp.Body); err != nil {
-		t.Fatalf("err: %s", err)
+		t.Fatalf("error copying response body to buffer: %s", err)
 	}
 
 	// Verify we got the response from the primary

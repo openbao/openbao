@@ -374,7 +374,7 @@ func (n *NoopAudit) Invalidate(ctx context.Context) {
 }
 
 func (n *NoopAudit) GetDecodedRecord(index int) (map[string]any, error) {
-	if index > len(n.records) {
+	if index >= len(n.records) {
 		return nil, fmt.Errorf("index %v exceeds current record length: %v", index, len(n.records))
 	}
 

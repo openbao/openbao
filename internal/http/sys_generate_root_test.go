@@ -4,9 +4,11 @@
 package http
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -22,6 +24,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/pgpkeys"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 var tokenLength string = fmt.Sprintf("%d", vault.TokenLength+vault.TokenPrefixLength)
@@ -227,35 +230,71 @@ func enableNoopAudit(t *testing.T, token string, core *vault.Core) {
 	}
 }
 
-func testServerWithAudit(t *testing.T, records **[][]byte) (net.Listener, string, string, [][]byte) {
+func testServerWithAudit(t *testing.T) (net.Listener, string, string, [][]byte, *corehelpers.NoopAudit) {
+	noop := corehelpers.TestNoopAudit(t, nil)
 	core, keys, token := vault.TestCoreUnsealedWithConfig(t, &vault.CoreConfig{
 		RawConfig: &server.Config{UnsafeAllowAPIAuditCreation: true},
 		AuditBackends: map[string]audit.Factory{
-			"noop": corehelpers.NoopAuditFactory(records),
+			"noop": func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
+				return noop, nil
+			},
 		},
 	})
 
 	ln, addr := TestServer(t, core)
 	TestServerAuth(t, addr, token)
 	enableNoopAudit(t, token, core)
-	return ln, addr, token, keys
+	return ln, addr, token, keys, noop
 }
 
 func TestSysGenerateRoot_badKey(t *testing.T) {
-	var records *[][]byte
-	ln, addr, token, _ := testServerWithAudit(t, &records)
-	defer ln.Close()
+	ln, addr, token, _, noop := testServerWithAudit(t)
+	defer ln.Close() //nolint:errcheck
 
 	resp := testHttpPut(t, token, addr+"/v1/sys/generate-root/update", map[string]any{
 		"key": "0123",
 	})
 	testResponseStatus(t, resp, 400)
 
-	if len(*records) < 3 {
-		// One record for enabling the noop audit device, two for generate root attempt
-		t.Fatalf("expected at least 3 audit records, got %d", len(*records))
+	require.Equal(t, "sys/generate-root/update", noop.Req[0].Path)
+	require.Equal(t, "sys/generate-root/update", noop.RespReq[1].Path)
+	require.Contains(t, noop.Resp[1].Data, "errors")
+
+	t.Logf("%#v", noop.Req[0])
+	t.Logf("%#v", noop.Resp[1])
+}
+
+func TestSysGenerateRoot_badAudit(t *testing.T) {
+	ln, addr, token, keys, noop := testServerWithAudit(t)
+	defer ln.Close() //nolint:errcheck
+
+	resp := testHttpPut(t, token, addr+"/v1/sys/generate-root/attempt", map[string]any{})
+	var rootGenerationStatus map[string]any
+	testResponseStatus(t, resp, 200)
+	testResponseBody(t, resp, &rootGenerationStatus)
+
+	for i, key := range keys {
+		isLastKey := i == len(keys)-1
+		if isLastKey {
+			noop.RespErr = errors.New("injected error")
+		}
+		resp = testHttpPut(t, token, addr+"/v1/sys/generate-root/update", map[string]any{
+			"nonce": rootGenerationStatus["nonce"].(string),
+			"key":   hex.EncodeToString(key),
+		})
+
+		if isLastKey {
+			testResponseStatus(t, resp, 500)
+
+			actual := map[string]any{}
+			testResponseBody(t, resp, &actual)
+			require.Equal(t, map[string]any{
+				"errors": []any{"1 error occurred:\n\t* no audit backend succeeded in logging the response\n\n"},
+			}, actual)
+		} else {
+			testResponseStatus(t, resp, 200)
+		}
 	}
-	t.Log(string((*records)[2]))
 }
 
 func TestSysGenerateRoot_ReAttemptUpdate(t *testing.T) {
@@ -278,8 +317,7 @@ func TestSysGenerateRoot_ReAttemptUpdate(t *testing.T) {
 }
 
 func TestSysGenerateRoot_Update_OTP(t *testing.T) {
-	var records *[][]byte
-	ln, addr, token, keys := testServerWithAudit(t, &records)
+	ln, addr, token, keys, noop := testServerWithAudit(t)
 	defer ln.Close()
 
 	resp := testHttpPut(t, token, addr+"/v1/sys/generate-root/attempt", map[string]any{})
@@ -367,8 +405,11 @@ func TestSysGenerateRoot_Update_OTP(t *testing.T) {
 		t.Fatalf("\nexpected: %#v\nactual: %#v", expected, actual["data"])
 	}
 
-	for _, r := range *records {
-		t.Log(string(r))
+	for _, req := range noop.Req {
+		t.Logf("%#v", req)
+	}
+	for _, resp := range noop.Resp {
+		t.Logf("%#v", resp)
 	}
 }
 

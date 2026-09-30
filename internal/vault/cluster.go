@@ -309,18 +309,14 @@ func (c *Core) startClusterListener(ctx context.Context) error {
 	networkLayer := c.clusterNetworkLayer
 
 	if networkLayer == nil {
-		tcpLogger := c.logger.Named("cluster-listener.tcp")
+		tcpLogger := c.WithNamedLogger("cluster-listener.tcp")
 		networkLayer = cluster.NewTCPLayer(c.clusterListenerAddrs, tcpLogger)
-		c.AddLogger(tcpLogger)
 	}
 
-	listenerLogger := c.logger.Named("cluster-listener")
 	c.clusterListener.Store(cluster.NewListener(networkLayer,
 		c.clusterCipherSuites,
-		listenerLogger,
+		c.WithNamedLogger("cluster-listener"),
 		5*c.clusterHeartbeatInterval))
-
-	c.AddLogger(listenerLogger)
 
 	err := c.getClusterListener().Run(ctx)
 	if err != nil {

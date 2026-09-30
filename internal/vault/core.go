@@ -2267,13 +2267,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	if err := c.setupNamespaceStore(ctx); err != nil {
 		return err
 	}
-
-	{
-		logger := c.baseLogger.Named("external-keys")
-		c.AddLogger(logger)
-		c.externalKeys = ek.NewRegistry(c.kmsPluginCatalog, logger)
-	}
-
+	c.externalKeys = ek.NewRegistry(c.kmsPluginCatalog, c.WithBaseLogger("external-keys"))
 	if err := c.loadMounts(ctx, standby); err != nil {
 		return err
 	}
@@ -2806,6 +2800,18 @@ func (c *Core) AddLogger(logger log.Logger) {
 	c.allLoggersLock.Lock()
 	defer c.allLoggersLock.Unlock()
 	c.allLoggers = append(c.allLoggers, logger)
+}
+
+func (c *Core) WithNamedLogger(name string) log.Logger {
+	logger := c.logger.Named(name)
+	c.AddLogger(logger)
+	return logger
+}
+
+func (c *Core) WithBaseLogger(name string) log.Logger {
+	logger := c.baseLogger.Named(name)
+	c.AddLogger(logger)
+	return logger
 }
 
 // SetLogLevel sets logging level for all tracked loggers to the level provided
@@ -4065,9 +4071,7 @@ func (c *Core) setupPolicyStore(ctx context.Context, standby bool) error {
 	// Create the policy store
 	var err error
 	sysView := &dynamicSystemView{core: c}
-	psLogger := c.baseLogger.Named("policy")
-	c.AddLogger(psLogger)
-	c.policyStore, err = policy.NewStore(ctx, c, c.systemBarrierView, sysView, psLogger)
+	c.policyStore, err = policy.NewStore(ctx, c, c.systemBarrierView, sysView, c.WithBaseLogger("policy"))
 	if err != nil {
 		return err
 	}

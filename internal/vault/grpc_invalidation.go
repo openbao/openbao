@@ -48,12 +48,9 @@ type invalidationPeerInfo struct {
 }
 
 func (c *Core) NewInvalidationPeers() {
-	logger := c.logger.Named("grpc-invalidation")
-	c.AddLogger(logger)
-
 	c.connectedInvalidationPeers = &invalidationPeers{
 		core:   c,
-		logger: logger,
+		logger: c.WithNamedLogger("grpc-invalidation"),
 	}
 }
 

@@ -42,9 +42,6 @@ func TestFairshare_newDispatcher(t *testing.T) {
 		if tc.name != "" && d.name != tc.name {
 			t.Errorf("tc %d: expected name %s, got %s", tcNum, tc.name, d.name)
 		}
-		if len(d.workers) != tc.expectedNumWorkers {
-			t.Errorf("tc %d: expected %d workers, got %d", tcNum, tc.expectedNumWorkers, len(d.workers))
-		}
 		if d.jobCh == nil {
 			t.Errorf("tc %d: work channel not set up properly", tcNum)
 		}
@@ -86,7 +83,7 @@ func TestFairshare_createDispatcher(t *testing.T) {
 
 	l := newTestLogger("workerpool-test")
 	for tcNum, tc := range testCases {
-		d := createDispatcher(tc.name, tc.numWorkers, l)
+		d := newDispatcher(tc.name, tc.numWorkers, l)
 		if d == nil {
 			t.Fatalf("tc %d: expected non-nil object", tcNum)
 		}
@@ -97,11 +94,8 @@ func TestFairshare_createDispatcher(t *testing.T) {
 		if len(d.name) == 0 {
 			t.Errorf("tc %d: expected name to be set", tcNum)
 		}
-		if d.numWorkers != tc.expectedNumWorkers {
-			t.Errorf("tc %d: expected %d workers, got %d", tcNum, tc.expectedNumWorkers, d.numWorkers)
-		}
-		if d.workers == nil {
-			t.Errorf("tc %d: expected non-nil workers", tcNum)
+		if d.maxWorkers != tc.expectedNumWorkers {
+			t.Errorf("tc %d: expected %d workers, got %d", tcNum, tc.expectedNumWorkers, d.maxWorkers)
 		}
 		if d.jobCh == nil {
 			t.Errorf("tc %d: work channel not set up properly", tcNum)
@@ -115,64 +109,8 @@ func TestFairshare_createDispatcher(t *testing.T) {
 	}
 }
 
-func TestFairshare_initDispatcher(t *testing.T) {
-	testCases := []struct {
-		numWorkers int
-	}{
-		{
-			numWorkers: 1,
-		},
-		{
-			numWorkers: 10,
-		},
-		{
-			numWorkers: 100,
-		},
-		{
-			numWorkers: 1000,
-		},
-	}
-
-	l := newTestLogger("workerpool-test")
-	for tcNum, tc := range testCases {
-		d := createDispatcher("", tc.numWorkers, l)
-
-		d.init()
-		if len(d.workers) != tc.numWorkers {
-			t.Fatalf("tc %d: expected %d workers, got %d", tcNum, tc.numWorkers, len(d.workers))
-		}
-	}
-}
-
-func TestFairshare_initializeWorker(t *testing.T) {
-	numWorkers := 3
-
-	d := createDispatcher("", numWorkers, newTestLogger("workerpool-test"))
-
-	for workerNum := range numWorkers {
-		d.initializeWorker()
-
-		w := d.workers[workerNum]
-		expectedName := fmt.Sprint("worker-", workerNum)
-		if w.name != expectedName {
-			t.Errorf("tc %d: expected name %s, got %s", workerNum, expectedName, w.name)
-		}
-		if w.jobCh != d.jobCh {
-			t.Errorf("tc %d: work channel not set up properly", workerNum)
-		}
-		if w.quit == nil || w.quit != d.quit {
-			t.Errorf("tc %d: quit channel not set up properly", workerNum)
-		}
-		if w.logger == nil || w.logger != d.logger {
-			t.Errorf("tc %d: logger not set up properly", workerNum)
-		}
-	}
-}
-
 func TestFairshare_startWorker(t *testing.T) {
 	d := newDispatcher("", 1, newTestLogger("workerpool-test"))
-
-	d.workers[0].start()
 	defer d.stop()
 
 	var wg sync.WaitGroup
@@ -213,8 +151,6 @@ func TestFairshare_start(t *testing.T) {
 
 	wg.Add(numJobs)
 	d := newDispatcher("", 3, newTestLogger("workerpool-test"))
-
-	d.start()
 	defer d.stop()
 
 	doneCh := make(chan struct{})
@@ -240,8 +176,6 @@ func TestFairshare_start(t *testing.T) {
 func TestFairshare_stop(t *testing.T) {
 	d := newDispatcher("", 5, newTestLogger("workerpool-test"))
 
-	d.start()
-
 	doneCh := make(chan struct{})
 	timeout := time.After(5 * time.Second)
 
@@ -260,8 +194,6 @@ func TestFairshare_stop(t *testing.T) {
 
 func TestFairshare_stopMultiple(t *testing.T) {
 	d := newDispatcher("", 5, newTestLogger("workerpool-test"))
-
-	d.start()
 
 	doneCh := make(chan struct{})
 	timeout := time.After(5 * time.Second)
@@ -305,6 +237,7 @@ func TestFairshare_stopMultiple(t *testing.T) {
 
 func TestFairshare_dispatch(t *testing.T) {
 	d := newDispatcher("", 1, newTestLogger("workerpool-test"))
+	defer d.stop()
 
 	var wg sync.WaitGroup
 	accumulatedIDs := make([]string, 0)
@@ -316,16 +249,14 @@ func TestFairshare_dispatch(t *testing.T) {
 	onFail := func(_ error) {}
 
 	expectedIDs := []string{"job-1", "job-2", "job-3", "job-4"}
+	wg.Add(len(expectedIDs))
+
 	go func() {
 		for _, id := range expectedIDs {
 			job := newTestJob(t, id, ex, onFail)
 			d.dispatch(&job, nil, nil)
 		}
 	}()
-
-	wg.Add(len(expectedIDs))
-	d.start()
-	defer d.stop()
 
 	doneCh := make(chan struct{})
 	go func() {
@@ -364,8 +295,6 @@ func TestFairshare_jobFailure(t *testing.T) {
 
 	wg.Add(numJobs)
 	d := newDispatcher("", 3, newTestLogger("workerpool-test"))
-
-	d.start()
 	defer d.stop()
 
 	doneCh := make(chan struct{})

@@ -86,7 +86,6 @@ func NewJobManager(name string, numWorkers int, l log.Logger, metricSink *metric
 func (j *JobManager) Start() {
 	j.onceStart.Do(func() {
 		j.logger.Trace("starting job manager", "name", j.name)
-		j.workerPool.start()
 		j.assignWork()
 	})
 }
@@ -236,7 +235,7 @@ func (j *JobManager) nextQueueIndex(currentIdx int) int {
 // note: we may want to eventually factor in queue length relative to num queues
 func (j *JobManager) queueWorkersSaturated(queueID string) bool {
 	numActiveQueues := float64(len(j.queues))
-	numTotalWorkers := float64(j.workerPool.numWorkers)
+	numTotalWorkers := float64(j.workerPool.maxWorkers)
 	maxWorkersPerQueue := math.Ceil(0.9 * numTotalWorkers / numActiveQueues)
 
 	numWorkersPerQueue := j.workerCount

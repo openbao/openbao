@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"sync/atomic"
 
 	log "github.com/hashicorp/go-hclog"
 	uuid "github.com/hashicorp/go-uuid"
@@ -35,64 +36,32 @@ type wrappedJob struct {
 	cleanup cleanupFn
 }
 
-// worker represents a single worker in a pool
-type worker struct {
-	name   string
-	jobCh  <-chan wrappedJob
-	quit   chan struct{}
-	logger log.Logger
+// run executes the job, calling any hooks before and after execution.
+func (w *wrappedJob) run() {
+	if w.init != nil {
+		w.init()
+	}
 
-	// waitgroup for testing stop functionality
-	wg *sync.WaitGroup
-}
+	err := w.job.Execute()
+	if err != nil {
+		w.job.OnFailure(err)
+	}
 
-// start starts the worker listening and working until the quit channel is closed
-func (w *worker) start() {
-	w.wg.Add(1)
-
-	go func() {
-		for {
-			select {
-			case <-w.quit:
-				w.wg.Done()
-				return
-			case wJob := <-w.jobCh:
-				if wJob.init != nil {
-					wJob.init()
-				}
-
-				err := wJob.job.Execute()
-				if err != nil {
-					wJob.job.OnFailure(err)
-				}
-
-				if wJob.cleanup != nil {
-					wJob.cleanup()
-				}
-			}
-		}
-	}()
+	if w.cleanup != nil {
+		w.cleanup()
+	}
 }
 
 // dispatcher represents a worker pool
 type dispatcher struct {
 	name       string
-	numWorkers int
-	workers    []worker
+	maxWorkers int
+	workers    atomic.Int32
 	jobCh      chan wrappedJob
-	onceStart  sync.Once
 	onceStop   sync.Once
 	quit       chan struct{}
 	logger     log.Logger
 	wg         *sync.WaitGroup
-}
-
-// newDispatcher generates a new worker dispatcher and populates it with workers
-func newDispatcher(name string, numWorkers int, l log.Logger) *dispatcher {
-	d := createDispatcher(name, numWorkers, l)
-
-	d.init()
-	return d
 }
 
 // dispatch dispatches a job to the worker pool, with optional initialization
@@ -106,21 +75,24 @@ func (d *dispatcher) dispatch(job Job, init initFn, cleanup cleanupFn) {
 
 	select {
 	case d.jobCh <- wJob:
+		return
+	case <-d.quit:
+		d.logger.Info("shutting down during dispatch")
+		return
+	default:
+		// If we cannot submit our job right away, attempt growing the worker
+		// pool and submitting the job as the new worker's initial job.
+		if d.tryGrowPool(wJob) {
+			return
+		}
+	}
+
+	// Go back to waiting on channels, without a fallback.
+	select {
+	case d.jobCh <- wJob:
 	case <-d.quit:
 		d.logger.Info("shutting down during dispatch")
 	}
-}
-
-// start starts all the workers listening on the job channel
-// this will only start the workers for this dispatch once
-func (d *dispatcher) start() {
-	d.onceStart.Do(func() {
-		d.logger.Trace("starting dispatcher")
-		for _, w := range d.workers {
-			worker := w
-			worker.start()
-		}
-	})
 }
 
 // stop stops the worker pool, waiting for all workers to exit.
@@ -132,9 +104,8 @@ func (d *dispatcher) stop() {
 	})
 }
 
-// createDispatcher generates a new Dispatcher object, but does not initialize the
-// worker pool
-func createDispatcher(name string, numWorkers int, l log.Logger) *dispatcher {
+// newDispatcher creates a new dispatcher object.
+func newDispatcher(name string, numWorkers int, l log.Logger) *dispatcher {
 	if l == nil {
 		l = logging.NewVaultLoggerWithWriter(io.Discard, log.NoLevel)
 	}
@@ -156,35 +127,47 @@ func createDispatcher(name string, numWorkers int, l log.Logger) *dispatcher {
 	var wg sync.WaitGroup
 	d := dispatcher{
 		name:       name,
-		numWorkers: numWorkers,
-		workers:    make([]worker, 0),
+		maxWorkers: numWorkers,
 		jobCh:      make(chan wrappedJob),
 		quit:       make(chan struct{}),
 		logger:     l,
 		wg:         &wg,
 	}
 
-	d.logger.Trace("created dispatcher", "name", d.name, "num_workers", d.numWorkers)
+	d.logger.Trace("created dispatcher", "name", d.name, "num_workers", d.maxWorkers)
 	return &d
 }
 
-func (d *dispatcher) init() {
-	for len(d.workers) < d.numWorkers {
-		d.initializeWorker()
+// tryGrowPool adds a new worker to the pool if it has not reached capacity yet
+// and hands the given job to the worker as its initial one.
+func (d *dispatcher) tryGrowPool(job wrappedJob) bool {
+	for {
+		n := d.workers.Load()
+		if int(n) == d.maxWorkers {
+			// Can't grow any further.
+			return false
+		}
+		if d.workers.CompareAndSwap(n, n+1) {
+			// We may grow the pool.
+			d.startWorker(job)
+			return true
+		}
 	}
-
-	d.logger.Trace("initialized dispatcher", "num_workers", d.numWorkers)
 }
 
-// initializeWorker initializes and adds a new worker, with an optional name
-func (d *dispatcher) initializeWorker() {
-	w := worker{
-		name:   fmt.Sprint("worker-", len(d.workers)),
-		jobCh:  d.jobCh,
-		quit:   d.quit,
-		logger: d.logger,
-		wg:     d.wg,
-	}
-
-	d.workers = append(d.workers, w)
+// startWorker starts a worker goroutine, taking an initial job that created
+// demand for the worker, then listening and working until the quit channel is
+// closed.
+func (d *dispatcher) startWorker(initial wrappedJob) {
+	d.wg.Go(func() {
+		initial.run()
+		for {
+			select {
+			case <-d.quit:
+				return
+			case job := <-d.jobCh:
+				job.run()
+			}
+		}
+	})
 }

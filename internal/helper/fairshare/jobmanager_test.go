@@ -60,8 +60,8 @@ func TestJobManager_NewJobManager(t *testing.T) {
 		if j.quit == nil {
 			t.Errorf("tc %d: quit channel not set up properly", tcNum)
 		}
-		if j.workerPool.numWorkers != tc.expectedNumWorkers {
-			t.Errorf("tc %d: expected %d workers, got %d", tcNum, tc.expectedNumWorkers, j.workerPool.numWorkers)
+		if j.workerPool.maxWorkers != tc.expectedNumWorkers {
+			t.Errorf("tc %d: expected %d workers, got %d", tcNum, tc.expectedNumWorkers, j.workerPool.maxWorkers)
 		}
 		if j.logger == nil {
 			t.Errorf("tc %d: logger not set up properly", tcNum)

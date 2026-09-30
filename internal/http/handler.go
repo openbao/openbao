@@ -282,13 +282,17 @@ func (w *copyResponseWriter) Header() http.Header {
 }
 
 func (w *copyResponseWriter) Write(buf []byte) (int, error) {
-	w.body.Write(buf)
-	return w.wrapped.Write(buf)
+	return w.body.Write(buf)
 }
 
 func (w *copyResponseWriter) WriteHeader(code int) {
 	w.statusCode = code
-	w.wrapped.WriteHeader(code)
+}
+
+func (w *copyResponseWriter) flush() error {
+	w.wrapped.WriteHeader(w.statusCode)
+	_, err := w.wrapped.Write(w.body.Bytes())
+	return err
 }
 
 func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
@@ -304,7 +308,7 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 		ctx := namespace.RootContext(r.Context())
 		err = core.AuditLogger().AuditRequest(ctx, input)
 		if err != nil {
-			respondError(w, status, err)
+			respondError(w, http.StatusInternalServerError, err)
 			return
 		}
 		cw := newCopyResponseWriter(w)
@@ -316,7 +320,13 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 		input.Response = logical.HTTPResponseToLogicalResponse(httpResp)
 		err = core.AuditLogger().AuditResponse(ctx, input)
 		if err != nil {
-			respondError(w, status, err)
+			respondError(w, http.StatusInternalServerError, err)
+			return
+		}
+		err = cw.flush()
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, err)
+			return
 		}
 	})
 }

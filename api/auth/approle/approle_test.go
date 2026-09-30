@@ -45,15 +45,10 @@ func TestLogin(t *testing.T) {
 	allowedSecretID := "my-secret-id"
 
 	content := []byte(allowedSecretID)
-	tmpfile, err := os.CreateTemp("", "file-containing-secret-id")
+	tmpfile, err := os.CreateTemp(t.TempDir(), "file-containing-secret-id")
 	if err != nil {
 		t.Fatalf("error creating temp file: %v", err)
 	}
-	defer func() {
-		if err := os.Remove(tmpfile.Name()); err != nil { // clean up
-			t.Errorf("error removing temp file: %v", err)
-		}
-	}()
 	err = os.Setenv(secretIDEnvVar, allowedSecretID)
 	if err != nil {
 		t.Fatalf("error writing secret ID to env var: %v", err)

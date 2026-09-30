@@ -1,4 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
+// Copyright (c) The OpenBao Contributors
 // SPDX-License-Identifier: MPL-2.0
 
 package kubeauth
@@ -27,6 +28,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -616,6 +618,72 @@ func TestLogin_NoPEMs(t *testing.T) {
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
+}
+
+// emulates hitting the `kubeerrors.IsUnauthorized(err)` case in `func (t *tokenReviewAPI) Review`
+type unauthorizedTokenReview struct{}
+
+func (f *unauthorizedTokenReview) Review(ctx context.Context, client *http.Client, cjwt string, aud []string) (*tokenReviewResult, error) {
+	return nil, errors.New("lookup failed: service account unauthorized; this could mean it has been deleted or recreated with a new token")
+}
+
+func TestLogin_RenewalAfterSARevocation(t *testing.T) {
+	b, storage := setupBackend(t, defaultTestBackendConfig())
+
+	jwt := jwtGoodDataToken()
+
+	data := map[string]any{
+		"role": "plugin-test",
+		"jwt":  jwt,
+	}
+
+	loginReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	// attempt a login with a working token review backend
+	loginResp, err := b.HandleRequest(t.Context(), loginReq)
+	require.NoError(t, err, "login failed")
+	require.NotNil(t, loginResp, "login response was empty")
+	require.False(t, loginResp.IsError(), "login response was an error")
+	require.NotNil(t, loginResp.Auth, "login response missing Auth")
+
+	// attempt a renewal with a working token review backend
+	renewReq := &logical.Request{
+		Operation: logical.RenewOperation,
+		Storage:   storage,
+		Auth:      &logical.Auth{},
+	}
+	renewReq.Auth.InternalData = loginResp.Auth.InternalData
+	renewReq.Auth.Metadata = loginResp.Auth.Metadata
+	renewReq.Auth.LeaseOptions = loginResp.Auth.LeaseOptions
+	renewReq.Auth.Policies = loginResp.Auth.Policies
+	renewReq.Auth.Period = loginResp.Auth.Period
+
+	renewResp, err := b.HandleRequest(t.Context(), renewReq)
+	require.NoError(t, err, "renewal failed unexpectedly")
+	require.NotNil(t, renewResp, "renewal response was empty")
+	require.False(t, renewResp.IsError(), "renewal response was an error")
+	require.NotNil(t, renewResp.Auth, "renewal response missing Auth")
+
+	// swap reviewFactory to one that always responds unauthorized
+	b.(*kubeAuthBackend).reviewFactory = func(*kubeConfig) tokenReviewer {
+		return &unauthorizedTokenReview{}
+	}
+
+	// attempt a new renewal with a token review backend responding the token is unauthorized
+	renewReq.Auth.InternalData = renewResp.Auth.InternalData
+	renewReq.Auth.Metadata = renewResp.Auth.Metadata
+	renewReq.Auth.LeaseOptions = renewResp.Auth.LeaseOptions
+	renewReq.Auth.Policies = renewResp.Auth.Policies
+	renewReq.Auth.Period = renewResp.Auth.Period
+
+	_, err = b.HandleRequest(t.Context(), renewReq)
+	require.Error(t, err, "expected renewal to fail")
+	require.ErrorContains(t, err, "failed to validate token and secret still exist")
 }
 
 func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {

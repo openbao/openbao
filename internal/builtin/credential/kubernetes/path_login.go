@@ -1,4 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
+// Copyright (c) The OpenBao Contributors
 // SPDX-License-Identifier: MPL-2.0
 
 package kubeauth
@@ -89,6 +90,45 @@ func (b *kubeAuthBackend) pathResolveRole(ctx context.Context, req *logical.Requ
 	return logical.ResolveRoleResponse(roleName)
 }
 
+func (b *kubeAuthBackend) handleToken(ctx context.Context, req *logical.Request, role *roleStorageEntry, jwtStr string) (*kubeConfig, *http.Client, *serviceAccount, error) {
+	config, err := b.loadConfig(ctx, req.Storage)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if config == nil {
+		return nil, nil, nil, errors.New("could not load backend configuration")
+	}
+
+	client, err := b.getHTTPClient()
+	if err != nil {
+		b.Logger().Error("Failed to get the HTTP client", "err", err)
+		return nil, nil, nil, logical.ErrUnrecoverable
+	}
+
+	serviceAccount, err := b.parseAndValidateJWT(ctx, client, jwtStr, role, config)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return config, client, serviceAccount, nil
+}
+
+func (b *kubeAuthBackend) handleTokenWithLookup(ctx context.Context, req *logical.Request, role *roleStorageEntry, jwtStr string) (*serviceAccount, error) {
+	config, client, serviceAccount, err := b.handleToken(ctx, req, role, jwtStr)
+	if err != nil {
+		return nil, err
+	}
+
+	// look up the JWT token in the kubernetes API
+	err = serviceAccount.lookup(ctx, client, jwtStr, role.Audience, b.reviewFactory(config))
+	if err != nil {
+		b.Logger().Debug(`login unauthorized`, "err", err)
+		return nil, logical.ErrPermissionDenied
+	}
+
+	return serviceAccount, nil
+}
+
 // pathLogin is used to authenticate to this backend
 func (b *kubeAuthBackend) pathLogin(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	roleName, resp := b.getFieldValueStr(data, "role")
@@ -123,45 +163,27 @@ func (b *kubeAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d
 		}
 	}
 
-	config, err := b.loadConfig(ctx, req.Storage)
-	if err != nil {
-		return nil, err
-	}
-	if config == nil {
-		return nil, errors.New("could not load backend configuration")
-	}
-
-	client, err := b.getHTTPClient()
-	if err != nil {
-		b.Logger().Error("Failed to get the HTTP client", "err", err)
-		return nil, logical.ErrUnrecoverable
-	}
-
-	serviceAccount, err := b.parseAndValidateJWT(ctx, client, jwtStr, role, config)
+	serviceAccount, err := b.handleTokenWithLookup(ctx, req, role, jwtStr)
 	if err != nil {
 		if err == jose.ErrCryptoFailure || strings.Contains(err.Error(), "verifying token signature") {
 			b.Logger().Debug(`login unauthorized`, "err", err)
 			return nil, logical.ErrPermissionDenied
 		}
+
 		return nil, err
 	}
 
+	// Resolve the alias name.
 	aliasName, err := b.getAliasName(role, serviceAccount)
 	if err != nil {
 		return nil, err
-	}
-
-	// look up the JWT token in the kubernetes API
-	err = serviceAccount.lookup(ctx, client, jwtStr, role.Audience, b.reviewFactory(config))
-	if err != nil {
-		b.Logger().Debug(`login unauthorized`, "err", err)
-		return nil, logical.ErrPermissionDenied
 	}
 
 	uid, err := serviceAccount.uid()
 	if err != nil {
 		return nil, err
 	}
+
 	auth := &logical.Auth{
 		Alias: &logical.Alias{
 			Name: aliasName,
@@ -174,6 +196,7 @@ func (b *kubeAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d
 		},
 		InternalData: map[string]any{
 			"role": roleName,
+			"jwt":  jwtStr,
 		},
 		Metadata: map[string]string{
 			"service_account_uid":         uid,
@@ -246,27 +269,12 @@ func (b *kubeAuthBackend) aliasLookahead(ctx context.Context, req *logical.Reque
 		return logical.ErrorResponse("invalid role name %q", roleName), nil
 	}
 
-	config, err := b.loadConfig(ctx, req.Storage)
-	if err != nil {
-		return nil, err
-	}
-	if config == nil {
-		return nil, errors.New("could not load backend configuration")
-	}
-	// validation of the JWT against the provided role ensures alias look ahead requests
-	// are authentic.
-	client, err := b.getHTTPClient()
-	if err != nil {
-		b.Logger().Error("Failed to get the HTTP client", "err", err)
-		return nil, logical.ErrUnrecoverable
-	}
-
-	sa, err := b.parseAndValidateJWT(ctx, client, jwtStr, role, config)
+	_, _, serviceAccount, err := b.handleToken(ctx, req, role, jwtStr)
 	if err != nil {
 		return nil, err
 	}
 
-	aliasName, err := b.getAliasName(role, sa)
+	aliasName, err := b.getAliasName(role, serviceAccount)
 	if err != nil {
 		return nil, err
 	}
@@ -490,7 +498,12 @@ func (b *kubeAuthBackend) pathLoginRenew() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		roleName := req.Auth.InternalData["role"].(string)
 		if roleName == "" {
-			return nil, errors.New("failed to fetch role_name during renewal")
+			return nil, errors.New("failed to fetch role during renewal")
+		}
+
+		jwtStr, ok := req.Auth.InternalData["jwt"].(string)
+		if !ok || jwtStr == "" {
+			return nil, errors.New("failed to fetch jwt during renewal; existing auth tokens need to be re-issued")
 		}
 
 		b.l.RLock()
@@ -499,10 +512,19 @@ func (b *kubeAuthBackend) pathLoginRenew() framework.OperationFunc {
 		// Ensure that the Role still exists.
 		role, err := b.role(ctx, req.Storage, roleName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to validate role %s during renewal:%s", roleName, err)
+			return nil, fmt.Errorf("failed to validate role %s during renewal: %w", roleName, err)
 		}
 		if role == nil {
 			return nil, fmt.Errorf("role %s does not exist during renewal", roleName)
+		}
+
+		_, err = b.handleTokenWithLookup(ctx, req, role, jwtStr)
+		if err != nil {
+			if errors.Is(err, logical.ErrPermissionDenied) {
+				// Return a little more information for the user.
+				return nil, fmt.Errorf("failed to validate token and secret still exist for %q during renewal: %w", req.Auth.Metadata["service_account_name"], err)
+			}
+			return nil, err
 		}
 
 		resp := &logical.Response{Auth: req.Auth}

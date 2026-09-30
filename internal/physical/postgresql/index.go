@@ -19,7 +19,7 @@ SELECT value.index::varchar
 FROM (
 	SELECT CASE pg_is_in_recovery()
 	WHEN true
-	THEN pg_last_wal_receive_lsn()
+	THEN pg_last_wal_replay_lsn()
 	ELSE pg_current_wal_lsn()
 	END
 	AS index

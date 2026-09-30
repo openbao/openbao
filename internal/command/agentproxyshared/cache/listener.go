@@ -48,16 +48,12 @@ func StartListener(lnConfig *configutil.Listener, logger hclog.Logger) (*Listene
 		ln = &server.TCPKeepAliveListener{TCPListener: ln.(*net.TCPListener)}
 
 	case "unix":
-		var uConfig *listenerutil.UnixSocketsConfig
-		if lnConfig.SocketMode != "" &&
-			lnConfig.SocketUser != "" &&
-			lnConfig.SocketGroup != "" {
-			uConfig = &listenerutil.UnixSocketsConfig{
-				Mode:  lnConfig.SocketMode,
-				User:  lnConfig.SocketUser,
-				Group: lnConfig.SocketGroup,
-			}
+		uConfig := &listenerutil.UnixSocketsConfig{
+			Mode:  lnConfig.SocketMode,
+			User:  lnConfig.SocketUser,
+			Group: lnConfig.SocketGroup,
 		}
+
 		ln, err = listenerutil.UnixSocketListener(addr, uConfig)
 		if err != nil {
 			return nil, err

@@ -250,11 +250,16 @@ GROUP:
 	}
 
 OWN:
+	if user == "" && group == "" {
+		goto MOD
+	}
+
 	if err := os.Chown(path, uid, gid); err != nil {
 		return fmt.Errorf("failed setting ownership to %d:%d on %q: %v",
 			uid, gid, path, err)
 	}
 
+MOD:
 	if mode != "" {
 		mode, err := strconv.ParseUint(mode, 8, 32)
 		if err != nil {

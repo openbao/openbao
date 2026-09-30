@@ -18,6 +18,17 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/metricsutil"
 )
 
+// Job is an interface for jobs used with this job manager.
+type Job interface {
+	// Execute performs the work.
+	// It should be synchronous if a cleanupFn is provided.
+	Execute() error
+
+	// OnFailure handles the error resulting from a failed Execute().
+	// It should be synchronous if a cleanupFn is provided.
+	OnFailure(err error)
+}
+
 type JobManager struct {
 	name   string
 	queues map[string]*list.List
@@ -25,7 +36,7 @@ type JobManager struct {
 	quit    chan struct{}
 	newWork chan struct{} // must be buffered
 
-	workerPool  *dispatcher
+	dispatcher  *dispatcher
 	workerCount map[string]int
 
 	onceStart sync.Once
@@ -48,7 +59,7 @@ type JobManager struct {
 }
 
 // NewJobManager creates a job manager, with an optional name
-func NewJobManager(name string, numWorkers int, l log.Logger, metricSink *metricsutil.ClusterMetricSink) *JobManager {
+func NewJobManager(name string, maxWorkers int, l log.Logger, metricSink *metricsutil.ClusterMetricSink) *JobManager {
 	if l == nil {
 		l = logging.NewVaultLoggerWithWriter(io.Discard, log.NoLevel)
 	}
@@ -62,14 +73,12 @@ func NewJobManager(name string, numWorkers int, l log.Logger, metricSink *metric
 		name = fmt.Sprintf("jobmanager-%s", guid)
 	}
 
-	wp := newDispatcher(fmt.Sprintf("%s-dispatcher", name), numWorkers, l)
-
 	j := JobManager{
 		name:              name,
 		queues:            make(map[string]*list.List),
 		quit:              make(chan struct{}),
 		newWork:           make(chan struct{}, 1),
-		workerPool:        wp,
+		dispatcher:        newDispatcher(maxWorkers, l),
 		workerCount:       make(map[string]int),
 		logger:            l,
 		metricSink:        metricSink,
@@ -77,7 +86,7 @@ func NewJobManager(name string, numWorkers int, l log.Logger, metricSink *metric
 		lastQueueAccessed: -1,
 	}
 
-	j.logger.Trace("created job manager", "name", name, "pool_size", numWorkers)
+	j.logger.Trace("created job manager", "name", name, "max_workers", maxWorkers)
 	return &j
 }
 
@@ -96,7 +105,7 @@ func (j *JobManager) Stop() {
 		j.logger.Trace("terminating job manager...")
 		close(j.quit)
 		j.wg.Wait()
-		j.workerPool.stop()
+		j.dispatcher.stop()
 	})
 }
 
@@ -235,7 +244,7 @@ func (j *JobManager) nextQueueIndex(currentIdx int) int {
 // note: we may want to eventually factor in queue length relative to num queues
 func (j *JobManager) queueWorkersSaturated(queueID string) bool {
 	numActiveQueues := float64(len(j.queues))
-	numTotalWorkers := float64(j.workerPool.maxWorkers)
+	numTotalWorkers := float64(cap(j.dispatcher.sema))
 	maxWorkersPerQueue := math.Ceil(0.9 * numTotalWorkers / numActiveQueues)
 
 	numWorkersPerQueue := j.workerCount
@@ -265,12 +274,9 @@ func (j *JobManager) decrementWorkerCount(queueID string) {
 	}
 }
 
-// assignWork continually loops checks for new jobs and dispatches them to the
-// worker pool
+// assignWork continually loops checks for new jobs and passes them to the dispatcher.
 func (j *JobManager) assignWork() {
-	j.wg.Add(1)
-
-	go func() {
+	j.wg.Go(func() {
 		// ticker is used to prevent memory leak of using time.After in
 		// for - select pattern.
 		ticker := time.NewTicker(50 * time.Millisecond)
@@ -280,7 +286,6 @@ func (j *JobManager) assignWork() {
 				// assign work while there are jobs to distribute
 				select {
 				case <-j.quit:
-					j.wg.Done()
 					return
 				case <-j.newWork:
 					// keep the channel empty since we're already processing work
@@ -289,7 +294,7 @@ func (j *JobManager) assignWork() {
 
 				job, queueID := j.getNextJob()
 				if job != nil {
-					j.workerPool.dispatch(job,
+					j.dispatcher.dispatch(job,
 						func() {
 							j.incrementWorkerCount(queueID)
 						},
@@ -304,7 +309,6 @@ func (j *JobManager) assignWork() {
 			ticker.Reset(50 * time.Millisecond)
 			select {
 			case <-j.quit:
-				j.wg.Done()
 				return
 			case <-j.newWork:
 				// listen for wake-up when an empty job manager has been given work
@@ -314,7 +318,7 @@ func (j *JobManager) assignWork() {
 				// is work waiting, but no queues are eligible for another worker
 			}
 		}
-	}()
+	})
 }
 
 // addQueue generates a new queue if a queue for `queueID` doesn't exist

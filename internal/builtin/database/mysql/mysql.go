@@ -295,7 +295,9 @@ func (m *MySQL) executePreparedStatementsWithMap(ctx context.Context, statements
 				return err
 			}
 			if _, err := stmt.ExecContext(ctx); err != nil {
-				stmt.Close() //nolint:errcheck
+				if closeErr := stmt.Close(); closeErr != nil {
+					return errors.Join(err, closeErr)
+				}
 				return err
 			}
 

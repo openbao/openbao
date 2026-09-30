@@ -4,7 +4,7 @@ sidebar_label: Generic
 
 # Auto-Unsealing with PKCS#11
 
-This guide describes how to configure OpenBao auto-unsealing with a PKCS#11-compliant hardware token.
+This guide describes how to configure OpenBao auto-unsealing with a PKCS#11-compliant hardware or software token.
 The instructions are generic and should work with any PKCS#11-compliant token.
 
 This guide shows the easiest way to install the PKCS#11 plugin (plugin type `kms`).
@@ -44,7 +44,7 @@ For network HSMs, this often involves creating a new user/partition/tenant.
 
 Install and configure your vendor's PKCS#11 module on the same machine as OpenBao.
 If you deploy OpenBao in a container (Docker, Podman, Kubernetes, ...), you need to
-mount the relevant files into the container (`.so` and vendor-specific config files).
+install or mount the relevant files into the container (`.so` and vendor-specific config files).
 Make sure that the files are readable by the container user ([uid:gid 100:1000](https://github.com/openbao/openbao/blob/v2.6.0/Dockerfile#L78)).
 
 Please contact your PKCS#11 token vendor for instructions.
@@ -72,7 +72,7 @@ Instead, you need to manually create an unseal key.
 The example below shows how to do that with `pkcs11-tool`, but you are free to use any other tool.
 **Skip** this step if you have already generated a key with a vendor-specific tool.
 
-```sh
+```shell-session
 $ pkcs11-tool --module "/path/to/libpkcs11.so" \
   --token-label "MY_TOKEN" \
   --slot 0 \
@@ -108,8 +108,8 @@ See the [supported mechanisms](../../../configuration/seal/pkcs11.mdx##pkcs11-pa
 
 If you lose this key, you will **not** be able to unseal your OpenBao instance, and will thus **lose your OpenBao data**.
 
-The command above sets `destroyable=false`, which prevents the key from being deleted from the PKCS#11 token.
-If set, for most PKCS#11 token vendors the only way to delete the key is to factory-reset/re-initialize/delete the token/partition.
+The command above creates a key with `CKA_DESTROYABLE = CK_FALSE`, which prevents the key from being deleted from the PKCS#11 token.
+In this case, for most PKCS#11 token vendors the only way to delete the key is to factory-reset/re-initialize/delete the token/partition.
 
 :::
 
@@ -120,28 +120,29 @@ This is a vendor-agnostic plugin maintained by the OpenBao community.
 
 The simplest installation option is to declare the following in your `openbao.hcl`.
 This causes OpenBao to automatically download the plugin when OpenBao (re)starts.
-The releases and their SHA-256 digests can be found in the
-[`openbao-plugin` repository](https://github.com/openbao/openbao-plugins/releases).
 
 Make sure that the `plugin_directory` exists on your machine.
 When using containers, make sure this directory is persisted as a volume mount.
 
 ```hcl
 plugin_directory = "/opt/openbao/plugins"
-plugin_auto_register = true
 plugin_auto_download = true
 
 plugin "kms" "pkcs11" {
-  image       = "ghcr.io/openbao/openbao-plugin-kms-pkcs11"
-  version     = "v0.1.0"
-  binary_name = "openbao-plugin-kms-pkcs11"
-  sha256sum   = "55245882727535579e710672f0eae1bcdddc846006db857baaa6e09e33d40faf"
+  image = "ghcr.io/openbao/openbao-plugin-kms-pkcs11:v0.2.1@sha256:babba58243c7db7ffb9b906e25f35643704e8814792f5b678b3c215acba284f5"
 }
 ```
 
 See the [OpenBao plugin system](../../../plugins/index.mdx)
 and the [`plugin` stanza](../../../configuration/plugins.mdx)
 documentation for more information about plugin installation.
+
+:::info
+
+The releases and their OCI artifact digests can be found in the
+[`openbao-plugins` repository](https://github.com/openbao/openbao-plugins/pkgs/container/openbao-plugin-kms-pkcs11).
+
+:::
 
 ## Step 3: Configure the `pkcs11` seal
 
@@ -153,7 +154,6 @@ seal "pkcs11" {
   token_label = "MY_TOKEN"
   slot        = 0
   key_label   = "bao-root-key-aes"
-  mechanism   = "CKM_AES_GCM" # CKM_RSA_PKCS_OAEP
   # pin       = "4321"
 }
 ```
@@ -203,24 +203,23 @@ To test that auto-unseal is working, restart OpenBao.
 In the OpenBao logs, you should see the following, indicating a successful auto-unseal ("stored unseal key"):
 
 ```log
-systemd[1]: Started openbao.service - "OpenBao - A tool for managing secrets".
-bao[154960]: 2026-07-31T10:59:30.458+0200 [INFO]  core: stored unseal keys supported, attempting fetch
-bao[154960]: 2026-07-31T10:59:30.597+0200 [INFO]  core.cluster-listener.tcp: starting listener: listener_address=0.0.0.0:8201
-bao[154960]: 2026-07-31T10:59:30.599+0200 [INFO]  core.cluster-listener: serving cluster requests: cluster_listen_address=[::]:8201
-bao[154960]: 2026-07-31T10:59:30.600+0200 [INFO]  core: post-unseal setup starting
-bao[154960]: 2026-07-31T10:59:30.606+0200 [INFO]  core: loaded wrapping token key
-bao[154960]: 2026-07-31T10:59:30.606+0200 [INFO]  core: upgrading plugin information: plugins=[]
-bao[154960]: 2026-07-31T10:59:30.606+0200 [INFO]  core: successfully setup plugin catalog: plugin-directory=/opt/openbao/plugins
-bao[154960]: 2026-07-31T10:59:30.606+0200 [INFO]  core.plugins: starting declarative plugin registration
-bao[154960]: 2026-07-31T10:59:30.610+0200 [INFO]  core.plugins: declarative plugin registration completed
-bao[154960]: 2026-07-31T10:59:30.816+0200 [INFO]  core: post-unseal setup complete
-bao[154960]: 2026-07-31T10:59:30.816+0200 [INFO]  core: vault is unsealed
-bao[154960]: 2026-07-31T10:59:30.816+0200 [INFO]  core: unsealed with stored key
+2026-07-31T10:59:30.458+0200 [INFO]  core: stored unseal keys supported, attempting fetch
+2026-07-31T10:59:30.597+0200 [INFO]  core.cluster-listener.tcp: starting listener: listener_address=0.0.0.0:8201
+2026-07-31T10:59:30.599+0200 [INFO]  core.cluster-listener: serving cluster requests: cluster_listen_address=[::]:8201
+2026-07-31T10:59:30.600+0200 [INFO]  core: post-unseal setup starting
+2026-07-31T10:59:30.606+0200 [INFO]  core: loaded wrapping token key
+2026-07-31T10:59:30.606+0200 [INFO]  core: upgrading plugin information: plugins=[]
+2026-07-31T10:59:30.606+0200 [INFO]  core: successfully setup plugin catalog: plugin-directory=/opt/openbao/plugins
+2026-07-31T10:59:30.606+0200 [INFO]  core.plugins: starting declarative plugin registration
+2026-07-31T10:59:30.610+0200 [INFO]  core.plugins: declarative plugin registration completed
+2026-07-31T10:59:30.816+0200 [INFO]  core: post-unseal setup complete
+2026-07-31T10:59:30.816+0200 [INFO]  core: vault is unsealed
+2026-07-31T10:59:30.816+0200 [INFO]  core: unsealed with stored key
 ```
 
 Additionally, [`bao status`](../../../commands/status.mdx) should show:
 
-```sh
+```shell-session
 $ bao status
 Key                      Value
 ---                      -----

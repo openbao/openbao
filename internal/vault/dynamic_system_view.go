@@ -57,11 +57,14 @@ func (e extendedSystemViewImpl) ForwardGenericRequest(ctx context.Context, req *
 	return nil, logical.ErrReadOnly
 }
 
-// SudoPrivilege returns true if given path has sudo privileges
-// for the given client token
+// SudoPrivilege returns true if given path has sudo privileges for the given token.
+// Never pass a client supplied token to this function as it assumes token has been
+// already validated.
 func (e extendedSystemViewImpl) SudoPrivilege(ctx context.Context, path string, token string) bool {
-	// Resolve the token policy
-	te, err := e.core.tokenStore.Lookup(ctx, token)
+	// Token might have already been used by useToken() during request handling.
+	// Normal lookup would fail on the numOfUses==1, lookup tainted will work for
+	// request with tokens having only one use.
+	te, err := e.core.tokenStore.lookupTainted(ctx, token)
 	if err != nil {
 		e.core.logger.Error("failed to lookup sudo token", "error", err)
 		return false

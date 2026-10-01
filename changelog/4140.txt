@@ -1,0 +1,3 @@
+```release-note:bug
+core/audit: Eagerly create audit device salt on the active node so they are available for standby nodes even when the active node has not yet received any requests to audit.
+```

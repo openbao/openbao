@@ -47,7 +47,7 @@ require (
 	github.com/hashicorp/cli v1.1.7
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
-	github.com/hashicorp/go-discover v1.4.0
+	github.com/hashicorp/go-discover v1.5.0
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-memdb v1.3.5
 	github.com/hashicorp/go-metrics v0.6.1
@@ -252,7 +252,7 @@ require (
 	github.com/gophercloud/gophercloud v0.1.0 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
-	github.com/hashicorp/go-discover/provider/gce v0.0.0-20241120163552-5eb1507d16b4 // indirect
+	github.com/hashicorp/go-discover/provider/gce v0.0.0-20260729160347-bd352ec235a2 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-msgpack/v2 v2.1.2 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
@@ -260,7 +260,6 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/logutils v1.0.0 // indirect
 	github.com/hashicorp/mdns v1.0.4 // indirect
-	github.com/hashicorp/vic v1.5.1-0.20190403131502-bbfe86ec9443 // indirect
 	github.com/hashicorp/yamux v0.1.2 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
 	github.com/imdario/mergo v0.3.15 // indirect
@@ -316,7 +315,7 @@ require (
 	github.com/tklauser/numcpus v0.11.0 // indirect
 	github.com/tsaarni/x500dn v1.1.0 // indirect
 	github.com/tv42/httpunix v0.0.0-20191220191345-2ba4b9c3382c // indirect
-	github.com/vmware/govmomi v0.18.0 // indirect
+	github.com/vmware/govmomi v0.55.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yeqown/reedsolomon v1.0.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect

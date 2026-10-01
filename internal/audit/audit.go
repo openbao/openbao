@@ -38,6 +38,8 @@ type Backend interface {
 	// an expected plaintext value
 	GetHash(context.Context, string) (string, error)
 
+	Salt(context.Context) (*salt.Salt, error)
+
 	// Reload is called on SIGHUP for supporting backends.
 	Reload(context.Context) error
 

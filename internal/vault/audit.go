@@ -71,8 +71,8 @@ func (c *Core) generateAuditTestProbe() (*logical.LogInput, error) {
 	}, nil
 }
 
-// enableAudit is used to enable a new audit backend
-func (c *Core) enableAudit(ctx context.Context, entry *routing.MountEntry, updateStorage bool) error {
+// enableAudit is used to enable a new audit backend.
+func (c *Core) enableAudit(ctx context.Context, entry *routing.MountEntry) error {
 	// Ensure we end the path in a slash
 	if !strings.HasSuffix(entry.Path, "/") {
 		entry.Path += "/"
@@ -149,6 +149,15 @@ func (c *Core) enableAudit(ctx context.Context, entry *routing.MountEntry, updat
 		}
 	}
 
+	// The view must be writable before the salt can be persisted.
+	view.SetReadOnlyErr(nil)
+
+	// Create and persist an audit backend's salt on the active node.
+	if err = ensureAuditSalt(ctx, backend); err != nil {
+		return fmt.Errorf("failed to create salt for audit backend %q: %w", entry.Path, err)
+	}
+	view.SetReadOnlyErr(logical.ErrSetupReadOnly)
+
 	newTable := c.audit.ShallowClone()
 	newTable.Entries = append(newTable.Entries, entry)
 
@@ -159,10 +168,8 @@ func (c *Core) enableAudit(ctx context.Context, entry *routing.MountEntry, updat
 	entry.NamespaceID = ns.ID
 	entry.Namespace = ns
 
-	if updateStorage {
-		if err := c.persistAudit(ctx, newTable, entry.Local); err != nil {
-			return errors.New("failed to update audit table")
-		}
+	if err := c.persistAudit(ctx, newTable, entry.Local); err != nil {
+		return errors.New("failed to update audit table")
 	}
 
 	c.audit = newTable
@@ -386,18 +393,15 @@ func (c *Core) persistAudit(ctx context.Context, table *routing.MountTable, loca
 	return nil
 }
 
-// setupAudit is invoked after we've loaded the audit able to
-// initialize the audit backends
-func (c *Core) setupAudits(ctx context.Context) error {
-	brokerLogger := c.WithBaseLogger("audit")
-	c.auditBroker = NewAuditBroker(brokerLogger)
+// setupAudit is invoked after we've loaded the audit table to
+// initialize the audit backends.
+func (c *Core) setupAudits(ctx context.Context, readonly bool) error {
+	c.auditBroker = NewAuditBroker(c.WithBaseLogger("audit"))
 
-	err := c.reconcileAudits(reconcileAuditsRequests{
-		ctx:       ctx,
-		readonly:  false,
-		isInitial: true,
-	})
-	if err != nil {
+	if err := c.reconcileAudits(reconcileAuditsRequests{
+		ctx:      ctx,
+		readonly: readonly,
+	}); err != nil {
 		if multiErr, ok := err.(*multierror.Error); ok {
 			for _, err := range multiErr.Errors {
 				c.logger.Error(err.Error())
@@ -416,16 +420,14 @@ func (c *Core) setupAudits(ctx context.Context) error {
 
 func (c *Core) invalidateAudits(ctx context.Context) error {
 	return c.reconcileAudits(reconcileAuditsRequests{
-		ctx:       ctx,
-		readonly:  true,
-		isInitial: false,
+		ctx:      ctx,
+		readonly: true,
 	})
 }
 
 type reconcileAuditsRequests struct {
-	ctx       context.Context
-	readonly  bool
-	isInitial bool
+	ctx      context.Context
+	readonly bool
 }
 
 func (c *Core) reconcileAudits(req reconcileAuditsRequests) error {
@@ -444,15 +446,13 @@ func (c *Core) reconcileAudits(req reconcileAuditsRequests) error {
 
 	additions, deletions := oldTable.Delta(c.audit)
 
-	var multiErr *multierror.Error
-
 	for _, entry := range deletions {
 		c.removeAuditReloadFunc(entry)
-
 		c.auditBroker.Deregister(entry.Path)
 		c.logger.Info("disabled audit backend", "path", entry.Path)
 	}
 
+	var multiErr *multierror.Error
 	for _, entry := range additions {
 		view, err := c.mountEntryView(entry)
 		if err != nil {
@@ -463,13 +463,7 @@ func (c *Core) reconcileAudits(req reconcileAuditsRequests) error {
 		// ensure that it is reset after. This ensures that there will be no
 		// writes during the construction of the backend.
 		view.SetReadOnlyErr(logical.ErrSetupReadOnly)
-		if req.isInitial {
-			c.postUnsealFuncs = append(c.postUnsealFuncs, func() {
-				view.SetReadOnlyErr(nil)
-			})
-		} else {
-			defer view.SetReadOnlyErr(nil)
-		}
+		defer view.SetReadOnlyErr(nil)
 
 		// Initialize the backend
 		backend, err := c.newAuditBackend(req.ctx, entry, view, entry.Options)
@@ -480,6 +474,16 @@ func (c *Core) reconcileAudits(req reconcileAuditsRequests) error {
 		if backend == nil {
 			multiErr = multierror.Append(multiErr, fmt.Errorf("nil audit backend of type %q returned from factory at path %q", entry.Type, entry.Path))
 			continue
+		}
+
+		if !req.readonly {
+			view.SetReadOnlyErr(nil)
+			// Try to create and persist an audit backend's salt on the active node.
+			if err = ensureAuditSalt(req.ctx, backend); err != nil {
+				multiErr = multierror.Append(multiErr, fmt.Errorf("failed to create salt for audit backend %q: %w", entry.Path, err))
+				continue
+			}
+			view.SetReadOnlyErr(logical.ErrSetupReadOnly)
 		}
 
 		// Register the backend
@@ -683,7 +687,11 @@ func (c *Core) handleAuditLogSetup(ctx context.Context, standby bool) error {
 		}
 
 		if entry == nil {
-			if err := c.addAuditFromConfig(ctx, auditConfig, standby); err != nil {
+			if standby {
+				c.logger.Warn("audit device present in local configuration but not in the configuration of the active node; this may be a false-positive depending on data replication state", "path", auditConfig.Path)
+				continue
+			}
+			if err := c.addAuditFromConfig(ctx, auditConfig); err != nil {
 				return fmt.Errorf("failed to create new audit device %v: %w", auditConfig.Path, err)
 			}
 		} else {
@@ -722,12 +730,7 @@ func (c *Core) handleAuditLogSetup(ctx context.Context, standby bool) error {
 	return nil
 }
 
-func (c *Core) addAuditFromConfig(ctx context.Context, auditConfig *server.AuditDevice, standby bool) error {
-	if standby {
-		c.logger.Warn("audit device present in local configuration but not in the configuration of the active node; this may be a false-positive depending on data replication state", "path", auditConfig.Path)
-		return nil
-	}
-
+func (c *Core) addAuditFromConfig(ctx context.Context, auditConfig *server.AuditDevice) error {
 	c.logger.Info("adding new audit device", "path", auditConfig.Path)
 
 	me := &routing.MountEntry{
@@ -740,7 +743,7 @@ func (c *Core) addAuditFromConfig(ctx context.Context, auditConfig *server.Audit
 		Local:       auditConfig.Local,
 	}
 
-	return c.enableAudit(ctx, me, true)
+	return c.enableAudit(ctx, me)
 }
 
 func (c *Core) validateAuditFromConfig(ctx context.Context, auditConfig *server.AuditDevice, auditEntry *routing.MountEntry) error {
@@ -773,4 +776,9 @@ func (c *Core) validateAuditFromConfig(ctx context.Context, auditConfig *server.
 	}
 
 	return nil
+}
+
+func ensureAuditSalt(ctx context.Context, b audit.Backend) error {
+	_, err := b.Salt(ctx)
+	return err
 }

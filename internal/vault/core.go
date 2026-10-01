@@ -2301,7 +2301,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	if err := c.setupExpiration(expireLeaseStrategyFairsharing, standby); err != nil {
 		return err
 	}
-	if err := c.setupAudits(ctx); err != nil {
+	if err := c.setupAudits(ctx, standby); err != nil {
 		return err
 	}
 	// Adding new audit devices only occurs on the active node. Standby nodes
@@ -3901,7 +3901,8 @@ func (c *Core) refreshRequestForwardingConnection(ctx context.Context, clusterAd
 	// ALPN header right. It's just "insecure" because GRPC isn't managing
 	// the TLS state.
 	dctx, cancelFunc := context.WithCancel(ctx)
-	rpcClientConn, err := grpc.NewClient(fmt.Sprintf("passthrough:///%s", clusterURL.Host),
+	rpcClientConn, err := grpc.NewClient(
+		fmt.Sprintf("passthrough:///%s", clusterURL.Host),
 		grpc.WithContextDialer(clusterListener.GetContextDialerFunc(ctx, consts.RequestForwardingALPN)),
 		grpc.WithTransportCredentials(
 			insecure.NewCredentials(), // it's not, we handle it in the dialer

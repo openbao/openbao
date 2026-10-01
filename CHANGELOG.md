@@ -1,3 +1,15 @@
+## 2.6.4
+## October 1, 2026
+
+SECURITY:
+
+core: Prevent disclosure of `tls_acme_eab_mac_key` from `sys/config/state/sanitized`. GHSA-3237-j65r-m5rp. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
+core/audit: The unauthenticated "Root Token Generation" and "Rekey" endpoints (which are disabled by default) returned their response, even if audit logging failed. GHSA-q74w-hv5x-6hxf. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
+auth/approle: Ensure Secret ID cannot be used for authentication after expiration but before tidy is called. GHSA-7m59-mp95-w6ph. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
+auth/approle: Fix incorrect JSON-decode path when parsing login requests with form data bodies. GHSA-5v22-543h-wg96. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
+auth/cert: Fix omission of TLS connection propagation when calculating role-based quota. GHSA-5v22-543h-wg96. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
+auth/kubernetes: Ensure Service Account JWT is validated on renewal, preventing post-revoke usage. GHSA-gf3j-hm38-jhh5. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
+
 ## 2.6.3
 ## September 23, 2026
 

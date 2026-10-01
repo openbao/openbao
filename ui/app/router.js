@@ -156,11 +156,13 @@ Router.map(function () {
           // because globs / params can't be empty,
           // we have to special-case ids of '' with their own routes
           this.route('list-root', { path: '/list/' });
+          this.route('scan-root', { path: '/scan/' });
           this.route('create-root', { path: '/create/' });
           this.route('show-root', { path: '/show/' });
           this.route('edit-root', { path: '/edit/' });
 
           this.route('list', { path: '/list/*secret' });
+          this.route('scan', { path: '/scan/*secret' });
           this.route('show', { path: '/show/*secret' });
           this.route('diff', { path: '/diff/*id' });
           this.route('metadata', { path: '/metadata/*secret' });

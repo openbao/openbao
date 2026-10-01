@@ -22,11 +22,13 @@ export default ApplicationAdapter.extend({
   // concerns and we only want to send "list" to the server
   query(store, type, query) {
     let { backend, id } = query;
-    return this.ajax(this._url(backend, id), 'GET', { data: { list: true } }).then((resp) => {
-      resp.id = id;
-      resp.backend = backend;
-      return resp;
-    });
+    return this.ajax(this._url(backend, id), 'GET', { data: { [query.scan ? 'scan' : 'list']: true } }).then(
+      (resp) => {
+        resp.id = id;
+        resp.backend = backend;
+        return resp;
+      }
+    );
   },
 
   urlForQueryRecord(query) {

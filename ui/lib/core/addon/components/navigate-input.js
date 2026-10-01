@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { debounce, later } from '@ember/runloop';
+import { cancel, debounce, later } from '@ember/runloop';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { guidFor } from '@ember/object/internals';
@@ -124,6 +124,15 @@ export default class NavigateInput extends Component {
     }
   }
 
+  onScan(val) {
+    const key = utils.keyIsFolder(val) ? val : utils.parentKeyForKey(val) || this.args.baseKey || '';
+    const route = this.args.scanRoute + (key ? '' : '-root');
+    const pageFilter = utils.keyIsFolder(val) ? null : val.startsWith(key) ? val.slice(key.length) : val;
+    this.transitionToRoute(...[route, key || null].compact(), {
+      queryParams: { page: 1, pageFilter: pageFilter || null },
+    });
+  }
+
   // pop to the nearest parentKey or to the root
   onEscape(val) {
     const key = utils.parentKeyForKey(val) || '';
@@ -187,12 +196,22 @@ export default class NavigateInput extends Component {
 
   filterUpdatedNoNav(val, mode) {
     const key = val ? val.trim() : null;
-    this.transitionToRoute(routeFor('list-root', mode, this.args.urls), {
-      queryParams: {
-        pageFilter: key,
-        page: 1,
-      },
-    });
+    const baseKey = this.args.scanActive && this.args.baseKey;
+    const pageFilter = baseKey && key?.startsWith(baseKey) ? key.slice(baseKey.length) : key;
+    this.transitionToRoute(
+      ...[
+        this.args.scanActive
+          ? this.args.scanRoute + (baseKey ? '' : '-root')
+          : routeFor('list-root', mode, this.args.urls),
+        baseKey,
+      ].compact(),
+      {
+        queryParams: {
+          pageFilter,
+          page: 1,
+        },
+      }
+    );
     // component is not re-rendered on policy list so trigger autofocus here
     this.maybeFocusInput();
   }
@@ -217,7 +236,7 @@ export default class NavigateInput extends Component {
     if (this.args.filterDidChange) {
       this.args.filterDidChange(evt.target.value);
     }
-    debounce(this, this.filterUpdated, evt.target.value, 400);
+    this.filterTimer = debounce(this, this.filterUpdated, evt.target.value, 400);
   }
   @action
   setFilterFocused(isFocused) {
@@ -236,6 +255,11 @@ export default class NavigateInput extends Component {
     const keyCode = event.keyCode;
     const val = event.target.value;
     if (keyCode === keys.ENTER) {
+      if (event.ctrlKey && this.args.scanRoute) {
+        cancel(this.filterTimer);
+        this.onScan(val);
+        return;
+      }
       this.onEnter(val);
     }
     if (keyCode === keys.ESC) {

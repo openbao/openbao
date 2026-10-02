@@ -1,0 +1,500 @@
+---
+sidebar_label: Migrations
+description: |-
+    Defines a migration framework for use throughout OpenBao, supporting
+    one-time initialization and version-triggered migrations.
+---
+
+# Migration Framework
+
+## Summary
+
+OpenBao has long lacked a proper migration framework; migrations today are
+done ad-hoc, with each plugin or component handling them in their own way. By
+defining a common migration framework, we can achieve offline or online
+upgrades, rollbacks to previous OpenBao versions, and more easily guarantee
+that standby nodes can operate on disparate versions.
+
+## Problem Statement
+
+We have four common migration patterns today in OpenBao:
+
+1. First startup migrations, like self-initialization, root key path
+   migration, and KVv2 key encryptor setup.
+2. Write-based migrations, such as when a new field is added to a PKI role.
+3. Opportunistic migrations that may occur when no other initialization has
+   been performed, such as in KVv2 when key encryptor configuration is
+   missing.
+4. One time (post-initialization) upgrades, like KVv1->KVv2 migration, or
+   PKI and SSH multi-issuer format changes.
+
+Some of these migrations are lossless, such as upgrading from KVv1 to KVv2.
+Others, such as moving the encrypted root key path is destructive, resulting
+in an inability to downgrade.
+
+Regardless of type, however, we lack the following reporting to operators:
+
+1. Whether a migration will occur as a result of switching binaries.
+2. Whether any lazy migrations have yet to occur.
+3. Whether downgrading to an earlier version is possible.
+4. How far progressed a migration is.
+
+We bound this tool to released versions only: pre-release or inter-release
+aren't supported.
+
+## User-facing Description
+
+This will introduces the following major changes:
+
+1. A new `bao operator logical-migration <subcommands>` CLI, for checking and
+   performing upgrades and asserting whether a downgrade is lossless.
+2. New APIs for checking the status of running migrations, which may occur
+   prior to service availability after startup.
+
+n.b.: the name `logical-migration` was chosen to avoid conflicting with
+`bao operator migrate`, which performs physical-layer storage migrations
+without needing barrier encryption information. Alternative naming
+suggestions welcome.
+
+## Technical Description
+
+### Logical SDK
+
+The `sdk/logical` will contain both the interface extensions to a backend as
+well as the core implementation of the migration subsystem itself.
+
+#### Backend
+
+On top of `logical.Backend`, we'll introduce a new API:
+
+```go
+package logical
+
+type MigratableBackend interface {
+    Migrator() []MigrationOptions
+}
+```
+
+which returns the following ordered options:
+
+- `WithInitializer(MigrationInitializer)`, once
+- `WithMigration(Migration)`, many times
+
+While `Migrator` is accessible off of `Backend`, `Backend.Initialize(...)` is
+not guaranteed to have been called before `Migrator` is invoked and may not
+be persisted to plugin execution time. As a result, mutating the `Backend`
+from any returned option (or its execution) is strongly discouraged.
+
+Migrations can be trivially composed:
+
+```go
+package logical
+
+func ComposeMigrations(migrations ...[]MigrationOptions) []MigrationOptions {
+    var initializer MigrationInitializer
+    var migrations []MigrationOptions
+
+    for opts := range migrations {
+        for opt := range opts {
+            switch v := opt.(type) {
+            case migrationInitializerWrapper:
+                if initializer == nil {
+                    initializer = v.ref
+                } else {
+                    initializer = func(data logical.StorageView) error {
+                        if err := initializer(data); err != nil {
+                            return err
+                        }
+
+                        return v.ref(data)
+                    }
+                }
+            case migrationWrapper:
+                migrations = append(migrations, opt)
+            default:
+                panic("unknown option type")
+            }
+        }
+    }
+
+    return []MigrationOptions{
+        WithInitializer(initializer),
+        migrations...
+    }
+}
+```
+
+##### Initializer
+
+An initializer performs setup of the initial storage layout:
+
+```go
+type MigrationInitializer func(data logical.StorageView) error
+```
+
+This assumes no data is present and the view is writable. This does not incur
+any log entries as initialization is one-time edge triggered; existing plugins
+will not have the initializer run and only new plugin mounts will execute
+this function.
+
+This initialization is not necessarily meant to be deterministic (random keys
+may be created, such as in the case of KVv2's barrier encryption) or
+reproducible. However, no further migration would be expected to be run after
+initializer is complete.
+
+##### Migration
+
+A migration is an object which satisfies the following interface:
+
+```go
+// Migration describes a bi-directional migration.
+//
+// A migration is able to be round-tripped if and only if
+// Upgrade().Lossless() == Downgrade().Lossless() == true.
+type Migration interface {
+    // Stable, unique identifier for this migration. It does not need
+    // to be globally unique across all possible migrations (e.g., a
+    // uuid), but needs to be unique within a plugin.
+    Identifier() string
+
+    // Version at which this migration was introduced. When upgrading
+    // to or past this version, this migration will be executed. The
+    // downgrade migration will be applied when downgrading similarly.
+    //
+    // A special `any` response will be used for one-time migrations;
+    // these would occur when performing, say, an upgrade from KVv1 to
+    // KVv2, and would be dynamically injected. This would not be allowed
+    // to be rolled back, though, a new `any` migration of the reverse
+    // could safely be applied. One-way migrations would not need to be
+    // globally unique and could be removed.
+    Version() string
+
+    // Once started (by calling MigrationStep.PendingObjects(...)),
+    // MigrationStep.Migrate(...) may be called in parallel for each
+    // returned object. These perform upgrades or downgrades of the
+    // relevant objects, based on initial detection. Because the
+    // subsystem guarantees isolation at this step, no new objects
+    // should appear.
+
+    Upgrade(data logical.Storage) MigrationStep
+    Downgrade(data logical.Storage) MigrationStep
+}
+
+type MigrationStep interface {
+    // Lossless returns true if the transformation preserves all data.
+    Lossless() bool
+
+    // PendingObjects returns a migration-aware list of objects that
+    // need to be upgraded.
+    //
+    // The migration framework will ensure exclusivity:
+    //
+    // 1. From other migrations on the same plugin.
+    // 2. From other writes (expiration manager, ...) on the same plugin.
+    //
+    // However, Migrate(...) may be called in parallel; each returned
+    // object should be uniquely descriptive and not interfere with
+    // migration of other objects. Each object's migration will be called
+    // with its own transaction; these will conflict if proper object
+    // separation is not maintained.
+    PendingObjects(ctx context.Context) ([]string, error)
+
+    // Migrates a single object. This may be called in parallel.
+    Migrate(ctx context.Context, object string) error
+}
+```
+
+Each migration is thus atomic (and can fail at any time, preventing
+continuation of any new migrations; existing in-flight migrations may fail
+or may succeed).
+
+Once added, a migration **may not** be removed; this will cause the migrator
+to fail on any subsequent migration as the removed migrator will have a
+corresponding log entry but no implementation would be available. This also
+holds true for changing the stable, unique identifier.
+
+###### Adding a field
+
+Common migrations such as adding a field at the top-level of a JSON struct
+could be done with a very generic, common migrator:
+
+```go
+type AddJSONField struct {
+    // Field name to add.
+    field string
+
+    // Compute default value from object.
+    value func(obj any) (any, error)
+
+    // Scanner
+    scanner func(ctx context.Context) ([]string, error)
+}
+```
+
+In `Upgrade()`, this could have an implementation like:
+
+```go
+type AddJSONFieldUpgrade struct { ... }
+
+func (a *AddJSONFieldUpgrade) Lossless() bool { return true }
+
+func (a *AddJSONFieldUpgrade) PendingObjects(ctx context.Context) ([]string, error) {
+    return a.parent.scanner(ctx)
+}
+
+func (a *AddJSONFieldUpgrade) Migrate(ctx context.Context, object string) error {
+    // Read object.
+    // JSON decode element.
+    // Determine if field needs to be added.
+    // Compute default value and attach.
+}
+```
+
+Notably, all new fields will need a migration: while the upgrade may be fast
+(especially if the field is expected to be defined with `omitempty`), we still
+need to ensure the field is removed on downgrade.
+
+#### Migrator
+
+Migrator is the core implementation of the subsystem. It'll expose the
+following methods:
+
+```go
+type Migrator interface {
+    // Pass context to the migrator not available to the logical backend:
+    //
+    // - A dedicated logger for the migration,
+    // - A metrics sync,
+    // - The current server version, and
+    // - Whether this is an upgrade.
+    //
+    // This also validates initializer & migrators.
+    Setup(logger hclog.Logger, metricSink metrics.MetricSink, version semver.Version, upgrade bool) error
+
+    // Check if we need to initialize.
+    NeedsInitialization(ctx context.Context) (bool, error)
+
+    // Initialize the subsystem, if necessary.
+    MaybeInitialize(ctx context.Context) error
+
+    // List which migrations have already been executed.
+    FinishedMigrations(ctx context.Context) ([]Migration, error)
+
+    // List all known migrations.
+    AvailableMigrations() ([]Migration)
+
+    // Calls AvailableMigrations, restricts to those at or before the current
+    // version, and then subsequently
+    PendingMigrations(ctx context.Context) ([]Migration, error)
+
+    // Handles a single migration.
+    DoMigration(ctx context.Context, migration Migration) error
+
+    // Handles all pending migrations.
+    Migrate(ctx context.Context) error
+}
+```
+
+By making `logical.Migrator` an interface that the backend does not interact
+with directly, it allows us to fully prevent the backend from accidentally
+attempting to call the migrator itself. It also allows us to implement
+different migration strategies (such as ones that bcakend into a single
+global `fairshare.JobManager` versus one that executes jobs in serial or
+parallel).
+
+##### Migrator Log Entries
+
+Initialization will be fenced with a log entry at `init`:
+
+```go
+type InitializeLog struct {
+    // Version it was initialized at.
+    Version string `json:"version"`
+
+    // When this migration was started.
+    Started *time.Time `json:"started"`
+
+    // When this migration was finished.
+    Finished *time.Time `json:"finished"`
+}
+```
+
+with semantics:
+
+- No entry exists: not yet initialized.
+- Entry exists, but `finished` is not set: failed initialization.
+- Entry exists, but `finished` is set: all good.
+
+Migration logs will appear under `migraitons/` with an incremental integer ID.
+
+Each migration log entry will be similar to the initialization log entry,
+though will contain the identifier of the migration, the version of the
+migrator that was run (as reported by the server), the version the migrator
+triggers at (as returned by the migrator). Note that `finished` will not be
+permanently fatal here (though, the plugin may not start if there's a pending
+migration). (See [edge cases](#edge-cases) above for more information on
+recovery).
+
+### Plugin
+
+All core, built-in plugins and all OpenBao-maintained community plugins will
+be expected to adopt the new migration. This includes the various subsystems
+of core, such as the policy store, expiration manager, namespace store, mount
+tables, and more.
+
+To implement this new interface, a plugin backend would also implement the
+new `logical.MigratableBackend` interface with a fairly simple implementation:
+
+```
+package pki
+
+func (b Backend) Migrator() (logical.Migrator, error) {
+    return logical.NewMigrator(
+        log,
+        data,
+        logical.WithInitializer(b.initializer),
+        logical.WithMigrator(&roleTimestampMigration{}),
+    )
+}
+```
+
+Ultimately the implementation of the migration will have to be specific to
+the plugin or subsystem. Any existing ad-hoc migrations will need to be
+converted to this standardized framework at the initial adoption point.
+Future migrations can be done incrementally.
+
+#### Developer tooling
+
+We can build proper tooling for testing migrations at the plugin level:
+
+- Establish a running catalog of initialization storage layouts, allowing us
+  to test upgrades in the future.
+  - Drift can be automatically detected based on whether a migration applies
+    to the existing (stored, post-run) initialization state.
+- Migration semantics can be automatically enforced.
+  - Lossless/lossy can be automatically detected and enforced.
+  - Uniqueness of names.
+  - Migration results being one-time and not continually resulting in reruns
+    over the same dataset.
+
+### Core
+
+Core will have several new hooks at which migrations will run:
+
+- On actual initialization, we'll do a global call to initialize everything
+  via the migration framework.
+- On active node startup, we'll do a global call to migrate everything.
+- When creating a new namespace, we'll run a migration to initialize the
+  namespace. This will recurse into things like mount tables, policies, and
+  other subsystems which create objects on namespace creation.
+- When mounting an engine, we'll run the migration engine for initialization
+  only.
+
+A new configuration value `disable_migrations` `(bool: false)` will be added
+which disallows the execution of any migrations on a running system: the node
+will fail to start if there are any pending migrations. This enforces that
+the offline CLI is used instead of running migrations on the live system.
+
+### CLI
+
+The CLI will have the following functions:
+
+- `bao operator logical-migrate {upgrade,downgrade} check` -- returning if
+  a migration is needed
+- `bao operator logical-migrate {upgrade,downgrade} lossless` -- returning if
+  a migration is lossless
+- `bao operator logical-migrate {upgrade,downgrade} exec` -- performing an
+  offline migration
+
+These are relative to the given `bao` binary version. These will take the
+full server configuration, though the listeners will not be started during
+execution of this.
+
+## Rationale and Alternatives
+
+This pushes OpenBao towards industry best practices around migrations. This
+is a much-needed practice and will allow for greater refactoring: migration
+code will not be littered throughout the engines, it will be cataloged
+properly, and we can understand migration risk more easily. This opens the
+possibility for allowing downgrades in a controlled manner.
+
+The alternative is to not ship this refactor. Other designs are within scope
+for this proposal; feel free to suggest changes to the interfaces.
+
+## Downsides
+
+This will require us to properly maintain (in the git tree) the current
+release version. Presently all builds incorrectly report this as `v2.0.0-HEAD`
+except on release. This will be important for semver comparisons for
+upgrade/downgrade testing.
+
+This does bring with it substantial refactoring to get onto the new engine.
+However, subsystems should be able to be onboarded incrementally once the
+base tooling exists. This could let us de-risk by performing certain
+upgrades, getting comfortable with the tooling, and then expanding over time.
+
+## Security Implications
+
+Offline migration, unlike the existing `bao operator migrate` which performs
+physical-level migration, will require seal information.
+
+## User/Developer Experience
+
+This should have no impact on the API contract with end-application
+developers; this only affects the availability of the system as a whole.
+
+### Edge Cases
+
+When initialization fails, we treat this as a fatal failure. The only option
+would be to delete the backend and retry. This means that when Core fails to
+initialize, we'll be unable to unseal later and an operator would need to
+remove any data and try again. This will have no impact on existing users,
+but would be a data safety behavior change for anyone standing up a new
+instance. Right now the behavior is non-deterministic based on where in
+initialization we failed: if barrier keyring is written but e.g., certain
+mount tables are created, we will fail to start, but a restart and re-unseal
+could potentially work in an available instance.
+
+When an operator upgrades an OpenBao instance (from v1 -> v3), but a migration
+fails for some reason, and the operator subsequently downgrades to a middle
+version (v2) without the upgrade being successful (from v1 -> v3), we'll
+enforce that the migrator runs a downgrade (from v3 -> v2), reversing only
+the applied upgrades in the v1 -> v3 migration, prior to completing any missing
+v1 -> v2 migrations. When a operator has specified only a single direction
+migration (e.g., `bao operator logical-migration upgrade` without the
+`--force` option), we'll fatally (though not permanently!) err.
+
+Most of these edge cases already exist, but are not clearly spelled out or
+applied in a standardized manner. By onboarding to a standard framework, we
+should be able to better handle any potential failures.
+
+## Unresolved Questions
+
+In the future, as core becomes more resilient we can introduce features such
+as:
+
+ - Incremental startup based on migration completion, limiting full
+   downtimes.
+ - Pre-upgrade migration testing (to indicate total runtime), coupled with
+   marking nodes read-only, performing a migration on the active node, and
+   then restarting standbys. This could be coupled with an in-memory cache
+   layer on standby nodes, allowing upgrading or downgrading all standby
+   nodes independently of the active node.
+   - In particular, on a subsystem level, we'll know what migrations would
+     need to be applied in the version delta of (active, standby) and can do
+     so on any invalidation to that subsystem. When such a migration is lossy,
+     we can flag the subsystem for automatic forwarding of requests up to the
+     active node. This gives us a path towards complete upgrade independence.
+
+Another issue is how to track one-time, configuration-driven upgrades such as
+the KVv1 to KVv2 migration (and any possible lossy downgrade). We currently
+suggest the `any` version keyword for this as a regular migration, but may want
+to introduce a separate interface for this.
+
+## Related Issues
+
+- https://github.com/openbao/openbao/pull/2865
+
+## Proof of Concept
+
+- n/a

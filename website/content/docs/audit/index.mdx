@@ -235,3 +235,226 @@ omitted):
   }
 }
 ```
+
+## Example Audit Events
+
+The following audit event pair is a request+response pair by the root token
+using the default (redacted) audit device configuration:
+
+```json
+{
+  "time": "2026-10-01T15:47:58.948934321Z",
+  "type": "request",
+  "auth": {
+    "client_token": "hmac-sha256:7611df9f7b3b23e9d301d077603b62fe327de23a107ed4f9b31d0b3aaf6a9da8",
+    "accessor": "sugdsipBeBJWWMe4gGFFikYQ",
+    "display_name": "root",
+    "policies": [
+      "root"
+    ],
+    "token_policies": [
+      "root"
+    ],
+    "policy_results": {
+      "allowed": true,
+      "granting_policies": [
+        {
+          "name": "root",
+          "namespace_id": "root",
+          "type": "acl"
+        }
+      ]
+    },
+    "token_type": "service",
+    "token_issue_time": "2026-10-01T10:47:48-05:00"
+  },
+  "request": {
+    "id": "6c8bd5f3-2daa-7db6-bef2-0e46527ea42a",
+    "client_id": "0DHqvq2D77kL2/JTPSZkTMJbkFVmUu0TzMi0jiXcFy8=",
+    "operation": "create",
+    "mount_point": "auth/userpass/",
+    "mount_type": "userpass",
+    "mount_accessor": "auth_userpass_19a50826",
+    "mount_running_version": "v2.0.0+builtin.bao",
+    "mount_class": "auth",
+    "client_token": "hmac-sha256:7611df9f7b3b23e9d301d077603b62fe327de23a107ed4f9b31d0b3aaf6a9da8",
+    "client_token_accessor": "sugdsipBeBJWWMe4gGFFikYQ",
+    "namespace": {
+      "id": "root"
+    },
+    "path": "auth/userpass/users/admin",
+    "data": {
+      "password": "hmac-sha256:b53cb72a287dd406dfc0fd51d9935740b804973db2b1c1b5ac9c9b7d2f7f392f",
+      "token_policies": "hmac-sha256:b53cb72a287dd406dfc0fd51d9935740b804973db2b1c1b5ac9c9b7d2f7f392f"
+    },
+    "remote_address": "127.0.0.1",
+    "remote_port": 38498
+  }
+}
+{
+  "time": "2026-10-01T15:47:58.992619493Z",
+  "type": "response",
+  "auth": {
+    "client_token": "hmac-sha256:7611df9f7b3b23e9d301d077603b62fe327de23a107ed4f9b31d0b3aaf6a9da8",
+    "accessor": "sugdsipBeBJWWMe4gGFFikYQ",
+    "display_name": "root",
+    "policies": [
+      "root"
+    ],
+    "token_policies": [
+      "root"
+    ],
+    "policy_results": {
+      "allowed": true,
+      "granting_policies": [
+        {
+          "name": "root",
+          "namespace_id": "root",
+          "type": "acl"
+        }
+      ]
+    },
+    "token_type": "service",
+    "token_issue_time": "2026-10-01T10:47:48-05:00"
+  },
+  "request": {
+    "id": "6c8bd5f3-2daa-7db6-bef2-0e46527ea42a",
+    "client_id": "0DHqvq2D77kL2/JTPSZkTMJbkFVmUu0TzMi0jiXcFy8=",
+    "operation": "create",
+    "mount_point": "auth/userpass/",
+    "mount_type": "userpass",
+    "mount_accessor": "auth_userpass_19a50826",
+    "mount_running_version": "v2.0.0+builtin.bao",
+    "mount_class": "auth",
+    "client_token": "hmac-sha256:7611df9f7b3b23e9d301d077603b62fe327de23a107ed4f9b31d0b3aaf6a9da8",
+    "client_token_accessor": "sugdsipBeBJWWMe4gGFFikYQ",
+    "namespace": {
+      "id": "root"
+    },
+    "path": "auth/userpass/users/admin",
+    "data": {
+      "password": "hmac-sha256:b53cb72a287dd406dfc0fd51d9935740b804973db2b1c1b5ac9c9b7d2f7f392f",
+      "token_policies": "hmac-sha256:b53cb72a287dd406dfc0fd51d9935740b804973db2b1c1b5ac9c9b7d2f7f392f"
+    },
+    "remote_address": "127.0.0.1",
+    "remote_port": 38498
+  },
+  "response": {
+    "mount_point": "auth/userpass/",
+    "mount_type": "userpass",
+    "mount_accessor": "auth_userpass_19a50826",
+    "mount_running_plugin_version": "v2.0.0+builtin.bao",
+    "mount_class": "auth"
+  }
+}
+```
+
+The same event on an insecure `log_raw=true` audit device looks like:
+
+```json
+{
+  "time": "2026-10-01T15:47:58.948980077Z",
+  "type": "request",
+  "auth": {
+    "client_token": "s.fcIk3xQAZZkpnfeBwrkawEaU",
+    "accessor": "sugdsipBeBJWWMe4gGFFikYQ",
+    "display_name": "root",
+    "policies": [
+      "root"
+    ],
+    "token_policies": [
+      "root"
+    ],
+    "policy_results": {
+      "allowed": true,
+      "granting_policies": [
+        {
+          "name": "root",
+          "namespace_id": "root",
+          "type": "acl"
+        }
+      ]
+    },
+    "token_type": "service",
+    "token_issue_time": "2026-10-01T10:47:48-05:00"
+  },
+  "request": {
+    "id": "6c8bd5f3-2daa-7db6-bef2-0e46527ea42a",
+    "client_id": "0DHqvq2D77kL2/JTPSZkTMJbkFVmUu0TzMi0jiXcFy8=",
+    "operation": "create",
+    "mount_point": "auth/userpass/",
+    "mount_type": "userpass",
+    "mount_accessor": "auth_userpass_19a50826",
+    "mount_running_version": "v2.0.0+builtin.bao",
+    "mount_class": "auth",
+    "client_token": "s.fcIk3xQAZZkpnfeBwrkawEaU",
+    "client_token_accessor": "sugdsipBeBJWWMe4gGFFikYQ",
+    "namespace": {
+      "id": "root"
+    },
+    "path": "auth/userpass/users/admin",
+    "data": {
+      "password": "admin",
+      "token_policies": "admin"
+    },
+    "remote_address": "127.0.0.1",
+    "remote_port": 38498
+  }
+}
+{
+  "time": "2026-10-01T15:47:58.992642978Z",
+  "type": "response",
+  "auth": {
+    "client_token": "s.fcIk3xQAZZkpnfeBwrkawEaU",
+    "accessor": "sugdsipBeBJWWMe4gGFFikYQ",
+    "display_name": "root",
+    "policies": [
+      "root"
+    ],
+    "token_policies": [
+      "root"
+    ],
+    "policy_results": {
+      "allowed": true,
+      "granting_policies": [
+        {
+          "name": "root",
+          "namespace_id": "root",
+          "type": "acl"
+        }
+      ]
+    },
+    "token_type": "service",
+    "token_issue_time": "2026-10-01T10:47:48-05:00"
+  },
+  "request": {
+    "id": "6c8bd5f3-2daa-7db6-bef2-0e46527ea42a",
+    "client_id": "0DHqvq2D77kL2/JTPSZkTMJbkFVmUu0TzMi0jiXcFy8=",
+    "operation": "create",
+    "mount_point": "auth/userpass/",
+    "mount_type": "userpass",
+    "mount_accessor": "auth_userpass_19a50826",
+    "mount_running_version": "v2.0.0+builtin.bao",
+    "mount_class": "auth",
+    "client_token": "s.fcIk3xQAZZkpnfeBwrkawEaU",
+    "client_token_accessor": "sugdsipBeBJWWMe4gGFFikYQ",
+    "namespace": {
+      "id": "root"
+    },
+    "path": "auth/userpass/users/admin",
+    "data": {
+      "password": "admin",
+      "token_policies": "admin"
+    },
+    "remote_address": "127.0.0.1",
+    "remote_port": 38498
+  },
+  "response": {
+    "mount_point": "auth/userpass/",
+    "mount_type": "userpass",
+    "mount_accessor": "auth_userpass_19a50826",
+    "mount_running_plugin_version": "v2.0.0+builtin.bao",
+    "mount_class": "auth"
+  }
+}
+```

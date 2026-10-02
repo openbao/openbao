@@ -99,6 +99,15 @@ func TestVersionedKV_Delete_Put(t *testing.T) {
 	if !parsed.After(time.Now().Add(-1*time.Minute)) || !parsed.Before(time.Now()) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
+
+	updatedTime, err := time.Parse(time.RFC3339Nano, resp.Data["updated_time"].(string))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !updatedTime.After(time.Now().Add(-1*time.Minute)) || !updatedTime.Before(time.Now()) {
+		t.Fatalf("Bad response: %#v", resp)
+	}
 }
 
 func TestVersionedKV_Undelete_Put(t *testing.T) {
@@ -199,6 +208,15 @@ func TestVersionedKV_Undelete_Put(t *testing.T) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 	if resp.Data["versions"].(map[string]any)["2"].(map[string]any)["deletion_time"].(string) != "" {
+		t.Fatalf("Bad response: %#v", resp)
+	}
+
+	updatedTime, err := time.Parse(time.RFC3339Nano, resp.Data["updated_time"].(string))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !updatedTime.After(time.Now().Add(-1*time.Minute)) || !updatedTime.Before(time.Now()) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 }

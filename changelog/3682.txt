@@ -1,0 +1,3 @@
+```release-note:improvement
+core/metrics: Add metric for the number of keys in the transit engine (grouped by mount).
+```

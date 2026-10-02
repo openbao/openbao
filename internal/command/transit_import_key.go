@@ -34,6 +34,7 @@ var (
 
 type TransitImportCommand struct {
 	*BaseCommand
+	keyFormat string
 }
 
 func (c *TransitImportCommand) Synopsis() string {
@@ -42,13 +43,15 @@ func (c *TransitImportCommand) Synopsis() string {
 
 func (c *TransitImportCommand) Help() string {
 	helpText := `
-Usage: bao transit import PATH KEY [options...]
+Usage: bao transit import [flags] PATH KEY [options...]
 
   Using the Transit key wrapping system, imports key material from
   the base64 encoded KEY (either directly on the CLI or via @path notation),
-  into a new key whose API path is PATH.  To import a new version into an
-  existing key, use import_version.  The remaining options after KEY (key=value
-  style) are passed on to the Transit create key endpoint.  If your
+  into a new key whose API path is PATH. Use -key-format=raw or -key-format=pem
+  with @path to read binary key material or an unencrypted private-key PEM file.
+  To import a new version into an existing key, use import-version. The remaining
+  options after KEY (key=value style) are passed on to the Transit create key
+  endpoint. If your
   system or device natively supports the RSA AES key wrap mechanism (such as
   the PKCS#11 mechanism CKM_RSA_AES_KEY_WRAP), you should use it directly
   rather than this command.
@@ -59,7 +62,22 @@ Usage: bao transit import PATH KEY [options...]
 }
 
 func (c *TransitImportCommand) Flags() *FlagSets {
-	return c.flagSet(FlagSetHTTP)
+	return transitImportFlags(c.BaseCommand, &c.keyFormat)
+}
+
+func transitImportFlags(c *BaseCommand, keyFormat *string) *FlagSets {
+	set := c.flagSet(FlagSetHTTP)
+	f := set.NewFlagSet("Import Options")
+	f.StringVar(&StringVar{
+		Name:       "key-format",
+		Target:     keyFormat,
+		Default:    "base64",
+		Completion: complete.PredictSet("base64", "raw", "pem"),
+		Usage: "Format of the source key: base64, raw, or pem. Raw and PEM require " +
+			"@path notation. Raw reads binary key material unchanged; PEM converts " +
+			"an unencrypted PKCS#8, PKCS#1 RSA, or SEC1 EC private key to PKCS#8 DER.",
+	})
+	return set
 }
 
 func (c *TransitImportCommand) AutocompleteArgs() complete.Predictor {
@@ -71,7 +89,7 @@ func (c *TransitImportCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *TransitImportCommand) Run(args []string) int {
-	return ImportKey(c.BaseCommand, "import", transitImportKeyPath, c.Flags(), args)
+	return ImportKey(c.BaseCommand, "import", transitImportKeyPath, c.Flags(), &c.keyFormat, args)
 }
 
 func transitImportKeyPath(s string, operation string) (path string, apiPath string, err error) {
@@ -90,7 +108,7 @@ func transitImportKeyPath(s string, operation string) (path string, apiPath stri
 type ImportKeyFunc func(s string, operation string) (path string, apiPath string, err error)
 
 // error codes: 1: user error, 2: internal computation error, 3: remote api call error
-func ImportKey(c *BaseCommand, operation string, pathFunc ImportKeyFunc, flags *FlagSets, args []string) int {
+func ImportKey(c *BaseCommand, operation string, pathFunc ImportKeyFunc, flags *FlagSets, keyFormat *string, args []string) int {
 	// Parse and validate the arguments.
 	if err := flags.Parse(args); err != nil {
 		c.UI.Error(err.Error())
@@ -119,20 +137,9 @@ func ImportKey(c *BaseCommand, operation string, pathFunc ImportKeyFunc, flags *
 		c.UI.Error(err.Error())
 		return 1
 	}
-	keyMaterial := args[1]
-	if keyMaterial[0] == '@' {
-		keyMaterialBytes, err := os.ReadFile(keyMaterial[1:])
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("error reading key material file: %v", err))
-			return 1
-		}
-
-		keyMaterial = string(keyMaterialBytes)
-	}
-
-	key, err := base64.StdEncoding.DecodeString(keyMaterial)
+	key, err := readTransitImportKey(args[1], *keyFormat)
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("error base64 decoding source key material: %v", err))
+		c.UI.Error(err.Error())
 		return 1
 	}
 	// Fetch the wrapping key

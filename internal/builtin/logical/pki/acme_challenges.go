@@ -18,6 +18,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -112,11 +113,94 @@ func buildDialerConfig(config *acmeConfigEntry) (*net.Dialer, error) {
 		return nil, fmt.Errorf("failed to build resolver: %w", err)
 	}
 
+	permitted, err := parseIPOrCIDRList(config.ChallengePermittedIPRanges)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse challenge_permitted_ip_ranges: %w", err)
+	}
+
+	excluded, err := parseIPOrCIDRList(config.ChallengeExcludedIPRanges)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse challenge_excluded_ip_ranges: %w", err)
+	}
+
 	return &net.Dialer{
 		Timeout:   10 * time.Second,
 		KeepAlive: -1 * time.Second,
 		Resolver:  resolver,
+
+		Control: func(_, address string, _ syscall.RawConn) error {
+			host, _, err := net.SplitHostPort(address)
+			if err != nil {
+				return err
+			}
+
+			ip := net.ParseIP(host)
+			if ip == nil || !ipAllowedForChallenge(permitted, excluded, ip) {
+				return fmt.Errorf("%w: %v is not permitted for challenge validation", ErrRejectedIdentifier, host)
+			}
+
+			return nil
+		},
 	}, nil
+}
+
+// ipAllowedForChallenge checks against the configured challenge excluded or permitted ranges.
+func ipAllowedForChallenge(permitted, excluded []*net.IPNet, ip net.IP) bool {
+	for _, ipNet := range excluded {
+		if ipNet.Contains(ip) {
+			return false
+		}
+	}
+
+	if len(permitted) == 0 {
+		return true
+	}
+
+	for _, ipNet := range permitted {
+		if ipNet.Contains(ip) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// parseIPOrCIDR accepts either CIDR notation or a bare IP, in which case its
+// treated as a single-address CIDR.
+func parseIPOrCIDR(entry string) (*net.IPNet, error) {
+	entry = strings.TrimSpace(entry)
+
+	if _, ipNet, err := net.ParseCIDR(entry); err == nil {
+		return ipNet, nil
+	}
+
+	suffix := "/32"
+	if strings.Contains(entry, ":") {
+		suffix = "/128"
+	}
+
+	if _, ipNet, err := net.ParseCIDR(entry + suffix); err == nil {
+		return ipNet, nil
+	}
+
+	return nil, fmt.Errorf("%v is not a valid CIDR or IP address", entry)
+}
+
+func parseIPOrCIDRList(entries []string) ([]*net.IPNet, error) {
+	nets := make([]*net.IPNet, 0, len(entries))
+	for _, entry := range entries {
+		ipNet, err := parseIPOrCIDR(entry)
+		if err != nil {
+			return nil, err
+		}
+		nets = append(nets, ipNet)
+	}
+	return nets, nil
+}
+
+func validateIPList(entries []string) error {
+	_, err := parseIPOrCIDRList(entries)
+	return err
 }
 
 // Validates a given ACME http-01 challenge against the specified domain,

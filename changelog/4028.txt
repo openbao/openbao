@@ -1,0 +1,3 @@
+```release-note:deprecation
+sdk/helper/certutil: Deprecate `ClusterKeyParams.X` and `ClusterKeyParams.Y` for removal in a future release.
+```

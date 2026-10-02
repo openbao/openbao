@@ -1,8 +1,7 @@
 {
   "name": "service-worker-authenticated-download",
   "keywords": [
-    "ember-addon",
-    "ember-service-worker-plugin"
+    "ember-addon"
   ],
   "ember-addon": {
     "before": [
@@ -11,11 +10,5 @@
       "history-support-middleware",
       "proxy-server-middleware"
     ]
-  },
-  "dependencies": {
-    "ember-cli-babel": "*",
-    "ember-auto-import": "*",
-    "ember-source": "*",
-    "ember-service-worker": "*"
   }
 }

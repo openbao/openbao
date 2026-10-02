@@ -408,7 +408,10 @@ func (b *backend) pathKeyCreate(ctx context.Context, req *logical.Request, data 
 				}
 
 				var buff bytes.Buffer
-				png.Encode(&buff, barcode)
+				err = png.Encode(&buff, barcode)
+				if err != nil {
+					return nil, fmt.Errorf("error encoding QR code image as PNG: %w", err)
+				}
 				b64Barcode := base64.StdEncoding.EncodeToString(buff.Bytes())
 				response = &logical.Response{
 					Data: map[string]any{

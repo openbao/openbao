@@ -38,7 +38,10 @@ func EncryptShares(input [][]byte, pgpKeys []string) ([]string, [][]byte, error)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error encrypting PGP message: %w", err)
 		}
-		pt.Close()
+		err = pt.Close()
+		if err != nil {
+			return nil, nil, fmt.Errorf("error finalizing PGP message; %w", err)
+		}
 		encryptedShares = append(encryptedShares, ctBuf.Bytes())
 	}
 
@@ -114,7 +117,9 @@ func DecryptBytes(encodedCrypt, privKey string) (*bytes.Buffer, error) {
 	}
 
 	ptBuf := bytes.NewBuffer(nil)
-	ptBuf.ReadFrom(md.UnverifiedBody)
+	if _, err := ptBuf.ReadFrom(md.UnverifiedBody); err != nil {
+		return nil, fmt.Errorf("error reading decrypted message: %w", err)
+	}
 
 	return ptBuf, nil
 }

@@ -109,7 +109,7 @@ func ReadPGPFile(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck
 	buf := bytes.NewBuffer(nil)
 	_, err = buf.ReadFrom(f)
 	if err != nil {

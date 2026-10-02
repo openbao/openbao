@@ -51,7 +51,7 @@ func PrepareTestContainer(t *testing.T, version string) (cleanup func(), cfg *ld
 		if err != nil {
 			return nil, err
 		}
-		defer conn.Close()
+		defer conn.Close() //nolint:errcheck
 
 		if _, err := client.GetUserBindDN(cfg, conn, "Philip J. Fry"); err != nil {
 			return nil, err

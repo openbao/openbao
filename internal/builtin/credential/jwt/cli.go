@@ -195,7 +195,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 		if err != nil {
 			return nil, err
 		}
-		defer listener.Close()
+		defer listener.Close() //nolint:errcheck
 	}
 
 	// Open the default browser to the callback URL.
@@ -267,7 +267,9 @@ func callbackHandler(c *api.Client, mount string, clientNonce string, doneCh cha
 		var err error
 
 		defer func() {
-			w.Write([]byte(response))
+			if _, err := w.Write([]byte(response)); err != nil {
+				fmt.Fprintf(os.Stderr, "error writing callback response: %v\n", err)
+			}
 			doneCh <- loginResp{secret, err}
 		}()
 
@@ -291,7 +293,7 @@ func callbackHandler(c *api.Client, mount string, clientNonce string, doneCh cha
 				response = errorHTML(summary, detail)
 				return
 			}
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck
 
 			// An id_token will never be part of a redirect GET, so remove it here too.
 			delete(data, "id_token")

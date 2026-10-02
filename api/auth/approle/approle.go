@@ -170,7 +170,7 @@ func (a *AppRoleAuth) readSecretIDFromFile() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("unable to open file containing secret ID: %w", err)
 	}
-	defer secretIDFile.Close()
+	defer secretIDFile.Close() //nolint:errcheck
 
 	limitedReader := io.LimitReader(secretIDFile, 1000)
 	secretIDBytes, err := io.ReadAll(limitedReader)

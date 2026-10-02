@@ -101,7 +101,7 @@ func (c *valkeyDBConnectionProducer) Init(ctx context.Context, initConfig map[st
 
 	if verifyConnection {
 		if _, err := c.Connection(ctx); err != nil {
-			c.close()
+			c.close() //nolint:errcheck
 			return nil, fmt.Errorf("error verifying connection: %w", err)
 		}
 	}

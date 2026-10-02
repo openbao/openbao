@@ -25,7 +25,7 @@ func testHTTPServer(
 	require.NoError(t, err)
 
 	server := &http.Server{Handler: handler}
-	go server.Serve(ln)
+	go server.Serve(ln) //nolint:errcheck
 
 	config := api.DefaultConfig()
 	config.Address = fmt.Sprintf("http://%s", ln.Addr())
@@ -34,8 +34,8 @@ func testHTTPServer(
 }
 
 func init() {
-	os.Setenv("BAO_TOKEN", "")
-	os.Setenv("VAULT_TOKEN", "")
+	_ = os.Unsetenv("BAO_TOKEN")
+	_ = os.Unsetenv("VAULT_TOKEN")
 }
 
 func TestLogin(t *testing.T) {
@@ -43,9 +43,9 @@ func TestLogin(t *testing.T) {
 	allowedPassword := "my-password"
 
 	content := []byte(allowedPassword)
-	tmpfile, err := os.CreateTemp("", "file-containing-password")
+	tmpfile, err := os.CreateTemp(t.TempDir(), "file-containing-password")
 	require.NoError(t, err)
-	defer os.Remove(tmpfile.Name()) // clean up
+
 	err = os.Setenv(passwordEnvVar, allowedPassword)
 	require.NoError(t, err)
 
@@ -71,12 +71,14 @@ func TestLogin(t *testing.T) {
 		err := json.NewDecoder(req.Body).Decode(&payload)
 		require.NoError(t, err)
 		if payload["password"] == allowedPassword {
-			w.Write(authBytes)
+			if _, err := w.Write(authBytes); err != nil {
+				t.Errorf("error writing auth response: %v", err)
+			}
 		}
 	}
 
 	config, ln := testHTTPServer(t, http.HandlerFunc(handler))
-	defer ln.Close()
+	defer ln.Close() //nolint:errcheck
 
 	config.Address = strings.ReplaceAll(config.Address, "127.0.0.1", "localhost")
 	client, err := api.NewClient(config)

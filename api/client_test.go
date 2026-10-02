@@ -148,7 +148,7 @@ func TestClientToken(t *testing.T) {
 	handler := func(w http.ResponseWriter, req *http.Request) {}
 
 	config, ln := testHTTPServer(t, http.HandlerFunc(handler))
-	defer ln.Close()
+	defer ln.Close() //nolint:errcheck
 
 	client, err := NewClient(config)
 	require.NoError(t, err)
@@ -166,10 +166,13 @@ func TestClientToken(t *testing.T) {
 
 func TestClientHostHeader(t *testing.T) {
 	handler := func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte(req.Host))
+		if _, err := w.Write([]byte(req.Host)); err != nil {
+			t.Errorf("error writing request host to response: %s", err)
+			return
+		}
 	}
 	config, ln := testHTTPServer(t, http.HandlerFunc(handler))
-	defer ln.Close()
+	defer ln.Close() //nolint:errcheck
 
 	config.Address = strings.ReplaceAll(config.Address, "127.0.0.1", "localhost")
 	client, err := NewClient(config)
@@ -183,7 +186,9 @@ func TestClientHostHeader(t *testing.T) {
 
 	// Copy the response
 	var buf bytes.Buffer
-	io.Copy(&buf, resp.Body)
+	if _, err := io.Copy(&buf, resp.Body); err != nil {
+		t.Fatalf("error copying response body to buffer: %s", err)
+	}
 
 	// Verify we got the response from the primary
 	modifiedAddress := strings.ReplaceAll(config.Address, "http://", "")
@@ -194,7 +199,7 @@ func TestClientBadToken(t *testing.T) {
 	handler := func(w http.ResponseWriter, req *http.Request) {}
 
 	config, ln := testHTTPServer(t, http.HandlerFunc(handler))
-	defer ln.Close()
+	defer ln.Close() //nolint:errcheck
 
 	client, err := NewClient(config)
 	require.NoError(t, err)
@@ -240,7 +245,7 @@ func TestClientDisableRedirects(t *testing.T) {
 
 			config, ln := testHTTPServer(t, http.HandlerFunc(respFunc))
 			config.DisableRedirects = test.disableRedirects
-			defer ln.Close()
+			defer ln.Close() //nolint:errcheck
 
 			client, err := NewClient(config)
 			require.NoError(t, err)
@@ -263,17 +268,19 @@ func TestClientDisableRedirects(t *testing.T) {
 
 func TestClientRedirect(t *testing.T) {
 	primary := func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("test"))
+		if _, err := w.Write([]byte("test")); err != nil {
+			t.Errorf("error writing response body: %s", err)
+		}
 	}
 	config, ln := testHTTPServer(t, http.HandlerFunc(primary))
-	defer ln.Close()
+	defer ln.Close() //nolint:errcheck
 
 	standby := func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Location", config.Address)
 		w.WriteHeader(307)
 	}
 	config2, ln2 := testHTTPServer(t, http.HandlerFunc(standby))
-	defer ln2.Close()
+	defer ln2.Close() //nolint:errcheck
 
 	client, err := NewClient(config2)
 	require.NoError(t, err)
@@ -287,7 +294,9 @@ func TestClientRedirect(t *testing.T) {
 
 	// Copy the response
 	var buf bytes.Buffer
-	io.Copy(&buf, resp.Body)
+	if _, err := io.Copy(&buf, resp.Body); err != nil {
+		t.Fatalf("error copying response body to buffer: %s", err)
+	}
 
 	// Verify we got the response from the primary
 	require.Equal(t, "test", buf.String())
@@ -660,7 +669,7 @@ func TestClientEnvNamespace(t *testing.T) {
 		seenNamespace = req.Header.Get(NamespaceHeaderName)
 	}
 	config, ln := testHTTPServer(t, http.HandlerFunc(handler))
-	defer ln.Close()
+	defer ln.Close() //nolint:errcheck
 
 	t.Setenv(EnvVaultNamespace, "test")
 
@@ -704,7 +713,9 @@ func TestParsingErrorCase(t *testing.T) {
 func TestClientTimeoutSetting(t *testing.T) {
 	t.Setenv(EnvVaultClientTimeout, "10")
 	config := DefaultConfig()
-	config.ReadEnvironment()
+	if err := config.ReadEnvironment(); err != nil {
+		t.Fatalf("error reading environment: %v", err)
+	}
 	_, err := NewClient(config)
 	require.NoError(t, err)
 }
@@ -930,7 +941,7 @@ func TestClientWithNamespace(t *testing.T) {
 		ns = req.Header.Get(NamespaceHeaderName)
 	}
 	config, ln := testHTTPServer(t, http.HandlerFunc(handler))
-	defer ln.Close()
+	defer ln.Close() //nolint:errcheck
 
 	// set up a client with a namespace
 	client, err := NewClient(config)

@@ -267,7 +267,7 @@ func (b *databaseBackend) invalidate(ctx context.Context, key string) {
 	switch {
 	case strings.HasPrefix(key, databaseConfigPath):
 		name := strings.TrimPrefix(key, databaseConfigPath)
-		b.ClearConnection(name)
+		b.ClearConnection(name) //nolint:errcheck
 	}
 }
 
@@ -302,7 +302,9 @@ func (b *databaseBackend) GetConnectionWithConfig(ctx context.Context, name stri
 	}
 	_, err = dbw.Initialize(ctx, initReq)
 	if err != nil {
-		dbw.Close()
+		if err := dbw.Close(); err != nil {
+			b.Logger().Warn("error closing database connection after initialization", "error", err)
+		}
 		return nil, err
 	}
 
@@ -327,7 +329,7 @@ func (b *databaseBackend) ClearConnection(name string) error {
 	db := b.connPop(name)
 	if db != nil {
 		// Ignore error here since the database client is always killed
-		db.Close()
+		db.Close() //nolint:errcheck
 	}
 	return nil
 }
@@ -338,7 +340,7 @@ func (b *databaseBackend) ClearConnectionId(name, id string) error {
 	db := b.connPopIfEqual(name, id)
 	if db != nil {
 		// Ignore error here since the database client is always killed
-		db.Close()
+		db.Close() //nolint:errcheck
 	}
 	return nil
 }
@@ -351,7 +353,7 @@ func (b *databaseBackend) CloseIfShutdown(db *dbPluginInstance, err error) {
 		// and simply defer the unlock.  Since we are attaching the instance and matching
 		// the id in the connection map, we can safely do this.
 		go func() {
-			db.Close()
+			db.Close() //nolint:errcheck
 
 			// Delete the connection if it is still active.
 			b.connPopIfEqual(db.name, db.id)
@@ -369,7 +371,7 @@ func (b *databaseBackend) clean(_ context.Context) {
 
 	connections := b.connClear()
 	for _, db := range connections {
-		go db.Close()
+		go db.Close() //nolint:errcheck
 	}
 	b.gaugeCollectionProcessStop.Do(func() {
 		if b.gaugeCollectionProcess != nil {

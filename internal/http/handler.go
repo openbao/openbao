@@ -819,7 +819,7 @@ func handleUIStub() http.Handler {
 	</html>
 	`
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte(stubHTML))
+		w.Write([]byte(stubHTML)) //nolint:errcheck
 	})
 }
 
@@ -986,7 +986,9 @@ func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 	maps.Copy(w.Header(), header)
 
 	w.WriteHeader(statusCode)
-	w.Write(retBytes)
+	if _, err := w.Write(retBytes); err != nil {
+		core.Logger().Error("error writing forwarded response", "error", err)
+	}
 }
 
 // request is a helper to perform a request and properly exit in the
@@ -1230,7 +1232,7 @@ func respondOk(w http.ResponseWriter, body any) {
 	} else {
 		w.WriteHeader(http.StatusOK)
 		enc := json.NewEncoder(w)
-		enc.Encode(body)
+		enc.Encode(body) //nolint:errcheck
 	}
 }
 
@@ -1265,7 +1267,7 @@ func respondOIDCPermissionDenied(w http.ResponseWriter) {
 	oidcResponse.ErrorDescription = errorDescription
 
 	enc := json.NewEncoder(w)
-	enc.Encode(oidcResponse)
+	enc.Encode(oidcResponse) //nolint:errcheck
 }
 
 func handleForwardIfStandby(core *vault.Core, handler http.Handler) http.Handler {

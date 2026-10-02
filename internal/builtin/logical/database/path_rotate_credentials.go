@@ -113,7 +113,7 @@ func (b *databaseBackend) pathRotateRootCredentialsUpdate() framework.OperationF
 		defer func() {
 			dbi.Unlock()
 			// Even on error, still remove the connection
-			b.ClearConnectionId(name, dbi.id)
+			b.ClearConnectionId(name, dbi.id) //nolint:errcheck
 		}()
 		defer func() {
 			// Close the plugin

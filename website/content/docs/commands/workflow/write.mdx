@@ -1,0 +1,71 @@
+---
+sidebar_label: write
+description: |-
+  The "workflow write" command creates or updates a workflow
+  under the given path. The workflow content can be defined via a HCL file
+  or read from the stdin.
+---
+
+# workflow write
+
+The `workflow write` command creates a new workflow or updates an existing
+workflow under the given PATH, using the workflow document read from
+WORKFLOW_FILE. Like all HCL documents, this may alternatively be JSON encoded.
+If WORKFLOW_FILE is `-`, the workflow is read from stdin.
+
+For details on the workflow syntax, please see the [profile engine
+documentation](../../concepts/profiles.mdx).
+
+## Examples
+
+Create or update a workflow named "my-workflow" from "./workflow.hcl" on the
+local disk:
+
+```shell-session
+$ bao workflow write my-workflow ./workflow.hcl
+Success! Wrote workflow: my-workflow
+```
+
+Create or update a workflow from stdin:
+
+```shell-session
+$ cat my-workflow.hcl | bao workflow write my-workflow -
+Success! Wrote workflow: my-workflow
+```
+
+Create a new workflow, failing if it already exists:
+
+```shell-session
+$ bao workflow write -cas=-1 my-workflow ./workflow.hcl
+```
+
+## Usage
+
+The following flags are available in addition to the [standard set of
+flags](../index.mdx) included on all commands.
+
+### Output options
+
+- `-field` `(string: "")` - Print only the field with the given name. Specifying
+  this option will take precedence over other formatting directives. The result
+  will not have a trailing newline making it ideal for piping to other processes.
+
+- `-format` `(string: "table")` - Print the output in the given format. Valid
+  formats are "table", "json", or "yaml". This can also be specified via the
+  `BAO_FORMAT` environment variable.
+
+### Command options
+
+- `-description` `(string: "")` - Textual description of this workflow for
+  operators.
+
+- `-allow-unauthenticated` `(bool: false)` - Specifies if this workflow is
+  allowed to be executed by unauthenticated users. Requires setting the
+  `allow_unauthenticated_workflows` configuration option.
+
+- `-cas-required` `(bool: false)` - Whether check-and-set semantics are required
+  to update this workflow.
+
+- `-cas` `(int: <optional>)` - Last version number for modifications. Set to
+  `-1` for creation of a new workflow. Required if the workflow has
+  `cas_required` set.

@@ -1,0 +1,185 @@
+---
+sidebar_label: Per-Namespace Storage
+description: |-
+  An OpenBao RFC to define per-namespace storage backends giving tenants
+  ownership over their data.
+---
+
+# Per-Namespace Storage Backends
+
+## Summary
+
+This document outlines the approach to implement per-namespace storage
+backends, allowing tenants better ownership over their data through a
+bring-your-own-storage (BYOS) approach. This has several added benefits
+downstream, such as avoiding issues with the PostgreSQL storage backend
+(as all data currently is stored in one mega table) and allowing for
+per-tenant quotas.
+
+## Problem Statement
+
+Along the route to achieve multi-region, namespace-based selective
+replication, we need to first set us up to segment storage per-namespace.
+This involves the creation and management of per-namespace partitions in the
+underlying storage system. In the case of Integrated Storage (Raft), this
+will be separate BBolt databases. For PostgreSQL, this will be separate
+tables within the same database.
+
+Currently it is out of scope to have multiple top-level storage backend
+instances (e.g., two or more copies of `physical.Backend`) especially of
+disparate types (e.g., mixing Integrated Storage and PostgreSQL).
+
+This makes solving certain types of problems easier:
+
+ - PostgreSQL can now use per-namespace tables rather than a single gigantic
+   unified K/V table, increasing performance for namespaces and decreasing
+   a noisy neighbor problem. This also helps with data locality concerns.
+ - Both Raft and PostgreSQL can implement namespace storage quotas as they can
+   easily check the size of a specific namespace/table, including engine
+   overhead.
+ - Removing a namespace's storage entires could be as easy as dropping a
+   table after revoking the relevant subsystem's leases.
+
+## User-facing Description
+
+From an operator, this RFC immediately proposes that namespace take another
+field:
+
+ - `storage` `(string)` - a configuration for per-namespace storage backends.
+
+Similar to the existing `seal` snippet, the will be a HCL/JSON configuration
+block based on the underlying server's configuration snippet construction
+(though, prevented from using environment variables). Currently only a single
+pseudo-type will be implemented:
+
+ - `partition`, indicating another table in the parent namespace's physical
+   backend. It takes no configuration options.
+
+Given that `partition` is the only option on a namespace right now, this means
+presently everything still uses the same physical backend.
+
+An additional option at the namespace level can be used to configure default
+storage settings:
+
+ - `default_create_partition` `(bool: <parent>)` - whether to default to
+   creating partitioned child namespaces if no storage block is specified on
+   the creation request.
+
+This option can then be included in server configuration to influence the root
+namespace. The default value can be inferred from the storage configuration
+based on whether required fields are provided.
+
+## Technical Description
+
+We'll introduce new functions to `sdk/physical.Backend`:
+
+```go
+Partition(
+    ctx context.Context, // a context
+    prefix string, // the prefix of storage to subset
+    accessor string, // the namespace accessor
+    uuid string, // the namespace's UUID
+    split bool, // whether data should migrated if existing
+) (
+    created bool, // whether the partition was created
+    err error,
+)
+
+RemovePartition(
+    ctx context.Context, // a context
+    prefix string, // the prefix of storage to un-partition
+    accessor string, // the namespace accessor
+    uuid string, // the namespace's UUID
+    preserve bool, // whether data should be preserved
+) (
+    removed bool, // whether the partition existed
+    err error,
+)
+```
+
+On loading, a storage backend will only be aware of its root namespace's
+storage. While loading child namespaces from storage, OpenBao will inform
+the underlying storage of partitions (through calling `Partition(...)`), at
+which point the underlying physical storage should become aware of different
+partitions of this backend. All operations occur as expected, with the
+physical backend handling dispatch to the implied table.
+
+In the future event of cross-cluster namespaces (through dedicated physical
+backends), it is recommended partitions be optionally locked (indicating that,
+from a HA perspective they're meant to float active nodes based on the
+partition's lock ability). Additionally, a more complex generic routing layer
+should be built which holds multiple `physical.Backend` instances with a
+`PathManager` to route requests against.
+
+The introduction of `split` and `preserve` parameters allow two-way migration
+at the storage level between a partition and its parent.
+
+### Raft
+
+Raft will use additional BBolt tables named after the UUID of the namespace.
+These will be stored in the same directory as the parent table. Notably,
+snapshots will now need to encode partition information known at the time of
+snapshot.
+
+### PostgreSQL
+
+PostgreSQL will introduce a new configuration option at the top-level:
+
+ - `namespace_table_prefix` `(string)` - a prefix to use for namespaces, after
+   which the namespace accessor will be appended. Requires the
+   `skip_create_table=false` option (the default). This will default to
+   `table_prefix` plus an underscore.
+
+### PebbleDB
+
+PebbleDB will use tables in separate subdirectories named after the UUID of
+the namespace.
+
+### inmem
+
+inmem will fake support for tables; it will just use a prefix on paths based
+on the namespace accessor.
+
+## Rationale and Alternatives
+
+This paves the way for several important pieces of work that the community
+is interested in, namely horizontal write scalability, improved performance,
+and more granular quotas.
+
+## Downsides
+
+This adds significant complexity to backend implementations in order to deal
+with partitions. However, for backends not supporting partitions, no
+additional work is needed other than returning `(false, nil)` from
+`Partition(...)` and `(true, nil)` from `RemovePartition(...)`.
+
+## Security Implications
+
+Partitions lie within the same boundary of the existing storage engine,
+whatever it may be.
+
+While possible, it is unlikely that someone has set up blanket allows to
+a database and specific denials to OpenBao tables. However, in that case,
+PostgreSQL is opt-in anyways.
+
+## User/Developer Experience
+
+No end-user experience change is expected, except perhaps faster performance
+in certain instances. Quota design will be a separate RFC.
+
+## Unresolved Questions
+
+n/a
+
+## Related Issues
+
+ - https://github.com/openbao/openbao/issues/3874 provided much inspiration for
+   this RFC, though was rewritten from scratch to avoid the use of AI.
+ - https://github.com/openbao/openbao/issues/787 has the first reference to
+   per-namespace storage backends.
+ - https://github.com/openbao/openbao/issues/1233 requested coarse quotas
+   related to disk space consumption.
+
+## Proof of Concept
+
+n/a

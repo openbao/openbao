@@ -1,0 +1,154 @@
+---
+sidebar_label: ML-KEM for Transit
+description: |-
+  An OpenBao RFC to add ML-KEM support in the Transit Secrets Engine.
+---
+
+# ML-KEM for Transit
+
+## Summary
+
+PQC is a strategic target for OpenBao with 2030 being the date much of the
+world has agreed to transition by. One of the last user-facing omissions is
+the lack of ML-KEM encryption support in the Transit Secrets Engine. This
+proposes refinements and changes to the existing APIs to support this.
+
+## Problem Statement
+
+ML-KEM poses an interesting challenge for OpenBao. While we initially landed
+ECDH support in preparation for KEMs in general, more features could've been
+added to make this generally useful to users. In particular, ML-KEM is not
+natively an encryption algorithm but more similar to a reduced round-trip
+version of key agreement, hence the name Key Encapsulation Mechanism. Building
+encryption on top of it requires additional primitives: a symmetric cipher
+at minimum and usually also a key derivation function.
+
+However, [ECDH support is undocumented](https://github.com/openbao/openbao/issues/1350)
+which hopefully gives us the ability to adjust it slightly to work better for
+the ML-KEM future.
+
+We propose two main forms of the API:
+
+ - A proper KEM mode, wherein the encapsulated key becomes a new secret key
+   in OpenBao. It is suggested that `derived=true` be used with these keys.
+ - An expedient cipher mode, wherein ciphertext is also encrypted along side
+   the KEM, more directly replacing RSA-like encryption semantics. An optional
+   context will allow injecting a KDF step as well.
+
+For all of these, HKDF will be used.
+
+## User-facing Description
+
+Users will now have more post-quantum encryption options at their fingertips.
+
+While it will likely take time for client applications to support these new
+algorithms, it should immediately allow things like Transit as an auto-unseal
+provider to be quantum ready.
+
+## Technical Description
+
+### API Endpoints
+
+#### Derivation
+
+The existing endpoint for ECDH is as follows:
+
+ - `derive-key/<base-key-name>`
+
+While possible to ACL around (using `allowed_parameters` or
+`required_parameters`), it is perhaps non-obvious to users who haven't had a
+careful read of ACL policy construction or can't express the exact
+configuration they'd like (due to lack of expressivity).
+
+We propose a new form of this API:
+
+ - `derive-key/<base-key-name>/<target-key-name>`
+
+which simplifies the ability to do ACLing.
+
+To `derive-key`, we'll introduce a new parameter, `kdf` (taking values `none`
+and `hkdf` -- the latter being the default), for key derivation. We'll add
+`context` and `salt` parameters for modifying the HKDF parameters.
+
+#### Encryption
+
+We also propose a new form of encrypt and decrypt for ML-KEM:
+
+ - `encrypt/<key-name>` (a public ML-KEM key)
+ - `decrypt/<key-name>` (a private ML-KEM key)
+
+If `context` is specified on the request, it will be used to apply HKDF
+on the key with context as the info value. We'll introduce a new parameter,
+`salt`, to optionally inject a salt value for HKDF derivation.
+
+The benefit of this encryption API is that the intermediate key(s) are not
+stored.
+
+We could also introduce a `peer_public_key` parameter to `encrypt`, allowing
+the above to be used with ECDH (though, for `encrypt`, your local private key
+will have to be specified, whose public counterpart will be supplied to the
+remote peer for `decrypt/...`). However, in the interest of furthering PQC,
+we'll decline to do this at this point in time.
+
+### Key Parameters
+
+We'll introduce a new parameter to keys, `derivable`, to signify that a key
+is allowed to be derived-into (defaulting to `true` only if the key did not
+exist and was created via one of the new endpoints after introduction of the
+parameter). Similarly, the response parameter `derived_key` is true if any
+version of the key was derived. Each version will now annotate the base key
+it came from including the counter party's public context and the algorithm
+used.
+
+### Breaking Changes
+
+Notably, ECDH support was added without introducing a new key type. Given
+that mixed-use ECDH + ECDSA probably should be frowned upon, we'll deprecate
+and remove support for ECDH-with-ECDSA keys and instead introduce new key
+types:
+
+ - `ecdh-p256`, `ecdh-p384`, `ecdh-p521`; and
+ - `x25519`.
+
+It isn't [immediately clear](https://crypto.stackexchange.com/questions/32517/ecdh-ecdsa-combination)
+that there's a problem with this, so if necessary, we can introduce
+alternatives:
+
+ - `ec-p256`, `ec-p384`, `ec-p521`; and
+ - `curve25519`.
+
+## Rationale and Alternatives
+
+This furthers the PQC agenda.
+
+## Downsides
+
+This breaks compatibility for undocumented APIs.
+
+## Security Implications
+
+This nominally improves the security:
+
+ 1. PQC for encryption
+ 2. Prevents mixed-use ECDH + ECDSA.
+
+## User/Developer Experience
+
+This gives rather flexible user experience for consumers of this API, both for
+long-term keys and default-safe one-shot encryption endpoints.
+
+## Unresolved Questions
+
+n/a
+
+## Related Issues
+
+ - [PQC RFC](pqc.mdx) stating that ML-KEM in Transit is still missing.
+ - [openbao#1350](https://github.com/openbao/openbao/issues/1350) has remained
+   opened for a while, noting a lack of documentation.
+ - [openbao#556](https://github.com/openbao/openbao/issues/556) is still not
+   formally closed.
+
+## Proof of Concept
+
+n/a

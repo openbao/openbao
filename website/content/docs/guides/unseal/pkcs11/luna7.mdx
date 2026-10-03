@@ -1,0 +1,481 @@
+---
+sidebar_label: Thales Luna HSM 7
+description: |-
+  This guide describes how to configure OpenBao auto-unsealing with a
+  Thales Luna 7 HSM  by using the Linux Luna HSM Client with a PKCS#11 interface.
+---
+
+# Thales Luna HSM
+
+This guide describes how to configure OpenBao auto-unsealing with a Thales Luna HSM using the Luna Linux client.
+
+## Overview
+
+1. Install Linux Luna HSM Client
+2. Client Registration with the HSM appliance
+3. Configure the Linux Luna Client
+4. Create the key material for OpenBao
+5. Configuring the PKCS#11 Seal
+6. Initializing OpenBao
+
+## Prerequisites
+
+You need the following to start:
+
+1. Linux Luna HSM Client archive file
+2. Access to a Luna HSM partition as Crypto Office with a PIN.
+3. The ability to perform client registration with the Luna HSM appliance
+4. Client certificates associated with your client registration
+5. Connection Details to the HSM
+
+## Installing Linux Luna HSM Client
+
+:::info
+
+For detailed information go to Thales official installation guide [Thales Linux Luna HSM Client installation guide](https://thalesdocs.com/gphsm/luna/7/docs/network/Content/install/client_install/linux_install.htm).
+
+:::
+
+From the archive root run the included installation script:
+
+```bash
+yes | ./install.sh -p network -c sdk
+```
+
+## Client Registration with the HSM appliance
+
+In order to connect to a Thales HSM Luna Appliance the client must connect using secure mTLS connection.
+This require certificates to be provisioned and the client to be registered in the HSM appliance.
+
+### Client Registration using tool lunacm
+
+:::info
+
+For detailed information about client registration go to Thales guide [LunaCM commands>clientconfig](https://thalesdocs.com/gphsm/luna/7/docs/network/Content/lunacm/commands/clientconfig/clientconfig_deploy.htm)
+
+:::
+
+A connection requires registration in the HSM appliance.
+The registration results in client certificates being downloaded to the Luna client.
+
+```bash
+lunacm:> clientconfig deploy -server lunahsm.openbao.com -user par1user1 -password P@ssw0rd -client testuserpar1 -partition par1
+```
+
+Verify that client is registered on the Luna appliance by running the 'client list' command:
+
+```bash
+lunash:> client list
+registered client 1: par1user1
+```
+
+Show the details of the client registered, running the following command:
+
+```bash
+lunash:> client show -client par1user1
+  ClientID: par1user1
+  Hostname: par1user1
+  Partitions: "par1"
+```
+
+
+#### Client Certificates
+
+The client certificates are used in the Cryptokey configuration file and is generated during client registration above.
+
+Make sure the client certificates match the paths in the configuration file.
+
+* /usr/safenet/lunaclient/cert/client/userKey.pem
+* /usr/safenet/lunaclient/cert/client/userCert.pem
+* /usr/safenet/lunaclient/cert/server/CAFile.pem
+
+
+## Configure the Linux Luna Client
+
+> For detailed information go to Thales official documentation [Configuration Reference](https://thalesdocs.com/gphsm/luna/7/docs/network/Content/install/client_install/config-file_summary.htm)
+
+The client needs a configuration file located at /etc/Chrystoki.conf
+
+| Configuration Setting    | Description                                 | Example                                                |
+| -----------------------  | --------------------------------------------|--------------------------------------------------------|
+| CkLog2.Enabled           | Enables the CryptoKey logging facility      | 0 for disabled                                         |
+| ClientPrivKeyFile        | Path to Client Registered Private Key       | /usr/safenet/lunaclient/cert/client/userKey.pem        |
+| ClientCertFile           | Path to Client Registered Public Cert       | /usr/safenet/lunaclient/cert/client/userCert.pem       |
+| ServerName00             | HSM Appliance hostname                      | hsm.internal.com                                       |
+
+
+```text
+Chrystoki2 = {
+   LibUNIX = /usr/safenet/lunaclient/lib/libcklog2.so;
+   LibUNIX64 = /usr/safenet/lunaclient/lib/libcklog2.so;
+}
+
+CkLog2 = {
+  LibUNIX=/usr/safenet/lunaclient/lib/libcklog2.so;
+  LibUNIX64 = /usr/safenet/lunaclient/lib/libCryptoki2_64.so;
+  Enabled=0;
+  File=/tmp/cklog.txt;
+  FileSize=100
+  Error=/tmp/error.txt;
+  NewFormat=1;
+  LoggingMask=ALL_FUNC;
+}
+
+Luna = {
+  DefaultTimeOut = 500000;
+  PEDTimeout1 = 100000;
+  PEDTimeout2 = 200000;
+  PEDTimeout3 = 20000;
+  KeypairGenTimeOut = 2700000;
+  CloningCommandTimeOut = 300000;
+  CommandTimeOutPedSet = 720000;
+}
+
+CardReader = {
+  RemoteCommand = 1;
+}
+
+Misc = {
+  PE1746Enabled = 0;
+  ValidateHost = 0;
+   ToolsDir = /usr/safenet/lunaclient/bin;
+   PartitionPolicyTemplatePath = /usr/safenet/lunaclient/data/partition_policy_templates;
+   ProtectedAuthenticationPathFlagStatus = 0;
+   MutexFolder = /usr/safenet/lunaclient/lock;
+   PluginModuleDir = /usr/safenet/lunaclient/plugins;
+}
+
+LunaSA Client = {
+   ReceiveTimeout = 20000;
+   SSLConfigFile = /usr/safenet/lunaclient/bin/openssl.cnf;
+
+   # Client Registered Private Key
+   ClientPrivKeyFile = /usr/safenet/lunaclient/cert/client/userKey.pem;
+
+   # Client Registered Public Certificate
+   ClientCertFile = /usr/safenet/lunaclient/cert/client/userCert.pem;
+
+   # HSM Public Certificate File
+   ServerCAFile = /usr/safenet/lunaclient/cert/server/CAFile.pem;
+
+   NetClient = 1;
+   TCPKeepAlive = 1;
+
+   # HSM Appliance Server Name
+   ServerName00 = $HSM_SERVER_NAME;
+   ServerPort00 = 1792;
+   ServerHtl00 = 0;
+}
+
+Secure Trusted Channel = {
+   ClientTokenLib = /usr/safenet/lunaclient/lib/libSoftToken.so;
+   SoftTokenDir = /usr/safenet/lunaclient/configData/token;
+   ClientIdentitiesDir = /usr/safenet/lunaclient/data/client_identities;
+   PartitionIdentitiesDir = /usr/safenet/lunaclient/data/partition_identities;
+}
+```
+
+### Verify connection
+
+You can verity that the connection works using the following commands:
+
+```bash
+/usr/safenet/lunaclient/bin/vtl listServers
+/usr/safenet/lunaclient/bin/vtl verify
+/usr/safenet/lunaclient/bin/lunacm
+```
+
+```bash
+pkcs11-tool --module /usr/safenet/lunaclient/lib/libCryptoki2_64.so --pin "1234" --list-slots
+pkcs11-tool --module /usr/safenet/lunaclient/lib/libCryptoki2_64.so --pin "1234" --list-objects
+```
+
+## Create the key material for OpenBao
+
+### AES
+
+```bash
+pkcs11-tool  --keygen --module /usr/safenet/lunaclient/lib/libCryptoki2_64.so --token-label "luna-partition" --pin "1234"  --key-type "AES:32" --label "bao-root-key-aes" -m "AES-KEY-GEN" --sensitive --login
+```
+
+### RSA
+
+```bash
+pkcs11-tool --keypairgen --module /usr/safenet/lunaclient/lib/libCryptoki2_64.so --token-label "luna-partition" --pin 1234 --key-type rsa:4096 --label "bao-root-key-rsa" --login
+```
+
+## Configuring the PKCS#11 Seal
+
+
+### AES
+
+```hcl
+# AES
+seal "pkcs11" {
+  lib            = "/usr/safenet/lunaclient/lib/libCryptoki2_64.so"
+  slot           = "0"
+  token_label    = "luna-partition"
+  pin            = "1234"                       # Crypto Officer PIN
+  key_label      = "bao-root-key-aes"           # AES with 256 bits (32 bytes)
+  mechanism      = "0x1087" # CKM_AES_GCM
+}
+```
+
+### RSA
+
+```hcl
+seal "pkcs11" {
+  lib            = "/usr/safenet/lunaclient/lib/libCryptoki2_64.so"
+  slot           = "0"
+  token_label    = "luna-partition"
+  pin            = "1234"         # Crypto Officer PIN
+  key_label      = "bao-root-key-rsa" #  RSA key with 4096 bits.
+  mechanism      = "0x0009" # RSA_PKCS_OAEP
+}
+```
+
+## Initializing OpenBao
+
+With the key material, Luna Linux HSM client configured and registered start the OpenBao server.
+
+```bash
+$ bao operator init
+```
+
+The server should automatically unseal following this initialization.
+
+At this stage we can include additional configuration using Self-Initialization.
+
+## Key Rotation
+
+We can change the seal key and create a new one.
+
+## 1. Generate a new key with a new label
+
+```bash
+pkcs11-tool --keypairgen --module /usr/safenet/lunaclient/lib/libCryptoki2_64.so --token-label $PARTITION_NAME --pin $CO_PIN --key-type rsa:4096 --label "bao-root-key-rsa-new" --login
+
+/usr/safenet/lunaclient/bin/cmu list -pin $CO_PIN
+```
+
+## 2. Update OpenBao's configuration with the new key label
+
+```bash
+cat > /etc/openbao.d/openbao.hcl<<EOF
+ui = true
+
+# Storage
+storage "raft" {
+  path = "/var/lib/openbao/"
+  node_id = "raft_node_1"
+}
+api_addr     = "http://127.0.0.1:8200"
+cluster_addr = "http://127.0.0.1:8201"
+
+# HTTPS listener
+listener "tcp" {
+  address       = "0.0.0.0:8200"
+  tls_disable   = true
+}
+
+# RSA
+seal "pkcs11" {
+  lib            = "/usr/safenet/lunaclient/lib/libCryptoki2_64.so"
+  slot           = "0"
+  token_label    = "$PARTITION_NAME"
+  pin            = "$CO_PIN"
+  key_label      = "bao-root-key-rsa-new"           #  RSA key with 4096 bits.
+  mechanism      = "0x0009" # RSA_PKCS_OAEP
+}
+EOF
+
+chown -R openbao:openbao /etc/openbao.d/openbao.hcl
+```
+
+## 3. Restart the OpenBao instance
+
+```bash
+systemctl restart openbao
+journalctl -u openbao
+```
+
+```bash
+export BAO_ADDR="http://127.0.0.1:8200"
+bao status
+
+Key                      Value
+---                      -----
+Seal Type                pkcs11
+Recovery Seal Type       shamir
+Initialized              true
+Sealed                   false
+Total Recovery Shares    5
+Threshold                3
+Version                  2.5.3-1.el9
+Build Date               2026-04-21
+Storage Type             raft
+Cluster Name             vault-cluster-f5337f8f
+Cluster ID               acf11b4e-afad-6be9-5865-503f3bece203
+HA Enabled               true
+HA Cluster               n/a
+HA Mode                  standby
+Active Node Address      <none>
+Raft Committed Index     34
+Raft Applied Index       34
+```
+
+```bash
+> journalctl -u openbao|grep upgrading
+
+May 01 19:25:11 63f7f2d57ad7 bao[868]: 2026-05-01T19:25:11.748Z [INFO]  core.autoseal: upgrading recovery key
+May 01 19:25:24 63f7f2d57ad7 bao[868]: 2026-05-01T19:25:24.793Z [INFO]  core.autoseal: upgrading stored keys
+```
+
+## Appendix
+
+This appendix contain detailed command to do the setup.
+It uses a RHEL container as its base.
+
+### Setting up the server
+
+```bash
+podman run -d --name=ubi9 \
+        -v $(pwd):/host \
+        -v $(pwd)/certs:/certs \
+        -e HSM_SERVER_NAME=$HSM_SERVER_NAME \
+        -e PARTITION_NAME=$PARTITION_NAME \
+        -e CO_PIN=$CO_PIN \
+        --systemd true \
+        --replace registry.access.redhat.com/ubi9/ubi-init
+
+podman exec -it ubi9 /bin/bash
+subscription-manager register
+dnf update -y && dnf install -y wget gettext opensc vim
+```
+
+### Install Luna Linux Client
+
+The installation package include a installation script file we can use.
+
+```bash
+cd /host/luna-linux-client
+yes|./install.sh -p network -c sdk
+```
+
+# Install Luna Client Certificates
+
+We have pre-registered the client in ths HSM, and the required certificates are availble under the /certs directory.
+
+```bash
+yes|cp /certs/userKey.pem /usr/safenet/lunaclient/cert/client/userKey.pem;
+yes|cp /certs/userCert.pem /usr/safenet/lunaclient/cert/client/userCert.pem;
+yes|cp /certs/CAFile.pem /usr/safenet/lunaclient/cert/server/CAFile.pem;
+ls -l /usr/safenet/lunaclient/cert/client/*.pem;
+ls -l /usr/safenet/lunaclient/cert/server/*.pem;
+md5sum /usr/safenet/lunaclient/cert/client/*.pem;
+md5sum /usr/safenet/lunaclient/cert/server/*.pem;
+```
+
+# Linux Client Configuration File
+
+You can apply  HSM specific settings to the client configuration file using a template, and our environment variables.
+
+```bash
+rm -f Chrystoki.conf||true
+envsubst < /host/Chrystoki.conf.tpl > Chrystoki.conf
+cp -f Chrystoki.conf /etc/Chrystoki.conf
+```
+
+# Verify Luna HSM appliance connection
+
+To verify that the client connection and Crypto Officer acccess work by using the following commands:
+
+```bash
+/usr/safenet/lunaclient/bin/vtl listServers
+/usr/safenet/lunaclient/bin/vtl verify
+/usr/safenet/lunaclient/bin/lunacm
+pkcs11-tool --module /usr/safenet/lunaclient/lib/libCryptoki2_64.so  --pin $CO_PIN --list-slots
+pkcs11-tool --module /usr/safenet/lunaclient/lib/libCryptoki2_64.so  --pin $CO_PIN --list-objects
+```
+
+# Cleanup HSM keys if needed
+
+The luna command `cmu` makes it very easy to remove any keys using their handle.
+
+```bash
+/usr/safenet/lunaclient/bin/cmu list -pin $CO_PIN
+```
+
+```bash
+/usr/safenet/lunaclient/bin/cmu delete -pin $CO_PIN -handle=3948 -force
+```
+
+
+# Create Key Material
+
+We can create key material in the Luna HSM using pkcs11-tool.
+
+```bash
+/usr/safenet/lunaclient/bin/cmu list -pin $CO_PIN
+
+pkcs11-tool  --keygen --module /usr/safenet/lunaclient/lib/libCryptoki2_64.so --token-label $PARTITION_NAME --pin $CO_PIN  --key-type "AES:32" --label "bao-root-key-aes" -m "AES-KEY-GEN" --sensitive --login
+
+pkcs11-tool --keypairgen --module /usr/safenet/lunaclient/lib/libCryptoki2_64.so --token-label $PARTITION_NAME --pin $CO_PIN --key-type rsa:4096 --label "bao-root-key-rsa" --login
+
+/usr/safenet/lunaclient/bin/cmu list -pin $CO_PIN
+```
+
+# Install OpenBao
+
+We can install Openbao after we have installed the Luna linux client.
+Openbao needs access to Luna client files using the local `hsmuser` group.
+
+```bash
+wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+dnf install epel-release-latest-9.noarch.rpm -y
+dnf install openbao -y
+systemctl status openbao
+usermod -aG hsmusers openbao
+```
+# Seal Configuration
+
+```bash
+systemctl status openbao
+```
+
+# Using RSA key material
+
+```bash
+cat > /etc/openbao.d/openbao.hcl<<EOF
+ui = true
+
+# Storage
+storage "raft" {
+  path = "/var/lib/openbao/"
+  node_id = "raft_node_1"
+}
+api_addr     = "http://127.0.0.1:8200"
+cluster_addr = "http://127.0.0.1:8201"
+
+# HTTPS listener
+listener "tcp" {
+  address       = "0.0.0.0:8200"
+  tls_disable   = true
+}
+
+# RSA
+seal "pkcs11" {
+  lib            = "/usr/safenet/lunaclient/lib/libCryptoki2_64.so"
+  slot           = "0"
+  token_label    = "$PARTITION_NAME"
+  pin            = "$CO_PIN"
+  key_label      = "bao-root-key-rsa"           #  RSA key with 4096 bits.
+  mechanism      = "0x0009" # RSA_PKCS_OAEP
+}
+EOF
+
+chown -R openbao:openbao /etc/openbao.d/openbao.hcl
+systemctl start openbao
+journalctl -u openbao
+systemctl status openbao
+```

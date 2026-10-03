@@ -1,0 +1,179 @@
+---
+sidebar_label: Storage Improvements
+description: |-
+  An OpenBao RFC to add describe further storage improvements at the physical
+  layer to improve performance of certain queries.
+---
+
+# Storage Improvements
+
+## Summary
+
+This RFC proposes several new storage operations at the `sdk/physical` layer
+to improve performance of certain common queries:
+
+ - `Scan(...)`, to recursively list entries, with pagination;
+ - `ListWithData(...)` and `ScanWithData(...)` as counterparts to
+   `ListPage(...)` and `Scan(...)` but returning `[]*physical.Entry` instead
+   of just `[]string` to save further lookups;
+- `Clear(...)` to recursively clear a view and remove all of its entries;
+- `Related(...)` to decide if two `logical.Storage` instances (e.g.,
+  transactions or otherwise) share a parent in their hierarchy.
+
+## Problem Statement
+
+As described in [many](paginated-lists.mdx) [previous](transactions.mdx)
+[RFCs](scan-operation.mdx), the simple KV model limits us substantially in
+certain scenarios. While we've implemented most of these operations in various
+ways, we're face two problems:
+
+ - For Raft, we're currently prevented from committing writable transaction
+   with the existing component forms of these operations, due to the size of
+   the resulting transaction log.
+ - For PostgreSQL, we're leaving performance on the table, requiring
+   additional potentially high-latency round-trips to the server to read a
+   tree of entries, remove a tree of entries, &c.
+
+## User-facing Description
+
+From an API consumer's perspective, there's no change other than perhaps
+better performance of certain KVv2 APIs.
+
+From a plugin developer's perspective, the ability to perform what used to be
+multiple composite operations forming a single logical action will help with
+transaction use in many scenarios, e.g., [search
+indexing](efficient-search-components.mdx).
+
+## Technical Description
+
+Each operation will be implemented in the `sdk/physical` layer for all existing
+backends and then will be exposed in the `sdk/logical` layer for use by plugins
+and Core.
+
+:::info
+
+This RFC expands an existing implicit assumption of physical backends today
+and makes it explicit:
+
+Every operation in the `sdk/physical.Backend` interface is individually atomic
+even if not executed in an interactive transaction. This implies some level of
+transactional storage support in the backend.
+
+:::
+
+### Operations
+
+#### `Scan`
+
+Mirroring the existing `ListPage(...)`, `Scan(...)` takes the following
+parameters:
+
+ - `ctx`, a context;
+ - `prefix`, a storage prefix to scan ending in `/`;
+ - `after`, an arbitrary element to seek after; and
+ - `limit`, a maximum number of entries.
+
+Note that `after` may be relative to a subdirectory and spill over into
+siblings of that given directory if `limit` allows.
+
+#### `ListWithData` and `ScanWithData`
+
+The `ListWithData(...)` and `ScanWithData(...)` operations, like their
+`ListPage(...)` and new `Scan(...)` counterparts, take the paginated listing
+parameters but, rather than yielding `[]string`, yield a `[]*physical.Entry`
+(or `[]*logical.Entry` in the case of `sdk/logical.Storage`).
+
+In particular, this makes it a more expensive operation potentially (depending
+on the value of `limit` and the size of the operation) but is much more
+performant than a `ListPage(...)` or `Scan(...)` operation followed by many
+`Get(...)` operations per entry.
+
+#### `Clear`
+
+This operation takes the same parameters as `List(...)`:
+
+ - `ctx`, a context;
+ - `prefix`, a storage prefix to remove in its entirety ending in `/`.
+
+but instead removes all elements below this prefix. This is otherwise
+equivalent to calling `List(...)` with many `Delete(...)` operations in a
+loop, but with the added benefit of not requiring a transaction for
+atomicity.
+
+#### `Related`
+
+With the existence of namespace seals and likely introduction of per-namespace
+storage backends, Core might have two `logical.Storage` implementations and
+need to check if the related storages have a common parent (and if so, if a
+move operation can be fast-tracked). With additional layers, there becomes
+more to check in this decision.
+
+It is suggested that the same `physical` yield true but different `barrier`s
+over the same `physical` yield `false`.
+
+### Storage Implementations
+
+#### Raft
+
+In the read-only portion of the transaction, new condensed verification
+entires can be created for these operations, yielding a single hash over
+all values. BBolt (and any future alternative of PebbleDB) would be fast
+enough to re-issue the underlying reads (especially with a `ScanData(...)`
+accumulator) and compute a single hash for the entries. The applying server
+can then re-issue the full operation if verification succeeds.
+
+#### PostgreSQL
+
+The PostgreSQL database backend will need several new queries to handle these
+operations. None of them should be especially excessive, though likely will
+take care to do.
+
+#### PebbleDB
+
+With PebbleDB, in addition to the replay nature of Raft, we'll also need to
+handle pre-commit invalidation notifications accordingly.
+
+#### Inmem
+
+It is not immediately clear how to implement these in the non-PebbleDB legacy
+`inmem` storage that still exists under `sdk/` (for use with external plugins)
+today.
+
+## Rationale and Alternatives
+
+- The `Move` and `MoveTree` operation, while likely useful for some scenarios,
+  are harder to implement in a useful manner. For instance, the
+  `MoveTree(...)` operation isn't necessarily helpful for
+  [openbao#3660](https://github.com/openbao/openbao/pull/3660) as there's no
+  easy way to make this atomic across different barriers and backends. At
+  best, the combination of `ScanData(...)` + `Clear(...)` will speed this up
+  significantly.
+
+## Downsides
+
+This further diverges us from a simple K/V store, making adding other backends
+more difficult. However, it gives us more useful tools for improving the
+performance of OpenBao without resorting to horizontal scalability (especially
+write performance during sensitive operations).
+
+## Security Implications
+
+None other than the ability to potentially perform more damage more quickly,
+without having to wait for individual operations to succeed as much.
+
+## User/Developer Experience
+
+n/a
+
+## Unresolved Questions
+
+n/a
+
+## Related Issues
+
+Subsets of this proposal have been discussed in the Horizontal Scalability WG
+and [on Zulip](https://linuxfoundation.zulipchat.com/#narrow/channel/574533-openssf-openbao-wg/topic/Postgres.20recommendation/near/622614948).
+
+## Proof of Concept
+
+n/a

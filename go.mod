@@ -23,6 +23,8 @@ replace github.com/openbao/openbao/sdk/v2 => ./sdk
 
 replace github.com/boltdb/bolt => ./internal/helper/stubbolt
 
+replace github.com/gdgvda/cron v0.7.0 => github.com/etisserant/cron v0.7.1-0.20261116091955-6c0a9322750e
+
 require (
 	cel.dev/cel-go v0.33.1
 	cloud.google.com/go/monitoring v1.31.0
@@ -35,6 +37,7 @@ require (
 	github.com/duosecurity/duo_api_golang v0.3.0
 	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/fatih/color v1.19.0
+	github.com/gdgvda/cron v0.7.0
 	github.com/go-jose/go-jose/v4 v4.1.8
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/go-test/deep v1.1.2

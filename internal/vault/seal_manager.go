@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
@@ -100,49 +101,97 @@ func (sm *SealManager) Reset() {
 	sm.rotationConfigByNamespace = map[string]*rotationConfig{}
 }
 
-// SetSeal creates a seal with provided config and sets it as provided namespace seal;
-// Initializes seal, creating security barrier and persisting seal config.
+// SetSeal creates or reconfigures the seal for the given namespace.
+// If no seal is registered yet, a new barrier is created. If a seal of the
+// same type is already registered, it is replaced so that updated credentials
+// (e.g. a rotated auto-seal token) take effect without a server restart.
+// For auto-seal types the new wrapper must decrypt the existing stored barrier
+// key; if not, the call fails so the namespace is never left unrecoverable.
+// Changing the seal type is not supported and returns an error; that path is
+// reserved for a future seal-migration epic.
 func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace, writeToStorage bool) error {
-	sm.lock.Lock()
-	defer sm.lock.Unlock()
-
-	// Check if we have the seal present; if so, don't set any seal
-	// information as we don't want to overwrite what we have.
-	if _, ok := sm.sealByNamespace[ns.UUID]; ok {
-		return nil
-	}
-
+	// Validate and build the seal before acquiring the write lock. Auto-seal
+	// wrappers (e.g. transit) call Encrypt during SetConfig to validate the
+	// key, which re-enters this server and needs sm.lock.RLock for the
+	// namespace barrier lookup. Holding sm.lock.Lock() here would deadlock.
 	if err := sealConfig.Validate(); err != nil {
 		return fmt.Errorf("invalid seal configuration: %w", err)
 	}
 
+	var nsSeal Seal
+	if sealConfig.Type != "" && sealConfig.Type != "shamir" {
+		wrapper, _, err := sm.core.kmsPluginCatalog.ConfigureWrapper(ctx, sealConfig.Type,
+			wrapping.WithConfigMap(sealConfig.KMSConfig),
+			wrapping.WithDisallowEnvVars(true))
+		if err != nil {
+			return fmt.Errorf("failed to configure %q seal for namespace %q: %w", sealConfig.Type, ns.Path, err)
+		}
+		access := vaultseal.NewAccess(wrapper)
+		autoSeal, err := NewAutoSeal(access)
+		if err != nil {
+			_ = access.Finalize(ctx)
+			return fmt.Errorf("failed to create auto-seal for namespace %q: %w", ns.Path, err)
+		}
+		nsSeal = autoSeal
+	} else {
+		nsSeal = NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+	}
+
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
+	// Determine whether this is a creation or a same-type reconfiguration.
+	var prevSeal Seal
+	if existingSeal, ok := sm.sealByNamespace[ns.UUID]; ok {
+		if existingSeal.BarrierType() != nsSeal.BarrierType() {
+			_ = nsSeal.Finalize(ctx)
+			return fmt.Errorf("cannot change seal type for namespace %q: migration from %q to %q is not supported",
+				ns.Path, existingSeal.BarrierType(), nsSeal.BarrierType())
+		}
+		prevSeal = existingSeal
+	} else {
+		nsBarrier := barrier.NewAESGCMBarrier(sm.core.physical, ns)
+		sm.barrierByNamespacePath.Insert(ns.Path, nsBarrier)
+	}
+
 	metaPrefix := NamespaceStoragePathPrefix(ns)
+	nsSeal.SetCore(sm.core)
+	nsSeal.SetMetaPrefix(metaPrefix)
 
-	// Seal type would depend on the provided arguments
-	defaultSeal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
-	defaultSeal.SetCore(sm.core)
-	defaultSeal.SetMetaPrefix(metaPrefix)
-
-	// The configuration access should always at least use the parent's seal
-	// configuration information.
 	parent, ok := ns.ParentPath()
 	if !ok {
+		_ = nsSeal.Finalize(ctx)
 		return fmt.Errorf("cannot seal the root namespace via this approach")
 	}
 	parentBarrier := sm.namespaceBarrierByLongestPrefix(parent)
-	defaultSeal.SetConfigAccess(parentBarrier)
+	nsSeal.SetConfigAccess(parentBarrier)
 
 	ctx = namespace.ContextWithNamespace(ctx, ns)
-	if err := defaultSeal.Init(ctx); err != nil {
+	if err := nsSeal.Init(ctx); err != nil {
+		_ = nsSeal.Finalize(ctx)
 		return fmt.Errorf("error initializing seal: %w", err)
 	}
 
-	nsBarrier := barrier.NewAESGCMBarrier(sm.core.physical, ns)
-	sm.barrierByNamespacePath.Insert(ns.Path, nsBarrier)
-	sm.sealByNamespace[ns.UUID] = defaultSeal
+	// For auto-seal reconfiguration, verify the new wrapper can decrypt the
+	// existing stored barrier key before committing. This enforces that only
+	// credential rotation is supported -- a key change requires a full migration.
+	if prevSeal != nil && nsSeal.BarrierType() != vaultseal.WrapperTypeShamir {
+		if _, err := nsSeal.GetStoredKeys(ctx); err != nil {
+			_ = nsSeal.Finalize(ctx)
+			return fmt.Errorf("new seal cannot read existing stored keys for namespace %q: "+
+				"the KMS key must remain unchanged; only credential rotation is supported: %w", ns.Path, err)
+		}
+	}
+
+	// Init succeeded (and stored keys verified for auto-seal): release the
+	// previous seal only now so the namespace is never left without a working seal.
+	if prevSeal != nil {
+		_ = prevSeal.Finalize(ctx)
+	}
+	sm.sealByNamespace[ns.UUID] = nsSeal
 
 	if writeToStorage {
-		if err := defaultSeal.SetBarrierConfig(ctx, sealConfig); err != nil {
+		if err := nsSeal.SetBarrierConfig(ctx, sealConfig); err != nil {
 			return fmt.Errorf("failed to set barrier config: %w", err)
 		}
 	}

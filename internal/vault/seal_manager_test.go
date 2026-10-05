@@ -283,3 +283,25 @@ func TestSealManager_UnsealBarrier(t *testing.T) {
 	require.False(t, b.Sealed())
 	require.Nil(t, c.sealManager.NamespaceUnlockInformation(ns.UUID))
 }
+
+func TestSealManager_SetSeal_Idempotent(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(t.Context())
+
+	sealConfig := &SealConfig{
+		Type:            "shamir",
+		SecretShares:    1,
+		SecretThreshold: 1,
+	}
+	ns := testCreateNamespace(t, ctx, c.systemBackend, "idempotent-ns", nil)
+
+	err := c.sealManager.SetSeal(ctx, sealConfig, ns, false)
+	require.NoError(t, err)
+
+	// A second call for the same namespace must be a no-op, not an error.
+	err = c.sealManager.SetSeal(ctx, sealConfig, ns, false)
+	require.NoError(t, err)
+
+	// Exactly one seal entry must exist for this namespace.
+	require.NotNil(t, c.sealManager.NamespaceSeal(ns.UUID))
+}

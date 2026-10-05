@@ -42,3 +42,63 @@ func TestDefaultSeal_Config(t *testing.T) {
 		t.Fatal("config mismatch")
 	}
 }
+
+func TestSealConfig_Validate_KMS(t *testing.T) {
+	cases := []struct {
+		name    string
+		config  *SealConfig
+		wantErr bool
+	}{
+		{
+			name:    "shamir with valid shares and threshold",
+			config:  &SealConfig{Type: "shamir", SecretShares: 3, SecretThreshold: 2},
+			wantErr: false,
+		},
+		{
+			name:    "empty type treated as shamir, valid",
+			config:  &SealConfig{SecretShares: 1, SecretThreshold: 1},
+			wantErr: false,
+		},
+		{
+			name:    "shamir with zero shares fails validation",
+			config:  &SealConfig{Type: "shamir", SecretShares: 0},
+			wantErr: true,
+		},
+		{
+			name:    "transit skips share and threshold checks",
+			config:  &SealConfig{Type: "transit", KMSConfig: map[string]string{"key_name": "my-key"}},
+			wantErr: false,
+		},
+		{
+			name:    "awskms skips share and threshold checks",
+			config:  &SealConfig{Type: "awskms"},
+			wantErr: false,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.config.Validate()
+			if tc.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestSealConfig_Clone_KMSConfig(t *testing.T) {
+	orig := &SealConfig{
+		Type: "transit",
+		KMSConfig: map[string]string{
+			"key_name": "test-key",
+			"address":  "http://vault:8200",
+		},
+	}
+	clone := orig.Clone()
+	require.Equal(t, orig.KMSConfig, clone.KMSConfig)
+
+	// Mutating the clone must not affect the original.
+	clone.KMSConfig["key_name"] = "mutated"
+	require.Equal(t, "test-key", orig.KMSConfig["key_name"])
+}

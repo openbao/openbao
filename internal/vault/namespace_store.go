@@ -527,6 +527,17 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 
 	var sealKeyShares [][]byte
 	if !exists {
+		// Unlock before SetSeal, InitializeBarrier, and initializeNamespace.
+		// Two reasons: (1) KMS wrappers (e.g. transit) call back into this
+		// server during SetConfig to validate the key (an Encrypt round-trip),
+		// and (2) initializeNamespace makes internal requests that also pass
+		// through ResolveNamespaceFromRequest. Both paths need ns.lock.RLock;
+		// holding ns.lock.Lock() here would deadlock them.
+		// The entry is already in namespacesByPath/UUID and marked in
+		// creationDeletionMap, so concurrent creation attempts are rejected.
+		ns.lock.Unlock()
+		unlocked = true
+
 		if sealConfig != nil {
 			if err := ns.core.sealManager.SetSeal(ctx, sealConfig, entry, true); err != nil {
 				return nil, fmt.Errorf("failed to set namespace seal: %w", err)
@@ -537,10 +548,6 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 				return nil, fmt.Errorf("failed to initialize namespace barrier: %w", err)
 			}
 		}
-
-		// unlock before initializeNamespace since that will re-acquire the lock.
-		ns.lock.Unlock()
-		unlocked = true
 
 		// Create sys/, token/ mounts and policies for the new namespace.
 		if err := ns.initializeNamespace(ctx, entry); err != nil {
@@ -560,8 +567,13 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		return nil, fmt.Errorf("failed to persist namespace: %w", err)
 	}
 
-	// Seal the namespace, as we've finished the setup.
-	if sealConfig != nil {
+	// Seal the namespace after setup for Shamir types only. Shamir namespaces
+	// must be sealed at birth because key shares need to be distributed before
+	// the namespace can be unlocked. KMS (auto-seal) namespaces are already
+	// unsealed by InitializeBarrier and must remain open so they are
+	// immediately usable without operator intervention.
+	shamirSeal := sealConfig != nil && (sealConfig.Type == "" || sealConfig.Type == "shamir")
+	if shamirSeal {
 		if err := ns.sealNamespaceLocked(ctx, entry); err != nil {
 			return nil, fmt.Errorf("failed to seal namespace: %w", err)
 		}

@@ -2015,9 +2015,9 @@ func (c *Core) sealInitCommon(ctx context.Context, req *logical.Request) (retErr
 		}
 	}
 
-	// Verify that this operation is allowed
+	// Verify that this operation is allowed.
 	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &policy.CheckOpts{
-		RootPrivsRequired: true,
+		RequireSudo: true,
 	})
 	if !authResults.Allowed {
 		retErr = multierror.Append(retErr, authResults.Error)
@@ -4020,7 +4020,7 @@ func (c *Core) performPolicyChecks(ctx context.Context, acl *policy.ACL, te *log
 	// path in which case opts.Unauth will be set.
 	if acl != nil && !opts.Unauth {
 		ret.ACLResults = acl.AllowOperation(ctx, req, false)
-		ret.RootPrivs = ret.ACLResults.RootPrivs
+		ret.IsSudo = ret.ACLResults.IsSudo
 		// Root is always allowed; skip Sentinel/MFA checks
 		if ret.ACLResults.IsRoot {
 			ret.Allowed = true
@@ -4029,9 +4029,9 @@ func (c *Core) performPolicyChecks(ctx context.Context, acl *policy.ACL, te *log
 		if !ret.ACLResults.Allowed {
 			return ret
 		}
-		// Since HelpOperation was fast-pathed inside AllowOperation, RootPrivs will not have been populated in this
-		// case, so we need to special-case that here as well, or we'll block HelpOperation on all sudo-protected paths.
-		if !ret.RootPrivs && opts.RootPrivsRequired && req.Operation != logical.HelpOperation {
+		// Since HelpOperation was fast-pathed inside AllowOperation, we need to special-case
+		// that here as well, or we'll block HelpOperation on all sudo-protected paths.
+		if !ret.IsSudo && opts.RequireSudo && req.Operation != logical.HelpOperation {
 			return ret
 		}
 	}

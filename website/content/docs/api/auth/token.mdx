@@ -11,9 +11,12 @@ see the [OpenBao Token method documentation](../../auth/token.mdx).
 
 ## List accessors
 
-This endpoint lists token accessor. This requires `sudo` capability, and access
-to it should be tightly controlled as the accessors can be used to revoke very
-large numbers of tokens and their associated leases at once.
+This endpoint lists token accessor. Access to this endpoint should be tightly
+controlled as the accessors can be used to revoke very large numbers of tokens
+and their associated leases at once.
+
+- **`sudo` required** - This endpoint requires `sudo` capability in
+ addition to any path-specific capabilities.
 
 | Method | Path                    |
 | :----- | :---------------------- |
@@ -49,12 +52,12 @@ $ curl \
 
 ## Create token
 
-Creates a new token. Certain options are only available when called by a
-root token. If used via the `/auth/token/create-orphan` endpoint, a root
-token is not required to create an orphan token (otherwise set with the
-`no_parent` option). If used with a role name in the path, the token will
-be created against the specified role name; this may override options set
-during this call.
+Creates a new token. Certain options are only available when token provided
+with a call has `sudo` capability. If used via the `/auth/token/create-orphan`
+endpoint, a `sudo` capability is not required to create an orphan token 
+(otherwise set with the `no_parent` option). If used with a role name in 
+the path, the token will be created against the specified role name; this may
+override options set during this call.
 
 | Method | Path                            |
 | :----- | :------------------------------ |
@@ -64,18 +67,18 @@ during this call.
 
 ### Parameters
 
-- `id` `(string: "")` – The ID of the client token. Can only be specified by a
+- `id` `(string: "")` - The ID of the client token. Can only be specified by a
   root token. The ID provided may not contain a `.` character. Otherwise, the
   token ID is a randomly generated value.
 
   _Note:_ The ID should not start with the `s.` prefix.
 
-- `role_name` `(string: "")` – The name of the token role.
-- `policies` `(array: "")` – A list of policies for the token. This must be a
+- `role_name` `(string: "")` - The name of the token role.
+- `policies` `(array: "")` - A list of policies for the token. This must be a
   subset of the policies belonging to the token making the request, unless
   the calling token is root or contains `sudo` capabilities to `auth/token/create`.
   If not specified, defaults to all the policies of the calling token.
-- `meta` `(map: {})` – A map of string to string valued metadata. This is
+- `meta` `(map: {})` - A map of string to string valued metadata. This is
   passed through to the audit devices.
 - `no_parent` `(bool: false)` - This argument only has effect if used by a root
   or sudo caller. When set to true, the token created will not have a parent.
@@ -562,8 +565,10 @@ $ curl \
 
 Revokes a token but not its child tokens. When the token is revoked, all secrets
 generated with it are also revoked. All child tokens are orphaned, but can be
-revoked sub-sequently using `/auth/token/revoke/`. This is a root-protected
-endpoint.
+revoked sub-sequently using `/auth/token/revoke/`.
+
+- **`sudo` required** - This endpoint requires `sudo` capability in
+ addition to any path-specific capabilities.
 
 | Method | Path                        |
 | :----- | :-------------------------- |
@@ -673,7 +678,7 @@ $ curl \
 
 Creates (or replaces) the named role. Roles enforce specific behavior when
 creating tokens that allow token functionality that is otherwise not
-available or would require `sudo`/root privileges to access. Role
+available or would require `sudo` privileges to access. Role
 parameters, when set, override any provided options to the `create`
 endpoints. The role name is also included in the token path, allowing all
 tokens created against a role to be revoked using the
@@ -685,20 +690,20 @@ tokens created against a role to be revoked using the
 
 ### Parameters
 
-- `role_name` `(string: <required>)` – The name of the token role.
-- `allowed_policies` `(list: [])` – If set, tokens can be created with any
+- `role_name` `(string: <required>)` - The name of the token role.
+- `allowed_policies` `(list: [])` - If set, tokens can be created with any
   subset of the policies in this list, rather than the normal semantics of
   tokens being a subset of the calling token's policies. The parameter is a
   comma-delimited string of policy names. If at creation time
   `no_default_policy` is not set and `"default"` is not contained in
   `disallowed_policies` or glob matched in `disallowed_policies_glob`,
   the `"default"` policy will be added to the created token automatically.
-- `disallowed_policies` `(list: [])` – If set, successful token creation via
+- `disallowed_policies` `(list: [])` - If set, successful token creation via
   this role will require that no policies in the given list are requested. The
   parameter is a comma-delimited string of policy names. Adding `"default"` to
   this list will prevent `"default"` from being added automatically to created
   tokens.
-- `allowed_policies_glob` `(list: [])` – If set, tokens can be created with any
+- `allowed_policies_glob` `(list: [])` - If set, tokens can be created with any
   subset of glob matched policies in this list, rather than the normal semantics
   of tokens being a subset of the calling token's policies. The parameter is a
   comma-delimited string of policy name globs. If at creation time
@@ -709,7 +714,7 @@ tokens created against a role to be revoked using the
   lists to be permitted. Note that unlike `allowed_policies` the policies listed
   in `allowed_policies_glob` will not be added to the token when no policies are
   specified in the call to `/auth/token/create/:role_name`.
-- `disallowed_policies_glob` `(list: [])` – If set, successful token creation via
+- `disallowed_policies_glob` `(list: [])` - If set, successful token creation via
   this role will require that no requested policies glob match any of policies in
   this list. The parameter is a comma-delimited string of policy name globs.
   Adding any glob that matches `"default"` to this list will prevent `"default"`

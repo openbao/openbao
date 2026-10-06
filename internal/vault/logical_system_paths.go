@@ -15,7 +15,7 @@ import (
 func (b *SystemBackend) configPaths() []*framework.Path {
 	return []*framework.Path{
 		{
-			Pattern: "config/cors$",
+			Pattern: "config/cors",
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "cors",
@@ -47,7 +47,7 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 						OperationSuffix: "configuration",
 					},
 					Summary:     "Return the current CORS settings.",
-					Description: "",
+					Description: "This endpoint requires sudo capability.",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -78,10 +78,10 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 						OperationVerb: "configure",
 					},
 					Summary:     "Configure the CORS settings.",
-					Description: "",
+					Description: "This endpoint requires sudo capability.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
-							Description: "OK",
+							Description: http.StatusText(http.StatusNoContent),
 						}},
 					},
 				},
@@ -91,10 +91,11 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 						OperationVerb:   "delete",
 						OperationSuffix: "configuration",
 					},
-					Summary: "Remove any CORS settings.",
+					Summary:     "Remove any CORS settings.",
+					Description: "This endpoint requires sudo capability.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
-							Description: "OK",
+							Description: http.StatusText(http.StatusNoContent),
 						}},
 					},
 				},
@@ -181,7 +182,8 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 						OperationVerb:   "read",
 						OperationSuffix: "configuration",
 					},
-					Summary: "Return the given UI header's configuration",
+					Summary:     "Return the given UI header's configuration",
+					Description: "This endpoint requires sudo capability.",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -205,7 +207,8 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 					DisplayAttrs: &framework.DisplayAttributes{
 						OperationVerb: "configure",
 					},
-					Summary: "Configure the values to be returned for the UI header.",
+					Summary:     "Configure the values to be returned for the UI header.",
+					Description: "This endpoint requires sudo capability.",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							// returns 200 with null `data`
@@ -219,10 +222,11 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 						OperationVerb:   "delete",
 						OperationSuffix: "configuration",
 					},
-					Summary: "Remove a UI header.",
+					Summary:     "Remove a UI header.",
+					Description: "This endpoint requires sudo capability.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
-							Description: "OK",
+							Description: http.StatusText(http.StatusNoContent),
 						}},
 					},
 				},
@@ -233,7 +237,7 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "config/ui/headers/?$",
+			Pattern: "config/ui/headers/?",
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
@@ -242,7 +246,8 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 						OperationPrefix: "ui-headers",
 						OperationVerb:   "list",
 					},
-					Summary: "Return a list of configured UI headers.",
+					Summary:     "Return a list of configured UI headers.",
+					Description: "This endpoint requires sudo capability.",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Fields: map[string]*framework.FieldSchema{
@@ -1464,7 +1469,7 @@ func (b *SystemBackend) auditPaths() []*framework.Path {
 		b.auditHashPath(),
 
 		{
-			Pattern: "audit$",
+			Pattern: "audit",
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "auditing",
@@ -1474,8 +1479,9 @@ func (b *SystemBackend) auditPaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleAuditTable,
-					Summary:  "List the enabled audit devices.",
+					Callback:    b.handleAuditTable,
+					Description: "This endpoint requires sudo capability.",
+					Summary:     "List the enabled audit devices.",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							// this response has dynamic keys
@@ -1523,20 +1529,22 @@ func (b *SystemBackend) auditPaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleEnableAudit,
+					Callback:    b.handleEnableAudit,
+					Description: "This endpoint requires sudo capability.",
 					DisplayAttrs: &framework.DisplayAttributes{
 						OperationVerb:   "enable",
 						OperationSuffix: "device",
 					},
-					Summary: "Enable a new audit device at the supplied path.",
+					Summary: "Enable a new audit device at the given path.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
-							Description: "OK",
+							Description: http.StatusText(http.StatusNoContent),
 						}},
 					},
 				},
 				logical.DeleteOperation: &framework.PathOperation{
-					Callback: b.handleDisableAudit,
+					Callback:    b.handleDisableAudit,
+					Description: "This endpoint requires sudo capability.",
 					DisplayAttrs: &framework.DisplayAttributes{
 						OperationVerb:   "disable",
 						OperationSuffix: "device",
@@ -1544,7 +1552,7 @@ func (b *SystemBackend) auditPaths() []*framework.Path {
 					Summary: "Disable the audit device at the given path.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
-							Description: "OK",
+							Description: http.StatusText(http.StatusNoContent),
 						}},
 					},
 				},
@@ -1577,10 +1585,11 @@ func (b *SystemBackend) auditPaths() []*framework.Path {
 						OperationVerb:   "enable",
 						OperationSuffix: "request-header",
 					},
-					Summary: "Enable auditing of a header.",
+					Summary:     "Enable auditing of a header.",
+					Description: "This endpoint requires sudo capability.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
-							Description: "OK",
+							Description: http.StatusText(http.StatusNoContent),
 						}},
 					},
 				},
@@ -1590,10 +1599,11 @@ func (b *SystemBackend) auditPaths() []*framework.Path {
 						OperationVerb:   "disable",
 						OperationSuffix: "request-header",
 					},
-					Summary: "Disable auditing of the given request header.",
+					Summary:     "Disable auditing of the given request header.",
+					Description: "This endpoint requires sudo capability.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
-							Description: "OK",
+							Description: http.StatusText(http.StatusNoContent),
 						}},
 					},
 				},
@@ -1603,7 +1613,8 @@ func (b *SystemBackend) auditPaths() []*framework.Path {
 						OperationVerb:   "read",
 						OperationSuffix: "request-header-information",
 					},
-					Summary: "List the information for the given request header.",
+					Summary:     "List the information for the given request header.",
+					Description: "This endpoint requires sudo capability.",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -1619,7 +1630,7 @@ func (b *SystemBackend) auditPaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "config/auditing/request-headers$",
+			Pattern: "config/auditing/request-headers",
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "auditing",
@@ -1629,8 +1640,9 @@ func (b *SystemBackend) auditPaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleAuditedHeadersRead,
-					Summary:  "List the request headers that are configured to be audited.",
+					Callback:    b.handleAuditedHeadersRead,
+					Summary:     "List the request headers that are configured to be audited.",
+					Description: "This endpoint requires sudo capability.",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -1741,7 +1753,8 @@ func (b *SystemBackend) pluginsCatalogCRUDPath() *framework.Path {
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: handleRootNamespaceOnly(b.handlePluginCatalogUpdate),
+				Callback:    handleRootNamespaceOnly(b.handlePluginCatalogUpdate),
+				Description: "This endpoint requires sudo capability.",
 				DisplayAttrs: &framework.DisplayAttributes{
 					OperationVerb:   "register",
 					OperationSuffix: "plugin|plugin-with-type|plugin-with-type-and-name",
@@ -1754,7 +1767,8 @@ func (b *SystemBackend) pluginsCatalogCRUDPath() *framework.Path {
 				Summary: "Register a new plugin, or updates an existing one with the supplied name.",
 			},
 			logical.DeleteOperation: &framework.PathOperation{
-				Callback: handleRootNamespaceOnly(b.handlePluginCatalogDelete),
+				Callback:    handleRootNamespaceOnly(b.handlePluginCatalogDelete),
+				Description: "This endpoint requires sudo capability.",
 				DisplayAttrs: &framework.DisplayAttributes{
 					OperationVerb:   "remove",
 					OperationSuffix: "plugin|plugin-with-type|plugin-with-type-and-name",
@@ -1768,7 +1782,8 @@ func (b *SystemBackend) pluginsCatalogCRUDPath() *framework.Path {
 				Summary: "Remove the plugin with the given name.",
 			},
 			logical.ReadOperation: &framework.PathOperation{
-				Callback: handleRootNamespaceOnly(b.handlePluginCatalogRead),
+				Callback:    handleRootNamespaceOnly(b.handlePluginCatalogRead),
+				Description: "This endpoint requires sudo capability.",
 				DisplayAttrs: &framework.DisplayAttributes{
 					OperationVerb:   "read",
 					OperationSuffix: "plugin-configuration|plugin-configuration-with-type|plugin-configuration-with-type-and-name",
@@ -1835,7 +1850,7 @@ func (b *SystemBackend) pluginsCatalogCRUDPath() *framework.Path {
 func (b *SystemBackend) pluginsCatalogListPaths() []*framework.Path {
 	return []*framework.Path{
 		{
-			Pattern: "plugins/catalog/(?P<type>auth|database|secret)/?$",
+			Pattern: "plugins/catalog/(?P<type>auth|database|secret)/?",
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "plugins-catalog",
@@ -1873,11 +1888,10 @@ func (b *SystemBackend) pluginsCatalogListPaths() []*framework.Path {
 			HelpDescription: strings.TrimSpace(sysHelp["plugin-catalog"][1]),
 		},
 		{
-			Pattern: "plugins/catalog/?$",
+			Pattern: "plugins/catalog/?",
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "plugins-catalog",
-				OperationVerb:   "list",
 				OperationSuffix: "plugins",
 			},
 
@@ -2411,8 +2425,9 @@ func (b *SystemBackend) introspectionPaths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.pathInternalInspectRouter,
-					Summary:  "Expose the route entry and mount entry tables present in the router",
+					Callback:    b.pathInternalInspectRouter,
+					Description: "This endpoint requires sudo capability.",
+					Summary:     "Expose the route entry and mount entry tables present in the router",
 				},
 			},
 			HelpSynopsis:    strings.TrimSpace(sysHelp["internal-inspect-router"][0]),
@@ -2427,8 +2442,9 @@ func (b *SystemBackend) introspectionPaths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.pathInternalInspectRequest,
-					Summary:  "Expose all request information to the caller",
+					Callback:    b.pathInternalInspectRequest,
+					Description: "This endpoint requires sudo capability.",
+					Summary:     "Expose all request information to the caller",
 				},
 			},
 			HelpSynopsis:    strings.TrimSpace(sysHelp["internal-inspect-request"][0]),
@@ -2584,7 +2600,8 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handleLeaseLookupList,
+					Callback:    b.handleLeaseLookupList,
+					Description: "This endpoint requires sudo capability.",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -2786,11 +2803,11 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 					Callback: b.handleRevokeForce,
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
-							Description: "OK",
+							Description: http.StatusText(http.StatusNoContent),
 						}},
 					},
 					Summary:                     "Revokes all secrets or tokens generated under a given prefix immediately",
-					Description:                 "Unlike `/sys/leases/revoke-prefix`, this path ignores backend errors encountered during revocation. This is potentially very dangerous and should only be used in specific emergency situations where errors in the backend or the connected backend service prevent normal revocation.\n\nBy ignoring these errors, OpenBao abdicates responsibility for ensuring that the issued credentials or secrets are properly revoked and/or cleaned up. Access to this endpoint should be tightly controlled.",
+					Description:                 "This endpoint requires sudo capability. Unlike `/sys/leases/revoke-prefix`, this path ignores backend errors encountered during revocation. This is potentially very dangerous and should only be used in specific emergency situations where errors in the backend or the connected backend service prevent normal revocation.\n\nBy ignoring these errors, OpenBao abdicates responsibility for ensuring that the issued credentials or secrets are properly revoked and/or cleaned up. Access to this endpoint should be tightly controlled.",
 					ForwardPerformanceSecondary: true,
 					ForwardPerformanceStandby:   true,
 				},
@@ -2823,10 +2840,11 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRevokePrefix,
+					Callback:    b.handleRevokePrefix,
+					Description: "This endpoint requires sudo capability.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
-							Description: "OK",
+							Description: http.StatusText(http.StatusNoContent),
 						}},
 					},
 					Summary:                     "Revokes all secrets (via a lease ID prefix) or tokens (via the tokens' path property) generated under a given prefix immediately.",
@@ -2915,7 +2933,7 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "leases$",
+			Pattern: "leases",
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "leases",
@@ -2943,7 +2961,8 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
 					// currently only works for irrevocable leases with param: type=irrevocable
-					Callback: b.handleLeaseList,
+					Callback:    b.handleLeaseList,
+					Description: "This endpoint requires sudo capability.",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -2992,7 +3011,8 @@ func (b *SystemBackend) remountPaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRemount,
+					Callback:    b.handleRemount,
+					Description: "This endpoint requires sudo capability.",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -3289,8 +3309,7 @@ func (b *SystemBackend) authPaths() []*framework.Path {
 						OperationVerb:   "read",
 						OperationSuffix: "tuning-information",
 					},
-					Summary:     "Reads the given auth path's configuration.",
-					Description: "This endpoint requires sudo capability on the final path, but the same functionality can be achieved without sudo via `sys/mounts/auth/[auth-path]/tune`.",
+					Summary: "Reads the given auth path's configuration.",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -3373,11 +3392,10 @@ func (b *SystemBackend) authPaths() []*framework.Path {
 						OperationVerb:   "tune",
 						OperationSuffix: "configuration-parameters",
 					},
-					Summary:     "Tune configuration parameters for a given auth path.",
-					Description: "This endpoint requires sudo capability on the final path, but the same functionality can be achieved without sudo via `sys/mounts/auth/[auth-path]/tune`.",
+					Summary: "Tune configuration parameters for a given auth path.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
-							Description: "OK",
+							Description: http.StatusText(http.StatusNoContent),
 						}},
 					},
 				},
@@ -3517,7 +3535,7 @@ func (b *SystemBackend) authPaths() []*framework.Path {
 For example, enable the "foo" auth method will make it accessible at /auth/foo.`,
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
-							Description: "OK",
+							Description: http.StatusText(http.StatusNoContent),
 						}},
 					},
 				},
@@ -3530,7 +3548,7 @@ For example, enable the "foo" auth method will make it accessible at /auth/foo.`
 					Summary: "Disable the auth method at the given auth path",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
-							Description: "OK",
+							Description: http.StatusText(http.StatusNoContent),
 						}},
 					},
 				},

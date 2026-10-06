@@ -9,8 +9,10 @@ The `/sys/seal` endpoint seals the OpenBao.
 ## Seal
 
 This endpoint seals the OpenBao. In HA mode, only an active node can be sealed.
-Standby nodes should be restarted to get the same effect. Requires a token with
-`root` policy or `sudo` capability on the path.
+Standby nodes should be restarted to get the same effect.
+
+- **`sudo` required** - This endpoint requires `sudo` capability in
+ addition to any path-specific capabilities.
 
 | Method | Path        |
 | :----- | :---------- |

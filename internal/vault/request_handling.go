@@ -97,6 +97,7 @@ func init() {
 		"internal/counters/activity/export",
 		"internal/counters/activity/monthly",
 		"internal/counters/config",
+		"internal/inspect/request",
 		"internal/inspect/router",
 		"loggers",
 		"metrics",
@@ -435,11 +436,10 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 		return nil, acl, te, entity, logical.ErrPermissionDenied
 	}
 
-	// Check if this is a root protected path
-	rootPath := c.router.RootPath(ctx, req.Path)
-
-	if rootPath && unauth {
-		return nil, nil, nil, nil, errors.New("cannot access root path in unauthenticated request")
+	// Check if this is a sudo capability enforced path.
+	isSudoPath := c.router.SudoPath(ctx, req.Path)
+	if isSudoPath && unauth {
+		return nil, nil, nil, nil, errors.New("cannot access sudo path in unauthenticated request")
 	}
 
 	// At this point we won't be forwarding a raw request; we should delete
@@ -539,8 +539,8 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 	// Check the standard non-root ACLs. Return the token entry if it's not
 	// allowed so we can decrement the use count.
 	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &policy.CheckOpts{
-		Unauth:            unauth,
-		RootPrivsRequired: rootPath,
+		Unauth:      unauth,
+		RequireSudo: isSudoPath,
 	})
 
 	auth.PolicyResults = &logical.PolicyResults{

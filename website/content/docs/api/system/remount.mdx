@@ -22,13 +22,6 @@ More details about the remount operation are described in
 
 :::warning
 
-Note: This endpoint requires a policy with both `sudo` and `update` capabilities
-to `sys/remount`
-
-:::
-
-:::warning
-
 Note: A mount migration will revoke all leases for the secrets of a secrets
 backend or tokens of an auth backend, depending on which type of backend is
 being moved.
@@ -43,15 +36,18 @@ reads on standby nodes.
 
 :::
 
+- **`sudo` required** - This endpoint requires `sudo` capability in
+ addition to any path-specific capabilities.
+
 | Method | Path           |
 | :----- | :------------- |
 | `POST` | `/sys/remount` |
 
 ### Parameters
 
-- `from` `(string: <required>)` – Specifies the previous mount point.
+- `from` `(string: <required>)` - Specifies the previous mount point.
 
-- `to` `(string: <required>)` – Specifies the new destination mount point.
+- `to` `(string: <required>)` - Specifies the new destination mount point.
 
 ### Sample payload ( cross namespace )
 
@@ -100,7 +96,6 @@ $ curl \
 
 ## Monitor migration status
 
-
 This endpoint is used to monitor the status of a mount migration operation,
 using the ID returned in the response of the `sys/remount` call. The response
 contains the passed-in ID, the source and target mounts, and a status field that
@@ -112,7 +107,7 @@ displays `in-progress`, `success` or `failure`.
 
 ### Parameters
 
-- `migration_id` `(string: <required>)` – Specifies the id of the mount migration
+- `migration_id` `(string: <required>)` - Specifies the id of the mount migration
 
 ### Sample request
 

@@ -23,7 +23,7 @@ type Noop struct {
 
 	IncludeResolvePathOperation bool
 
-	Root            []string
+	Sudo            []string
 	Login           []string
 	Paths           []string
 	Requests        []*logical.Request
@@ -113,7 +113,7 @@ func (n *Noop) HandleExistenceCheck(ctx context.Context, req *logical.Request) (
 
 func (n *Noop) SpecialPaths() *logical.Paths {
 	return &logical.Paths{
-		Root:            n.Root,
+		SudoRequired:    n.Sudo,
 		Unauthenticated: n.Login,
 	}
 }

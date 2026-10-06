@@ -30,11 +30,6 @@ func TestIsSudoPath(t *testing.T) {
 			"/sys/raw/WEIRD(but_still_valid!)p4Th?🗿笑",
 			true,
 		},
-		// Testing: sys/auth/{path}/tune
-		{
-			"/sys/auth/path/in/middle/tune",
-			true,
-		},
 		// Testing: sys/plugins/catalog/{type} and sys/plugins/catalog/{name} (regexes overlap)
 		{
 			"/sys/plugins/catalog/some-type",

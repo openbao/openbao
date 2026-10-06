@@ -136,7 +136,7 @@ func (b *testBackend) Type() logical.BackendType {
 
 func (b *testBackend) SpecialPaths() *logical.Paths {
 	return &logical.Paths{
-		Root: []string{"test-root"},
+		SudoRequired: []string{"test-root"},
 	}
 }
 

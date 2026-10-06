@@ -26,12 +26,12 @@ func testPassthroughBackendWithStorage(ctx context.Context) (logical.Backend, lo
 	return b, storage
 }
 
-func TestPassthroughBackend_RootPaths(t *testing.T) {
+func TestPassthroughBackend_SudoPaths(t *testing.T) {
 	b := testPassthroughBackend(t.Context())
 	test := func(b logical.Backend) {
-		root := b.SpecialPaths()
-		if len(root.Root) != 0 {
-			t.Fatalf("unexpected: %v", root)
+		paths := b.SpecialPaths()
+		if len(paths.SudoRequired) != 0 {
+			t.Fatalf("unexpected: %v", paths)
 		}
 	}
 	test(b)

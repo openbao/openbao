@@ -10,7 +10,7 @@ The `/sys/config/auditing` endpoint is used to configure auditing settings.
 
 This endpoint lists the request headers that are configured to be audited.
 
-- **`sudo` required** – This endpoint requires `sudo` capability in addition to
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
   any path-specific capabilities.
 
 | Method | Path                                   |
@@ -41,7 +41,7 @@ $ curl \
 
 This endpoint lists the information for the given request header.
 
-- **`sudo` required** – This endpoint requires `sudo` capability in addition to
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
   any path-specific capabilities.
 
 | Method | Path                                         |
@@ -50,7 +50,7 @@ This endpoint lists the information for the given request header.
 
 ### Parameters
 
-- `name` `(string: <required>)` – Specifies the name of the request header to
+- `name` `(string: <required>)` - Specifies the name of the request header to
   query. This is specified as part of the URL.
 
 ### Sample request
@@ -75,7 +75,7 @@ $ curl \
 
 This endpoint enables auditing of a header.
 
-- **`sudo` required** – This endpoint requires `sudo` capability in addition to
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
   any path-specific capabilities.
 
 | Method | Path                                         |
@@ -84,7 +84,7 @@ This endpoint enables auditing of a header.
 
 ### Parameters
 
-- `hmac` `(bool: false)` – Specifies if this header's value should be HMAC'ed in
+- `hmac` `(bool: false)` - Specifies if this header's value should be HMAC'ed in
   the audit logs.
 
 ### Sample payload
@@ -109,7 +109,7 @@ $ curl \
 
 This endpoint disables auditing of the given request header.
 
-- **`sudo` required** – This endpoint requires `sudo` capability in addition to
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
   any path-specific capabilities.
 
 | Method   | Path                                         |

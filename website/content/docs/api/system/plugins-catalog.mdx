@@ -8,9 +8,9 @@ The `/sys/plugins/catalog` endpoint is used to read, register, update, and
 remove plugins in OpenBao's catalog. Plugins must be registered before use, and
 once registered backends can use the plugin by querying the catalog.
 
-## LIST plugins
+## GET plugin list
 
-This endpoint lists the plugins in the catalog by type.
+This endpoint returns back list of all registered plugins.
 
 | Method | Path                   |
 | :----- | :--------------------- |
@@ -63,9 +63,9 @@ $ curl \
 }
 ```
 
-## LIST plugins
+## LIST plugins by type
 
-This endpoint lists the plugins in the catalog by type.
+This endpoint lists the plugins by type.
 
 | Method | Path                            |
 | :----- | :------------------------------ |
@@ -100,7 +100,7 @@ $ curl \
 This endpoint registers a new plugin, or updates an existing one with the
 supplied name.
 
-- **`sudo` required** – This endpoint requires `sudo` capability in addition to
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
   any path-specific capabilities.
 
 | Method | Path                               |
@@ -109,27 +109,27 @@ supplied name.
 
 ### Parameters
 
-- `name` `(string: <required>)` – Specifies the name for this plugin. The name
+- `name` `(string: <required>)` - Specifies the name for this plugin. The name
   is what is used to look up plugins in the catalog. This is part of the request
   URL.
 
-- `type` `(string: <required>)` – Specifies the type of this plugin. May be
+- `type` `(string: <required>)` - Specifies the type of this plugin. May be
   "auth", "database", or "secret".
 
 - `version` `(string: "")` - Specifies the semantic version of this plugin.
 
-- `sha256` `(string: <required>)` – This is the SHA256 sum of the plugin's
+- `sha256` `(string: <required>)` - This is the SHA256 sum of the plugin's
   binary. Before a plugin is run it's SHA will be checked against this value, if
   they do not match the plugin can not be run.
 
-- `command` `(string: <required>)` – Specifies the command used to execute the
+- `command` `(string: <required>)` - Specifies the command used to execute the
   plugin. This is relative to the plugin directory. e.g. `"myplugin"`.
 
-- `args` `(array: [])` – Specifies the arguments used to execute the plugin. If
+- `args` `(array: [])` - Specifies the arguments used to execute the plugin. If
   the arguments are provided here, the `command` parameter should only contain
   the named program. e.g. `"--my_flag=1"`.
 
-- `env` `(array: [])` – Specifies the environment variables used during the
+- `env` `(array: [])` - Specifies the environment variables used during the
   execution of the plugin. Each entry is of the form "key=value". e.g
   `"FOO=BAR"`.
 
@@ -160,7 +160,7 @@ $ curl \
 
 This endpoint returns the configuration data for the plugin with the given name.
 
-- **`sudo` required** – This endpoint requires `sudo` capability in addition to
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
   any path-specific capabilities.
 
 | Method | Path                                                |
@@ -169,13 +169,13 @@ This endpoint returns the configuration data for the plugin with the given name.
 
 ### Parameters
 
-- `name` `(string: <required>)` – Specifies the name of the plugin to retrieve.
+- `name` `(string: <required>)` - Specifies the name of the plugin to retrieve.
   This is part of the request URL.
 
-- `type` `(string: <required>)` – Specifies the type of this plugin. May be
+- `type` `(string: <required>)` - Specifies the type of this plugin. May be
   "auth", "database", or "secret".
 
-- `version` `(string: "")` – The semantic version of the plugin to read. Required
+- `version` `(string: "")` - The semantic version of the plugin to read. Required
   if the plugin was registered with a version.
 
 ### Sample request
@@ -206,7 +206,7 @@ $ curl \
 
 This endpoint removes the plugin with the given name.
 
-- **`sudo` required** – This endpoint requires `sudo` capability in addition to
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
   any path-specific capabilities.
 
 | Method   | Path                                                |
@@ -215,13 +215,13 @@ This endpoint removes the plugin with the given name.
 
 ### Parameters
 
-- `name` `(string: <required>)` – Specifies the name of the plugin to delete.
+- `name` `(string: <required>)` - Specifies the name of the plugin to delete.
   This is part of the request URL.
 
-- `type` `(string: <required>)` – Specifies the type of this plugin. May be
+- `type` `(string: <required>)` - Specifies the type of this plugin. May be
   "auth", "database", or "secret".
 
-- `version` `(string: "")` – Specifies the semantic version of the plugin
+- `version` `(string: "")` - Specifies the semantic version of the plugin
   to delete.
 
 ### Sample request

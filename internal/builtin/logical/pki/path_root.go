@@ -53,7 +53,8 @@ func pathDeleteRoot(b *backend) *framework.Path {
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.DeleteOperation: &framework.PathOperation{
-				Callback: b.pathCADeleteRoot,
+				Callback:    b.pathCADeleteRoot,
+				Description: "This endpoint requires sudo capability.",
 				Responses: map[int][]framework.Response{
 					http.StatusOK: {{
 						Description: "OK",

@@ -280,10 +280,10 @@ similarly matched.
 In addition to the standard set, there are some capabilities that do not map to
 HTTP verbs.
 
-- `sudo` <a name="sudo"></a> - Allows access to paths that are _root-protected_. Tokens are not
-  permitted to interact with these paths unless they have the `sudo`
-  capability (in addition to the other necessary capabilities for performing
-  an operation against that path, such as `read` or `delete`).
+- `sudo` - Allows access to paths that are _sudo-protected_. Tokens are not
+  permitted to interact with these paths unless they have the `sudo` capability
+  (in addition to the other necessary capabilities for performing an operation
+  against that path, such as `read` or `delete`).
 
   For example, modifying the audit log backends requires a token with `sudo`
   privileges.
@@ -953,7 +953,7 @@ If the provided information is correct, OpenBao will generate a token, assign th
 list of configured policies to the token, and return that token to the
 authenticated user.
 
-## Root protected API endpoints
+## Sudo protected API endpoints
 
 :::warning
 
@@ -965,34 +965,35 @@ authenticated user.
 
 :::
 
-The following paths requires a root token or `sudo` capability in the policy:
+The following paths require `sudo` capability in the policy:
 
-| Path                                                                                                                                                   | HTTP verb         | Description                                                                                                                                         |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [auth/token/accessors](../api/auth/token.mdx#list-accessors)                                                                                      | LIST              | List token accessors for all current OpenBao service tokens                                                                                           |
-| [auth/token/create](../api/auth/token.mdx#create-token)                                                                                           | POST              | Create a periodic or an orphan token (`period` or `no_parent`) option                                                                               |
-| [pki/root](../api/secret/pki.mdx#delete-all-issuers-and-keys)                                                                                     | DELETE            | Delete the current CA key ([pki secrets engine](../secrets/pki/index.mdx))                                                                           |
-| [pki/root/sign-self-issued](../api/secret/pki.mdx#sign-self-issued)                                                                               | POST              | Use the configured CA certificate to sign a self-issued certificate ([pki secrets engine](../secrets/pki/index.mdx))                                 |
+| Path                                                                                                                                              | HTTP verb         | Description                                                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [auth/token/accessors](../api/auth/token.mdx#list-accessors)                                                                                      | LIST              | List token accessors for all current OpenBao service tokens                                                                                         |
+| [auth/token/revoke-orphan](../api/auth/token.mdx#revoke-token-and-orphan-children)                                                                | POST              | Revoke token and orphan children                                                                                                                    |
+| [pki/root](../api/secret/pki.mdx#delete-all-issuers-and-keys)                                                                                     | DELETE            | Delete the current CA key ([pki secrets engine](../secrets/pki/index.mdx))                                                                          |
+| [pki/root/sign-self-issued](../api/secret/pki.mdx#sign-self-issued)                                                                               | POST              | Use the configured CA certificate to sign a self-issued certificate ([pki secrets engine](../secrets/pki/index.mdx))                                |
 | [sys/audit](../api/system/audit.mdx)                                                                                                              | GET               | List enabled audit devices                                                                                                                          |
 | [sys/audit/:path](../api/system/audit.mdx)                                                                                                        | POST, DELETE      | Enable or remove an audit device                                                                                                                    |
-| [sys/auth/:path](../api/system/auth.mdx)                                                                                                          | GET, POST, DELETE | Manage the auth methods (enable, read, and delete)                                                                                                  |
-| [sys/auth/:path/tune](../api/system/auth.mdx#tune-auth-method)                                                                                    | GET, POST         | Manage the auth methods (enable, read, delete, and tune)                                                                                            |
 | [sys/config/auditing/request-headers](../api/system/config-auditing.mdx)                                                                          | GET               | List the request headers that are configured to be audited                                                                                          |
 | [sys/config/auditing/request-headers/:name](../api/system/config-auditing.mdx)                                                                    | GET, POST, DELETE | Manage the auditing headers (create, update, read and delete)                                                                                       |
 | [sys/config/cors](../api/system/config-cors.mdx)                                                                                                  | GET, POST, DELETE | Configure CORS setting                                                                                                                              |
 | [sys/config/ui/headers](../api/system/config-ui.mdx)                                                                                              | GET, LIST         | Configure the UI settings                                                                                                                           |
 | [sys/config/ui/headers/:name](../api/system/config-ui.mdx#name)                                                                                   | POST, DELETE      | Configure custom HTTP headers to be served with the UI                                                                                              |
-| [sys/internal/inspect/router/:tag](../api/system/inspect/router.mdx)                                                                              | GET               | Inspect the internal components of OpenBao's router. `tag` must be one of root, uuid, accessor, or storage                                            |
+| [sys/internal/inspect/router/:tag](../api/system/inspect/router.mdx)                                                                              | GET               | Inspect the internal components of OpenBao's router. `tag` must be one of root, uuid, accessor, or storage                                          |
+| [sys/internal/inspect/request](../api/system/inspect/request.mdx)                                                                                 | GET               | View the contents of specific structures in the request                                                                                             |
+| [sys/leases](../api/system/leases.mdx#leases-list)                                                                                                | GET               | Return the total count of a `type` of lease, as well as a list of leases per mount point.                                                           |
 | [sys/leases/lookup/:prefix](../api/system/leases.mdx#list-leases)                                                                                 | LIST              | List lease IDs                                                                                                                                      |
 | [sys/leases/revoke-force/:prefix](../api/system/leases.mdx#revoke-force)                                                                          | POST              | Revoke all secrets or tokens ignoring backend errors                                                                                                |
 | [sys/leases/revoke-prefix/:prefix](../api/system/leases.mdx#revoke-prefix)                                                                        | POST              | Revoke all secrets generated under a given prefix                                                                                                   |
 | [sys/plugins/catalog/:type/:name](../api/system/plugins-catalog.mdx#register-plugin)                                                              | GET, POST, DELETE | Register a new plugin, or read/remove an existing plugin                                                                                            |
-| [sys/raw:path](../api/system/raw.mdx)                                                                                                             | GET, POST, DELETE | Used to access the raw underlying store in OpenBao                                                                                                    |
-| [sys/raw:prefix](../api/system/raw.mdx#list-raw)                                                                                                  | GET, LIST         | Returns a list keys for a given path prefix                                                                                                         |
-| [sys/remount](../api/system/remount.mdx)                                                                                                          | POST              | Moves an already-mounted backend to a new mount point                                                                                               |
-| [sys/rotate](../api/system/rotate/index.mdx)                                                                                                            | POST              | Trigger a rotation of the backend encryption key                                                                                                    |
-| [sys/seal](../api/system/seal.mdx)                                                                                                                | POST              | Seals the OpenBao                                                                                                                                     |
-| [sys/step-down](../api/system/step-down.mdx)                                                                                                      | POST              | Forces a node to give up active status                                                                                                              |
+| [sys/raw:path](../api/system/raw.mdx)                                                                                                             | GET, POST, DELETE | Used to access the raw underlying store in OpenBao                                                                                                  |
+| [sys/raw:prefix](../api/system/raw.mdx#list-raw)                                                                                                  | GET, LIST         | Return a list of keys for a given path prefix                                                                                                       |
+| [sys/remount](../api/system/remount.mdx)                                                                                                          | POST              | Moves an already-mounted backend to a new mount location                                                                                            |
+| [sys/rotate](../api/system/rotate/keyring.mdx)                                                                                                    | POST              | Trigger a rotation of the backend encryption key                                                                                                    |
+| [sys/rotate/root](../api/system/rotate/root.mdx)                                                                                                  | POST              | Perform a root key rotation without requiring existing key shares to be provided                                                                    |
+| [sys/seal](../api/system/seal.mdx)                                                                                                                | POST              | Seals the OpenBao                                                                                                                                   |
+| [sys/step-down](../api/system/step-down.mdx)                                                                                                      | POST              | Forces a node to step down as active node                                                                                                           |
 
 ### Tokens
 

@@ -181,8 +181,8 @@ func (x *ProtoError) GetErrCode() int64 {
 // Paths is the structure of special paths that is used for SpecialPaths.
 type Paths struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Root are the paths that require a root token to access
-	Root []string `protobuf:"bytes,1,rep,name=root,proto3" json:"root,omitempty"`
+	// SudoRequired are the API paths that require sudo capability to access.
+	SudoRequired []string `protobuf:"bytes,1,rep,name=sudo_required,json=sudoRequired,proto3" json:"sudo_required,omitempty"`
 	// Unauthenticated are the paths that can be accessed without any auth.
 	Unauthenticated []string `protobuf:"bytes,2,rep,name=unauthenticated,proto3" json:"unauthenticated,omitempty"`
 	// LocalStorage are paths (prefixes) that are local to this instance; this
@@ -232,9 +232,9 @@ func (*Paths) Descriptor() ([]byte, []int) {
 	return file_sdk_plugin_pb_backend_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *Paths) GetRoot() []string {
+func (x *Paths) GetSudoRequired() []string {
 	if x != nil {
-		return x.Root
+		return x.SudoRequired
 	}
 	return nil
 }
@@ -3767,9 +3767,9 @@ const file_sdk_plugin_pb_backend_proto_rawDesc = "" +
 	"ProtoError\x12\x19\n" +
 	"\berr_type\x18\x01 \x01(\rR\aerrType\x12\x17\n" +
 	"\aerr_msg\x18\x02 \x01(\tR\x06errMsg\x12\x19\n" +
-	"\berr_code\x18\x03 \x01(\x03R\aerrCode\"\xce\x01\n" +
-	"\x05Paths\x12\x12\n" +
-	"\x04root\x18\x01 \x03(\tR\x04root\x12(\n" +
+	"\berr_code\x18\x03 \x01(\x03R\aerrCode\"\xdf\x01\n" +
+	"\x05Paths\x12#\n" +
+	"\rsudo_required\x18\x01 \x03(\tR\fsudoRequired\x12(\n" +
 	"\x0funauthenticated\x18\x02 \x03(\tR\x0funauthenticated\x12#\n" +
 	"\rlocal_storage\x18\x03 \x03(\tR\flocalStorage\x12*\n" +
 	"\x11seal_wrap_storage\x18\x04 \x03(\tR\x0fsealWrapStorage\x126\n" +

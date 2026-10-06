@@ -50,35 +50,30 @@ import (
 
 var fakeSHA256 = strings.Repeat("0", 64)
 
-func TestSystemBackend_RootPaths(t *testing.T) {
+func TestSystemBackend_SudoPaths(t *testing.T) {
 	expected := []string{
-		"auth/*",
-		"remount",
 		"audit",
 		"audit/*",
+		"config/auditing/request-headers",
+		"config/auditing/request-headers/*",
+		"config/cors",
+		"config/ui/headers",
+		"config/ui/headers/*",
+		"internal/inspect/*",
+		"leases",
+		"leases/lookup/*",
+		"leases/revoke-force/*",
+		"leases/revoke-prefix/*",
+		"plugins/catalog/*",
 		"raw",
 		"raw/*",
+		"remount",
 		"rotate",
 		"rotate/keyring",
 		"rotate/root",
-		"config/cors",
-		"config/auditing/*",
-		"config/ui/headers/*",
-		"plugins/catalog/*",
-		"revoke-prefix/*",
-		"revoke-force/*",
-		"leases/revoke-prefix/*",
-		"leases/revoke-force/*",
-		"leases/lookup/*",
-		"leases",
-		"internal/inspect/*",
 	}
 
-	b := testSystemBackend(t)
-	actual := b.SpecialPaths().Root
-	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf("bad: mismatch\nexpected:\n%#v\ngot:\n%#v", expected, actual)
-	}
+	require.ElementsMatch(t, testSystemBackend(t).SpecialPaths().SudoRequired, expected)
 }
 
 func TestSystemConfigCORS(t *testing.T) {

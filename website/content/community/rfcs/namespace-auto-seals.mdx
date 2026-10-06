@@ -39,6 +39,18 @@ or JSON seal configuration string. This RFC removes the Shamir-only restriction,
 allowing any seal type supported at the global level. See the
 [API documentation](/docs/api/system/namespaces) for the exact request format.
 
+When an Auto Seal type is specified, no recovery key shares are generated or
+returned at creation time. The namespace is born unsealed: the barrier key is
+wrapped by the KMS immediately and the namespace is operational without any
+manual unseal step. This mirrors the behavior of the global Auto Seal, where key
+shares are absent and the KMS is the sole unseal authority.
+
+If the KMS is later decommissioned, the operator uses `POST /migrate-seal` to
+migrate the namespace to Shamir, at which point key shares are generated and
+distributed. Recovery key shares are not a substitute for a planned migration;
+operators are encouraged to perform the migration before decommissioning the KMS
+key rather than relying on emergency recovery paths.
+
 ### Updating Seal Credentials and Keys
 
 | Method | Path                                    |
@@ -46,17 +58,16 @@ allowing any seal type supported at the global level. See the
 | `PUT`  | `/v1/sys/namespaces/<path>/config/seal` |
 
 This endpoint requires sudo privilege. It accepts the same seal configuration
-string format as namespace creation. The server compares `KeyId()` between the
-existing and proposed wrappers to determine the operation:
+string format as namespace creation. It handles credential rotation only: the
+seal type and KMS key must remain the same; only the credentials used to reach
+the KMS may change. The new wrapper must successfully decrypt the existing stored
+barrier key (`GetStoredKeys`) before the old wrapper is released. If verification
+fails, the update is rejected and the existing configuration is kept intact.
 
-- **Same key** (credential update): the new wrapper must successfully decrypt
-  the existing root key (`GetStoredKeys`) before the old wrapper is finalized.
-  If verification fails, the update is rejected and the existing configuration
-  is kept.
-- **Different key** (key migration): the root key is decrypted under the old
-  wrapper and re-encrypted under the new one before the old wrapper is finalized.
+The namespace remains accessible throughout. The operation is synchronous.
 
-Both operations are synchronous. The namespace remains accessible throughout.
+Key migration (changing to a different KMS key or a different provider) requires
+`POST /migrate-seal`.
 
 ### Reading Seal Configuration
 
@@ -98,61 +109,76 @@ tracked in https://github.com/openbao/openbao/issues/3333.
 
 ### Failure Conditions
 
-If the KMS provider is unreachable, the namespace remains sealed until
-connectivity is restored. The [Emergency Seal](emergency-seal.mdx) and
-[Parallel Unseal](parallel-unseal.mdx) RFCs address persistent failure recovery.
+#### KMS unreachable at server startup
 
+If the KMS provider is unreachable during server startup, OpenBao records the affected namespace in an internal tracking list and allows the server startup sequence to complete normally. The root namespace and all other namespaces remain unaffected.
 
+The namespace associated with the unavailable KMS is registered as sealed. Its barrier remains present in storage but cannot be decrypted because the required key material cannot be retrieved from the KMS. Consequently, the namespace initialization sequence cannot proceed, and its mounts and auth backends are not loaded.
+
+A background goroutine (`startSealedAtBootRetry`) periodically retries access to the KMS using the same interval configured for the root seal health check, which defaults to one minute.
+
+Once the KMS becomes reachable, the goroutine invokes `GetStoredKeys` to retrieve and decrypt the stored barrier key, followed by `UnsealWithRootKey` to open the namespace barrier. OpenBao then executes the standard post-unseal initialization sequence, including loading the namespace mounts and policies.
+
+Recovery is fully automatic and requires no operator intervention.
+
+During the retry period, `GET /v1/sys/namespaces/<path>/seal-status` reports the namespace as sealed. After the KMS becomes available and the recovery sequence completes successfully, the endpoint transitions to reporting the namespace as unsealed.
+
+#### KMS unreachable after boot
+
+If the KMS becomes unreachable after the namespace has already been successfully unsealed, normal namespace operation is unaffected.
+
+At that point, the barrier keyring is already resident in memory, and OpenBao does not require access to the KMS for routine barrier encryption or decryption. Normal read and write operations therefore continue without interruption for the duration of the KMS outage.
+
+The KMS outage becomes relevant only when OpenBao performs an operation that requires the barrier key to be re-wrapped, such as a credential rotation. Such operations cannot complete while the KMS remains unavailable.
+
+No automatic recovery mechanism is required for this condition because the namespace itself remains unsealed and operational. Once KMS connectivity is restored, operations requiring access to the KMS can proceed normally.
+
+The [Emergency Seal](emergency-seal.mdx) and [Parallel Unseal](parallel-unseal.mdx)
+RFCs address persistent KMS failure where the barrier key cannot be recovered.
 
 ## Technical Description
 
 ### Credential and Key Updates (PUT /config/seal)
 
 `SealManager.SetSeal` in `seal_manager.go` already initializes seal wrappers
-and stores them by namespace UUID. This RFC extends it to cover two update
-cases that the current implementation explicitly defers.
+and stores them by namespace UUID. This RFC extends it to handle credential
+rotation on existing seals, adding the test-before-swap guard described below.
 
 Sealing a parent namespace implicitly makes all descendant namespaces
 inaccessible, regardless of their individual seal configuration. This is
 existing behavior introduced in v2.6 and is not modified by this RFC; no
 background job is added for cascade seal or unseal.
 
-A `Wrapper` (from `go-kms-wrapping`) represents a key ring: even after the
-active key changes, the wrapper retains the ability to decrypt blobs encrypted
-under previous key versions. `KeyId()` returns the identifier of the currently
-active key. After initializing the proposed wrapper, `SetSeal` compares
-`KeyId()` between the existing and proposed instances:
+`SetSeal` handles credential rotation only: same seal type, same KMS key,
+updated credentials. If the seal type changes, the request is rejected outright.
+If the seal type is unchanged but an auto-seal type is involved, `GetStoredKeys`
+is called on the new wrapper to verify it can still decrypt the existing stored
+barrier key before the old wrapper is released. If that verification fails, the
+update is rejected and the existing configuration is kept intact. This is the
+test-before-swap guard implemented in the proposed solution.
 
-- If the identifier is unchanged, the update is a credential rotation.
-  `GetStoredKeys` is called on the new wrapper to verify it can decrypt the
-  existing root key before the old wrapper is finalized. This is the
-  test-before-swap guard already present in the PoC branch
-  (`ef-namespace-kms-seal-v2`).
-- If the identifier differs, the update is a key migration. The stored barrier
-  keys are read from the old seal via `GetStoredKeys` and written to the new
-  seal via `SetStoredKeys`. Only the stored root key entry is rewritten; the
-  barrier keyring and namespace storage are untouched. Both paths leave the
-  namespace accessible throughout; neither requires taint.
+Key migration (changing to a different KMS key or a different KMS provider)
+is not handled by this endpoint; it requires `POST /migrate-seal`.
 
 ```go
-oldKeyID, _ := prevSeal.GetAccess().Wrapper.KeyId(ctx)
-newKeyID, _ := nsSeal.GetAccess().Wrapper.KeyId(ctx)
-if oldKeyID == newKeyID {
+if existingSeal.BarrierType() != nsSeal.BarrierType() {
+    _ = nsSeal.Finalize(ctx)
+    return fmt.Errorf("cannot change seal type for namespace %q: "+
+        "migration from %q to %q is not supported via this endpoint",
+        ns.Path, existingSeal.BarrierType(), nsSeal.BarrierType())
+}
+
+// For auto-seal reconfiguration, verify the new wrapper can decrypt the
+// existing stored barrier key before committing.
+if prevSeal != nil && nsSeal.BarrierType() != vaultseal.WrapperTypeShamir {
     if _, err := nsSeal.GetStoredKeys(ctx); err != nil {
         _ = nsSeal.Finalize(ctx)
-        return fmt.Errorf("new seal cannot read existing root key: %w", err)
-    }
-} else {
-    barrierKeys, err := prevSeal.GetStoredKeys(ctx)
-    if err != nil {
-        _ = nsSeal.Finalize(ctx)
-        return err
-    }
-    if err := nsSeal.SetStoredKeys(ctx, barrierKeys); err != nil {
-        _ = nsSeal.Finalize(ctx)
-        return err
+        return fmt.Errorf("new seal cannot read existing stored keys for namespace %q: "+
+            "the KMS key must remain unchanged; only credential rotation is supported: %w",
+            ns.Path, err)
     }
 }
+
 _ = prevSeal.Finalize(ctx)
 sm.sealByNamespace[ns.UUID] = nsSeal
 ```
@@ -287,6 +313,26 @@ case strings.HasPrefix(key, "sys/namespaces/") &&
 Seal key updates are written to storage and propagated to standby nodes via
 the existing invalidation broadcast; no additional mechanism is required.
 
+### Boot-Time KMS Failure Recovery
+
+When a namespace KMS is unreachable at startup, `RegisterSealedBarrier` in
+`seal_manager.go` registers a bare sealed barrier so that `NamespaceSealed`
+returns true while the namespace waits for recovery. The namespace is added to
+an internal retry list in `NamespaceStore`.
+
+The `startSealedAtBootRetry` goroutine in `namespace_store.go` iterates the
+list at the interval of the root seal health check (one minute by default). For
+each entry it calls `SetSeal` to (re-)initialize the KMS wrapper; if that
+succeeds, it calls `UnsealBarrierFromStoredKeys`, which runs `GetStoredKeys` to
+decrypt the stored barrier key and `UnsealWithRootKey` to open the barrier.
+The standard post-unseal sequence then loads the namespace mounts and policies.
+The namespace is removed from the retry list on success. Manual retry via the
+unseal endpoint is also possible at any time during the retry period.
+
+The goroutine runs on all nodes (active and performance standby) because
+`postUnseal` is called on each. On standby nodes the post-unseal sequence is
+limited and the goroutine has no side effects beyond the retry itself.
+
 ### Audit
 
 Standard OpenBao request/response audit logging covers all operations.
@@ -294,10 +340,12 @@ Credentials and key material are HMAC'd by default unless `log_raw` is enabled.
 
 ## Rationale and Alternatives
 
-`PUT /config/seal` covers both credential updates and key changes because the
-server cannot distinguish the two until the new wrapper is initialized and
-`KeyId()` is compared. A separate endpoint for key changes would require the
-operator to declare intent without additional safety benefit.
+`PUT /config/seal` is limited to credential rotation. Accepting a different KMS
+key through this endpoint would require re-encrypting the stored barrier key,
+which changes the cryptographic binding between the namespace and the KMS. That
+operation is closer in risk profile to seal type migration than to a credential
+update, and it warrants the explicit operator intent that `POST /migrate-seal`
+enforces.
 
 Seal type migration is kept in a separate endpoint (`POST /migrate-seal`) because
 it requires key shares (Shamir) and changes the fundamental cryptographic
@@ -315,27 +363,44 @@ misconfigured plugin could expose sensitive fields.
 No significant design downsides have been identified. Operational considerations
 are noted inline in the Technical Description sections above.
 
-## Unresolved Questions
+## Security Implications
 
-**Unseal retry scheduling.** After a failed namespace unseal attempt (KMS
-temporarily unreachable), how is the retry scheduled? Manual retry via the
-unseal endpoint is always possible, but an automatic retry with backoff may be
-preferable.
+A KMS compromise for one namespace does not compromise the barrier keys of other
+namespaces or the root namespace, because each namespace's barrier key is wrapped
+independently by its own KMS. This is a security improvement over a single global
+key wrapping all namespace data.
 
-**Recovery key generation for Auto Seal namespaces.** For Shamir-sealed
-namespaces, `InitializeBarrier` already generates and returns key shares. For
-Auto Seal-protected namespaces, the current PoC does not generate recovery key
-shares at creation time. Mirroring the global Auto Seal behavior, shares should
-be generated and distributed to key holders to authorize future seal migration
-operations (for example, migrating to Shamir if the KMS is decommissioned).
-Recovery key shares do not provide a direct unseal path if the KMS is
-permanently unavailable; Emergency Seal and Parallel Unseal address that case.
+Access to the namespace barrier is gated by KMS access controls. An operator who
+loses KMS access loses the ability to unseal the namespace. This is the same model
+as the global auto-seal and places the same responsibility on the operator to
+maintain KMS availability and access.
+
+The test-before-swap guard on `PUT /config/seal` prevents an operator from
+inadvertently configuring a new wrapper that cannot read the existing stored key,
+which would lock out the namespace. The guard cannot prevent a deliberate
+misconfiguration, but it eliminates accidental lockout from credential mistakes.
+
+The sudo requirement on `PUT /config/seal` and `POST /migrate-seal` ensures that
+seal lifecycle operations cannot be performed by a token with only ordinary
+`update` capability on the namespace path. This closes the gap noted in the
+Problem Statement, where `sys/namespaces` is not currently in `PathsSpecial.Root`.
+
+## User/Developer Experience
+
+Operators familiar with the global auto-seal will find the namespace-level
+behavior consistent. An auto-seal namespace is born unsealed and requires no
+manual unseal step; there are no key shares to distribute or store.
+
+Boot resilience is transparent: if a namespace KMS is unavailable at startup, the
+server comes up normally and the namespace recovers automatically when the KMS
+becomes reachable again. The `GET /v1/sys/namespaces/<path>/seal-status` endpoint
+allows operators and monitoring systems to observe this state.
+
+Namespace creation without a seal parameter continues to work exactly as before.
+Existing tooling that creates namespaces via the API or CLI is unaffected.
 
 ## Related Issues
 
 - https://github.com/openbao/openbao/issues/3333
 - https://github.com/openbao/openbao/pull/3660
 
-## Proof of Concept
-
-None.

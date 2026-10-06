@@ -2328,8 +2328,8 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	return nil
 }
 
-// postUnseal is invoked on the active node, and performance standby nodes,
-// after the barrier is unsealed, but before
+// postUnseal is invoked on the active node, and performance standby nodes
+// (read-enabled standby nodes), after the barrier is unsealed, but before
 // allowing any user operations. This allows us to setup any state that
 // requires the Vault to be unsealed such as mount tables, logical backends,
 // credential stores, etc.
@@ -2360,6 +2360,14 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 	_ = c.seal.SetBarrierConfig(ctx, nil)
 	if c.seal.RecoveryKeySupported() {
 		_ = c.seal.SetRecoveryConfig(ctx, nil)
+	}
+
+	// If mid migration, the purge above also drops the cached configurations
+	// set by [Core.adjustSealConfigDuringMigration], which for read-enabled standby
+	// nodes (where migration has not happened yet) means they need to be restored
+	// in order to report correct status.
+	if err := c.restoreSealConfigIfOngoingMigration(ctx); err != nil {
+		return err
 	}
 
 	// Load prior un-updated store into version history cache to compare
@@ -2733,6 +2741,28 @@ func (c *Core) migrateSealConfig(ctx context.Context) error {
 		return fmt.Errorf("failed to delete old recovery seal configuration during migration: %w", err)
 	}
 
+	return nil
+}
+
+// restoreSealConfigIfOngoingMigration re-applies the in-memory seal configs used
+// while a seal migration is pending. Must be called with the state lock held.
+func (c *Core) restoreSealConfigIfOngoingMigration(ctx context.Context) error {
+	// First check if we are mid-migration, and early exit if we're not
+	if c.migrationInfo == nil {
+		return nil
+	}
+	if done, err := c.sealMigrated(ctx); err != nil || done {
+		return err
+	}
+
+	// Mid migration, restore barrier config to cache
+	existBarrierSealConfig, existRecoverySealConfig, err := c.PhysicalSealConfigs(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to read existing seal configuration during migration: %w", err)
+	}
+	if existBarrierSealConfig.Type != c.seal.BarrierType().String() {
+		c.adjustSealConfigDuringMigration(existBarrierSealConfig, existRecoverySealConfig)
+	}
 	return nil
 }
 

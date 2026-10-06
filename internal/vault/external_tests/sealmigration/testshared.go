@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -377,6 +376,26 @@ func migratePost14(t *testing.T, storage teststorage.ReusableStorage, cluster *v
 		cluster.StartCore(t, i, opts)
 
 		unsealMigrate(t, cluster.Cores[i].Client, unsealKeys, true)
+
+		// Health and seal status should still work during migration
+		healthResp, err := cluster.Cores[i].Client.Sys().Health()
+		if err != nil {
+			t.Fatalf("Health check failed on follower %d during pending migration: %v", i, err)
+		}
+		if !healthResp.Initialized {
+			t.Fatalf("Health check on follower %d reports uninitialized during pending migration", i)
+		}
+
+		sealStatus, err := cluster.Cores[i].Client.Sys().SealStatus()
+		if err != nil {
+			t.Fatalf("SealStatus failed on follower %d during pending migration: %v", i, err)
+		}
+		if !sealStatus.Migration {
+			t.Fatalf("SealStatus on follower %d should report migration in progress", i)
+		}
+		if sealStatus.Sealed {
+			t.Fatalf("SealStatus on follower %d should report unsealed during pending migration", i)
+		}
 	}
 	testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
 
@@ -484,15 +503,7 @@ func awaitMigration(t *testing.T, client *api.Client) {
 	for time.Now().Before(timeout) {
 		resp, err := client.Sys().SealStatus()
 		if err != nil {
-			// When a node is started and unsealed, it is still in standby
-			// mode before it steps up and completes seal migration.
-			// During that time, SealStatus() returns "barrier seal type of ..."
-			// error until the node adopts the new seal config.
-			// Ignore that error and keep trying until seal is migrated.
-			if strings.Contains(err.Error(), "barrier seal type of") {
-				continue
-			}
-			t.Fatal(err)
+			t.Fatalf("SealStatus failed during migration: %v", err)
 		}
 		if !resp.Migration {
 			return

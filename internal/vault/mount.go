@@ -893,7 +893,7 @@ func (c *Core) loadMountsForNamespace(ctx context.Context, ns *namespace.Namespa
 
 // loadTransactionalMounts reads the transactional split mount table
 // populates the storage if there are no existing entries.
-func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Storage, standby bool) error {
+func (c *Core) loadTransactionalMounts(ctx context.Context, txnStorage logical.Storage, standby bool) error {
 	allNamespaces, err := c.ListNamespaces(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list namespaces: %w", err)
@@ -901,6 +901,11 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 
 	for _, ns := range allNamespaces {
 		if err = c.loadTransactionalMountsForNamespace(ctx, ns); err != nil {
+			if errors.Is(err, barrier.ErrNamespaceSealed) {
+				c.logger.Warn("skipping mount table for sealed namespace at boot",
+					"namespace", ns.Path)
+				continue
+			}
 			return err
 		}
 	}
@@ -914,7 +919,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 		needPersist = true
 	}
 
-	if err = c.runMountUpdates(ctx, barrier, needPersist, standby); err != nil {
+	if err = c.runMountUpdates(ctx, txnStorage, needPersist, standby); err != nil {
 		c.logger.Error("failed to run legacy mount table upgrades", "error", err)
 		return err
 	}

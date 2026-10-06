@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/fairshare"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
@@ -71,6 +72,14 @@ var knownNamespaceCoreEntriesToCleanup = []string{
 
 // NamespaceStore is used to provide durable storage of namespace. It is
 // a singleton store across the Core and contains all child namespaces.
+// sealedAtBootEntry records a child namespace whose KMS seal was unreachable
+// during server boot. The background retry goroutine attempts to unseal these
+// namespaces once the KMS provider becomes available.
+type sealedAtBootEntry struct {
+	ns     namespace.Namespace
+	config SealConfig
+}
+
 type NamespaceStore struct {
 	core    *Core
 	storage logical.Storage
@@ -99,6 +108,13 @@ type NamespaceStore struct {
 	deletionDispatcher            *fairshare.JobManager
 	creationDeletionJobContext    context.Context
 	creationDeletionJobCancelFunc context.CancelFunc
+
+	// sealedAtBoot holds child namespaces whose KMS provider was unavailable
+	// during boot. The server continues booting with these namespaces sealed.
+	// startSealedAtBootRetry drains this list in the background once the root
+	// is unsealed.
+	sealedAtBoot   []sealedAtBootEntry
+	sealedAtBootMu sync.Mutex
 
 	// logger is the server logger copied over from core
 	logger hclog.Logger
@@ -247,7 +263,19 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 			if err := sealConfigEntry.DecodeJSON(&sealConfig); err != nil {
 				return false, fmt.Errorf("failed to decode seal config entry for namespace %s: %w", namespace.ID, err)
 			}
-			return true, ns.core.sealManager.SetSeal(ctx, &sealConfig, &namespace, false)
+			// A KMS provider being temporarily unavailable must not prevent the
+			// server from completing its boot. Only the root namespace seal is
+			// allowed to block startup. Child namespace seal failures are logged
+			// and queued for retry once the root is unsealed.
+			if err := ns.core.sealManager.SetSeal(ctx, &sealConfig, &namespace, false); err != nil {
+				ns.logger.Warn("child namespace KMS seal unavailable at boot, namespace remains sealed",
+					"namespace", namespace.Path, "error", err)
+				ns.core.sealManager.RegisterSealedBarrier(&namespace)
+				ns.sealedAtBootMu.Lock()
+				ns.sealedAtBoot = append(ns.sealedAtBoot, sealedAtBootEntry{ns: namespace, config: sealConfig})
+				ns.sealedAtBootMu.Unlock()
+			}
+			return true, nil
 		}
 
 		if err := ns.loadNamespacesRecursive(ctx, barrier, childView, callback); err != nil {
@@ -1198,6 +1226,74 @@ func (ns *NamespaceStore) unsealNamespace(ctx context.Context, namespaceToUnseal
 
 // postNamespaceUnseal loads namespace credential and secret mounts,
 // initializes the backends and updates the router.
+// startSealedAtBootRetry launches a background goroutine that periodically
+// retries unsealing child namespaces whose KMS provider was unavailable during
+// boot. The goroutine stops once all queued namespaces are unsealed or the
+// server shuts down.
+func (ns *NamespaceStore) startSealedAtBootRetry() {
+	ns.sealedAtBootMu.Lock()
+	if len(ns.sealedAtBoot) == 0 {
+		ns.sealedAtBootMu.Unlock()
+		return
+	}
+	ns.sealedAtBootMu.Unlock()
+
+	ctx := ns.creationDeletionJobContext
+
+	go func() {
+		ticker := time.NewTicker(configutil.DefaultSealHealthCheckIntervalUnhealthy)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+
+			ns.sealedAtBootMu.Lock()
+			if len(ns.sealedAtBoot) == 0 {
+				ns.sealedAtBootMu.Unlock()
+				return
+			}
+			remaining := make([]sealedAtBootEntry, 0, len(ns.sealedAtBoot))
+			current := ns.sealedAtBoot
+			ns.sealedAtBootMu.Unlock()
+
+			for _, entry := range current {
+				e := entry
+				if err := ns.core.sealManager.SetSeal(ctx, &e.config, &e.ns, false); err != nil {
+					ns.logger.Warn("KMS seal retry failed, namespace remains sealed",
+						"namespace", e.ns.Path, "error", err)
+					remaining = append(remaining, e)
+					continue
+				}
+				ns.logger.Info("KMS seal recovered, unsealing namespace", "namespace", e.ns.Path)
+				if err := ns.core.sealManager.UnsealBarrierFromStoredKeys(ctx, &e.ns); err != nil {
+					ns.logger.Error("failed to unseal barrier after KMS recovery",
+						"namespace", e.ns.Path, "error", err)
+					remaining = append(remaining, e)
+					continue
+				}
+				if err := ns.unsealNamespace(ctx, &e.ns); err != nil {
+					ns.logger.Error("post-unseal failed after KMS recovery",
+						"namespace", e.ns.Path, "error", err)
+					remaining = append(remaining, e)
+				}
+			}
+
+			ns.sealedAtBootMu.Lock()
+			ns.sealedAtBoot = remaining
+			empty := len(ns.sealedAtBoot) == 0
+			ns.sealedAtBootMu.Unlock()
+
+			if empty {
+				return
+			}
+		}
+	}()
+}
+
 func (ns *NamespaceStore) postNamespaceUnseal(ctx context.Context, unsealedNamespace *namespace.Namespace) error {
 	if err := ns.core.loadMountsForNamespace(ctx, unsealedNamespace); err != nil {
 		return fmt.Errorf("failed to load mounts for namespace: %w", err)

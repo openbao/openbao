@@ -552,7 +552,7 @@ func (c *Core) loadCredentialsForNamespace(ctx context.Context, ns *namespace.Na
 
 // loadTransactionalCredentials reads the transactional split auth (credential)
 // table, populates the storage if there are no existing entries.
-func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical.Storage, standby bool) error {
+func (c *Core) loadTransactionalCredentials(ctx context.Context, txnStorage logical.Storage, standby bool) error {
 	allNamespaces, err := c.ListNamespaces(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list namespaces: %w", err)
@@ -560,6 +560,11 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 
 	for _, ns := range allNamespaces {
 		if err = c.loadTransactionalCredentialsForNamespace(ctx, ns); err != nil {
+			if errors.Is(err, barrier.ErrNamespaceSealed) {
+				c.logger.Warn("skipping auth mount table for sealed namespace at boot",
+					"namespace", ns.Path)
+				continue
+			}
 			return err
 		}
 	}
@@ -576,7 +581,7 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 		needPersist = true
 	}
 
-	if err = c.runCredentialUpdates(ctx, barrier, needPersist, standby); err != nil {
+	if err = c.runCredentialUpdates(ctx, txnStorage, needPersist, standby); err != nil {
 		c.logger.Error("failed to run legacy auth mount table upgrades", "error", err)
 		return err
 	}

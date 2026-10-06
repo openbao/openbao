@@ -199,6 +199,19 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	return nil
 }
 
+// RegisterSealedBarrier inserts a bare, sealed barrier for a namespace whose KMS
+// could not be configured at boot. This ensures NamespaceSealed returns true for
+// the namespace until SetSeal succeeds on recovery, preventing the mount-table
+// loader from attempting to decrypt entries it cannot read.
+func (sm *SealManager) RegisterSealedBarrier(ns *namespace.Namespace) {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+	if _, exists := sm.barrierByNamespacePath.Get(ns.Path); !exists {
+		nsBarrier := barrier.NewAESGCMBarrier(sm.core.physical, ns)
+		sm.barrierByNamespacePath.Insert(ns.Path, nsBarrier)
+	}
+}
+
 // RemoveNamespace removes the given namespace from the SealManager's internal state.
 func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) {
 	sm.lock.Lock()
@@ -296,6 +309,15 @@ func (sm *SealManager) SealStatus(ctx context.Context, ns *namespace.Namespace) 
 	// Verify that seal exists for a namespace
 	seal := sm.sealByNamespace[ns.UUID]
 	if seal == nil {
+		// If a barrier was registered at this exact path (boot-sealed state),
+		// report sealed=true so callers can observe the namespace is unavailable.
+		if _, exists := sm.barrierByNamespacePath.Get(ns.Path); exists {
+			return &SealStatusResponse{
+				Type:        "unknown",
+				Initialized: false,
+				Sealed:      true,
+			}, nil
+		}
 		return nil, ErrNotSealable
 	}
 
@@ -677,6 +699,30 @@ func (sm *SealManager) UnsealWithRootKey(ctx context.Context, ns *namespace.Name
 	sm.logger.Info("unsealed namespace", "namespace", ns.Path)
 
 	return nil
+}
+
+// UnsealBarrierFromStoredKeys fetches the stored barrier key from the KMS seal
+// for a namespace and unseals the namespace barrier. It must only be called
+// after SetSeal has successfully configured the seal for the namespace.
+func (sm *SealManager) UnsealBarrierFromStoredKeys(ctx context.Context, ns *namespace.Namespace) error {
+	sm.lock.RLock()
+	seal := sm.sealByNamespace[ns.UUID]
+	sm.lock.RUnlock()
+
+	if seal == nil {
+		return fmt.Errorf("no seal configured for namespace %q", ns.Path)
+	}
+
+	nsCtx := namespace.ContextWithNamespace(ctx, ns)
+	storedKeys, err := seal.GetStoredKeys(nsCtx)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve stored keys for namespace %q: %w", ns.Path, err)
+	}
+	if len(storedKeys) != 1 {
+		return fmt.Errorf("expected one stored key for namespace %q, got %d", ns.Path, len(storedKeys))
+	}
+
+	return sm.UnsealWithRootKey(ctx, ns, storedKeys[0])
 }
 
 // NamespacesWithKeys is a list of namespace UUIDs which have been unsealed.

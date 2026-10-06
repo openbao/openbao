@@ -64,27 +64,26 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 		Help:           strings.TrimSpace(sysHelpRoot),
 
 		PathsSpecial: &logical.Paths{
-			Root: []string{
-				"auth/*",
-				"remount",
+			SudoRequired: []string{
 				"audit",
 				"audit/*",
+				"config/auditing/request-headers",   // exact match
+				"config/auditing/request-headers/*", // wildcard
+				"config/cors",
+				"config/ui/headers",   // exact match
+				"config/ui/headers/*", // wildcard
+				"internal/inspect/*",
+				"leases",
+				"leases/lookup/*",
+				"leases/revoke-force/*",
+				"leases/revoke-prefix/*",
+				"plugins/catalog/*", // TODO(wslabosz): Adjustment of this requires a rework of the sudo paths radix or some breaking changes within API.
 				"raw",
 				"raw/*",
+				"remount",
 				"rotate",
 				"rotate/keyring",
 				"rotate/root",
-				"config/cors",
-				"config/auditing/*",
-				"config/ui/headers/*",
-				"plugins/catalog/*",
-				"revoke-prefix/*",
-				"revoke-force/*",
-				"leases/revoke-prefix/*",
-				"leases/revoke-force/*",
-				"leases/lookup/*",
-				"leases",
-				"internal/inspect/*",
 			},
 
 			Unauthenticated: []string{

@@ -392,3 +392,124 @@ func TestAppRole_ExpiredSecretID(t *testing.T) {
 		t.Fatalf("expected login with expired secret ID to fail, err:%v resp:%#v", err, resp)
 	}
 }
+
+// TestAppRole_CIDRLoginRefusalMessages verifies that CIDR refusals return a
+// clean error message instead of a raw `%!w(<nil>)`, and that a genuine CIDR
+// lookup error (invalid IP address) is surfaced separately.
+func TestAppRole_CIDRLoginRefusalMessages(t *testing.T) {
+	b, storage := createBackendWithStorage(t)
+
+	// Role CIDR refusal (role-level secret_id_bound_cidrs).
+	b.requestNoErr(t, &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/cidrrole",
+		Storage:   storage,
+		Data: map[string]any{
+			"secret_id_bound_cidrs": []string{"10.0.0.0/8"},
+		},
+	})
+	roleID := b.requestNoErr(t, &logical.Request{
+		Operation: logical.ReadOperation,
+		Path:      "role/cidrrole/role-id",
+		Storage:   storage,
+	}).Data["role_id"]
+	roleSecretID := b.requestNoErr(t, &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "role/cidrrole/secret-id",
+		Storage:   storage,
+	}).Data["secret_id"]
+
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      map[string]any{"role_id": roleID, "secret_id": roleSecretID},
+		Connection: &logical.Connection{
+			RemoteAddr: "192.168.1.1",
+		},
+	})
+	if err != nil || resp == nil || !resp.IsError() {
+		t.Fatalf("expected CIDR refusal as error response, err:%v resp:%#v", err, resp)
+	}
+	errString, ok := resp.Data["error"].(string)
+	if !ok {
+		t.Fatal("error message not part of response")
+	}
+	if strings.Contains(errString, "%!w") {
+		t.Fatalf("error message contains raw %%!w placeholder: %q", errString)
+	}
+	if !strings.Contains(errString, "unauthorized by CIDR restrictions on the role") {
+		t.Fatalf("unexpected error message: %q", errString)
+	}
+
+	// Secret-ID CIDR refusal (role with a use-count limit so the
+	// SecretIDNumUses != 0 branch is exercised).
+	b.requestNoErr(t, &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/cidrsecret",
+		Storage:   storage,
+		Data: map[string]any{
+			"secret_id_num_uses":    5,
+			"secret_id_bound_cidrs": []string{"10.0.0.0/8"},
+		},
+	})
+	secretRoleID := b.requestNoErr(t, &logical.Request{
+		Operation: logical.ReadOperation,
+		Path:      "role/cidrsecret/role-id",
+		Storage:   storage,
+	}).Data["role_id"]
+	secretIDWithCIDR := b.requestNoErr(t, &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "role/cidrsecret/secret-id",
+		Storage:   storage,
+		Data: map[string]any{
+			"cidr_list": []string{"10.0.0.0/8"},
+		},
+	}).Data["secret_id"]
+
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      map[string]any{"role_id": secretRoleID, "secret_id": secretIDWithCIDR},
+		Connection: &logical.Connection{
+			RemoteAddr: "192.168.1.1",
+		},
+	})
+	if err != nil || resp == nil || !resp.IsError() {
+		t.Fatalf("expected secret-ID CIDR refusal as error response, err:%v resp:%#v", err, resp)
+	}
+	errString, ok = resp.Data["error"].(string)
+	if !ok {
+		t.Fatal("error message not part of response")
+	}
+	if strings.Contains(errString, "%!w") {
+		t.Fatalf("error message contains raw %%!w placeholder: %q", errString)
+	}
+	if !strings.Contains(errString, "unauthorized by CIDR restrictions on the secret ID") {
+		t.Fatalf("unexpected error message: %q", errString)
+	}
+
+	// A malformed source address is a genuine lookup error: it must be
+	// surfaced as a separate error (ErrInvalidRequest) rather than being
+	// folded into the refusal message.
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      map[string]any{"role_id": secretRoleID, "secret_id": secretIDWithCIDR},
+		Connection: &logical.Connection{
+			RemoteAddr: "not-an-ip",
+		},
+	})
+	if err != logical.ErrInvalidRequest || resp == nil || !resp.IsError() {
+		t.Fatalf("expected invalid-address lookup error, err:%v resp:%#v", err, resp)
+	}
+	errString, ok = resp.Data["error"].(string)
+	if !ok {
+		t.Fatal("error message not part of response")
+	}
+	if !strings.Contains(errString, "invalid IP address") {
+		t.Fatalf("unexpected error message: %q", errString)
+	}
+}

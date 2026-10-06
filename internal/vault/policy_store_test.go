@@ -334,8 +334,8 @@ func TestDefaultPolicy(t *testing.T) {
 			request.Path = tc.path
 
 			result := acl.AllowOperation(ctx, request, false)
-			if result.RootPrivs {
-				t.Fatal("unexpected root")
+			if result.IsSudo {
+				t.Fatal("unexpected sudo")
 			}
 			if tc.expectAllowed != result.Allowed {
 				t.Fatalf("Expected %v, got %v", tc.expectAllowed, result.Allowed)
@@ -366,8 +366,8 @@ func TestResponseWrappingPolicy(t *testing.T) {
 			request.Path = tc.path
 
 			result := acl.AllowOperation(ctx, request, false)
-			if result.RootPrivs {
-				t.Fatal("unexpected root")
+			if result.IsSudo {
+				t.Fatal("unexpected isSudo")
 			}
 			if tc.expectAllowed != result.Allowed {
 				t.Fatalf("Expected %v, got %v", tc.expectAllowed, result.Allowed)

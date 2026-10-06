@@ -16,13 +16,16 @@ This endpoint reads the value of the key at the given path. This is the raw path
 in the storage backend and not the logical path that is exposed via the mount
 system.
 
+- **`sudo` required** - This endpoint requires `sudo` capability in
+ addition to any path-specific capabilities.
+
 | Method | Path             |
 | :----- | :--------------- |
 | `GET`  | `/sys/raw/:path` |
 
 ### Parameters
 
-- `path` `(string: <required>)` – Specifies the raw path in the storage backend.
+- `path` `(string: <required>)` - Specifies the raw path in the storage backend.
   This is specified as part of the URL.
 
 - `compressed` `(bool: true)` - Attempt to decompress the value.
@@ -52,16 +55,19 @@ This endpoint updates the value of the key at the given path. This is the raw
 path in the storage backend and not the logical path that is exposed via the
 mount system.
 
+- **`sudo` required** - This endpoint requires `sudo` capability in
+ addition to any path-specific capabilities.
+
 | Method | Path             |
 | :----- | :--------------- |
-| `POST`  | `/sys/raw/:path` |
+| `POST` | `/sys/raw/:path` |
 
 ### Parameters
 
-- `path` `(string: <required>)` – Specifies the raw path in the storage
+- `path` `(string: <required>)` - Specifies the raw path in the storage
   backend. This is specified as part of the URL.
 
-- `value` `(string: <required>)` – Specifies the value of the key.
+- `value` `(string: <required>)` - Specifies the value of the key.
 
 - `compression_type` `(string: "")` - Create/update using the compressed form
   of `value`. Supported `compression_type` values are `gzip`, `snappy`, `""`,
@@ -96,7 +102,8 @@ $ curl \
 
 This endpoint returns a list keys for a given path prefix.
 
-**This endpoint requires 'sudo' capability.**
+- **`sudo` required** - This endpoint requires `sudo` capability in
+ addition to any path-specific capabilities.
 
 | Method | Path                         |
 | :----- | :--------------------------- |
@@ -127,13 +134,16 @@ $ curl \
 This endpoint deletes the key with given path. This is the raw path in the
 storage backend and not the logical path that is exposed via the mount system.
 
+- **`sudo` required** - This endpoint requires `sudo` capability in
+ addition to any path-specific capabilities.
+
 | Method   | Path             |
 | :------- | :--------------- |
 | `DELETE` | `/sys/raw/:path` |
 
 ### Parameters
 
-- `path` `(string: <required>)` – Specifies the raw path in the storage backend.
+- `path` `(string: <required>)` - Specifies the raw path in the storage backend.
   This is specified as part of the URL.
 
 ### Sample request

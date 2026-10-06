@@ -6,12 +6,12 @@ description: The '/sys/config/ui' endpoint configures the UI.
 
 The `/sys/config/ui` endpoint is used to configure UI settings.
 
-- **`sudo` required** – All UI endpoints require `sudo` capability in
-  addition to any path-specific capabilities.
-
 ## Read UI settings
 
 This endpoint returns the given UI header configuration.
+
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
+  any path-specific capabilities.
 
 | Method | Path                           |
 | :----- | :----------------------------- |
@@ -19,7 +19,7 @@ This endpoint returns the given UI header configuration.
 
 ### Parameters
 
-- `name` `(string: <required>)` – The name of the custom header.
+- `name` `(string: <required>)` - The name of the custom header.
 
 - `multivalue` `(bool: <optional>)` - Returns multiple values if true.
 
@@ -59,13 +59,16 @@ $ curl \
 
 This endpoint allows configuring the values to be returned for the UI header.
 
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
+  any path-specific capabilities.
+
 | Method | Path                           |
 | :----- | :----------------------------- |
 | `POST` | `/sys/config/ui/headers/:name` |
 
 ### Parameters
 
-- `name` `(string: <required>)` <a name="name"></a> – The name of the custom header.
+- `name` `(string: <required>)` - The name of the custom header.
 
 - `values` `(list: <required>)` - The values to be returned from the header.
 
@@ -91,6 +94,9 @@ $ curl \
 
 This endpoint removes a UI header.
 
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
+  any path-specific capabilities.
+
 | Method   | Path                           |
 | :------- | :----------------------------- |
 | `DELETE` | `/sys/config/ui/headers/:name` |
@@ -107,6 +113,9 @@ $ curl \
 ## List UI headers
 
 This endpoint returns a list of configured UI headers.
+
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
+  any path-specific capabilities.
 
 | Method | Path                     |
 | :----- | :----------------------- |

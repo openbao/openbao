@@ -245,7 +245,8 @@ func (ts *TokenStore) paths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
-					Callback: ts.tokenStoreAccessorList,
+					Callback:    ts.tokenStoreAccessorList,
+					Description: "This endpoint requires sudo capability.",
 				},
 			},
 
@@ -532,7 +533,8 @@ func (ts *TokenStore) paths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: ts.handleRevokeOrphan,
+					Callback:    ts.handleRevokeOrphan,
+					Description: "This endpoint requires sudo capability.",
 				},
 			},
 
@@ -838,9 +840,10 @@ func NewTokenStore(ctx context.Context, logger log.Logger, core *Core, config *l
 		AuthRenew: t.authRenew,
 
 		PathsSpecial: &logical.Paths{
-			Root: []string{
-				"revoke-orphan/*",
-				"accessors*",
+			SudoRequired: []string{
+				"revoke-orphan",
+				"accessors",
+				"accessors/",
 			},
 
 			// Most token store items are local since tokens are local, but a
@@ -1162,7 +1165,6 @@ func (ts *TokenStore) tokenStoreAccessorList(ctx context.Context, req *logical.R
 	if err != nil {
 		return nil, err
 	}
-	nsID := ns.ID
 
 	entries, err := ts.accessorView(ns).List(ctx, "")
 	if err != nil {
@@ -1170,7 +1172,6 @@ func (ts *TokenStore) tokenStoreAccessorList(ctx context.Context, req *logical.R
 	}
 
 	resp := &logical.Response{}
-
 	ret := make([]string, 0, len(entries))
 	for _, entry := range entries {
 		aEntry, err := ts.lookupByAccessor(ctx, entry, true, false)
@@ -1187,7 +1188,7 @@ func (ts *TokenStore) tokenStoreAccessorList(ctx context.Context, req *logical.R
 			continue
 		}
 
-		if aEntry.NamespaceID == nsID {
+		if aEntry.NamespaceID == ns.ID {
 			ret = append(ret, aEntry.AccessorID)
 		}
 	}
@@ -3252,21 +3253,12 @@ func (ts *TokenStore) revokeCommon(ctx context.Context, req *logical.Request, da
 }
 
 // handleRevokeOrphan handles the auth/token/revoke-orphan path for revocation of tokens
-// in a way that leaves child tokens orphaned. Normally, using sys/leases/revoke/leaseID will revoke
-// the token and all children.
+// in a way that leaves child tokens orphaned. Normally, using sys/leases/revoke/leaseID
+// will revoke the token and all children. This endpoint is sudo-privilege protected.
 func (ts *TokenStore) handleRevokeOrphan(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	// Parse the id
 	id := data.Get("token").(string)
 	if id == "" {
 		return logical.ErrorResponse("missing token ID"), logical.ErrInvalidRequest
-	}
-
-	// Check if the client token has sudo/root privileges for the requested path
-	isSudo := ts.System().(extendedSystemView).SudoPrivilege(ctx, req.MountPoint+req.Path, req.ClientToken)
-
-	if !isSudo {
-		return logical.ErrorResponse("root or sudo privileges required to revoke and orphan"),
-			logical.ErrInvalidRequest
 	}
 
 	// Do a lookup. Among other things, that will ensure that this is either
@@ -3283,7 +3275,6 @@ func (ts *TokenStore) handleRevokeOrphan(ctx context.Context, req *logical.Reque
 		return logical.ErrorResponse("batch tokens cannot be revoked"), nil
 	}
 
-	// Revoke and orphan
 	if err := ts.revokeOrphan(ctx, id); err != nil {
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}

@@ -6,11 +6,9 @@ description: >-
 # `/sys/internal/inspect/router`
 
 The `/sys/internal/inspect/router` endpoint is intended for an OpenBao admin to inspect the internal components of OpenBao's router.
-This endpoint can be accessed with a root token or sudo privileges.
 
-## Root
-
-This endpoint returns a list of router entries in the router's root tree.
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
+  any path-specific capabilities.
 
 | Method | Path          |
 | :----- | :------------ |
@@ -79,6 +77,9 @@ $ curl \
 
 This endpoint returns a list of mount entries in the router's mount UUID cache.
 
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
+  any path-specific capabilities.
+
 | Method | Path          |
 | :----- | :------------ |
 | `GET`  | `/sys/internal/inspect/router/uuid` |
@@ -137,6 +138,9 @@ $ curl \
 ## Mount accessor cache
 
 This endpoint returns a list of mount entries in the router's mount accessor cache.
+
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
+  any path-specific capabilities.
 
 | Method | Path          |
 | :----- | :------------ |
@@ -198,6 +202,9 @@ $ curl \
 ## Storage prefix tree
 
 This endpoint returns a list of mount entries in the router's storage prefix tree.
+
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
+  any path-specific capabilities.
 
 | Method | Path          |
 | :----- | :------------ |

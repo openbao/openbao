@@ -359,7 +359,8 @@ func (b *RawBackend) rawPaths(prefix string) []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleRawRead,
+					Callback:    b.handleRawRead,
+					Description: "This endpoint requires sudo capability.",
 					DisplayAttrs: &framework.DisplayAttributes{
 						OperationPrefix: "raw",
 						OperationVerb:   "read",
@@ -379,7 +380,8 @@ func (b *RawBackend) rawPaths(prefix string) []*framework.Path {
 					Summary: "Read the value of the key at the given path.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRawWrite,
+					Callback:    b.handleRawWrite,
+					Description: "This endpoint requires sudo capability.",
 					DisplayAttrs: &framework.DisplayAttributes{
 						OperationPrefix: "raw",
 						OperationVerb:   "write",
@@ -393,7 +395,8 @@ func (b *RawBackend) rawPaths(prefix string) []*framework.Path {
 					Summary: "Update the value of the key at the given path.",
 				},
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.handleRawWrite,
+					Callback:    b.handleRawWrite,
+					Description: "This endpoint requires sudo capability.",
 					DisplayAttrs: &framework.DisplayAttributes{
 						OperationPrefix: "raw",
 						OperationVerb:   "write",
@@ -407,7 +410,8 @@ func (b *RawBackend) rawPaths(prefix string) []*framework.Path {
 					Summary: "Create a key with value at the given path.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
-					Callback: b.handleRawDelete,
+					Callback:    b.handleRawDelete,
+					Description: "This endpoint requires sudo capability.",
 					DisplayAttrs: &framework.DisplayAttributes{
 						OperationPrefix: "raw",
 						OperationVerb:   "delete",
@@ -415,13 +419,14 @@ func (b *RawBackend) rawPaths(prefix string) []*framework.Path {
 					},
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
-							Description: "OK",
+							Description: http.StatusText(http.StatusNoContent),
 						}},
 					},
 					Summary: "Delete the key with given path.",
 				},
 				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handleRawList,
+					Callback:    b.handleRawList,
+					Description: "This endpoint requires sudo capability.",
 					DisplayAttrs: &framework.DisplayAttributes{
 						OperationPrefix: "raw",
 						OperationVerb:   "list",

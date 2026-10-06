@@ -200,7 +200,7 @@ func (b *backendGRPCPluginServer) SpecialPaths(ctx context.Context, args *pb.Emp
 
 	return &pb.SpecialPathsReply{
 		Paths: &pb.Paths{
-			Root:                  paths.Root,
+			SudoRequired:          paths.SudoRequired,
 			Unauthenticated:       paths.Unauthenticated,
 			LocalStorage:          paths.LocalStorage,
 			SealWrapStorage:       paths.SealWrapStorage,

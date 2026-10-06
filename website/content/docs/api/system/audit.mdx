@@ -13,7 +13,7 @@ enabled at a time.
 This endpoint lists only the enabled audit devices (it does not list all
 available audit devices).
 
-- **`sudo` required** – This endpoint requires `sudo` capability in addition to
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
   any path-specific capabilities.
 
 | Method | Path         |
@@ -47,7 +47,7 @@ $ curl \
 This endpoint enables a new audit device at the supplied path. The path can be a
 single word name or a more complex, nested path.
 
-- **`sudo` required** – This endpoint requires `sudo` capability in addition to
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
   any path-specific capabilities.
 
 | Method | Path               |
@@ -56,16 +56,16 @@ single word name or a more complex, nested path.
 
 ### Parameters
 
-- `path` `(string: <required>)` – Specifies the path in which to enable the audit
+- `path` `(string: <required>)` - Specifies the path in which to enable the audit
   device. This is part of the request URL.
 
-- `description` `(string: "")` – Specifies a human-friendly description of the
+- `description` `(string: "")` - Specifies a human-friendly description of the
   audit device.
 
-- `options` `(map<string|string>: nil)` – Specifies configuration options to pass to the audit device itself.
+- `options` `(map<string|string>: nil)` - Specifies configuration options to pass to the audit device itself.
   For more details, please see the relevant page for an audit device `type`, under [Audit Devices docs](../../audit/index.mdx).
 
-- `type` `(string: <required>)` – Specifies the type of the audit device.
+- `type` `(string: <required>)` - Specifies the type of the audit device.
   Valid types are `file`, `socket` and `syslog`.
 
 ### Sample payload
@@ -101,7 +101,7 @@ the audit device at the same path, as a new salt will be created for hashing.
 
 :::
 
-- **`sudo` required** – This endpoint requires `sudo` capability in addition to
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
   any path-specific capabilities.
 
 | Method   | Path               |
@@ -110,7 +110,7 @@ the audit device at the same path, as a new salt will be created for hashing.
 
 ### Parameters
 
-- `path` `(string: <required>)` – Specifies the path of the audit device to
+- `path` `(string: <required>)` - Specifies the path of the audit device to
   delete. This is part of the request URL.
 
 ### Sample request

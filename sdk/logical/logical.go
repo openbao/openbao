@@ -115,7 +115,11 @@ type Factory func(context.Context, *BackendConfig) (Backend, error)
 
 // Paths is the structure of special paths that is used for SpecialPaths.
 type Paths struct {
-	// Root are the API paths that require a root token to access
+	// SudoRequired are the API paths that require sudo capability to access.
+	SudoRequired []string
+
+	// Deprecated: Root are the API paths that require sudo capability to access.
+	// Use `SudoRequired` instead.
 	Root []string
 
 	// Unauthenticated are the API paths that can be accessed without any auth.

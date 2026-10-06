@@ -39,22 +39,22 @@ type ACL struct {
 }
 
 type CheckOpts struct {
-	RootPrivsRequired bool
-	Unauth            bool
+	RequireSudo bool
+	Unauth      bool
 }
 
 type AuthResults struct {
 	ACLResults      *ACLResults
 	SentinelResults *SentinelResults
 	Allowed         bool
-	RootPrivs       bool
+	IsSudo          bool
 	DeniedError     bool
 	Error           *multierror.Error
 }
 
 type ACLResults struct {
 	Allowed                bool
-	RootPrivs              bool
+	IsSudo                 bool
 	IsRoot                 bool
 	MFAMethods             []string
 	CapabilitiesBitmap     uint32
@@ -358,7 +358,7 @@ func (a *ACL) AllowOperation(ctx context.Context, req *logical.Request, capCheck
 			return ret
 		}
 		ret.Allowed = true
-		ret.RootPrivs = true
+		ret.IsSudo = true
 		ret.IsRoot = true
 		ret.GrantingPolicies = []logical.PolicyInfo{{
 			Name:          "root",
@@ -435,13 +435,13 @@ CHECK:
 	// Copy ControlGroup from ACL to ACLResults
 	ret.ControlGroup = permissions.ControlGroup
 
-	// Check if the minimum permissions are met
+	// Check if the minimum permissions are met.
 	// If "deny" has been explicitly set, only deny will be in the map, so we
 	// only need to check for the existence of other values
-	ret.RootPrivs = capabilities&SudoCapabilityInt > 0
+	ret.IsSudo = capabilities&SudoCapabilityInt > 0
 
-	// This is after the RootPrivs check so we can gate on it being from sudo
-	// rather than policy root
+	// This is after the isSudo check so we can gate on it being from sudo
+	// capability rather than 'root' policy.
 	if capCheckOnly {
 		ret.CapabilitiesBitmap = capabilities
 		return ret

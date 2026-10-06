@@ -176,7 +176,7 @@ func pathIssuerSignSelfIssued(b *backend) *framework.Path {
 		OperationSuffix: "self-issued",
 	}
 
-	return buildPathIssuerSignSelfIssued(b, pattern, displayAttrs)
+	return buildPathIssuerSignSelfIssued(b, pattern, displayAttrs, false)
 }
 
 func pathSignSelfIssued(b *backend) *framework.Path {
@@ -188,10 +188,10 @@ func pathSignSelfIssued(b *backend) *framework.Path {
 		OperationSuffix: "self-issued",
 	}
 
-	return buildPathIssuerSignSelfIssued(b, pattern, displayAttrs)
+	return buildPathIssuerSignSelfIssued(b, pattern, displayAttrs, true)
 }
 
-func buildPathIssuerSignSelfIssued(b *backend, pattern string, displayAttrs *framework.DisplayAttributes) *framework.Path {
+func buildPathIssuerSignSelfIssued(b *backend, pattern string, displayAttrs *framework.DisplayAttributes, isSudo bool) *framework.Path {
 	fields := map[string]*framework.FieldSchema{
 		"certificate": {
 			Type:        framework.TypeString,
@@ -204,7 +204,12 @@ func buildPathIssuerSignSelfIssued(b *backend, pattern string, displayAttrs *fra
 		},
 	}
 	fields = addIssuerRefField(fields)
-	path := &framework.Path{
+	var desc string
+	if isSudo {
+		desc = "This endpoint requires sudo capability."
+	}
+
+	return &framework.Path{
 		Pattern:      pattern,
 		DisplayAttrs: displayAttrs,
 		Fields:       fields,
@@ -213,7 +218,8 @@ func buildPathIssuerSignSelfIssued(b *backend, pattern string, displayAttrs *fra
 				Callback: b.resolvePathIssuerKey,
 			},
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: b.pathIssuerSignSelfIssued,
+				Callback:    b.pathIssuerSignSelfIssued,
+				Description: desc,
 				Responses: map[int][]framework.Response{
 					http.StatusOK: {{
 						Description: "OK",
@@ -237,8 +243,6 @@ func buildPathIssuerSignSelfIssued(b *backend, pattern string, displayAttrs *fra
 		HelpSynopsis:    pathIssuerSignSelfIssuedHelpSyn,
 		HelpDescription: pathIssuerSignSelfIssuedHelpDesc,
 	}
-
-	return path
 }
 
 const (

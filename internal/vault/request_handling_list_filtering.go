@@ -102,18 +102,18 @@ func (c *Core) filterListResponse(ctx context.Context, req *logical.Request, una
 			Data:      map[string]any{},
 		}
 
-		rootPath := c.router.RootPath(ctx, checkPath)
-		if rootPath && unauth {
-			// Per note in c.CheckToken(...), we cannot access root path in
+		isSudoPath := c.router.SudoPath(ctx, checkPath)
+		if isSudoPath && unauth {
+			// Per note in c.CheckToken(...), we cannot access sudo path in
 			// unauthenticated request, even if authentication data is
 			// attached to the login request. This is because login requests
-			// cannot be root paths.
+			// cannot be sudo paths.
 			continue
 		}
 
 		authResults := c.performPolicyChecks(ctx, acl, te, checkReq, entity, &policy.CheckOpts{
-			Unauth:            unauth,
-			RootPrivsRequired: rootPath,
+			Unauth:      unauth,
+			RequireSudo: isSudoPath,
 		})
 
 		if authResults.Allowed {

@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -44,17 +45,11 @@ func TestLogin(t *testing.T) {
 
 	content := []byte(allowedPassword)
 
-	tmpfile, err := os.CreateTemp(t.TempDir(), "file-containing-password")
-	require.NoError(t, err)
-	err = os.Setenv(passwordEnvVar, allowedPassword)
+	passwordFilePath := filepath.Join(t.TempDir(), "file-containing-password")
+	err := os.WriteFile(passwordFilePath, content, 0o600)
 	require.NoError(t, err)
 
-	if _, err := tmpfile.Write(content); err != nil {
-		t.Fatalf("error writing to temp file: %v", err)
-	}
-	if err := tmpfile.Close(); err != nil {
-		t.Fatalf("error closing temp file: %v", err)
-	}
+	t.Setenv(passwordEnvVar, allowedPassword)
 
 	// a response to return if the correct values were passed to login
 	authSecret := &api.Secret{
@@ -85,7 +80,7 @@ func TestLogin(t *testing.T) {
 	require.NoError(t, err)
 
 	// Password fromFile test
-	authFromFile, err := NewLDAPAuth("my-ldap-username", &Password{FromFile: tmpfile.Name()})
+	authFromFile, err := NewLDAPAuth("my-ldap-username", &Password{FromFile: passwordFilePath})
 	require.NoError(t, err)
 
 	loginRespFromFile, err := client.Auth().Login(t.Context(), authFromFile)

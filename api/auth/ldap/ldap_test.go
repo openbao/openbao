@@ -66,9 +66,7 @@ func TestLogin(t *testing.T) {
 		err := json.NewDecoder(req.Body).Decode(&payload)
 		require.NoError(t, err)
 		if payload["password"] == allowedPassword {
-			if _, err := w.Write(authBytes); err != nil {
-				t.Errorf("error writing authentication response: %v", err)
-			}
+			_, _ = w.Write(authBytes)
 		}
 	}
 

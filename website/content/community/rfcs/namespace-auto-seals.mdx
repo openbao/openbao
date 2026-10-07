@@ -92,10 +92,12 @@ material; the full seal configuration is never returned.
 | ------ | ---------------------------------------- |
 | `POST` | `/v1/sys/namespaces/<path>/migrate-seal` |
 
-This endpoint requires sudo privilege. It handles seal type changes between
-Auto Seal and Shamir within a sealable namespace. The operator provides the
-new seal configuration in the request body.
+This endpoint requires sudo privilege. It handles all seal type changes within
+a sealable namespace. The operator provides the new seal configuration in the
+request body.
 
+- **Auto Seal to Auto Seal**: the stored barrier key and recovery key are
+  re-encrypted under the new KMS. No key shares are exchanged.
 - **Auto Seal to Shamir**: new key shares are returned in the response.
 - **Shamir to Auto Seal**: existing key shares must be provided in the request;
   after reconstruction the combined key becomes the recovery key on the new

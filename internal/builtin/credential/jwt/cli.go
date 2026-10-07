@@ -107,7 +107,8 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 	callbackPort, ok := m[FieldCallbackPort]
 	if !ok {
 		if serverURL != nil {
-			callbackPort = serverURL.Port() + "/v1/auth/" + mount
+			ns := strings.Trim(c.Namespace(), "/")
+			callbackPort = serverURL.Port() + path.Join("/v1", ns, "/auth/", mount)
 		} else {
 			callbackPort = port
 		}

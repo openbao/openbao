@@ -815,7 +815,7 @@ func (c *Core) waitForLeadership(manualStepDown *bool, manualStepDownCh, stopCh 
 	go l.grab()
 	if stopped := l.lockOrStop(); stopped {
 		if err := lock.Unlock(); err != nil {
-			c.logger.Error("error releasing lock", "error", err)
+			c.logger.Error("error releasing HA lock", "error", err)
 		}
 		metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
 		return true, false

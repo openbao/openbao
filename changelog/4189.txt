@@ -1,0 +1,3 @@
+```release-note:bug
+core/seal: Fix health check and seal status returning errors during pending seal migration on read-enabled standby nodes.
+```

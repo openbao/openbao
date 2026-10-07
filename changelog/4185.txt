@@ -1,0 +1,9 @@
+```release-note:change
+sdk/framework: Deprecate `(*Backend)SpecialPaths.Root` field, introduced `SpecialPaths.SudoRequired` as replacement.  
+```
+```release-note:change
+sys/auth: Remove sudo capability enforcement on `sys/auth/*` paths, which are also callable through `sys/mount/auth/*` endpoints. 
+```
+```release-note:bug
+sys/config/ui/headers: Properly require sudo capability on `sys/config/ui/headers` list requests.
+```

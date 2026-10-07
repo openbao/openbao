@@ -62,22 +62,12 @@ type Conf struct {
 	ClientScheme, PathToTokenFile, PathToRootCAFile, ServiceHost, ServicePort string
 }
 
-// Server returns an http test server that can be used to test
-// Kubernetes client code. It also retains the current state,
-// and a func to close the server and to clean up any temporary
-// files.
+// Server starts an http test server for Kubernetes client code and returns
+// its current state, client configuration, and a function to close it.
 func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 	testState = &State{m: &sync.Map{}}
 	testConf = &Conf{
 		ClientScheme: "http://",
-	}
-
-	// We're going to have multiple close funcs to call.
-	var closers []func()
-	closeFunc = func() {
-		for _, closer := range closers {
-			closer()
-		}
 	}
 
 	tmpDir := t.TempDir()
@@ -88,26 +78,21 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 		t.Fatal(err)
 	}
 	if _, err = tmpToken.WriteString(token); err != nil {
-		closeFunc()
 		t.Fatal(err)
 	}
 	if err := tmpToken.Close(); err != nil {
-		closeFunc()
 		t.Fatal(err)
 	}
 	testConf.PathToTokenFile = tmpToken.Name()
 
 	tmpCACrt, err := os.CreateTemp(tmpDir, "ca.crt")
 	if err != nil {
-		closeFunc()
 		t.Fatal(err)
 	}
 	if _, err = tmpCACrt.WriteString(caCrt); err != nil {
-		closeFunc()
 		t.Fatal(err)
 	}
 	if err := tmpCACrt.Close(); err != nil {
-		closeFunc()
 		t.Fatal(err)
 	}
 	testConf.PathToRootCAFile = tmpCACrt.Name()
@@ -159,7 +144,7 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 			_, _ = fmt.Fprintf(w, "unexpected request method: %s", r.Method)
 		}
 	}))
-	closers = append(closers, ts.Close)
+	closeFunc = ts.Close
 
 	// ts.URL example: http://127.0.0.1:35681
 	urlFields := strings.Split(ts.URL, "://")

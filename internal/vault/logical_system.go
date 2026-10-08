@@ -3087,7 +3087,7 @@ func (b *SystemBackend) handleEnableAudit(ctx context.Context, req *logical.Requ
 	}
 
 	// Attempt enabling
-	if err := b.Core.enableAudit(ctx, me, true); err != nil {
+	if err := b.Core.enableAudit(ctx, me); err != nil {
 		b.Backend.Logger().Error("enable audit mount failed", "path", me.Path, "error", err)
 		return handleError(err)
 	}

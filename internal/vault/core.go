@@ -2301,7 +2301,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	if err := c.setupExpiration(expireLeaseStrategyFairsharing, standby); err != nil {
 		return err
 	}
-	if err := c.setupAudits(ctx); err != nil {
+	if err := c.setupAudits(ctx, standby); err != nil {
 		return err
 	}
 	// Adding new audit devices only occurs on the active node. Standby nodes

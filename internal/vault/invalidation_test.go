@@ -942,6 +942,85 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 	}
 }
 
+// TestCore_Invalidate_NamespaceSingletonMount verifies that mount invalidation
+// won't trigger singleton mounts reload through the difference of reported running
+// version. Tests regression happening with OpenBao <v2.7.* upgrading to v2.7.*.
+func TestCore_Invalidate_NamespaceSingletonMount(t *testing.T) {
+	t.Parallel()
+
+	c, _ := testCore_Invalidate_TestCore(t, nil)
+	ns := &namespace.Namespace{
+		ID:   "ns",
+		Path: "ns",
+	}
+	TestCoreCreateNamespaces(t, c, ns)
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
+
+	getNSSystemMount := func() *routing.MountEntry {
+		for _, me := range c.mounts.Entries {
+			if me.NamespaceID == ns.ID && me.Type == routing.MountTypeNSSystem {
+				return me
+			}
+		}
+		return nil
+	}
+
+	// 1. Get namespace sys mount.
+	entry := getNSSystemMount()
+	require.NotNil(t, entry)
+
+	initVer := "v0.0.0+builtin.bao"
+	require.NotEqual(t, entry.RunningVersion, initVer)
+
+	view := c.NamespaceView(ns)
+	storagePath := path.Join(coreMountConfigPath, entry.UUID)
+
+	storageEntry, err := view.Get(ctx, storagePath)
+	require.NoError(t, err)
+	require.NotNil(t, storageEntry)
+
+	// 2. Manipulate the entry through updating the running version.
+	stored := new(routing.MountEntry)
+	require.NoError(t, jsonutil.DecodeJSON(storageEntry.Value, stored))
+	stored.RunningVersion = initVer
+	updated, err := jsonutil.EncodeJSON(stored)
+	require.NoError(t, err)
+	testCore_Invalidate_sneakValueAroundCache(t, ctx, c, &logical.StorageEntry{
+		Key:   storagePath,
+		Value: updated,
+	})
+
+	// 3. Call invalidate, verify it doesn't fail trying to reload singleton mount.
+	require.NoError(t, c.invalidateSynchronous(view.Prefix()+storagePath))
+
+	entry = getNSSystemMount()
+	require.NotNil(t, entry)
+	require.Equal(t, initVer, entry.RunningVersion)
+
+	// 4. Simulate mount tuning through entry config manipulation.
+	afterStored := new(routing.MountEntry)
+	storageEntry, err = view.Get(ctx, storagePath)
+	require.NoError(t, err)
+	require.NotNil(t, storageEntry)
+	require.NoError(t, jsonutil.DecodeJSON(storageEntry.Value, afterStored))
+	afterStored.Config.AllowedResponseHeaders = []string{"header"}
+
+	updated, err = jsonutil.EncodeJSON(afterStored)
+	require.NoError(t, err)
+	testCore_Invalidate_sneakValueAroundCache(t, ctx, c, &logical.StorageEntry{
+		Key:   storagePath,
+		Value: updated,
+	})
+
+	// 5. Call invalidate.
+	require.NoError(t, c.invalidateSynchronous(view.Prefix()+storagePath))
+
+	// 6. Verify that mount tuning is still reflected upon invalidation.
+	entry = getNSSystemMount()
+	require.NotNil(t, entry)
+	require.Equal(t, []string{"header"}, entry.Config.AllowedResponseHeaders)
+}
+
 func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 	t.Parallel()
 	testCases := map[string]func(t *testing.T, c *Core) context.Context{

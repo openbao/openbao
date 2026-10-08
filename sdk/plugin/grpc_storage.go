@@ -230,7 +230,8 @@ type GRPCStorageServer struct {
 
 	// txns may be concurrently accessed so make sure we use a
 	// concurrency-safe data structure to store them.
-	txns sync.Map
+	txns    sync.Map
+	doneCtx context.Context
 }
 
 func (s *GRPCStorageServer) List(ctx context.Context, args *pb.StorageListArgs) (*pb.StorageListReply, error) {
@@ -363,7 +364,9 @@ func (s *GRPCStorageServer) BeginReadOnlyTx(ctx context.Context, args *pb.Empty)
 		return nil, err
 	}
 
-	txn, err := tImpl.BeginReadOnlyTx(ctx)
+	// Begin the transaction over doneCtx instead of ctx to ensure the backend
+	// does not cancel it on completion of this RPC.
+	txn, err := tImpl.BeginReadOnlyTx(s.doneCtx)
 	if err != nil {
 		return &pb.StorageBeginTxReply{
 			Err: pb.ErrToString(err),
@@ -391,7 +394,9 @@ func (s *GRPCStorageServer) BeginTx(ctx context.Context, args *pb.Empty) (*pb.St
 		return nil, err
 	}
 
-	txn, err := tImpl.BeginTx(ctx)
+	// Begin the transaction over doneCtx instead of ctx to ensure the backend
+	// does not cancel it on completion of this RPC.
+	txn, err := tImpl.BeginTx(s.doneCtx)
 	if err != nil {
 		return &pb.StorageBeginTxReply{
 			Err: pb.ErrToString(err),

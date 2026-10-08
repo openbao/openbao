@@ -59,5 +59,5 @@ func newTestLogger(name string) log.Logger {
 }
 
 func GetNumWorkers(j *JobManager) int {
-	return j.workerPool.numWorkers
+	return cap(j.dispatcher.sema)
 }

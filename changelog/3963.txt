@@ -1,0 +1,3 @@
+```release-note:change
+secrets/kv: Delete, undelete and destroy operations update the `update_time` timestamp of the version metadata.
+```

@@ -2267,13 +2267,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	if err := c.setupNamespaceStore(ctx); err != nil {
 		return err
 	}
-
-	{
-		logger := c.baseLogger.Named("external-keys")
-		c.AddLogger(logger)
-		c.externalKeys = ek.NewRegistry(c.kmsPluginCatalog, logger)
-	}
-
+	c.externalKeys = ek.NewRegistry(c.kmsPluginCatalog, c.WithBaseLogger("external-keys"))
 	if err := c.loadMounts(ctx, standby); err != nil {
 		return err
 	}
@@ -2806,6 +2800,18 @@ func (c *Core) AddLogger(logger log.Logger) {
 	c.allLoggersLock.Lock()
 	defer c.allLoggersLock.Unlock()
 	c.allLoggers = append(c.allLoggers, logger)
+}
+
+func (c *Core) WithNamedLogger(name string) log.Logger {
+	logger := c.logger.Named(name)
+	c.AddLogger(logger)
+	return logger
+}
+
+func (c *Core) WithBaseLogger(name string) log.Logger {
+	logger := c.baseLogger.Named(name)
+	c.AddLogger(logger)
+	return logger
 }
 
 // SetLogLevel sets logging level for all tracked loggers to the level provided
@@ -3565,48 +3571,23 @@ func (c *Core) LoadNodeID() (string, error) {
 	return hostname, nil
 }
 
-// DetermineRoleFromLoginRequest will determine the role that should be applied to a quota for a given
-// login request
-func (c *Core) DetermineRoleFromLoginRequest(ctx context.Context, mountPoint string, data map[string]any) string {
+// DetermineRoleFromLoginRequest will determine the role that should be applied
+// to a quota for a given login request.
+func (c *Core) DetermineRoleFromLoginRequest(ctx context.Context, mountPoint string, data map[string]any, conn *logical.Connection) string {
 	c.authLock.RLock()
 	defer c.authLock.RUnlock()
 	matchingBackend := c.router.MatchingBackend(ctx, mountPoint)
 	if matchingBackend == nil || matchingBackend.Type() != logical.TypeCredential {
-		// Role based quotas do not apply to this request
-		return ""
-	}
-	return c.doResolveRoleLocked(ctx, mountPoint, matchingBackend, data)
-}
-
-// DetermineRoleFromLoginRequestFromReader will determine the role that should
-// be applied to a quota for a given login request. The reader will only be
-// consumed if the matching backend for the mount point exists and is a secret
-// backend
-func (c *Core) DetermineRoleFromLoginRequestFromReader(ctx context.Context, mountPoint string, reader io.Reader) string {
-	c.authLock.RLock()
-	defer c.authLock.RUnlock()
-	matchingBackend := c.router.MatchingBackend(ctx, mountPoint)
-	if matchingBackend == nil || matchingBackend.Type() != logical.TypeCredential {
-		// Role based quotas do not apply to this request
+		// Role based quotas do not apply to this request.
 		return ""
 	}
 
-	data := make(map[string]any)
-	err := jsonutil.DecodeJSONFromReader(reader, &data)
-	if err != nil {
-		return ""
-	}
-	return c.doResolveRoleLocked(ctx, mountPoint, matchingBackend, data)
-}
-
-// doResolveRoleLocked does a login and resolve role request on the matching
-// backend. Callers should have a read lock on c.authLock
-func (c *Core) doResolveRoleLocked(ctx context.Context, mountPoint string, matchingBackend logical.Backend, data map[string]any) string {
 	resp, err := matchingBackend.HandleRequest(ctx, &logical.Request{
 		MountPoint: mountPoint,
 		Path:       "login",
 		Operation:  logical.ResolveRoleOperation,
 		Data:       data,
+		Connection: conn,
 		Storage:    c.router.MatchingStorageByAPIPath(ctx, mountPoint+"login"),
 	})
 	if err != nil || resp == nil || resp.Data == nil || resp.Data["role"] == nil {
@@ -3895,7 +3876,8 @@ func (c *Core) refreshRequestForwardingConnection(ctx context.Context, clusterAd
 	// ALPN header right. It's just "insecure" because GRPC isn't managing
 	// the TLS state.
 	dctx, cancelFunc := context.WithCancel(ctx)
-	rpcClientConn, err := grpc.NewClient(fmt.Sprintf("passthrough:///%s", clusterURL.Host),
+	rpcClientConn, err := grpc.NewClient(
+		fmt.Sprintf("passthrough:///%s", clusterURL.Host),
 		grpc.WithContextDialer(clusterListener.GetContextDialerFunc(ctx, consts.RequestForwardingALPN)),
 		grpc.WithTransportCredentials(
 			insecure.NewCredentials(), // it's not, we handle it in the dialer
@@ -4065,9 +4047,7 @@ func (c *Core) setupPolicyStore(ctx context.Context, standby bool) error {
 	// Create the policy store
 	var err error
 	sysView := &dynamicSystemView{core: c}
-	psLogger := c.baseLogger.Named("policy")
-	c.AddLogger(psLogger)
-	c.policyStore, err = policy.NewStore(ctx, c, c.systemBarrierView, sysView, psLogger)
+	c.policyStore, err = policy.NewStore(ctx, c, c.systemBarrierView, sysView, c.WithBaseLogger("policy"))
 	if err != nil {
 		return err
 	}

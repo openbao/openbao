@@ -4,10 +4,8 @@
 package vault
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -73,6 +71,9 @@ func (p *phy) Len() int {
 	return len(p.entries)
 }
 
+// TestAutoSeal_UpgradeKeys verifies that UpgradeKeys correctly upgrades recovery key
+// and stored shares entries. Additionally we test an edge case when no recovery key
+// exists yet but UpgradeKeys still does not fail and re-encrypts the stored keys.
 func TestAutoSeal_UpgradeKeys(t *testing.T) {
 	core, _, _ := TestCoreUnsealed(t)
 	testSeal, toggleableWrapper := seal.NewTestSeal(nil)
@@ -93,82 +94,85 @@ func TestAutoSeal_UpgradeKeys(t *testing.T) {
 	pBackend := newTestBackend(t)
 	core.physical = pBackend
 
+	// The upgrade keys path uses core.seal for the recovery config,
+	// so point it at the autoSeal under test to simulate root namespace seal.
+	core.seal = autoSeal
+
 	ctx := t.Context()
 
 	inkeys := [][]byte{[]byte("grist"), []byte("house")}
-	if err := autoSeal.SetStoredKeys(ctx, inkeys); err != nil {
-		t.Fatalf("SetStoredKeys: want no error, got %v", err)
-	}
+	require.NoError(t, autoSeal.SetStoredKeys(ctx, inkeys))
 
-	inRecoveryKey := []byte("falernum")
-	if err := autoSeal.SetRecoveryKey(ctx, inRecoveryKey); err != nil {
-		t.Fatalf("SetRecoveryKey: want no error, got %v", err)
-	}
+	t.Run("happy path", func(t *testing.T) {
+		inRecoveryKey := []byte("falernum")
+		require.NoError(t, autoSeal.SetRecoveryKey(ctx, inRecoveryKey))
 
-	check := func() {
-		// The values of the stored keys should never change.
-		outkeys, err := autoSeal.GetStoredKeys(ctx)
-		require.NoError(t, err)
-		if !reflect.DeepEqual(inkeys, outkeys) {
-			t.Errorf("incorrect stored keys: want %v, got %v", inkeys, outkeys)
-		}
+		check := func() {
+			outkeys, err := autoSeal.GetStoredKeys(ctx)
+			require.NoError(t, err)
+			require.Equal(t, inkeys, outkeys)
 
-		// The value of the recovery key should also never change.
-		outRecoveryKey, err := autoSeal.RecoveryKey(ctx)
-		require.NoError(t, err)
-		if !bytes.Equal(inRecoveryKey, outRecoveryKey) {
-			t.Errorf("incorrect recovery key: want %q, got %q", inRecoveryKey, outRecoveryKey)
-		}
+			outRecoveryKey, err := autoSeal.RecoveryKey(ctx)
+			require.NoError(t, err)
+			require.Equal(t, inRecoveryKey, outRecoveryKey)
 
-		// There should only be 2 entries in the physical backend. One for
-		// the stored keys and one for the recovery key.
-		if want, got := 2, pBackend.Len(); want != got {
-			t.Errorf("backend unexpected Len: want %d, got %d", want, got)
-		}
+			// There should only be 2 entries in the physical backend.
+			// One for the stored keys and one for the recovery key.
+			require.Len(t, pBackend.entries, 2)
 
-		for phyKey, phyEntries := range pBackend.entries {
-			// Calling UpgradeKeys should only add an entry if the key has
-			// changed.
-			if keyCount, entryCount := len(encKeys), len(phyEntries); keyCount != entryCount {
-				t.Errorf("phyKey = %s: encryption key count not equal to entry count: keys=%d, entries=%d", phyKey, keyCount, entryCount)
-			}
+			for _, phyEntries := range pBackend.entries {
+				// Calling UpgradeKeys should only add an entry if the key has changed.
+				require.Equal(t, len(encKeys), len(phyEntries))
 
-			// Each phyEntry should correspond to a key at the same index
-			// in encKeys. Iterate over each phyEntry and verify it was
-			// encrypted with its corresponding key in encKeys.
-			for i, phyEntry := range phyEntries {
-				blobInfo := &wrapping.BlobInfo{}
-				if err := proto.Unmarshal(phyEntry.Value, blobInfo); err != nil {
-					t.Errorf("phyKey = %s: failed to proto decode stored keys: %s", phyKey, err)
-				}
-				if blobInfo.KeyInfo == nil {
-					t.Errorf("phyKey = %s: KeyInfo missing: %+v", phyKey, blobInfo)
-				}
-				if want, got := encKeys[i], blobInfo.KeyInfo.KeyId; want != got {
-					t.Errorf("phyKey = %s: Incorrect encryption key: want %s, got %s", phyKey, want, got)
+				// Each phyEntry should correspond to a key at the same index
+				// in encKeys. Iterate over each phyEntry and verify it was
+				// encrypted with its corresponding key in encKeys.
+				for i, phyEntry := range phyEntries {
+					blobInfo := &wrapping.BlobInfo{}
+					require.NoError(t, proto.Unmarshal(phyEntry.Value, blobInfo))
+					require.NotNil(t, blobInfo.KeyInfo)
+					require.Equal(t, encKeys[i], blobInfo.KeyInfo.KeyId)
 				}
 			}
 		}
-	}
 
-	// Verify the current state is correct before calling UpgradeKeys.
-	check()
+		// Verify the current state is correct before calling UpgradeKeys.
+		check()
 
-	// Call UpgradeKeys before changing the encryption key and verify
-	// nothing has changed.
-	if err := autoSeal.UpgradeKeys(ctx); err != nil {
-		t.Fatalf("UpgradeKeys: want no error, got %v", err)
-	}
-	check()
+		// Call UpgradeKeys before changing the encryption key and verify
+		// nothing has changed.
+		require.NoError(t, autoSeal.UpgradeKeys(ctx))
+		check()
 
-	// Change the encryption key, call UpgradeKeys, then verify the stored
-	// keys and recovery key has been re-encrypted with the new encryption
-	// key.
-	changeKey("primanti")
-	if err := autoSeal.UpgradeKeys(ctx); err != nil {
-		t.Fatalf("UpgradeKeys: want no error, got %v", err)
-	}
-	check()
+		// Change the encryption key, call UpgradeKeys, then verify
+		// the stored keys and recovery key has been re-encrypted with
+		// the new encryption key.
+		changeKey("primanti")
+		require.NoError(t, autoSeal.UpgradeKeys(ctx))
+		check()
+	})
+
+	t.Run("no recovery key", func(t *testing.T) {
+		// Emulate a recovery config with zero key shares and no recovery key stored.
+		require.NoError(t, autoSeal.SetRecoveryConfig(ctx, &SealConfig{Type: "static"}))
+
+		// Nothing to upgrade while the encryption key hasn't changed.
+		require.NoError(t, autoSeal.UpgradeKeys(ctx))
+
+		// Change the encryption key; the stored keys must still be re-encrypted
+		// even though there is no recovery key to upgrade.
+		changeKey("primanti")
+		require.NoError(t, autoSeal.UpgradeKeys(ctx))
+
+		keysBlob := pBackend.entries[StoredBarrierKeysPath]
+		require.Equal(t, 2, len(keysBlob))
+
+		blobInfo := &wrapping.BlobInfo{}
+		require.NoError(t, proto.Unmarshal(keysBlob[len(keysBlob)-1].Value, blobInfo))
+
+		require.NotNil(t, blobInfo.KeyInfo)
+		require.Equal(t, "primanti", blobInfo.KeyInfo.KeyId)
+	})
 }
 
 func TestAutoSeal_HealthCheck(t *testing.T) {

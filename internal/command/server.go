@@ -183,7 +183,8 @@ func (c *ServerCommand) Flags() *FlagSets {
 		Usage: "Path to a configuration file or directory of configuration " +
 			"files. This flag can be specified multiple times to load multiple " +
 			"configurations. If the path is a directory, all files which end in " +
-			".hcl or .json are loaded.",
+			".hcl or .json are loaded. If the path is \"-\", the configuration " +
+			"is read from stdin.",
 	})
 
 	f.BoolVar(&BoolVar{
@@ -1479,7 +1480,7 @@ func (c *ServerCommand) Run(args []string) int {
 			var config *server.Config
 			var configErrors []configutil.ConfigError
 			for _, path := range c.flagConfigs {
-				current, err := server.LoadConfig(path, c.flagConfigs)
+				current, err := c.loadServerConfigPath(path, c.flagConfigs)
 				if err != nil {
 					c.logger.Error("could not reload config", "path", path, "error", err)
 					goto RUNRELOADFUNCS

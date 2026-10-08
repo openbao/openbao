@@ -4,8 +4,10 @@
 package command
 
 import (
+	"io"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/hashicorp/cli"
@@ -168,12 +170,17 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 		},
 	}
 
+	stdin := sync.OnceValues(func() ([]byte, error) {
+		return io.ReadAll(os.Stdin)
+	})
+
 	getBaseCommand := func() *BaseCommand {
 		return &BaseCommand{
 			UI:          ui,
 			tokenHelper: runOpts.TokenHelper,
 			flagAddress: runOpts.Address,
 			client:      runOpts.Client,
+			stdin:       stdin,
 		}
 	}
 
@@ -667,6 +674,7 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 					UI:          serverCmdUi,
 					tokenHelper: runOpts.TokenHelper,
 					flagAddress: runOpts.Address,
+					stdin:       stdin,
 				},
 				AuditBackends:      auditBackends,
 				CredentialBackends: credentialBackends,

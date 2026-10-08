@@ -983,7 +983,9 @@ func (f *FSM) writeTo(ctx context.Context, metaSink writeErrorCloser, sink write
 
 		return nil
 	})
-	sink.CloseWithError(err)
+	if err := sink.CloseWithError(err); err != nil {
+		f.logger.Error("error closing snapshot sink", "error", err)
+	}
 }
 
 // Snapshot implements the FSM interface. It returns a noop snapshot object.

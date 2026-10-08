@@ -20,7 +20,7 @@ func OSChecks(ctx context.Context) {
 
 	var limit unix.Rlimit
 	if err := unix.Getrlimit(unix.RLIMIT_NOFILE, &limit); err != nil {
-		//nolint:staticcheck // user-facing error
+		//nolint:staticcheck,errcheck // user-facing error
 		SpotError(ctx, fileLimitsName, fmt.Errorf("Could not determine open file limit: %w.", err))
 	} else {
 		min := limit.Cur
@@ -35,5 +35,8 @@ func OSChecks(ctx context.Context) {
 		}
 	}
 
-	diskUsage(ctx)
+	if err := diskUsage(ctx); err != nil {
+		//nolint:staticcheck,errcheck // user-facing error
+		SpotError(ctx, "Check Disk Usage", fmt.Errorf("Could not check disk usage: %w", err))
+	}
 }

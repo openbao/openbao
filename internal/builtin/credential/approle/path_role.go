@@ -1955,7 +1955,7 @@ func (b *backend) pathRoleSecretIDLookupUpdate(ctx context.Context, req *logical
 	if err != nil {
 		return nil, err
 	}
-	if secretIDEntry == nil {
+	if secretIDEntry == nil || secretIDEntry.expired() {
 		return nil, nil
 	}
 
@@ -2129,7 +2129,7 @@ func (b *backend) pathRoleSecretIDAccessorLookupUpdate(ctx context.Context, req 
 	if err != nil {
 		return nil, err
 	}
-	if secretIDEntry == nil {
+	if secretIDEntry == nil || secretIDEntry.expired() {
 		return nil, nil
 	}
 

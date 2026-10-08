@@ -1,0 +1,3 @@
+```release-note:bug
+core/grpc-invalidation: Ensure dispatcher lifecycle correctly handles active, standby state changes without locking conflicts. Resolves GRPC invalidation drops and pre-seal active node hangs.
+```

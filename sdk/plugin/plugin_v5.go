@@ -37,11 +37,11 @@ func (b *BackendPluginClientV5) Cleanup(ctx context.Context) {
 	_, ok := ctx.Value(ContextKeyPluginReload).(string)
 	if !ok {
 		b.Backend.Cleanup(ctx)
-		b.client.Close()
+		b.client.Close() //nolint:errcheck
 		return
 	}
 	b.Backend.Cleanup(ctx)
-	b.client.Reload()
+	b.client.Reload() //nolint:errcheck
 }
 
 func (b *BackendPluginClientV5) IsExternal() bool {

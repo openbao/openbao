@@ -430,6 +430,20 @@ Prevents the OpenBao client from following redirects. By default, the OpenBao cl
 
 :::
 
+### `BAO_HEADERS`
+
+Additional HTTP request headers to send with every CLI request. The value must
+be a JSON object with string values. For example:
+
+```shell-session
+$ export BAO_HEADERS='{"X-IAP-Token":"example-token"}'
+```
+
+Header names beginning with `X-Vault-` are reserved for OpenBao and are not
+allowed.
+Unlike other CLI flags, a `-header` value with the same name is appended to the
+environment-provided value instead of replacing it.
+
 ## Flags
 
 There are different CLI flags that are available depending on subcommands. Some

@@ -31,7 +31,7 @@ func (dc *DatabasePluginClient) PluginVersion() logical.PluginVersion {
 // and kill the plugin.
 func (dc *DatabasePluginClient) Close() error {
 	err := dc.Database.Close()
-	dc.client.Close()
+	err = errors.Join(err, dc.client.Close())
 
 	return err
 }

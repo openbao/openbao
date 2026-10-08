@@ -5,6 +5,8 @@ package server
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -166,4 +168,26 @@ func TestLoadConfigFile_json2(t *testing.T) {
 
 func TestConfigMerge_PreservesFields(t *testing.T) {
 	testConfigMergePreservesFields(t)
+}
+
+func TestLoadConfigBytes(t *testing.T) {
+	for _, path := range []string{
+		"./test-fixtures/config.hcl",
+		"./test-fixtures/config2.hcl.json",
+		"./test-fixtures/diagnose_unknown_property.hcl",
+	} {
+		t.Run(filepath.Base(path), func(t *testing.T) {
+			expected, err := LoadConfigFile(path, nil)
+			require.NoError(t, err)
+
+			d, err := os.ReadFile(path)
+			require.NoError(t, err)
+
+			// The source only fills in the file name of unused keys, so pass
+			// the same one to be able to compare the whole configuration.
+			config, err := LoadConfigBytes(d, path)
+			require.NoError(t, err)
+			require.Equal(t, expected, config)
+		})
+	}
 }

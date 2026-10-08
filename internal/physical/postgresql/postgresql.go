@@ -476,7 +476,7 @@ func (m *PostgreSQLBackend) List(ctx context.Context, prefix string) ([]string, 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck
 
 	var keys []string
 	for rows.Next() {
@@ -487,6 +487,10 @@ func (m *PostgreSQLBackend) List(ctx context.Context, prefix string) ([]string, 
 		}
 
 		keys = append(keys, key)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return keys, nil
@@ -507,7 +511,7 @@ func (m *PostgreSQLBackend) ListPage(ctx context.Context, prefix string, after s
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck
 
 	var keys []string
 	for rows.Next() {

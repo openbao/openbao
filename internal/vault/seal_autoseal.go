@@ -101,8 +101,7 @@ func (d *autoSeal) checkCore() error {
 func (d *autoSeal) SetCore(core *Core) {
 	d.core = core
 	if d.logger == nil {
-		d.logger = d.core.Logger().Named("autoseal")
-		d.core.AddLogger(d.logger)
+		d.logger = d.core.WithNamedLogger("autoseal")
 	}
 
 	// By default, we assume that seal config information is stored in
@@ -447,12 +446,27 @@ func (d *autoSeal) getRecoveryKeyInternal(ctx context.Context) ([]byte, error) {
 	return pt, nil
 }
 
+// upgradeRecoveryKey retrieves recovery key, compares it to the
+// current seal encryption key and upgrades if they mismatch.
 func (d *autoSeal) upgradeRecoveryKey(ctx context.Context) error {
 	pe, err := d.core.physical.Get(ctx, d.metaPrefix+recoveryKeyPath)
 	if err != nil {
 		return fmt.Errorf("failed to fetch recovery key: %w", err)
 	}
 	if pe == nil {
+		recoveryConfig, err := d.RecoveryConfig(ctx)
+		if err != nil {
+			return err
+		}
+		if recoveryConfig == nil {
+			return errors.New("no recovery config found")
+		}
+
+		// Check if we haven't yet generated recovery key shares.
+		if recoveryConfig.SecretShares == 0 {
+			// Assume upgrade has passed as there's nothing to upgrade for now.
+			return nil
+		}
 		return errors.New("no recovery key found")
 	}
 

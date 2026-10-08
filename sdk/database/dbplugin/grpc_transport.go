@@ -115,8 +115,8 @@ func (s *gRPCServer) Init(ctx context.Context, req *InitRequest) (*InitResponse,
 }
 
 func (s *gRPCServer) Close(_ context.Context, _ *Empty) (*Empty, error) {
-	s.impl.Close()
-	return &Empty{}, nil
+	err := s.impl.Close()
+	return &Empty{}, err
 }
 
 func (s *gRPCServer) GenerateCredentials(ctx context.Context, _ *Empty) (*GenerateCredentialsResponse, error) {

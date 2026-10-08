@@ -14,7 +14,7 @@ workarounds which may address them.
 ### Description
 
  * **Since**: OpenBao 2.0.0 GA
- * **Host OS**: Ubuntu 20.04 with systemd unit file
+ * **Host OS**: Ubuntu 20.04 or RHEL 8.x or similar with systemd unit file
  * **Error message**:
    ```
    openbao.service: Failed to set process secure bits: Operation not permitted
@@ -29,7 +29,7 @@ in favor of cgroups and thus the mlock capability was also removed from the
 systemd unit file, causing this to fail.
 
 This does not occur on later host OS/systemd versions (such as on Ubuntu
-22.04).
+22.04 or RHEL 9.x).
 
 ### Workaround
 

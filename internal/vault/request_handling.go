@@ -1505,7 +1505,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 		}
 
 		switch matchingMountEntry.Type {
-		case "kv", "generic":
+		case routing.MountTypeKV, "generic":
 			// If we are kv type, first see if we are an older passthrough
 			// backend, and otherwise check the mount entry options.
 			matchingBackend := c.router.MatchingBackend(ctx, req.Path)
@@ -1521,14 +1521,6 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 					resp.Secret.Renewable = false
 				}
 			} else if matchingMountEntry.Options == nil || matchingMountEntry.Options["leased_passthrough"] != "true" {
-				registerLease = false
-				resp.Secret.Renewable = false
-			}
-
-		case "plugin":
-			// If we are a plugin type and the plugin name is "kv" check the
-			// mount entry options.
-			if matchingMountEntry.Config.PluginName == "kv" && (matchingMountEntry.Options == nil || matchingMountEntry.Options["leased_passthrough"] != "true") {
 				registerLease = false
 				resp.Secret.Renewable = false
 			}
@@ -2066,7 +2058,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 		// for new role-based quotas upon creation, rather than counting old leases toward
 		// the total.
 		if reqRole == nil && requiresLease && !c.impreciseLeaseRoleTracking {
-			role = c.DetermineRoleFromLoginRequest(ctx, req.MountPoint, req.Data)
+			role = c.DetermineRoleFromLoginRequest(ctx, req.MountPoint, req.Data, req.Connection)
 		}
 
 		_, respTokenCreate, errCreateToken := c.LoginCreateToken(ctx, ns, req.Path, source, role, resp, req.IsInlineAuth, userLockoutInfo)

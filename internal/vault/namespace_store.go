@@ -263,8 +263,7 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 func (c *Core) setupNamespaceStore(ctx context.Context) error {
 	// Create the Namespace store
 	var err error
-	nsLogger := c.baseLogger.Named("namespace")
-	c.AddLogger(nsLogger)
+	nsLogger := c.WithBaseLogger("namespace")
 	c.namespaceStore, err = NewNamespaceStore(ctx, c, nsLogger)
 	return err
 }
@@ -519,7 +518,9 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		ns.creationDeletionMap[entry.UUID] = true
 	}
 
-	ns.namespacesByPath.Insert(entry)
+	if err := ns.namespacesByPath.Insert(entry); err != nil {
+		return nil, fmt.Errorf("failed to insert namespace entry: %w", err)
+	}
 	ns.namespacesByUUID[entry.UUID] = entry
 	ns.namespacesByAccessor[entry.ID] = entry
 

@@ -111,7 +111,7 @@ func (b *FileBackend) cleanupLogicalPath(path string) error {
 		dir, err := os.Open(fullPath)
 		if err != nil {
 			if dir != nil {
-				dir.Close()
+				dir.Close() //nolint:errcheck
 			}
 			if os.IsNotExist(err) {
 				return nil
@@ -121,7 +121,7 @@ func (b *FileBackend) cleanupLogicalPath(path string) error {
 		}
 
 		list, err := dir.Readdir(1)
-		dir.Close()
+		dir.Close() //nolint:errcheck
 		if err != nil && err != io.EOF {
 			return err
 		}
@@ -163,14 +163,14 @@ func (b *FileBackend) GetInternal(ctx context.Context, k string) (*physical.Entr
 	if err == nil {
 		if fi.Size() == 0 {
 			// Best effort, ignore errors
-			os.Remove(path)
+			os.Remove(path) //nolint:errcheck
 			return nil, nil
 		}
 	}
 
 	f, err := os.Open(path)
 	if f != nil {
-		defer f.Close()
+		defer f.Close() //nolint:errcheck
 	}
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -234,7 +234,7 @@ func (b *FileBackend) PutInternal(ctx context.Context, entry *physical.Entry) er
 	)
 	if err != nil {
 		if f != nil {
-			f.Close()
+			err = errors.Join(err, f.Close())
 		}
 		return err
 	}
@@ -246,7 +246,7 @@ func (b *FileBackend) PutInternal(ctx context.Context, entry *physical.Entry) er
 	encErr := enc.Encode(&fileEntry{
 		Value: entry.Value,
 	})
-	f.Close()
+	encErr = errors.Join(encErr, f.Close())
 	if encErr == nil {
 		err = os.Rename(tempPath, fullPath)
 		if err != nil {
@@ -268,7 +268,7 @@ func (b *FileBackend) PutInternal(ctx context.Context, entry *physical.Entry) er
 		return encErr
 	}
 	if fi.Size() == 0 {
-		os.Remove(tempPath)
+		os.Remove(tempPath) //nolint:errcheck
 	}
 	return encErr
 }
@@ -310,7 +310,7 @@ func (b *FileBackend) ListPageInternal(ctx context.Context, prefix string, after
 	// Read the directory contents
 	f, err := os.Open(path)
 	if f != nil {
-		defer f.Close()
+		defer f.Close() //nolint:errcheck
 	}
 	if err != nil {
 		if os.IsNotExist(err) {

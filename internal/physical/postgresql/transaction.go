@@ -161,7 +161,7 @@ func (t *PostgreSQLBackendTransaction) List(ctx context.Context, prefix string) 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck
 
 	var keys []string
 	for rows.Next() {
@@ -195,7 +195,7 @@ func (t *PostgreSQLBackendTransaction) ListPage(ctx context.Context, prefix stri
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck
 
 	var keys []string
 	for rows.Next() {

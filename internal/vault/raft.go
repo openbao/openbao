@@ -9,8 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -223,8 +225,7 @@ func (c *Core) startPeriodicRaftTLSRotate(ctx context.Context) error {
 	}
 
 	c.raftTLSRotationStopCh = make(chan struct{})
-	logger := c.logger.Named("raft")
-	c.AddLogger(logger)
+	logger := c.WithNamedLogger("raft")
 
 	if c.isRaftHAOnly() {
 		return c.raftTLSRotateDirect(ctx, logger, c.raftTLSRotationStopCh)
@@ -1064,7 +1065,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 	return true, nil
 }
 
-// raftLeaderInfo uses go-discover to expand leaderInfo to include any auto-join results
+// raftLeaderInfo uses go-discover to expand leaderInfo to include any auto-join results.
 func (c *Core) raftLeaderInfo(leaderInfo *raft.LeaderJoinInfo, disco *discover.Discover) ([]*raft.LeaderJoinInfo, error) {
 	var ret []*raft.LeaderJoinInfo
 	switch {
@@ -1085,17 +1086,12 @@ func (c *Core) raftLeaderInfo(leaderInfo *raft.LeaderJoinInfo, disco *discover.D
 			// default to 8200 when no port is provided
 			port = 8200
 		}
-		// Addrs returns either IPv4 or IPv6 address, without scheme or port
-		clusterIPs, err := disco.Addrs(leaderInfo.AutoJoin, c.logger.StandardLogger(nil))
+		clusterAddrs, err := disco.Addrs(leaderInfo.AutoJoin, c.logger.StandardLogger(nil))
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse addresses from auto-join metadata: %w", err)
+			return nil, fmt.Errorf("failed to fetch addresses via auto-join: %w", err)
 		}
-		for _, ip := range clusterIPs {
-			if strings.Count(ip, ":") >= 2 && !strings.HasPrefix(ip, "[") {
-				// An IPv6 address in implicit form, however we need it in explicit form to use in a URL.
-				ip = fmt.Sprintf("[%s]", ip)
-			}
-			u := fmt.Sprintf("%s://%s:%d", scheme, ip, port)
+		for _, addr := range clusterAddrs {
+			u := fmt.Sprintf("%s://%s", scheme, ensureAddrPort(addr, port))
 			info := *leaderInfo
 			info.LeaderAPIAddr = u
 			ret = append(ret, &info)
@@ -1105,6 +1101,27 @@ func (c *Core) raftLeaderInfo(leaderInfo *raft.LeaderJoinInfo, disco *discover.D
 		return nil, errors.New("must provide leader address or auto-join metadata")
 	}
 	return ret, nil
+}
+
+// ensureAddrPort adds port to addr if it does not already contain one.
+func ensureAddrPort(addr string, port uint) string {
+	// Check if we have a port by attempting to split host/port, in which case
+	// there is nothing to do. Notably, this will not accept implicit IPv6
+	// addresses since they are ambigous.
+	if _, _, err := net.SplitHostPort(addr); err == nil {
+		return addr
+	}
+
+	if strings.Count(addr, ":") >= 2 && !strings.HasPrefix(addr, "[") {
+		// An IPv6 address in implicit form, however we need it in explicit form
+		// to use in a URL.
+		addr = "[" + addr + "]"
+	}
+
+	// If we don't have a port, join the default one. This explicitly avoids
+	// net.JoinHostPort since it unconditionally re-brackets IPv6 addresses,
+	// even if they already are in explicit form.
+	return addr + ":" + strconv.FormatUint(uint64(port), 10)
 }
 
 // NewDelegateForCore creates a raft.Delegate for the specified core using its backend.

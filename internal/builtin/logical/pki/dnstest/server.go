@@ -131,14 +131,14 @@ func (ts *TestServer) buildNamedConf() string {
 	}
 
 	var zones strings.Builder
-	zones.WriteString("\n")
+	fmt.Fprint(&zones, "\n")
 	for _, domain := range ts.domains {
-		zones.WriteString(fmt.Sprintf("zone \"%s\" {\n", domain))
-		zones.WriteString("\ttype primary;\n")
-		zones.WriteString(fmt.Sprintf("\tfile \"%s.zone\";\n", domain))
-		zones.WriteString("\tallow-update {\n\t\tnone;\n\t};\n")
-		zones.WriteString("\tnotify no;\n")
-		zones.WriteString("};\n\n")
+		fmt.Fprintf(&zones, "zone \"%s\" {\n", domain)
+		fmt.Fprint(&zones, "\ttype primary;\n")
+		fmt.Fprintf(&zones, "\tfile \"%s.zone\";\n", domain)
+		fmt.Fprint(&zones, "\tallow-update {\n\t\tnone;\n\t};\n")
+		fmt.Fprint(&zones, "\tnotify no;\n")
+		fmt.Fprint(&zones, "};\n\n")
 	}
 
 	// Reverse lookups are not handles as they're not presently necessary.
@@ -159,13 +159,13 @@ func (ts *TestServer) buildNamedConf() string {
 func (ts *TestServer) buildZoneFile(target string) string {
 	// One second TTL by default to allow quick refreshes.
 	var zone strings.Builder
-	zone.WriteString("$TTL 1;\n")
+	fmt.Fprint(&zone, "$TTL 1;\n")
 
 	ts.serial += 1
-	zone.WriteString(fmt.Sprintf("@\tIN\tSOA\tns.%v.\troot.%v.\t(\n", target, target))
-	zone.WriteString(fmt.Sprintf("\t\t\t%d;\n\t\t\t1;\n\t\t\t1;\n\t\t\t2;\n\t\t\t1;\n\t\t\t)\n\n", ts.serial))
-	zone.WriteString(fmt.Sprintf("@\tIN\tNS\tns%d.%v.\n", ts.serial, target))
-	zone.WriteString(fmt.Sprintf("ns%d.%v.\tIN\tA\t%v\n", ts.serial, target, "127.0.0.1"))
+	fmt.Fprintf(&zone, "@\tIN\tSOA\tns.%v.\troot.%v.\t(\n", target, target)
+	fmt.Fprintf(&zone, "\t\t\t%d;\n\t\t\t1;\n\t\t\t1;\n\t\t\t2;\n\t\t\t1;\n\t\t\t)\n\n", ts.serial)
+	fmt.Fprintf(&zone, "@\tIN\tNS\tns%d.%v.\n", ts.serial, target)
+	fmt.Fprintf(&zone, "ns%d.%v.\tIN\tA\t%v\n", ts.serial, target, "127.0.0.1")
 
 	for domain, records := range ts.records {
 		if !strings.HasSuffix(domain, target) {
@@ -174,7 +174,7 @@ func (ts *TestServer) buildZoneFile(target string) string {
 
 		for recordType, values := range records {
 			for _, value := range values {
-				zone.WriteString(fmt.Sprintf("%s.\tIN\t%s\t%s\n", domain, recordType, value))
+				fmt.Fprintf(&zone, "%s.\tIN\t%s\t%s\n", domain, recordType, value)
 			}
 		}
 	}

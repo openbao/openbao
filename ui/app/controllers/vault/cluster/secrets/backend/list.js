@@ -77,14 +77,24 @@ export default Controller.extend({
     return !!(content.length && content.find((x) => x.id === filter));
   }),
 
-  firstPartialMatch: computed('filter', 'model', 'model.[]', 'filterMatchesKey', function () {
+  firstPartialMatch: computed('filter', 'model', 'model.[]', 'filterMatchesKey', 'isScan', function () {
     const { filter, filterMatchesKey, model: content } = this;
     const re = new RegExp('^' + escapeStringRegexp(filter));
-    const matchSet = content.filter((key) => re.test(key.id));
+    const scanFilter = (filter || '').toLowerCase();
+    if (this.isScan && !scanFilter) {
+      return null;
+    }
+    const matchSet = content.filter((key) =>
+      this.isScan ? key.id.toLowerCase().includes(scanFilter) : re.test(key.id)
+    );
     const match = matchSet[0];
 
     if (filterMatchesKey || !match) {
       return null;
+    }
+
+    if (this.isScan) {
+      return match;
     }
 
     const sharedPrefix = commonPrefix(content);
@@ -103,6 +113,10 @@ export default Controller.extend({
   }),
 
   isConfigurableTab: or('isCertTab', 'isConfigure'),
+
+  supportsScan: computed('backendType', function () {
+    return ['kv', 'generic', 'cubbyhole'].includes(this.backendType);
+  }),
 
   backendCrumb: computed('backend', function () {
     const backend = this.backend;

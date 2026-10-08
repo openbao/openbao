@@ -424,7 +424,7 @@ Configuration:
   %s=<string>
     Optional port to use in OIDC redirect_uri (default: the value set for
     port in client callback mode, else the port from $BAO_ADDR or $VAULT_ADDR
-    with an added /v1/auth/<path> where <path> is from the login -path option).
+    with an added /v1/<namespace>/auth/<path> where <path> is from the login -path option).
 
   %s=<bool>
     Toggle the automatic launching of the default browser to the login URL. (default: false).

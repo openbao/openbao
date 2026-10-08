@@ -59,7 +59,7 @@ CMD ["server", "-dev", "-dev-no-store-token"]
 
 
 # This is {docker.io,quay.io,ghcr.io}/openbao/openbao-ubi.
-FROM registry.access.redhat.com/ubi10-minimal:10.2@sha256:204e1531cee54562b107fb31e0b327062fc3d5d67af7cc0d2e66b2c572b9044f AS ubi
+FROM registry.access.redhat.com/ubi10-minimal:10.2@sha256:91eaa992c90c4271691b047c12fec69cdabe7977305e168c4060f094ff2a73e0 AS ubi
 
 COPY LICENSE /licenses/mozilla.txt
 

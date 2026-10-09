@@ -1,0 +1,80 @@
+---
+sidebar_label: Overview
+description: |-
+  The "workflow" command groups subcommands for interacting with workflows. Users can
+  call, delete, edit, info, list, read and write workflows.
+---
+
+# workflow
+
+The `workflow` command groups subcommands for interacting with workflows. Users
+can list, read, write, edit, delete, call and inspect workflows.
+
+For more information about the contents of workflows, please see the [profile
+engine documentation](../../concepts/profiles.mdx). For the underlying API, see
+the [`sys/workflows`](../../api/system/workflows.mdx) documentation.
+
+## Examples
+
+List all workflows:
+
+```shell-session
+$ bao workflow list
+```
+
+Read the workflow named "my-workflow":
+
+```shell-session
+$ bao workflow read my-workflow
+```
+
+Show execution relevant information of "my-workflow" without requiring read
+access to its full definition:
+
+```shell-session
+$ bao workflow info my-workflow
+```
+
+Create or update a workflow named "my-workflow" from a local file:
+
+```shell-session
+$ bao workflow write my-workflow ./my-workflow.hcl
+```
+
+Edit a workflow named "my-workflow" inside your local editor:
+
+```shell-session
+$ bao workflow edit my-workflow
+```
+
+Delete the workflow named "my-workflow":
+
+```shell-session
+$ bao workflow delete my-workflow
+```
+
+Call the workflow named "my-workflow":
+
+```shell-session
+$ bao workflow call my-workflow
+```
+
+## Usage
+
+```text
+Usage: bao workflow <subcommand> [options] [args]
+
+  # ...
+
+Subcommands:
+    call      Call a workflow
+    delete    Deletes a workflow by path
+    edit      Edit a workflow
+    info      Prints the execution relevant information of a workflow
+    list      Prints all workflows
+    read      Prints the information about a workflow
+    write     Creates or updates a workflow
+```
+
+For more information, examples, and usage about a subcommand, click on the name
+of the subcommand in the sidebar.

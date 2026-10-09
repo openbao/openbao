@@ -1,0 +1,48 @@
+---
+sidebar_label: read
+description: |-
+  The "workflow read" command prints the content and metadata
+  of a OpenBao workflow under the given path.
+  If the workflow does not exist, an error is returned.
+---
+
+# workflow read
+
+The `workflow read` command prints the content and metadata of a OpenBao
+workflow under the given path. If the workflow does not exist, an error is
+returned.
+
+Reading a workflow requires read access to its full definition. To only fetch
+the information needed to execute a workflow, use [`workflow
+info`](info.mdx) instead.
+
+## Examples
+
+Read the workflow "test-workflow":
+
+```shell-session
+$ bao workflow read test-workflow
+Key                      Value
+---                      -----
+allow_unauthenticated    false
+cas_required             false
+description              create namespace
+path                     test-workflow
+version                  0
+workflow                 inputs { ... }
+```
+
+## Usage
+
+The following flags are available in addition to the [standard set of
+flags](../index.mdx) included on all commands.
+
+### Output options
+
+- `-field` `(string: "")` - Print only the field with the given name. Specifying
+  this option will take precedence over other formatting directives. The result
+  will not have a trailing newline making it ideal for piping to other processes.
+
+- `-format` `(string: "table")` - Print the output in the given format. Valid
+  formats are "table", "json", or "yaml". This can also be specified via the
+  `BAO_FORMAT` environment variable.

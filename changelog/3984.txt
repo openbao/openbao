@@ -1,0 +1,3 @@
+```release-note:improvement
+cli: Add explicit raw and private-key PEM file input formats to transit import and transit import-version while retaining base64 as the default.
+```

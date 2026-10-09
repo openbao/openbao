@@ -17,6 +17,7 @@ var (
 
 type TransitImportVersionCommand struct {
 	*BaseCommand
+	keyFormat string
 }
 
 func (c *TransitImportVersionCommand) Synopsis() string {
@@ -25,13 +26,15 @@ func (c *TransitImportVersionCommand) Synopsis() string {
 
 func (c *TransitImportVersionCommand) Help() string {
 	helpText := `
-Usage: bao transit import-version PATH KEY [...]
+Usage: bao transit import-version [flags] PATH KEY [...]
 
   Using the Transit key wrapping system, imports key material from
   the base64 encoded KEY (either directly on the CLI or via @path notation),
-  into a new key whose API path is PATH.  To import a new Transit
-  key, use the import command instead.  The remaining options after KEY
-  (key=value style) are passed on to the Transit create key endpoint.
+  into a new version of the key whose API path is PATH. Use -key-format=raw
+  or -key-format=pem with @path to read binary key material or an unencrypted
+  private-key PEM file. To import a new Transit key, use the import command
+  instead. The remaining options after KEY (key=value style) are passed on to
+  the Transit import-version endpoint.
   If your system or device natively supports the RSA AES key wrap mechanism
   (such as the PKCS#11 mechanism CKM_RSA_AES_KEY_WRAP), you should use it
   directly rather than this command.
@@ -42,7 +45,7 @@ Usage: bao transit import-version PATH KEY [...]
 }
 
 func (c *TransitImportVersionCommand) Flags() *FlagSets {
-	return c.flagSet(FlagSetHTTP)
+	return transitImportFlags(c.BaseCommand, &c.keyFormat)
 }
 
 func (c *TransitImportVersionCommand) AutocompleteArgs() complete.Predictor {
@@ -54,5 +57,5 @@ func (c *TransitImportVersionCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *TransitImportVersionCommand) Run(args []string) int {
-	return ImportKey(c.BaseCommand, "import_version", transitImportKeyPath, c.Flags(), args)
+	return ImportKey(c.BaseCommand, "import_version", transitImportKeyPath, c.Flags(), &c.keyFormat, args)
 }

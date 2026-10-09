@@ -286,7 +286,7 @@ func (m *MySQL) executePreparedStatementsWithMap(ctx context.Context, statements
 				if e, ok := err.(*stdmysql.MySQLError); ok && e.Number == 1295 {
 					_, err = tx.ExecContext(ctx, query)
 					if err != nil {
-						stmt.Close()
+						stmt.Close() //nolint:errcheck
 						return err
 					}
 					continue
@@ -295,10 +295,15 @@ func (m *MySQL) executePreparedStatementsWithMap(ctx context.Context, statements
 				return err
 			}
 			if _, err := stmt.ExecContext(ctx); err != nil {
-				stmt.Close()
+				if closeErr := stmt.Close(); closeErr != nil {
+					return errors.Join(err, closeErr)
+				}
 				return err
 			}
-			stmt.Close()
+
+			if err := stmt.Close(); err != nil {
+				return err
+			}
 		}
 	}
 

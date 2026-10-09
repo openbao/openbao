@@ -49,7 +49,7 @@ func PrepareTestContainer(t *testing.T, legacy bool, pw string) (func(), string)
 		if err != nil {
 			return nil, err
 		}
-		defer db.Close()
+		defer db.Close() //nolint:errcheck
 		err = db.Ping()
 		if err != nil {
 			return nil, err
@@ -69,6 +69,6 @@ func TestCredsExist(t testing.TB, connURL, username, password string) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer db.Close() //nolint:errcheck
 	return db.Ping()
 }

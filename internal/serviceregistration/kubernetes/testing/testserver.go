@@ -62,56 +62,37 @@ type Conf struct {
 	ClientScheme, PathToTokenFile, PathToRootCAFile, ServiceHost, ServicePort string
 }
 
-// Server returns an http test server that can be used to test
-// Kubernetes client code. It also retains the current state,
-// and a func to close the server and to clean up any temporary
-// files.
+// Server starts an http test server for Kubernetes client code and returns
+// its current state, client configuration, and a function to close it.
 func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 	testState = &State{m: &sync.Map{}}
 	testConf = &Conf{
 		ClientScheme: "http://",
 	}
 
-	// We're going to have multiple close funcs to call.
-	var closers []func()
-	closeFunc = func() {
-		for _, closer := range closers {
-			closer()
-		}
-	}
+	tmpDir := t.TempDir()
 
 	// Plant our token in a place where it can be read for the config.
-	tmpToken, err := os.CreateTemp("", "token")
+	tmpToken, err := os.CreateTemp(tmpDir, "token")
 	if err != nil {
 		t.Fatal(err)
 	}
-	closers = append(closers, func() {
-		os.Remove(tmpToken.Name())
-	})
 	if _, err = tmpToken.WriteString(token); err != nil {
-		closeFunc()
 		t.Fatal(err)
 	}
 	if err := tmpToken.Close(); err != nil {
-		closeFunc()
 		t.Fatal(err)
 	}
 	testConf.PathToTokenFile = tmpToken.Name()
 
-	tmpCACrt, err := os.CreateTemp("", "ca.crt")
+	tmpCACrt, err := os.CreateTemp(tmpDir, "ca.crt")
 	if err != nil {
-		closeFunc()
 		t.Fatal(err)
 	}
-	closers = append(closers, func() {
-		os.Remove(tmpCACrt.Name())
-	})
 	if _, err = tmpCACrt.WriteString(caCrt); err != nil {
-		closeFunc()
 		t.Fatal(err)
 	}
 	if err := tmpCACrt.Close(); err != nil {
-		closeFunc()
 		t.Fatal(err)
 	}
 	testConf.PathToRootCAFile = tmpCACrt.Name()
@@ -131,11 +112,15 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 		switch {
 		case namespace != ExpectedNamespace, podName != ExpectedPodName:
 			w.WriteHeader(404)
-			w.Write([]byte(notFoundResponse))
+			if _, err := w.Write([]byte(notFoundResponse)); err != nil {
+				t.Errorf("error writing not found response: %v", err)
+			}
 			return
 		case r.Method == http.MethodGet:
 			w.WriteHeader(200)
-			w.Write([]byte(getPodResponse))
+			if _, err := w.Write([]byte(getPodResponse)); err != nil {
+				t.Errorf("error writing pod response: %v", err)
+			}
 			return
 		case r.Method == http.MethodPatch:
 			var patches []any
@@ -150,14 +135,16 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 				testState.store(p, patchMap)
 			}
 			w.WriteHeader(200)
-			w.Write([]byte(updatePodTagsResponse))
+			if _, err := w.Write([]byte(updatePodTagsResponse)); err != nil {
+				t.Errorf("error writing pod tags update response: %v", err)
+			}
 			return
 		default:
 			w.WriteHeader(400)
 			_, _ = fmt.Fprintf(w, "unexpected request method: %s", r.Method)
 		}
 	}))
-	closers = append(closers, ts.Close)
+	closeFunc = ts.Close
 
 	// ts.URL example: http://127.0.0.1:35681
 	urlFields := strings.Split(ts.URL, "://")

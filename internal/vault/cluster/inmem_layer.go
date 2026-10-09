@@ -245,13 +245,13 @@ func (l *InmemLayer) Disconnect(peer string) {
 	// Remove any open connections
 	servConns := l.servConns[peer]
 	for _, c := range servConns {
-		c.Close()
+		c.Close() //nolint:errcheck
 	}
 	delete(l.servConns, peer)
 
 	clientConns := l.clientConns[peer]
 	for _, c := range clientConns {
-		c.Close()
+		c.Close() //nolint:errcheck
 	}
 	delete(l.clientConns, peer)
 }
@@ -265,14 +265,14 @@ func (l *InmemLayer) DisconnectAll() {
 	// Close all connections
 	for _, peerConns := range l.servConns {
 		for _, c := range peerConns {
-			c.Close()
+			c.Close() //nolint:errcheck
 		}
 	}
 	l.servConns = make(map[string][]net.Conn)
 
 	for _, peerConns := range l.clientConns {
 		for _, c := range peerConns {
-			c.Close()
+			c.Close() //nolint:errcheck
 		}
 	}
 	l.clientConns = make(map[string][]net.Conn)

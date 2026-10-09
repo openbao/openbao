@@ -336,13 +336,12 @@ func (b *databaseBackend) ClearConnection(name string) error {
 
 // ClearConnectionId closes the database connection with a specific id and
 // removes it from the b.connections map.
-func (b *databaseBackend) ClearConnectionId(name, id string) error {
+func (b *databaseBackend) ClearConnectionId(name, id string) {
 	db := b.connPopIfEqual(name, id)
 	if db != nil {
 		// Ignore error here since the database client is always killed
 		db.Close() //nolint:errcheck
 	}
-	return nil
 }
 
 func (b *databaseBackend) CloseIfShutdown(db *dbPluginInstance, err error) {

@@ -1,0 +1,3 @@
+```release-note:change
+core/plugins, sdk/plugin: Remove support for older plugin protocols, affecting `auth` and `secrets` plugins compiled against an SDK version predating Vault 1.12.0.
+```

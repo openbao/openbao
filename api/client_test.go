@@ -265,9 +265,7 @@ func TestClientDisableRedirects(t *testing.T) {
 
 func TestClientRedirect(t *testing.T) {
 	primary := func(w http.ResponseWriter, req *http.Request) {
-		if _, err := w.Write([]byte("test")); err != nil {
-			t.Errorf("error writing response body: %s", err)
-		}
+		_, _ = w.Write([]byte("test"))
 	}
 	config, ln := testHTTPServer(t, http.HandlerFunc(primary))
 	defer ln.Close() //nolint:errcheck

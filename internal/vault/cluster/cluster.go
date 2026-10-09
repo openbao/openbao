@@ -47,7 +47,7 @@ type Handler interface {
 	// Handoff is used to pass the connection lifetime off to
 	// the handler
 	Handoff(context.Context, *sync.WaitGroup, chan struct{}, *tls.Conn) error
-	Stop() error
+	Stop()
 }
 
 type ClusterHook interface {
@@ -174,9 +174,7 @@ func (cl *Listener) StopHandler(alpn string) {
 	delete(cl.handlers, alpn)
 	cl.l.Unlock()
 	if ok {
-		if err := handler.Stop(); err != nil {
-			cl.logger.Error("error stopping cluster handler", "error", err)
-		}
+		handler.Stop()
 	}
 }
 

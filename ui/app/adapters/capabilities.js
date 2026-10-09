@@ -12,8 +12,26 @@ export default ApplicationAdapter.extend({
     return 'capabilities-self';
   },
 
+  // the namespace being browsed, relative to the one the token was issued in
+  relativeNamespace() {
+    const { userRootNamespace, path } = this.namespaceService;
+    if (!userRootNamespace) {
+      return path;
+    }
+    if (path === userRootNamespace) {
+      return '';
+    }
+    return path.startsWith(`${userRootNamespace}/`) ? path.slice(userRootNamespace.length + 1) : path;
+  },
+
   findRecord(store, type, id) {
-    return this.ajax(this.buildURL(type), 'POST', { data: { paths: [id] } }).catch((e) => {
+    const relativeNamespace = this.relativeNamespace();
+    const prefix = relativeNamespace ? `${relativeNamespace}/` : '';
+
+    return this.ajax(this.buildURL(type), 'POST', {
+      namespace: this.namespaceService.userRootNamespace,
+      data: { paths: [`${prefix}${id}`] },
+    }).catch((e) => {
       if (e instanceof AdapterError) {
         set(e, 'policyPath', 'sys/capabilities-self');
       }

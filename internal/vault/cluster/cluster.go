@@ -323,7 +323,7 @@ func (cl *Listener) Run(ctx context.Context) error {
 				// an error, causing us to check the condition at the top
 				// again.
 				if err := localLn.SetDeadline(time.Now().Add(ListenerAcceptDeadline)); err != nil {
-					cl.logger.Error("error setting cluster listener deadline", "error", err)
+					cl.logger.Error("error setting cluster listener accept deadline", "error", err)
 				}
 
 				// Accept the connection

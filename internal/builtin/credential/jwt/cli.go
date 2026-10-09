@@ -268,7 +268,7 @@ func callbackHandler(c *api.Client, mount string, clientNonce string, doneCh cha
 
 		defer func() {
 			if _, err := w.Write([]byte(response)); err != nil {
-				fmt.Fprintf(os.Stderr, "error writing callback response: %v\n", err)
+				fmt.Fprintf(os.Stderr, "Error writing callback response: %s\n", err)
 			}
 			doneCh <- loginResp{secret, err}
 		}()

@@ -48,10 +48,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 		}
 
 		// No arguments given, read the token from user input
-		if _, err := fmt.Fprintf(stdout, "Token (will be hidden): "); err != nil {
-			return nil, fmt.Errorf("error writing token prompt: %w", err)
-		}
-
+		fmt.Fprintf(stdout, "Token (will be hidden): ") //nolint:errcheck
 		var err error
 		token, err = password.Read(os.Stdin)
 		fmt.Fprintf(stdout, "\n") //nolint:errcheck

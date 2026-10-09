@@ -76,8 +76,17 @@ func TestHTTP_Index_Defaults(t *testing.T) {
 
 	request := standby.NewRequest(http.MethodPut, "/v1/kv/testing")
 	request.BodyBytes = []byte(`{"data":"testing"}`)
-	resp, err := standby.RawRequest(request)
-	require.NoError(t, err)
+	var resp *api.Response
+	var errr error
+	// wait for replication to standby node
+	for i := 1; i <= 10; i++ {
+		time.Sleep(1 * time.Second)
+		resp, errr = standby.RawRequest(request)
+		if errr == nil {
+			break
+		}
+	}
+	require.NoError(t, errr)
 	require.NotNil(t, resp)
 	index := resp.Header.Get(api.IndexHeaderName)
 	require.NotEmpty(t, index)

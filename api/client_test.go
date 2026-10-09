@@ -166,10 +166,7 @@ func TestClientToken(t *testing.T) {
 
 func TestClientHostHeader(t *testing.T) {
 	handler := func(w http.ResponseWriter, req *http.Request) {
-		if _, err := w.Write([]byte(req.Host)); err != nil {
-			t.Errorf("error writing request host to response: %s", err)
-			return
-		}
+		_, _ = w.Write([]byte(req.Host))
 	}
 	config, ln := testHTTPServer(t, http.HandlerFunc(handler))
 	defer ln.Close() //nolint:errcheck

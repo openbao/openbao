@@ -18,11 +18,15 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/queue"
+	"github.com/openbao/openbao/v2/internal/helper/scheduling"
 )
 
 const (
 	// Default interval to check the queue for items needing rotation
 	defaultQueueTickSeconds = 5
+
+	// Minimum allowable rotation window
+	minimumRotationWindowSeconds = 3600
 
 	// Config key to set an alternate interval
 	queueTickIntervalKey = "rotation_queue_tick_interval"
@@ -170,6 +174,10 @@ func (b *databaseBackend) rotateCredentials(ctx context.Context, s logical.Stora
 	}
 }
 
+func backOffTime() time.Time {
+	return time.Now().Add(10 * time.Second)
+}
+
 func (b *databaseBackend) rotateCredential(ctx context.Context, s logical.Storage) bool {
 	// Quit rotating credentials if shutdown has started
 	select {
@@ -204,7 +212,7 @@ func (b *databaseBackend) rotateCredential(ctx context.Context, s logical.Storag
 	if err != nil {
 		logger.Error("unable to load role", "error", err)
 
-		item.Priority = time.Now().Add(10 * time.Second).Unix()
+		item.Priority = backOffTime().Unix()
 		if err := b.pushItem(item); err != nil {
 			logger.Error("unable to push item on to queue", "error", err)
 		}
@@ -232,10 +240,55 @@ func (b *databaseBackend) rotateCredential(ctx context.Context, s logical.Storag
 		Role:     role,
 	}
 
+	// Create a scheduler to schedule the next rotation.
+	sched, err := scheduling.NewDefaultScheduler(role.StaticAccount)
+	undue := false
+	if err != nil {
+		// Scheduler input is invalid, which can happen
+		// if rotation_* parameters were changed without validation
+		// in which case rotation should not be attempted
+		logger.Error("unable to schedule credential rotation", "error", err)
+		undue = true
+	} else if !sched.IsDue() {
+		// Scheduled rotation is out of any window
+		logger.Debug("missed scheduled rotation window", "WAL ID", input.WALID, "role", input.RoleName)
+		undue = true
+	}
+
 	// If there is a WAL entry related to this Role, the corresponding WAL ID
 	// should be stored in the Item's Value field.
 	if walID, ok := item.Value.(string); ok {
 		input.WALID = walID
+		// WALs don't preempt undue schedules
+		if undue {
+			// Cleanup WAL
+			if err := framework.DeleteWAL(ctx, s, walID); err != nil {
+				b.Logger().Warn("error deleting undue WAL", "WAL ID", walID, "error", err)
+			}
+			b.Logger().Debug("deleted undue WAL", "WAL ID", walID)
+			item.Value = ""
+		}
+	}
+
+	// Rotation was queued to occur now but we missed the window
+	if undue {
+		if sched != nil {
+			item.Priority = sched.NextOccurrence().Unix()
+		} else {
+			item.Priority = backOffTime().Unix()
+		}
+		// Push back to queue
+		if err := b.pushItem(item); err != nil {
+			logger.Error("unable to push item on to queue", "error", err)
+		}
+		// Go to next item
+		return true
+	}
+
+	var next time.Time
+	if sched != nil {
+		// Tell the scheduler that the rotation is happening
+		next = sched.Occurrence()
 	}
 
 	resp, err := b.setStaticAccount(ctx, s, input)
@@ -244,7 +297,7 @@ func (b *databaseBackend) rotateCredential(ctx context.Context, s logical.Storag
 
 		// Increment the priority enough so that the next call to this method
 		// likely will not attempt to rotate it, as a back-off of sorts
-		item.Priority = time.Now().Add(10 * time.Second).Unix()
+		item.Priority = backOffTime().Unix()
 
 		// Preserve the WALID if it was returned
 		if resp != nil && resp.WALID != "" {
@@ -257,17 +310,16 @@ func (b *databaseBackend) rotateCredential(ctx context.Context, s logical.Storag
 		// Go to next item
 		return true
 	}
+
 	// Clear any stored WAL ID as we must have successfully deleted our WAL to get here.
 	item.Value = ""
 
-	lvr := resp.RotationTime
-	if lvr.IsZero() {
-		lvr = time.Now()
-	}
-
 	// Update priority and push updated Item to the queue
-	nextRotation := lvr.Add(role.StaticAccount.RotationPeriod)
-	item.Priority = nextRotation.Unix()
+	if next.IsZero() {
+		// in case next occurrence couldn't be computed, postpone
+		next = backOffTime()
+	}
+	item.Priority = next.Unix()
 	if err := b.pushItem(item); err != nil {
 		logger.Warn("unable to push item on to queue", "error", err)
 	}
@@ -310,7 +362,6 @@ type setStaticAccountInput struct {
 }
 
 type setStaticAccountOutput struct {
-	RotationTime time.Time
 	// Optional return field, in the event WAL was created and not destroyed
 	// during the operation
 	WALID string
@@ -489,11 +540,6 @@ func (b *databaseBackend) setStaticAccount(ctx context.Context, s logical.Storag
 	}
 
 	// Store updated role information
-	// lvr is the known LastVaultRotation
-	lvr := time.Now()
-	input.Role.StaticAccount.LastVaultRotation = lvr
-	output.RotationTime = lvr
-
 	entry, err := logical.StorageEntryJSON(databaseStaticRolePath+input.RoleName, input.Role)
 	if err != nil {
 		return output, err
@@ -510,7 +556,7 @@ func (b *databaseBackend) setStaticAccount(ctx context.Context, s logical.Storag
 	b.Logger().Debug("deleted WAL", "WAL ID", output.WALID)
 
 	// The WAL has been deleted, return new setStaticAccountOutput without it
-	return &setStaticAccountOutput{RotationTime: lvr}, nil
+	return &setStaticAccountOutput{}, nil
 }
 
 // initQueue preforms the necessary checks and initializations needed to perform

@@ -1,8 +1,6 @@
 {
   "name": "core",
-  "keywords": [
-    "ember-addon"
-  ],
+  "keywords": ["ember-addon"],
   "dependencies": {
     "autosize": "*",
     "date-fns": "*",
@@ -19,7 +17,6 @@
     "ember-composable-helpers": "*",
     "ember-concurrency": "*",
     "ember-maybe-in-element": "*",
-    "@ember/render-modifiers": "*",
     "ember-power-select": "*",
     "ember-router-helpers": "*",
     "ember-svg-jar": "*",

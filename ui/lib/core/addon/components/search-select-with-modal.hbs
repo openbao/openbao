@@ -1,5 +1,5 @@
 <div
-  {{did-insert (perform this.fetchOptions)}}
+  {{invoke (perform this.fetchOptions)}}
   id={{@id}}
   class="field search-select {{if @displayInherit 'display-inherit'}}"
   data-test-search-select-with-modal

@@ -4,82 +4,77 @@
  */
 
 import Component from '@ember/component';
-import { set } from '@ember/object';
+import { set, action } from '@ember/object';
+import { run } from '@ember/runloop';
 import { task } from 'ember-concurrency';
 import { waitFor } from '@ember/test-waiters';
 
 const BASE_64_REGEX = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/gi;
 
-export default Component.extend({
-  'data-test-pgp-file': true,
-  attributeBindings: ['data-test-pgp-file'],
-  classNames: ['box', 'is-fullwidth', 'is-marginless', 'is-shadowless'],
-  key: null,
-  index: null,
-  onChange: () => {},
+export default class PgpFileComponent extends Component {
+  'data-test-pgp-file' = true;
+  attributeBindings = ['data-test-pgp-file'];
+  classNames = ['box', 'is-fullwidth', 'is-marginless', 'is-shadowless'];
 
-  /*
-   * @public
-   * @param String
-   * Text to use as the label for the file input
-   * If null, a default will be rendered
-   */
-  label: null,
+  key = null;
+  index = null;
+  onChange = () => {};
+  label = null;
+  fileHelpText = null;
+  textareaHelpText = null;
 
-  /*
-   * @public
-   * @param String
-   * Text to use as help under the file input
-   * If null, a default will be rendered
-   */
-  fileHelpText: null,
+  readNativeFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
 
-  /*
-   * @public
-   * @param String
-   * Text to use as help under the textarea in text-input mode
-   * If null, a default will be rendered
-   */
-  textareaHelpText: null,
+      reader.onload = () => run(() => resolve(reader.result));
+      reader.onerror = (error) => run(() => reject(error));
 
-  readFile(file) {
-    const reader = new FileReader();
-    reader.onload = () => this.setPGPKey.perform(reader.result, file.name);
-    // this gives us a base64-encoded string which is important in the onload
-    reader.readAsDataURL(file);
-  },
+      reader.readAsDataURL(file);
+    });
+  }
 
-  setPGPKey: task(
-    waitFor(function* (dataURL, filename) {
-      const b64File = dataURL.split(',')[1].trim();
-      const decoded = atob(b64File).trim();
+  @task
+  @waitFor
+  *processFile(file) {
+    const dataURL = yield this.readNativeFile(file);
+    yield this.setPGPKey.perform(dataURL, file.name);
+  }
 
-      // If a b64-encoded file was uploaded, then after decoding, it
-      // will still be b64.
-      // If after decoding it's not b64, we want
-      // the original as it was only encoded when we used `readAsDataURL`.
-      const fileData = decoded.match(BASE_64_REGEX) ? decoded : b64File;
-      yield this.onChange(this.index, { value: fileData, filename: filename });
-    })
-  ),
+  @task
+  @waitFor
+  *setPGPKey(dataURL, filename) {
+    const b64File = dataURL.split(',')[1].trim();
+    const decoded = atob(b64File).trim();
 
-  actions: {
-    pickedFile(e) {
-      const { files } = e.target;
-      if (!files.length) {
-        return;
-      }
-      for (let i = 0, len = files.length; i < len; i++) {
-        this.readFile(files[i]);
-      }
-    },
-    updateData(e) {
-      const key = this.key;
-      set(key, 'value', e.target.value);
-      this.onChange(this.index, this.key);
-    },
-    clearKey() {
-      this.onChange(this.index, { value: '' });
-    },
-  },
-});
+    const fileData = decoded.match(BASE_64_REGEX) ? decoded : b64File;
+    yield this.onChange(this.index, { value: fileData, filename: filename });
+  }
+
+  @action
+  toggleText() {
+    set(this, 'key.enterAsText', !this.key.enterAsText);
+  }
+
+  @action
+  pickedFile(e) {
+    const { files } = e.target;
+    if (!files || !files.length) {
+      return;
+    }
+    for (let i = 0, len = files.length; i < len; i++) {
+      this.processFile.perform(files[i]);
+    }
+  }
+
+  @action
+  updateData(e) {
+    set(this.key, 'value', e.target.value);
+    this.onChange(this.index, this.key);
+  }
+
+  @action
+  clearKey() {
+    this.onChange(this.index, { value: '' });
+  }
+}

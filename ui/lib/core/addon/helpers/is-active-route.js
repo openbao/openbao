@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-/* eslint-disable ember/no-observers */
 import { inject as service } from '@ember/service';
 import { isArray } from '@ember/array';
 import Helper from '@ember/component/helper';

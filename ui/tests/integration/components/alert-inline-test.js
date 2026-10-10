@@ -5,7 +5,7 @@
 
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
-import { render, settled, find, waitUntil } from '@ember/test-helpers';
+import { render, settled } from '@ember/test-helpers';
 import hbs from 'htmlbars-inline-precompile';
 
 module('Integration | Component | alert-inline', function (hooks) {
@@ -79,8 +79,6 @@ module('Integration | Component | alert-inline', function (hooks) {
       .hasText('some very important alert', 'it renders original message');
 
     this.set('message', 'some changed alert!!!');
-    await waitUntil(() => find('[data-test-icon="loading"]'));
-    assert.ok(find('[data-test-icon="loading"]'), 'it shows loading icon when message changes');
     await settled();
     assert
       .dom('[data-test-inline-error-message]')

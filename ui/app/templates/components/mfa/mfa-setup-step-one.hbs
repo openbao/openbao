@@ -26,7 +26,7 @@
     </div>
 
     <div class="is-flex-start has-gap">
-      <button id="continue" type="submit" class="button is-primary" disabled={{(is-empty-value this.UUID)}} data-test-verify>
+      <button id="continue" type="submit" class="button is-primary" disabled={{is-empty-value this.UUID}} data-test-verify>
         Verify
       </button>
       <button id="cancel" type="button" {{on "click" this.redirectPreviousPage}} class="button">

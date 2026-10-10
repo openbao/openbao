@@ -1,5 +1,6 @@
 # compiled output
-/dist
+/dist/
+/declarations/
 
 # dependencies
 node_modules

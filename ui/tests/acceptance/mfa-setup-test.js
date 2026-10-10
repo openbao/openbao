@@ -20,7 +20,7 @@ const POLICY_NAME = 'identity_policy';
 
 const writePolicy = async function (path) {
   await enablePage.enable('userpass', path);
-  await settled(); // eslint-disable-line ember/no-settled-after-test-helper
+  await settled();
   const identityPolicy = `path "identity/*" {
     capabilities = ["create", "read", "update", "delete", "list"]
   }`;

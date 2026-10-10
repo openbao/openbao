@@ -63,9 +63,6 @@ importers:
       '@ember/optional-features':
         specifier: ^2.2.0
         version: 2.3.0
-      '@ember/render-modifiers':
-        specifier: ^1.0.2
-        version: 1.0.2(@babel/core@7.29.7)
       '@ember/string':
         specifier: ^4.0.0
         version: 4.0.1
@@ -465,9 +462,6 @@ importers:
 
   lib/core:
     dependencies:
-      '@ember/render-modifiers':
-        specifier: '*'
-        version: 1.0.2(@babel/core@7.29.7)
       '@hashicorp/ember-flight-icons':
         specifier: '*'
         version: 5.1.3(@babel/core@7.29.7)(@glint/template@1.9.0)
@@ -1418,10 +1412,6 @@ packages:
   '@ember/optional-features@2.3.0':
     resolution: {integrity: sha512-+M8CkPledQEaDbfIlwlq6Phgpm5jdT3a6WVDJk7b/zadw5xAJkuQKVK7DgR0SFgHGiWlyn6a8AU5p2mCA706RA==}
     engines: {node: 10.* || 12.* || >= 14}
-
-  '@ember/render-modifiers@1.0.2':
-    resolution: {integrity: sha512-6tEnHl5+62NTSAG2mwhGMFPhUrJQjoVqV+slsn+rlTknm2Zik+iwxBQEbwaiQOU1FUYxkS8RWcieovRNMR8inQ==}
-    engines: {node: 6.* || 8.* || >= 10.*}
 
   '@ember/render-modifiers@2.1.0':
     resolution: {integrity: sha512-LruhfoDv2itpk0fA0IC76Sxjcnq/7BC6txpQo40hOko8Dn6OxwQfxkPIbZGV0Cz7df+iX+VJrcYzNIvlc3w2EQ==}
@@ -9209,14 +9199,6 @@ snapshots:
       mkdirp: 1.0.4
       silent-error: 1.1.1
     transitivePeerDependencies:
-      - supports-color
-
-  '@ember/render-modifiers@1.0.2(@babel/core@7.29.7)':
-    dependencies:
-      ember-cli-babel: 7.26.11
-      ember-modifier-manager-polyfill: 1.2.0(@babel/core@7.29.7)
-    transitivePeerDependencies:
-      - '@babel/core'
       - supports-color
 
   '@ember/render-modifiers@2.1.0(@babel/core@7.29.7)(@glint/template@1.9.0)(ember-source@5.12.0(@glimmer/component@1.1.2(@babel/core@7.29.7))(@glint/template@1.9.0)(rsvp@4.8.5)(webpack@5.110.3(postcss@8.5.28)))':

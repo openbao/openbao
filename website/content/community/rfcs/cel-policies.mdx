@@ -16,6 +16,9 @@ introducing CEL as a policy language while mirroring most of HashiCorp's
 definitions of Endpoint Governing Policies (EGP) and Role Governing Policies
 (RGP).
 
+The inheritance rules of the existing ACL subsystem are especially broken and
+thus prevent us from logically expanding them.
+
 ## Problem Statement
 
 Mirroring this proposal is the introduction of supplement, [external
@@ -68,10 +71,21 @@ policy can defer to an external policy engine. One no is sufficient to fatally
 reject the request, though a yes from ACL or RGP is still gated by EGP. For
 unauthenticated requests, we'll still allow operators to specify EGP.
 
+We'll execute all RGPs/EGPs on a request so authors should be expected to
+write quick, concise policies. This means any RGP/EGP policy returning
+`approved` may be later overwritten by a `denied` value, though `null`s will
+be ignored. In the case of EGPs, note that this will execute all (relevant)
+EGPs from all parent namespaces.
+
+As stated in other RFCs on external authorization engines, they will only be
+called if the ACL, RGP, or EGP explicitly invokes them.
+
 In addition to the above policy evaluation states, a policy may not exist at
 the specified level, e.g., refer to a name which is not registered or have an
 empty `token_policies`. This means each policy evaluation box is of degree
-four (minus shared behaviors).
+four (minus shared behaviors). This mirrors the existing behavior of
+`token_policies` w.r.t. missing ACL policies today and is inherited from
+Vault. Note that `null` in the below is the same as a `no opinion`.
 
 Overall, this yields a control flow diagram like the following:
 
@@ -96,7 +110,7 @@ flowchart TD
   R(Request)
   RIU{Request is Unauthenticated}
   ACL[Evaluate HCL/JSON ACL policy if Applicable]
-  RGP[Evaluate CEL policy if Applicable]
+  RGP[Evaluate RGP in CEL policy if Applicable]
   EGP[Evaluate EGP in CEL if Applicable]
   HR(Handle Request)
   RR(Reject Request)
@@ -107,7 +121,7 @@ flowchart TD
 
 ### Endpoints
 
-Like Vault Enterprise, policy names will be global unique such that an ACL
+Like Vault Enterprise, policy names will be globally unique such that an ACL
 policy and an RGP policy cannot share the same name, thus removing
 ambiguity. We'll introduce OpenBao-specific endpoint names (`cel-egp` and
 `cel-rgp`) under `sys/policies/<type>/<name>`).
@@ -133,7 +147,9 @@ the endpoint.
 
 From a technical standpoint, the three-state can be effectively communicated
 in Go 1.27 with the `*bool` semantics, assigning either `new(true)` or
-`new(false)` for explicit accept or reject respectively.
+`new(false)` for explicit accept or reject respectively. Note that a two-state
+(regular `bool`) is not sufficient as ACL policies today use a two-state and
+are ambiguous w.r.t. explicit denial or default-deny.
 
 This will look something like:
 
@@ -176,6 +192,11 @@ func (c *Core) performPolicyChecks(...) {
 }
 ```
 
+### External Policy
+
+CEL will be able to invoke the external policy service via a `ask(...)`
+mechanism.
+
 ### Debug mode
 
 For ACL, the tracing capabilities will need to be expanded to return more
@@ -193,7 +214,8 @@ An alternative is to push CEL into the external authorization engine as a
 plugin type. However, this will likely result in authors writing simple
 rules like:
 
-```path "*" {
+```hcl
+path "*" {
    capabilities = ["ask"]
 }
 ```
@@ -204,6 +226,21 @@ expressed here (if it were builtin) and EGP would not work effectively.
 Given the benefits of EGP applying to unauthenticated paths (whereas even
 with a token, ACL policies are not evaluated on unauthenticated paths),
 there's no effective way to restrict this.
+
+### Conflict resolution
+
+In the case of `cel-rgp`, there is no conflict: all RGPs defined in the
+evaluated `token_policies` (that is, auth method's explicit `token_policies`
+plus identity entity policies and identity group policies) will be evaluated
+on the request if necessary based on the above diagram.
+
+In the case of `cel-egp`, policies will be checked for overlap and rejected
+if the path conflicts within a namespace.
+
+EGP policies will have `path` parameter which accepts `[]string`, with each
+`string` element including `+` and `*` as defined in the existing ACL engine
+(i.e., `+` representing a single path segment and appearing anywhere and `*`
+only ever as a suffix).
 
 ## Downsides
 

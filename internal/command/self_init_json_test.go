@@ -1,7 +1,6 @@
 package command
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/cli"
@@ -54,7 +53,7 @@ func TestSelfInitJSONConfig(t *testing.T) {
 		logger:     logger,
 	}
 
-	config, err := server.ParseConfig(fmt.Sprintf(`{
+	config, err := server.ParseConfig(`{
 	"initialize": [
 		{
 			"kv": {
@@ -75,7 +74,7 @@ func TestSelfInitJSONConfig(t *testing.T) {
 			}
 		}
 	]
-}`), "self-init-json-test")
+}`, "self-init-json-test")
 	require.NoError(t, err)
 	require.Len(t, config.Initialization, 1)
 	require.Empty(t, config.Validate("self-init-json-test"))
@@ -86,7 +85,7 @@ func TestSelfInitJSONConfig(t *testing.T) {
 	// was actually executed against the core. The self-initialization flow
 	// creates and then revokes its own root token, so we list mounts through
 	// the core's public accessor instead of the HTTP API.
-	mounts, err := cluster.Cores[0].Core.ListMounts()
+	mounts, err := cluster.Cores[0].ListMounts()
 	require.NoError(t, err)
 	var foundKVMount bool
 	for _, mount := range mounts {
@@ -96,5 +95,4 @@ func TestSelfInitJSONConfig(t *testing.T) {
 		}
 	}
 	require.True(t, foundKVMount, "expected secret/ to be mounted as kv by self-init")
-
 }

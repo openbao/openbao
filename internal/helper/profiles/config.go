@@ -119,7 +119,17 @@ func ParseOuterConfig(outerBlockType string, list *ast.ObjectList) ([]*OuterConf
 
 			i.Requests = requests
 
+			// Delete the request block's key and the names of any consumed
+			// requests from the unused keys: hcl v1's JSON parser flattens
+			// nested objects into a single item whose key list fuses the
+			// block key and the request's name (e.g. [request enable-audit]),
+			// causing both to be recorded as unused keys of this outer block.
 			delete(i.UnusedKeys, "request")
+			for _, request := range requests {
+				if request.Type != "" {
+					delete(i.UnusedKeys, request.Type)
+				}
+			}
 		}
 
 		result = append(result, &i)
@@ -220,7 +230,17 @@ func ParseInputConfig(list *ast.ObjectList) (*InputConfig, error) {
 
 		i.Fields = fields
 
+		// Delete the field block's key and the names of any consumed fields
+		// from the unused keys: hcl v1's JSON parser flattens nested objects
+		// into a single item whose key list fuses the block key and the
+		// field's name (e.g. [field username]), causing both to be recorded
+		// as unused keys of this input block.
 		delete(i.UnusedKeys, "field")
+		for _, field := range fields {
+			if field.Name != "" {
+				delete(i.UnusedKeys, field.Name)
+			}
+		}
 	}
 
 	return &i, nil

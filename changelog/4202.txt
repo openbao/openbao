@@ -1,0 +1,3 @@
+```release-note:bug
+server: Fix parsing of the self-initialization stanza when the configuration file is JSON: hcl v1 JSON flattening caused consumed request/field names to be reported as unknown fields and the initialize block name to abort startup. Also surface the specific response error reason when a self-init request fails.
+```

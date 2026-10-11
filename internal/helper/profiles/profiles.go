@@ -400,8 +400,17 @@ func (p *ProfileEngine) evaluateRequest(ctx context.Context, history *Evaluation
 	// 4. Call the request handler.
 	resp, err := p.requestHandler(ctx, req)
 	isFailure := err != nil || resp.IsError()
-	if err == nil {
-		err = resp.Error()
+	// Handlers may return both an error and an error response (e.g. the
+	// core wraps handler failures in a generic error while the response
+	// carries the handler's specific, user-facing failure reason). Prefer
+	// the response's reason so operators debugging failed requests see
+	// the actual cause instead of a generic wrapper (e.g. "invalid request").
+	if respErr := resp.Error(); respErr != nil {
+		if err == nil {
+			err = respErr
+		} else if !errors.Is(err, respErr) {
+			err = fmt.Errorf("%w: %w", err, respErr)
+		}
 	}
 	if !allowFailure && isFailure {
 		if err != nil {

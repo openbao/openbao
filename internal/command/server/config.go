@@ -1068,6 +1068,17 @@ func ParseConfig(d, source string) (*Config, error) {
 			return nil, fmt.Errorf("error parsing 'initialize': %w", err)
 		}
 
+		// Delete the names of any consumed outer blocks from the unused
+		// keys: hcl v1's JSON parser flattens nested objects into a single
+		// item whose key list fuses the stanza key and the block's name
+		// (e.g. [initialize audit]), causing both to be recorded as unused
+		// keys of the configuration.
+		for _, outer := range init {
+			if outer.Type != "" {
+				delete(result.UnusedKeys, outer.Type)
+			}
+		}
+
 		result.Initialization = init
 	}
 

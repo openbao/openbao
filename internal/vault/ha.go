@@ -856,44 +856,36 @@ func (c *Core) waitForLeadership(manualStepDown *bool, manualStepDownCh, stopCh 
 		return true, false
 	}
 
-	// This block is used to wipe barrier/seal state and verify that
-	// everything is sane. If we have no sanity in the barrier, we actually
-	// seal, as there's little we can do.
-	{
-		c.seal.SetBarrierConfig(activeCtx, nil) //nolint:errcheck
-		if c.seal.RecoveryKeySupported() {
-			c.seal.SetRecoveryConfig(activeCtx, nil) //nolint:errcheck
+	if err := c.performKeyUpgrades(activeCtx); err != nil {
+		c.logger.Error("error performing key upgrades", "error", err)
+
+		// If we fail due to anything other than a context canceled
+		// error we should shutdown as we may have the incorrect Keys.
+		if !strings.Contains(err.Error(), context.Canceled.Error()) {
+			// We call this in a goroutine so that we can give up the
+			// statelock and have this shut us down; sealInternal has a
+			// workflow where it watches for the stopCh to close so we want
+			// to return from here
+			go func() {
+				if err := c.Shutdown(); err != nil {
+					c.logger.Error("error shutting down core", "error", err)
+				}
+			}()
 		}
 
-		if err := c.performKeyUpgrades(activeCtx); err != nil {
-			c.logger.Error("error performing key upgrades", "error", err)
+		c.heldHALock = nil
+		if err := lock.Unlock(); err != nil {
+			c.logger.Error("error releasing HA lock", "error", err)
+		}
+		c.stateLock.Unlock()
+		metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
 
-			// If we fail due to anything other than a context canceled
-			// error we should shutdown as we may have the incorrect Keys.
-			if !strings.Contains(err.Error(), context.Canceled.Error()) {
-				// We call this in a goroutine so that we can give up the
-				// statelock and have this shut us down; sealInternal has a
-				// workflow where it watches for the stopCh to close so we want
-				// to return from here
-				go func() {
-					if err := c.Shutdown(); err != nil {
-						c.logger.Error("error shutting down core", "error", err)
-					}
-				}()
-			}
-
-			c.heldHALock = nil
-			lock.Unlock()
-			c.stateLock.Unlock()
-			metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
-
-			// If we are shutting down we should return from this function,
-			// otherwise continue
-			if !strings.Contains(err.Error(), context.Canceled.Error()) {
-				return false, true
-			} else {
-				return true, false
-			}
+		// If we are shutting down we should return from this function,
+		// otherwise continue
+		if !strings.Contains(err.Error(), context.Canceled.Error()) {
+			return false, true
+		} else {
+			return true, false
 		}
 	}
 

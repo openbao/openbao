@@ -22,7 +22,10 @@ all necessary settings can be defined in advance.
 
 All requests are subject to the same restrictions as if they were executed
 normally: audit logging, authentication, and API variable restrictions (such as
-unauthenticated rotation and audit device creation) still apply.
+unauthenticated rotation and audit device creation) still apply. In
+particular, enabling an audit device via `sys/audit/*` requires the top-level
+`unsafe_allow_api_audit_creation = true` configuration option; prefer the
+declarative, config-based [`audit` stanza](audit.mdx) instead.
 
 :::
 
@@ -47,16 +50,16 @@ initial root token and handling recovery keys.
 {
   "initialize": [
     {
-      "audit": {
+      "kv": {
         "request": [
           {
-            "enable-audit": {
+            "mount-kv": {
               "operation": "update",
-              "path": "sys/audit/stdout",
+              "path": "sys/mounts/secret",
               "data": {
-                "type": "file",
+                "type": "kv",
                 "options": {
-                  "file_path": "stdout"
+                  "version": "2"
                 }
               }
             }
@@ -72,14 +75,14 @@ initial root token and handling recovery keys.
 <TabItem value="HCL">
 
 ```hcl
-initialize "audit" {
-  request "enable-audit" {
+initialize "kv" {
+  request "mount-kv" {
     operation = "update"
-    path = "sys/audit/stdout"
+    path = "sys/mounts/secret"
     data = {
-      type = "file"
+      type = "kv"
       options = {
-        file_path = "stdout"
+        version = "2"
       }
     }
   }

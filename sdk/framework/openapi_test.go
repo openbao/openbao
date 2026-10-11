@@ -227,92 +227,92 @@ func TestOpenAPI_SplitFields(t *testing.T) {
 func TestOpenAPI_SpecialPaths(t *testing.T) {
 	tests := map[string]struct {
 		pattern                 string
-		rootPaths               []string
-		rootExpected            bool
+		sudoPaths               []string
+		sudoExpected            bool
 		unauthenticatedPaths    []string
 		unauthenticatedExpected bool
 	}{
 		"empty": {
 			pattern:                 "foo",
-			rootPaths:               []string{},
-			rootExpected:            false,
+			sudoPaths:               []string{},
+			sudoExpected:            false,
 			unauthenticatedPaths:    []string{},
 			unauthenticatedExpected: false,
 		},
 		"exact-match-unauthenticated": {
 			pattern:                 "foo",
-			rootPaths:               []string{},
-			rootExpected:            false,
+			sudoPaths:               []string{},
+			sudoExpected:            false,
 			unauthenticatedPaths:    []string{"foo"},
 			unauthenticatedExpected: true,
 		},
-		"exact-match-root": {
+		"exact-match-sudo": {
 			pattern:                 "foo",
-			rootPaths:               []string{"foo"},
-			rootExpected:            true,
+			sudoPaths:               []string{"foo"},
+			sudoExpected:            true,
 			unauthenticatedPaths:    []string{"bar"},
 			unauthenticatedExpected: false,
 		},
 		"asterisk-match-unauthenticated": {
 			pattern:                 "foo/bar",
-			rootPaths:               []string{"foo"},
-			rootExpected:            false,
+			sudoPaths:               []string{"foo"},
+			sudoExpected:            false,
 			unauthenticatedPaths:    []string{"foo/*"},
 			unauthenticatedExpected: true,
 		},
-		"asterisk-match-root": {
+		"asterisk-match-sudo": {
 			pattern:                 "foo/bar",
-			rootPaths:               []string{"foo/*"},
-			rootExpected:            true,
+			sudoPaths:               []string{"foo/*"},
+			sudoExpected:            true,
 			unauthenticatedPaths:    []string{"foo"},
 			unauthenticatedExpected: false,
 		},
 		"path-ends-with-slash": {
 			pattern:                 "foo/",
-			rootPaths:               []string{"foo/*"},
-			rootExpected:            true,
+			sudoPaths:               []string{"foo/*"},
+			sudoExpected:            true,
 			unauthenticatedPaths:    []string{"a", "b", "foo*"},
 			unauthenticatedExpected: true,
 		},
 		"asterisk-match-no-slash": {
 			pattern:                 "foo",
-			rootPaths:               []string{"foo*"},
-			rootExpected:            true,
+			sudoPaths:               []string{"foo*"},
+			sudoExpected:            true,
 			unauthenticatedPaths:    []string{"a", "fo*"},
 			unauthenticatedExpected: true,
 		},
-		"multiple-root-paths": {
+		"multiple-sudo-paths": {
 			pattern:                 "foo/bar",
-			rootPaths:               []string{"a", "b", "foo/*"},
-			rootExpected:            true,
+			sudoPaths:               []string{"a", "b", "foo/*"},
+			sudoExpected:            true,
 			unauthenticatedPaths:    []string{"foo/baz/*"},
 			unauthenticatedExpected: false,
 		},
 		"plus-match-unauthenticated": {
 			pattern:                 "foo/bar/baz",
-			rootPaths:               []string{"foo/bar"},
-			rootExpected:            false,
+			sudoPaths:               []string{"foo/bar"},
+			sudoExpected:            false,
 			unauthenticatedPaths:    []string{"foo/+/baz"},
 			unauthenticatedExpected: true,
 		},
-		"plus-match-root": {
+		"plus-match-sudo": {
 			pattern:                 "foo/bar/baz",
-			rootPaths:               []string{"foo/+/baz"},
-			rootExpected:            true,
+			sudoPaths:               []string{"foo/+/baz"},
+			sudoExpected:            true,
 			unauthenticatedPaths:    []string{"foo/bar"},
 			unauthenticatedExpected: false,
 		},
 		"plus-and-asterisk": {
 			pattern:                 "foo/bar/baz/something",
-			rootPaths:               []string{"foo/+/baz/*"},
-			rootExpected:            true,
+			sudoPaths:               []string{"foo/+/baz/*"},
+			sudoExpected:            true,
 			unauthenticatedPaths:    []string{"foo/+/baz*"},
 			unauthenticatedExpected: true,
 		},
 		"double-plus-good": {
 			pattern:                 "foo/bar/baz",
-			rootPaths:               []string{"foo/+/+"},
-			rootExpected:            true,
+			sudoPaths:               []string{"foo/+/+"},
+			sudoExpected:            true,
 			unauthenticatedPaths:    []string{"foo/bar"},
 			unauthenticatedExpected: false,
 		},
@@ -324,7 +324,7 @@ func TestOpenAPI_SpecialPaths(t *testing.T) {
 				Pattern: test.pattern,
 			}
 			specialPaths := &logical.Paths{
-				Root:            test.rootPaths,
+				SudoRequired:    test.sudoPaths,
 				Unauthenticated: test.unauthenticatedPaths,
 			}
 
@@ -333,8 +333,8 @@ func TestOpenAPI_SpecialPaths(t *testing.T) {
 			}
 
 			actual := doc.Paths["/"+test.pattern].Sudo
-			if actual != test.rootExpected {
-				t.Fatalf("Test (root): expected: %v; got: %v", test.rootExpected, actual)
+			if actual != test.sudoExpected {
+				t.Fatalf("Test (sudo): expected: %v; got: %v", test.sudoExpected, actual)
 			}
 
 			actual = doc.Paths["/"+test.pattern].Unauthenticated
@@ -375,7 +375,7 @@ func TestOpenAPI_Paths(t *testing.T) {
 		}
 
 		sp := &logical.Paths{
-			Root:            []string{},
+			SudoRequired:    []string{},
 			Unauthenticated: []string{},
 		}
 		testPath(t, p, sp, expected("legacy"))
@@ -459,7 +459,7 @@ func TestOpenAPI_Paths(t *testing.T) {
 		}
 
 		sp := &logical.Paths{
-			Root: []string{"foo*"},
+			SudoRequired: []string{"foo*"},
 		}
 		testPath(t, p, sp, expected("operations"))
 	})
@@ -518,7 +518,7 @@ func TestOpenAPI_Paths(t *testing.T) {
 		}
 
 		sp := &logical.Paths{
-			Root: []string{"foo*"},
+			SudoRequired: []string{"foo*"},
 		}
 		testPath(t, p, sp, expected("operations_list"))
 	})
@@ -577,7 +577,7 @@ func TestOpenAPI_Paths(t *testing.T) {
 		}
 
 		sp := &logical.Paths{
-			Root: []string{"foo*"},
+			SudoRequired: []string{"foo*"},
 		}
 		testPath(t, p, sp, expected("operations_scan"))
 	})

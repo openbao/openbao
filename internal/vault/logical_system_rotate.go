@@ -115,8 +115,9 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRotate(),
-					Summary:  "Rotate the encryption key.",
+					Callback:    b.handleRotate(),
+					Description: "This endpoint requires sudo capability.",
+					Summary:     "Rotate the encryption key.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
 							Description: http.StatusText(http.StatusNoContent),
@@ -171,8 +172,8 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 			HelpSynopsis:    strings.TrimSpace(sysRotateHelp["rotate-config"][0]),
 			HelpDescription: strings.TrimSpace(sysRotateHelp["rotate-config"][1]),
 		},
-		// The bare `sys/rotate/root` is a `sudo`-protected endpoint to directly
-		// perform a root key rotation without requiring existing key shares be provided.
+		// The bare `sys/rotate/root` is used to directly perform a root key rotation
+		// without requiring existing key shares be provided.
 		{
 			Pattern: "rotate/root",
 			DisplayAttrs: &framework.DisplayAttributes{
@@ -182,7 +183,8 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRotateRoot(),
+					Callback:    b.handleRotateRoot(),
+					Description: "This endpoint requires sudo capability.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
 							Description: http.StatusText(http.StatusNoContent),

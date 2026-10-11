@@ -104,7 +104,7 @@ func TestRollbackManager_ManyWorkers(t *testing.T) {
 			}
 			return nil, nil
 		}
-		b.Root = []string{fmt.Sprintf("foo/%d", i)}
+		b.Sudo = []string{fmt.Sprintf("foo/%d", i)}
 		meUUID, err := uuid.GenerateUUID()
 		require.NoError(t, err)
 		mountEntry := &routing.MountEntry{
@@ -187,7 +187,7 @@ func TestRollbackManager_WorkerPool(t *testing.T) {
 			}
 			return nil, nil
 		}
-		b.Root = []string{fmt.Sprintf("foo/%d", i)}
+		b.Sudo = []string{fmt.Sprintf("foo/%d", i)}
 		meUUID, err := uuid.GenerateUUID()
 		require.NoError(t, err)
 		mountEntry := &routing.MountEntry{

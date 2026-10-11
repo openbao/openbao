@@ -2835,31 +2835,24 @@ func TestTokenStore_HandleRequest_RevokeOrphan_NonRoot(t *testing.T) {
 	testMakeServiceTokenViaBackend(t, ts, root, "child", "60s", []string{"foo"})
 
 	ctx := namespace.RootContext(t.Context())
-
 	out, err := ts.Lookup(ctx, "child")
 	require.NoError(t, err)
-	if out == nil {
-		t.Fatalf("bad: %v", out)
-	}
+	require.NotNil(t, out)
 
-	req := logical.TestRequest(t, logical.UpdateOperation, "revoke-orphan")
+	req := logical.TestRequest(t, logical.UpdateOperation, "auth/token/revoke-orphan")
 	req.Data = map[string]any{
 		"token": "child",
 	}
 	req.ClientToken = "child"
-	resp, err := ts.HandleRequest(ctx, req)
-	if err != logical.ErrInvalidRequest {
-		t.Fatalf("did not get error when non-root revoking itself with orphan flag; resp is %#v", resp)
-	}
+	_, err = c.HandleRequest(ctx, req)
+	require.Error(t, err)
 
 	time.Sleep(200 * time.Millisecond)
 
 	// Should still exist
 	out, err = ts.Lookup(ctx, "child")
 	require.NoError(t, err)
-	if out == nil {
-		t.Fatalf("bad: %v", out)
-	}
+	require.NotNil(t, out)
 }
 
 func TestTokenStore_HandleRequest_Lookup(t *testing.T) {

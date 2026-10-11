@@ -9,11 +9,12 @@ The `/sys/internal/inspect/request` endpoint is intended for an OpenBao admin
 or developer to inspect the internal components of OpenBao's request
 structures, including entity and group information.
 
-This endpoint can be accessed with a root token or sudo privileges.
+- **`sudo` required** - This endpoint requires `sudo` capability in addition to
+  any path-specific capabilities.
 
 | Method | Path          |
 | :----- | :------------ |
-| `GET`  | `/sys/internal/inspect/request/root` |
+| `GET`  | `/sys/internal/inspect/request` |
 
 ## Sample request
 

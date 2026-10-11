@@ -79,7 +79,6 @@ $ curl \
 
 ## Enable auth method
 
-
 This endpoint enables a new auth method. After enabling, the auth method can
 be accessed and configured via the auth path specified as part of the URL. This
 auth path will be nested under the `auth` prefix.
@@ -87,16 +86,13 @@ auth path will be nested under the `auth` prefix.
 For example, enable the "foo" auth method will make it accessible at
 `/auth/foo`.
 
-- **`sudo` required** – This endpoint requires `sudo` capability in addition to
-  any path-specific capabilities.
-
 | Method | Path              |
 | :----- | :---------------- |
 | `POST` | `/sys/auth/:path` |
 
 ### Parameters
 
-- `path` `(string: <required>)` – Specifies the path in which to enable the auth
+- `path` `(string: <required>)` - Specifies the path in which to enable the auth
   method. This is part of the request URL.
 
   :::danger
@@ -105,13 +101,13 @@ For example, enable the "foo" auth method will make it accessible at
 
   :::
 
-- `description` `(string: "")` – Specifies a human-friendly description of the
+- `description` `(string: "")` - Specifies a human-friendly description of the
   auth method.
 
-- `type` `(string: <required>)` – Specifies the name of the authentication
+- `type` `(string: <required>)` - Specifies the name of the authentication
   method type, such as "github" or "token".
 
-- `config` `(map<string|string>: nil)` – Specifies configuration options for
+- `config` `(map<string|string>: nil)` - Specifies configuration options for
   this auth method. These are the possible values:
 
   - `default_lease_ttl` `(string: "")` - The default lease duration, specified
@@ -136,7 +132,7 @@ For example, enable the "foo" auth method will make it accessible at
   - `allowed_response_headers` `(array: [])` - List of headers to allow,
     allowing a plugin to include them in the response.
 
-  - `plugin_version` `(string: "")` – Specifies the semantic version of the plugin
+  - `plugin_version` `(string: "")` - Specifies the semantic version of the plugin
     to use, e.g. "v1.0.0". If unspecified, the server will select any matching
     unversioned plugin that may have been registered, the latest versioned plugin
     registered, or a built-in plugin in that order of precedence.
@@ -161,7 +157,6 @@ $ curl \
 ```
 
 ## Read auth method configuration
-
 
 This endpoints returns the configuration of the auth method at the given path.
 
@@ -212,11 +207,7 @@ $ curl \
 
 ## Disable auth method
 
-
 This endpoint disables the auth method at the given auth path.
-
-- **`sudo` required** – This endpoint requires `sudo` capability in addition to
-  any path-specific capabilities.
 
 | Method   | Path              |
 | :------- | :---------------- |
@@ -224,7 +215,7 @@ This endpoint disables the auth method at the given auth path.
 
 ### Parameters
 
-- `path` `(string: <required>)` – Specifies the path to disable. This is part of
+- `path` `(string: <required>)` - Specifies the path to disable. This is part of
   the request URL.
 
 ### Sample request
@@ -238,13 +229,7 @@ $ curl \
 
 ## Read auth method tuning
 
-
-- This endpoint reads the given auth path's configuration. This endpoint requires
-`sudo` capability on the final path, but the same functionality can be achieved
-without `sudo` via `sys/mounts/auth/[auth-path]/tune`._
-
-- **`sudo` required** – This endpoint requires `sudo` capability in addition to
-  any path-specific capabilities.
+This endpoint reads the given auth path's configuration.
 
 | Method | Path                   |
 | :----- | :--------------------- |
@@ -252,7 +237,7 @@ without `sudo` via `sys/mounts/auth/[auth-path]/tune`._
 
 ### Parameters
 
-- `path` `(string: <required>)` – Specifies the path in which to tune.
+- `path` `(string: <required>)` - Specifies the path in which to tune.
 
 ### Sample request
 
@@ -276,13 +261,7 @@ $ curl \
 
 ## Tune auth method
 
-
-Tune configuration parameters for a given auth path. _This endpoint
-requires `sudo` capability on the final path, but the same functionality
-can be achieved without `sudo` via `sys/mounts/auth/[auth-path]/tune`._
-
-- **`sudo` required** – This endpoint requires `sudo` capability in addition to
-  any path-specific capabilities.
+Tune configuration parameters for a given auth path. 
 
 | Method | Path                   |
 | :----- | :--------------------- |
@@ -290,13 +269,13 @@ can be achieved without `sudo` via `sys/mounts/auth/[auth-path]/tune`._
 
 ### Parameters
 
-- `default_lease_ttl` `(int: 0)` – Specifies the default time-to-live. If set on
+- `default_lease_ttl` `(int: 0)` - Specifies the default time-to-live. If set on
   a specific auth path, this overrides the global default.
 
-- `max_lease_ttl` `(int: 0)` – Specifies the maximum time-to-live. If set on a
+- `max_lease_ttl` `(int: 0)` - Specifies the maximum time-to-live. If set on a
   specific auth path, this overrides the global default.
 
-- `description` `(string: "")` – Specifies the description of the mount. This
+- `description` `(string: "")` - Specifies the description of the mount. This
   overrides the current stored value, if any.
 
 - `audit_non_hmac_request_keys` `(array: [])` - Specifies the list of keys
@@ -315,7 +294,7 @@ can be achieved without `sudo` via `sys/mounts/auth/[auth-path]/tune`._
 - `allowed_response_headers` `(array: [])` - List of headers to allow,
   allowing a plugin to include them in the response.
 
-- `token_type` `(string: "")` – Specifies the type of tokens that should be
+- `token_type` `(string: "")` - Specifies the type of tokens that should be
   returned by the mount. The following values are available:
 
   - `default-service`: Unless the auth method requests a different type, issue
@@ -327,10 +306,10 @@ can be achieved without `sudo` via `sys/mounts/auth/[auth-path]/tune`._
   - `batch`: Override any auth method preference and always issue batch tokens
     from this mount
 
-- `plugin_version` `(string: "")` – Specifies the semantic version of the plugin
+- `plugin_version` `(string: "")` - Specifies the semantic version of the plugin
   to use, e.g. "v1.0.0". Changes will not take effect until the mount is reloaded.
 
-- `user_lockout_config` `(map<string|string>: nil)` – Specifies the user lockout configuration
+- `user_lockout_config` `(map<string|string>: nil)` - Specifies the user lockout configuration
   for the mount. These are the possible values:
 
   - `lockout_threshold` `(string: "")` - Specifies the number of failed login attempts after

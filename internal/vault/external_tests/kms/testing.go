@@ -309,6 +309,7 @@ func ExercisePKIRootCA(t *testing.T, client *api.Client, mountName string, keyNa
 
 	keyId := resp.Data["key_id"]
 	require.NotEmpty(t, keyId)
+	requirePKIExternalKey(t, client, mountName, keyId)
 
 	// Update the key's name.
 	keyPath := fmt.Sprintf("%v/key/%v", mountName, keyId)
@@ -363,6 +364,7 @@ func ExercisePKIIntermediateCA(t *testing.T, client *api.Client, mountName strin
 
 	keyId = resp.Data["key_id"]
 	require.NotEmpty(t, keyId)
+	requirePKIExternalKey(t, client, mountName, keyId)
 
 	csr := resp.Data["csr"]
 	require.NotEmpty(t, csr)
@@ -409,6 +411,13 @@ func ExercisePKIIntermediateCA(t *testing.T, client *api.Client, mountName strin
 	// Set the imported certificate as default.
 
 	ExercisePKICA(t, client, mountName, issuerName)
+}
+
+func requirePKIExternalKey(t *testing.T, client *api.Client, mountName string, keyId any) {
+	resp, err := client.Logical().Read(fmt.Sprintf("%v/key/%v", mountName, keyId))
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Equal(t, "external-key", resp.Data["key_type"])
 }
 
 func ExercisePKICA(t *testing.T, client *api.Client, mountName string, issuerName string) {

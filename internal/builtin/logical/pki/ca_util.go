@@ -114,29 +114,37 @@ func generateCABundle(sc *storageContext, input *inputBundle, data *certutil.Cre
 	}
 
 	if externalKeyRequested(input) {
-		keyRef, err := getExternalKeyRefWithErr(input.apiData)
+		var err error
+		generator, err = externalKeyGenerator(sc, input)
 		if err != nil {
 			return nil, err
-		}
-
-		signer, err := sc.getExternalSigner(keyRef)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get external key: %w", err)
-		}
-
-		pubType := certutil.GetPrivateKeyTypeFromSigner(signer)
-
-		generator = func(keyType string, keyBits int, container certutil.ParsedPrivateKeyContainer, entropyReader io.Reader) error {
-			if keyType != string(pubType) && keyType != "" && keyType != "external-key" {
-				return fmt.Errorf("external key of type %v does not match generation expectations %v", pubType, keyType)
-			}
-
-			container.SetParsedPrivateKey(signer, certutil.ExternalPrivateKey, []byte(keyRef))
-			return nil
 		}
 	}
 
 	return certutil.CreateCertificateWithKeyGenerator(data, randomSource, generator)
+}
+
+func externalKeyGenerator(sc *storageContext, input *inputBundle) (certutil.KeyGenerator, error) {
+	keyRef, err := getExternalKeyRefWithErr(input.apiData)
+	if err != nil {
+		return nil, err
+	}
+
+	signer, err := sc.getExternalSigner(keyRef)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get external key: %w", err)
+	}
+
+	pubType := certutil.GetPrivateKeyTypeFromSigner(signer)
+
+	return func(keyType string, keyBits int, container certutil.ParsedPrivateKeyContainer, entropyReader io.Reader) error {
+		if keyType != string(pubType) && keyType != "" && keyType != "external-key" {
+			return fmt.Errorf("external key of type %v does not match generation expectations %v", pubType, keyType)
+		}
+
+		container.SetParsedPrivateKey(signer, certutil.ExternalPrivateKey, []byte(keyRef))
+		return nil
+	}, nil
 }
 
 func generateCSRBundle(sc *storageContext, input *inputBundle, data *certutil.CreationBundle, addBasicConstraints bool, randomSource io.Reader) (*certutil.ParsedCSRBundle, error) {
@@ -152,6 +160,15 @@ func generateCSRBundle(sc *storageContext, input *inputBundle, data *certutil.Cr
 		}
 
 		return certutil.CreateCSRWithKeyGenerator(data, addBasicConstraints, randomSource, existingKeyGeneratorFromBytes(key))
+	}
+
+	if externalKeyRequested(input) {
+		generator, err := externalKeyGenerator(sc, input)
+		if err != nil {
+			return nil, err
+		}
+
+		return certutil.CreateCSRWithKeyGenerator(data, addBasicConstraints, randomSource, generator)
 	}
 
 	return certutil.CreateCSRWithRandomSource(data, addBasicConstraints, randomSource)

@@ -107,7 +107,11 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 	callbackPort, ok := m[FieldCallbackPort]
 	if !ok {
 		if serverURL != nil {
-			callbackPort = serverURL.Port() + "/v1/auth/" + mount
+			ns := strings.Trim(c.Namespace(), "/")
+			if ns == "root" {
+				ns = ""
+			}
+			callbackPort = serverURL.Port() + path.Join("/v1", ns, "auth", mount)
 		} else {
 			callbackPort = port
 		}
@@ -423,7 +427,7 @@ Configuration:
   %s=<string>
     Optional port to use in OIDC redirect_uri (default: the value set for
     port in client callback mode, else the port from $BAO_ADDR or $VAULT_ADDR
-    with an added /v1/auth/<path> where <path> is from the login -path option).
+    with an added /v1/<namespace>/auth/<path> where <path> is from the login -path option).
 
   %s=<bool>
     Toggle the automatic launching of the default browser to the login URL. (default: false).

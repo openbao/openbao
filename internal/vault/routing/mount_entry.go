@@ -44,6 +44,12 @@ type MountEntry struct {
 	Version        string `json:"plugin_version,omitempty"` // The semantic version of the mounted plugin, e.g. v1.2.3.
 	RunningVersion string `json:"-"`                        // The semantic version of the mounted plugin as reported by the plugin.
 	RunningSha256  string `json:"-"`
+
+	// Reload is a monotonically increasing counter that serves no purpose
+	// beyond notifying standbys to reload the mount. Specifically, a global
+	// mount reload may sometimes be desired even when no other field in this
+	// struct has changed, for example when using Version="latest".
+	Reload int `json:"reload,omitempty"`
 }
 
 type APIUserLockoutConfig struct {

@@ -20,11 +20,11 @@ import (
 
 // reloadMatchingPluginMounts reloads provided mounts, regardless of
 // plugin name, as long as the backend type is plugin.
-func (c *Core) reloadMatchingPluginMounts(ctx context.Context, mounts []string) error {
-	c.mountsLock.RLock()
-	defer c.mountsLock.RUnlock()
-	c.authLock.RLock()
-	defer c.authLock.RUnlock()
+func (c *Core) reloadMatchingPluginMounts(ctx context.Context, mounts []string, global bool) error {
+	c.mountsLock.Lock()
+	defer c.mountsLock.Unlock()
+	c.authLock.Lock()
+	defer c.authLock.Unlock()
 
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
@@ -60,7 +60,7 @@ func (c *Core) reloadMatchingPluginMounts(ctx context.Context, mounts []string) 
 			continue
 		}
 
-		err := c.reloadBackendCommon(ctx, entry, isAuth)
+		err := c.reloadBackendCommon(ctx, entry, isAuth, global)
 		if err != nil {
 			errors = multierror.Append(errors, fmt.Errorf("cannot reload plugin on %q: %w", mount, err))
 			continue
@@ -73,11 +73,11 @@ func (c *Core) reloadMatchingPluginMounts(ctx context.Context, mounts []string) 
 // reloadPlugin reloads all mounted backends that are of
 // plugin pluginName (name of the plugin as registered in
 // the plugin catalog).
-func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) error {
-	c.mountsLock.RLock()
-	defer c.mountsLock.RUnlock()
-	c.authLock.RLock()
-	defer c.authLock.RUnlock()
+func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string, global bool) error {
+	c.mountsLock.Lock()
+	defer c.mountsLock.Unlock()
+	c.authLock.Lock()
+	defer c.authLock.Unlock()
 
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
@@ -109,7 +109,7 @@ func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) erro
 			continue
 		}
 		if entry.Type == pluginName {
-			err := c.reloadBackendCommon(ctx, entry, false)
+			err := c.reloadBackendCommon(ctx, entry, false, global)
 			if err != nil {
 				return err
 			}
@@ -125,7 +125,7 @@ func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) erro
 		}
 
 		if entry.Type == pluginName {
-			err := c.reloadBackendCommon(ctx, entry, true)
+			err := c.reloadBackendCommon(ctx, entry, true, global)
 			if err != nil {
 				return err
 			}
@@ -138,7 +138,7 @@ func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) erro
 
 // reloadBackendCommon is a generic method to reload a backend provided a
 // MountEntry.
-func (c *Core) reloadBackendCommon(ctx context.Context, entry *routing.MountEntry, isAuth bool) error {
+func (c *Core) reloadBackendCommon(ctx context.Context, entry *routing.MountEntry, isAuth, global bool) error {
 	// Make sure our cache is up-to-date. Since some singleton mounts can be
 	// tuned, we do this before the below check.
 	entry.SyncCache()
@@ -173,25 +173,46 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *routing.MountEntr
 		reloadCtx := context.WithValue(ctx, plugin.ContextKeyPluginReload, "reload")
 		// Call backend's Cleanup routine
 		re.Backend.Cleanup(reloadCtx)
+		re.Backend = nil
 	}
 
 	view := re.StorageView
 	sysView := c.mountEntrySysView(entry)
 
-	var backend logical.Backend
+	// Discard the backend if any remaining steps below fail.
+	var success bool
+	defer func() {
+		if !success && re.Backend != nil {
+			re.Backend.Cleanup(ctx)
+			re.Backend = nil
+		}
+	}()
+
 	var err error
 	if !isAuth {
 		// Dispense a new backend
-		backend, err = c.newLogicalBackend(ctx, entry, sysView, view)
+		re.Backend, err = c.newLogicalBackend(ctx, entry, sysView, view)
 	} else {
-		backend, err = c.newCredentialBackend(ctx, entry, sysView, view)
+		re.Backend, err = c.newCredentialBackend(ctx, entry, sysView, view)
 	}
 	if err != nil {
 		return err
 	}
 
-	// Set the backend back
-	re.Backend = backend
+	if global {
+		// If globally reloading, bump the mount's reload counter and write it
+		// back to storage to propagate the reload to standby nodes.
+		entry.Reload++
+		barrier := c.NamespaceView(entry.Namespace)
+		if isAuth {
+			err = c.persistAuth(ctx, barrier, c.auth, &entry.Local, entry.UUID)
+		} else {
+			err = c.persistMounts(ctx, barrier, c.mounts, &entry.Local, entry.UUID)
+		}
+		if err != nil {
+			return err
+		}
+	}
 
 	// We may have loaded a nil backend on unseal due to a missing plugin,
 	// leaving the mount's storage view marked read-only. At this point we're
@@ -203,13 +224,13 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *routing.MountEntr
 	// rely on lazy loading for initialization. v5 backends do not rely on lazy loading
 	// for initialization unless the plugin process is killed. Reload of a v5 backend
 	// results in a new plugin process, so we must initialize the backend here.
-	err = backend.Initialize(ctx, &logical.InitializationRequest{Storage: view})
+	err = re.Backend.Initialize(ctx, &logical.InitializationRequest{Storage: view})
 	if err != nil {
 		return err
 	}
 
 	// Set paths as well
-	paths := backend.SpecialPaths()
+	paths := re.Backend.SpecialPaths()
 	if paths != nil {
 		re.SetRootPaths(routing.PathsToRadix(paths.Root))
 		loginPathsEntry, err := routing.ParseUnauthenticatedPaths(paths.Unauthenticated)
@@ -218,6 +239,8 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *routing.MountEntr
 		}
 		re.SetLoginPaths(loginPathsEntry)
 	}
+
+	success = true
 
 	return nil
 }

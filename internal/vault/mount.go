@@ -2173,13 +2173,18 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 			needReload = true
 		}
 
-		if actualMountEntry.Version != desiredMountEntry.Version {
-			actualMountEntry.Version = desiredMountEntry.Version
+		if actualMountEntry.Reload != desiredMountEntry.Reload {
+			actualMountEntry.Reload = desiredMountEntry.Reload
 			needReload = true
 		}
 
+		// A change to the version by itself should not effect a reload; this
+		// is not the case on the primary either. An explicit plugin reload is
+		// required, which will bump the Reload field handled above.
+		actualMountEntry.Version = desiredMountEntry.Version
+
 		if needReload && !slices.Contains(singletonMounts, actualMountEntry.Type) {
-			return c.reloadBackendCommon(ctx, desiredMountEntry, table == routing.CredentialTableType)
+			return c.reloadBackendCommon(ctx, actualMountEntry, table == routing.CredentialTableType, false)
 		}
 	}
 

@@ -289,7 +289,11 @@ func (c *BaseCommand) validateMFA(reqID string, methodInfo MFAMethodInfo) (*api.
 	var passcode string
 	var err error
 	if methodInfo.usePasscode {
-		passcode, err = c.UI.AskSecret(fmt.Sprintf("Enter the passphrase for methodID %q of type %q:", methodInfo.methodID, methodInfo.methodType))
+		prompt := fmt.Sprintf("Enter the passphrase for methodID %q of type %q:", methodInfo.methodID, methodInfo.methodType)
+		if methodInfo.methodType == "totp" {
+			prompt = fmt.Sprintf("Enter the current verification code from your authenticator app for methodID %q:", methodInfo.methodID)
+		}
+		passcode, err = c.UI.AskSecret(prompt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read passphrase: %w. please validate the login by sending a request to sys/mfa/validate", err)
 		}

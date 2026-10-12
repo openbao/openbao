@@ -338,7 +338,17 @@ func TestCore_Mount_Local(t *testing.T) {
 		}
 	}
 
-	oldMounts := c.mounts
+	oldMounts := c.mounts.ShallowClone()
+	for i, entry := range oldMounts.Entries {
+		entry, err := entry.Clone()
+		require.NoError(t, err)
+		// Running plugin metadata is populated during setup, not loaded from
+		// storage. Clear it out so comparing against a freshly loaded mount
+		// table does not fail.
+		entry.RunningVersion, entry.RunningSha256 = "", ""
+		oldMounts.Entries[i] = entry
+	}
+
 	if err := c.loadMounts(ctx, false); err != nil {
 		t.Fatal(err)
 	}

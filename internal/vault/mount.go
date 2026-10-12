@@ -2178,16 +2178,6 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 			needReload = true
 		}
 
-		if actualMountEntry.RunningVersion != desiredMountEntry.RunningVersion {
-			actualMountEntry.RunningVersion = desiredMountEntry.RunningVersion
-			needReload = true
-		}
-
-		if actualMountEntry.RunningSha256 != desiredMountEntry.RunningSha256 {
-			actualMountEntry.RunningSha256 = desiredMountEntry.RunningSha256
-			needReload = true
-		}
-
 		if needReload && !slices.Contains(singletonMounts, actualMountEntry.Type) {
 			return c.reloadBackendCommon(ctx, desiredMountEntry, table == routing.CredentialTableType)
 		}

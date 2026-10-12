@@ -41,9 +41,9 @@ type MountEntry struct {
 	SynthesizedConfigCache sync.Map `json:"-"`
 
 	// version info
-	Version        string `json:"plugin_version,omitempty"`         // The semantic version of the mounted plugin, e.g. v1.2.3.
-	RunningVersion string `json:"running_plugin_version,omitempty"` // The semantic version of the mounted plugin as reported by the plugin.
-	RunningSha256  string `json:"running_sha256,omitempty"`
+	Version        string `json:"plugin_version,omitempty"` // The semantic version of the mounted plugin, e.g. v1.2.3.
+	RunningVersion string `json:"-"`                        // The semantic version of the mounted plugin as reported by the plugin.
+	RunningSha256  string `json:"-"`
 }
 
 type APIUserLockoutConfig struct {

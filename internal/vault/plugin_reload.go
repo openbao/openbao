@@ -180,7 +180,6 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *routing.MountEntr
 
 	var backend logical.Backend
 	var err error
-	oldSha, oldVersion := entry.RunningSha256, entry.RunningVersion
 	if !isAuth {
 		// Dispense a new backend
 		backend, err = c.newLogicalBackend(ctx, entry, sysView, view)
@@ -189,19 +188,6 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *routing.MountEntr
 	}
 	if err != nil {
 		return err
-	}
-
-	// Update the mount table since we changed the runningSha or runningVersion.
-	if oldSha != entry.RunningSha256 || oldVersion != entry.RunningVersion {
-		barrier := c.NamespaceView(entry.Namespace)
-		if isAuth {
-			err = c.persistAuth(ctx, barrier, c.auth, &entry.Local, entry.UUID)
-		} else {
-			err = c.persistMounts(ctx, barrier, c.mounts, &entry.Local, entry.UUID)
-		}
-		if err != nil {
-			return err
-		}
 	}
 
 	// Set the backend back

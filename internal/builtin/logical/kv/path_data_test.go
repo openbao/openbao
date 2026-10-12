@@ -1483,6 +1483,23 @@ func TestVersionedKV_Data_Patch_CleanupOldVersions_EntryGreaterThanMount(t *test
 		t.Fatalf("CreateOperation request for metadata failed - err:%s resp:%#v\n", err, resp)
 	}
 
+	// Create initial version 1 via Put (Patch requires existing data)
+	data := map[string]any{
+		"data": map[string]any{
+			"bar": "baz0",
+		},
+	}
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "data/foo",
+		Storage:   storage,
+		Data:      data,
+	}
+	resp, err = b.HandleRequest(t.Context(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("CreateOperation request for data failed - err:%s resp:%#v\n", err, resp)
+	}
+
 	for i := 1; i < 6; i++ {
 		data := map[string]any{
 			"data": map[string]any{
@@ -1503,7 +1520,8 @@ func TestVersionedKV_Data_Patch_CleanupOldVersions_EntryGreaterThanMount(t *test
 		}
 
 		expectedVersion := uint64(i + 1)
-		if actualVersion := resp.Data["version"]; actualVersion != expectedVersion {
+		actualVersion, ok := resp.Data["version"].(uint64)
+		if !ok || actualVersion != expectedVersion {
 			t.Fatalf("expected version %d but received %d, resp: %#v\n", expectedVersion, actualVersion, resp)
 		}
 	}

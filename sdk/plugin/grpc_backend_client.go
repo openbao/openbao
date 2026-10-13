@@ -127,7 +127,6 @@ func (b *backendGRPCPluginClient) SpecialPaths() *logical.Paths {
 	}
 
 	return &logical.Paths{
-		Root:                  reply.Paths.SudoRequired,
 		SudoRequired:          reply.Paths.SudoRequired,
 		Unauthenticated:       reply.Paths.Unauthenticated,
 		LocalStorage:          reply.Paths.LocalStorage,

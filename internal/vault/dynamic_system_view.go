@@ -120,7 +120,7 @@ func (e extendedSystemViewImpl) SudoPrivilege(ctx context.Context, path string, 
 
 	// The operation type isn't important here as this is run from a path the
 	// user has already been given access to; we only care about whether they
-	// have sudo capability. Note that we use root context because the path
+	// have the sudo capability. Note that we use root context because the path
 	// that comes in must be fully-qualified already so we don't want
 	// AllowOperation to prepend a namespace prefix onto it.
 	req := new(logical.Request)

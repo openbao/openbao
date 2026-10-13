@@ -77,7 +77,11 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"leases/lookup/*",
 				"leases/revoke-force/*",
 				"leases/revoke-prefix/*",
-				"plugins/catalog/*", // TODO(wslabosz): Adjustment of this requires a rework of the sudo paths radix or some breaking changes within API.
+				// TODO(wslabosz): Adjustment of plugins catalog paths would require a
+				// rework of the sudo paths radix which currently doesn't support wildcard
+				// segments (currently there are only exact or "starting with" matches)
+				// or introduction of breaking changes within plugin catalog API paths.
+				"plugins/catalog/*",
 				"raw",
 				"raw/*",
 				"remount",
@@ -5650,7 +5654,7 @@ This path responds to the following HTTP methods.
 	},
 	"list-leases": {
 		"List leases associated with this OpenBao cluster",
-		"Requires sudo capability. List leases associated with this OpenBao cluster",
+		"List leases associated with this OpenBao cluster",
 	},
 	"version-history": {
 		"List historical version changes sorted by installation time in ascending order.",

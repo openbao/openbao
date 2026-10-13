@@ -2017,7 +2017,7 @@ func (c *Core) sealInitCommon(ctx context.Context, req *logical.Request) (retErr
 
 	// Verify that this operation is allowed.
 	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &policy.CheckOpts{
-		RequireSudo: true,
+		SudoRequired: true,
 	})
 	if !authResults.Allowed {
 		retErr = multierror.Append(retErr, authResults.Error)
@@ -4031,7 +4031,7 @@ func (c *Core) performPolicyChecks(ctx context.Context, acl *policy.ACL, te *log
 		}
 		// Since HelpOperation was fast-pathed inside AllowOperation, we need to special-case
 		// that here as well, or we'll block HelpOperation on all sudo-protected paths.
-		if !ret.IsSudo && opts.RequireSudo && req.Operation != logical.HelpOperation {
+		if !ret.IsSudo && opts.SudoRequired && req.Operation != logical.HelpOperation {
 			return ret
 		}
 	}

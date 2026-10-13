@@ -436,7 +436,7 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 		return nil, acl, te, entity, logical.ErrPermissionDenied
 	}
 
-	// Check if this is a sudo capability enforced path.
+	// Check if this is the sudo capability enforced path.
 	isSudoPath := c.router.SudoPath(ctx, req.Path)
 	if isSudoPath && unauth {
 		return nil, nil, nil, nil, errors.New("cannot access sudo path in unauthenticated request")
@@ -539,8 +539,8 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 	// Check the standard non-root ACLs. Return the token entry if it's not
 	// allowed so we can decrement the use count.
 	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &policy.CheckOpts{
-		Unauth:      unauth,
-		RequireSudo: isSudoPath,
+		Unauth:       unauth,
+		SudoRequired: isSudoPath,
 	})
 
 	auth.PolicyResults = &logical.PolicyResults{

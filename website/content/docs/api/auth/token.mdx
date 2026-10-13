@@ -15,7 +15,7 @@ This endpoint lists token accessor. Access to this endpoint should be tightly
 controlled as the accessors can be used to revoke very large numbers of tokens
 and their associated leases at once.
 
-- **`sudo` required** - This endpoint requires `sudo` capability in
+- **`sudo` required** - This endpoint requires the `sudo` capability in
  addition to any path-specific capabilities.
 
 | Method | Path                    |
@@ -567,7 +567,7 @@ Revokes a token but not its child tokens. When the token is revoked, all secrets
 generated with it are also revoked. All child tokens are orphaned, but can be
 revoked sub-sequently using `/auth/token/revoke/`.
 
-- **`sudo` required** - This endpoint requires `sudo` capability in
+- **`sudo` required** - This endpoint requires the `sudo` capability in
  addition to any path-specific capabilities.
 
 | Method | Path                        |

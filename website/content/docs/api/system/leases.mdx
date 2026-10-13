@@ -56,7 +56,7 @@ $ curl \
 
 This endpoint returns a list of lease ids.
 
-- **`sudo` required** - This endpoint requires `sudo` capability in
+- **`sudo` required** - This endpoint requires the `sudo` capability in
  addition to any path-specific capabilities.
 
 | Method | Path                         |
@@ -180,7 +180,7 @@ By ignoring these errors, OpenBao abdicates responsibility for ensuring that the
 issued credentials or secrets are properly revoked and/or cleaned up. Access to
 this endpoint should be tightly controlled.
 
-- **`sudo` required** - This endpoint requires `sudo` capability in
+- **`sudo` required** - This endpoint requires the `sudo` capability in
  addition to any path-specific capabilities.
 
 | Method | Path                               |
@@ -208,7 +208,7 @@ tokens' path property) generated under a given prefix immediately. This requires
 `sudo` capability and access to it should be tightly controlled as it can be
 used to revoke very large numbers of secrets/tokens at once.
 
-- **`sudo` required** - This endpoint requires `sudo` capability in
+- **`sudo` required** - This endpoint requires the `sudo` capability in
  addition to any path-specific capabilities.
 
 | Method | Path                                |
@@ -291,7 +291,7 @@ of leases per mount point. Currently only supports leases of type "irrevocable".
 This can help determine if particular endpoints or causes are disproportionately
 resulting in irrevocable leases.
 
-- **`sudo` required** - This endpoint requires `sudo` capability in
+- **`sudo` required** - This endpoint requires the `sudo` capability in
  addition to any path-specific capabilities.
 
 ### Parameters

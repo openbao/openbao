@@ -2188,11 +2188,8 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 			needReload = true
 		}
 
-		if needReload {
-			err := c.reloadBackendCommon(ctx, desiredMountEntry, table == routing.CredentialTableType)
-			if err != nil {
-				return err
-			}
+		if needReload && !slices.Contains(singletonMounts, actualMountEntry.Type) {
+			return c.reloadBackendCommon(ctx, desiredMountEntry, table == routing.CredentialTableType)
 		}
 	}
 

@@ -246,7 +246,7 @@ func (ts *TokenStore) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
 					Callback:    ts.tokenStoreAccessorList,
-					Description: "This endpoint requires sudo capability.",
+					Description: "This endpoint requires the sudo capability.",
 				},
 			},
 
@@ -534,7 +534,7 @@ func (ts *TokenStore) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback:    ts.handleRevokeOrphan,
-					Description: "This endpoint requires sudo capability.",
+					Description: "This endpoint requires the sudo capability.",
 				},
 			},
 

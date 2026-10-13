@@ -206,7 +206,7 @@ func buildPathIssuerSignSelfIssued(b *backend, pattern string, displayAttrs *fra
 	fields = addIssuerRefField(fields)
 	var desc string
 	if isSudo {
-		desc = "This endpoint requires sudo capability."
+		desc = "This endpoint requires the sudo capability."
 	}
 
 	return &framework.Path{

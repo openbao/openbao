@@ -66,6 +66,19 @@
   }
 }
 
+.info-table-row.secret-key-row .is-label {
+  white-space: pre-wrap;
+  font-family: monospace;
+  background-color: $ui-gray-100;
+  padding: 0.15rem 0.35rem;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+[data-test-label-tooltip] {
+  white-space: pre-wrap;
+}
+
 .info-table-row:not(.is-mobile) .column {
   @include until($mobile) {
     padding: 0;

@@ -1097,4 +1097,25 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     );
     await deleteEngine(backend, assert);
   });
+
+  test('secret key display trailing and leading whitespaces', async function (assert) {
+    assert.expect(3);
+    const enginePath = `kv-engine-${this.uid}`;
+    const secretPath = 'whitespace';
+    const keyWithWithespaces = ' test_key ';
+    const secretValue = 'test_value';
+
+    await enablePage.enable('kv', enginePath);
+    await listPage.visitRoot({ backend: enginePath });
+    await listPage.create();
+
+    await editPage.createSecret(secretPath, keyWithWithespaces, secretValue);
+    await settled();
+
+    const labelElement = document.querySelector(`[data-test-row-label="${keyWithWithespaces}"]`);
+    assert.ok(labelElement, 'label element exists');
+    assert.strictEqual(labelElement.textContent, keyWithWithespaces, 'key preserves whitespace');
+
+    await deleteEngine(enginePath, assert);
+  });
 });

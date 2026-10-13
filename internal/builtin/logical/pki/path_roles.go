@@ -278,6 +278,15 @@ SHA-2-512. Defaults to 0 to automatically detect based on key length
 			Description: `Whether or not to use PSS signatures when using a
 RSA key-type issuer. Defaults to false.`,
 		},
+		"cnsa_2_0": {
+			Type:     framework.TypeBool,
+			Required: false,
+			Description: `Enforce CNSA 2.0 / PQC-only issuance. When true, the
+role only issues or signs post-quantum certificates: key_type must be
+"mldsa" and key_bits is pinned to 87 (ML-DSA-87), and the issuing CA must
+also be an ML-DSA key so the entire chain is post-quantum. Defaults to
+false.`,
+		},
 		"key_usage": {
 			Type:     framework.TypeCommaStringSlice,
 			Required: true,
@@ -691,6 +700,15 @@ SHA-2-512. Defaults to 0 to automatically detect based on key length
 				Default: false,
 				Description: `Whether or not to use PSS signatures when using a
 RSA key-type issuer. Defaults to false.`,
+			},
+
+			"cnsa_2_0": {
+				Type:    framework.TypeBool,
+				Default: false,
+				Description: `Enforce CNSA 2.0 / PQC-only issuance. When true, the
+role only issues or signs post-quantum certificates: key_type must be
+"mldsa" and key_bits is pinned to 87 (ML-DSA-87), and the issuing CA must
+also be an ML-DSA key so the entire chain is post-quantum. Defaults to false.`,
 			},
 
 			"key_usage": {
@@ -1179,6 +1197,7 @@ func (b *backend) pathRoleCreate(ctx context.Context, req *logical.Request, data
 		KeyBits:                       data.Get("key_bits").(int),
 		SignatureBits:                 data.Get("signature_bits").(int),
 		UsePSS:                        data.Get("use_pss").(bool),
+		CNSA20:                        data.Get("cnsa_2_0").(bool),
 		UseCSRCommonName:              data.Get("use_csr_common_name").(bool),
 		UseCSRSANs:                    data.Get("use_csr_sans").(bool),
 		KeyUsage:                      data.Get("key_usage").([]string),
@@ -1341,6 +1360,20 @@ func validateRole(b *backend, entry *roleEntry, ctx context.Context, s logical.S
 		), nil
 	}
 
+	// CNSA 2.0 / Enforced-PQC mode (CCSPM-6497): the role may
+	// only issue post-quantum ML-DSA-87 certificates.
+	if entry.CNSA20 {
+		if entry.KeyType != "mldsa" {
+			return logical.ErrorResponse("cnsa_2_0 requires key_type=\"mldsa\" (ML-DSA); got %q", entry.KeyType), nil
+		}
+		if entry.KeyBits == 0 {
+			entry.KeyBits = 87
+		}
+		if entry.KeyBits != 87 {
+			return logical.ErrorResponse("cnsa_2_0 requires key_bits=87 (ML-DSA-87); got %d", entry.KeyBits), nil
+		}
+	}
+
 	if entry.KeyBits, err = certutil.ValidateDefaultOrValueKeyTypeLength(entry.KeyType, entry.KeyBits); err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}
@@ -1433,6 +1466,7 @@ func (b *backend) pathRolePatch(ctx context.Context, req *logical.Request, data 
 		KeyBits:                       data.GetWithExplicitDefault("key_bits", oldEntry.KeyBits).(int),
 		SignatureBits:                 data.GetWithExplicitDefault("signature_bits", oldEntry.SignatureBits).(int),
 		UsePSS:                        data.GetWithExplicitDefault("use_pss", oldEntry.UsePSS).(bool),
+		CNSA20:                        data.GetWithExplicitDefault("cnsa_2_0", oldEntry.CNSA20).(bool),
 		UseCSRCommonName:              data.GetWithExplicitDefault("use_csr_common_name", oldEntry.UseCSRCommonName).(bool),
 		UseCSRSANs:                    data.GetWithExplicitDefault("use_csr_sans", oldEntry.UseCSRSANs).(bool),
 		KeyUsage:                      data.GetWithExplicitDefault("key_usage", oldEntry.KeyUsage).([]string),
@@ -1676,6 +1710,7 @@ type roleEntry struct {
 	KeyBits                       int           `json:"key_bits"`
 	UsePSS                        bool          `json:"use_pss"`
 	SignatureBits                 int           `json:"signature_bits"`
+	CNSA20                        bool          `json:"cnsa_2_0"`
 	MaxPathLength                 *int          `json:",omitempty"`
 	KeyUsageOld                   string        `json:"key_usage,omitempty"`
 	KeyUsage                      []string      `json:"key_usage_list"`
@@ -1745,6 +1780,7 @@ func (r *roleEntry) ToResponseData() map[string]any {
 		"key_bits":                           r.KeyBits,
 		"signature_bits":                     r.SignatureBits,
 		"use_pss":                            r.UsePSS,
+		"cnsa_2_0":                           r.CNSA20,
 		"key_usage":                          r.KeyUsage,
 		"ext_key_usage":                      r.ExtKeyUsage,
 		"ext_key_usage_oids":                 r.ExtKeyUsageOIDs,

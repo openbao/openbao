@@ -1282,6 +1282,16 @@ func dedupCommonNames(cnRaw string) []string {
 // from the various endpoints and generates a CreationParameters with the
 // parameters that can be used to issue or sign
 func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAInfoBundle, csr *x509.CertificateRequest) (*certutil.CreationBundle, []string, error) {
+	// CNSA 2.0 / Enforced-PQC mode: the entire chain must be post-quantum, so
+	// the issuing CA key must itself be ML-DSA (CCSPM-6497).
+	if data.role != nil && data.role.CNSA20 && caSign != nil &&
+		caSign.PrivateKeyType != certutil.MLDSAPrivateKey {
+		return nil, nil, errutil.UserError{Err: fmt.Sprintf(
+			"cnsa_2_0 role requires an ML-DSA issuer for a fully post-quantum chain, but the issuing CA key type is %q",
+			caSign.PrivateKeyType,
+		)}
+	}
+
 	// Read in names -- CN, DNS and email addresses
 	var cn string
 	var ridSerialNumber string

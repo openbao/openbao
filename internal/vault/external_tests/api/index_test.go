@@ -17,6 +17,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/teststorage"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -76,13 +77,18 @@ func TestHTTP_Index_Defaults(t *testing.T) {
 
 	request := standby.NewRequest(http.MethodPut, "/v1/kv/testing")
 	request.BodyBytes = []byte(`{"data":"testing"}`)
-	resp, err := standby.RawRequest(request)
-	require.NoError(t, err)
-	require.NotNil(t, resp)
+	var resp *api.Response
+	// wait for replication to standby node
+	require.EventuallyWithT(t, func(t *assert.CollectT) {
+		resp, err = standby.RawRequest(request)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+	}, 10*time.Second, time.Second)
 	index := resp.Header.Get(api.IndexHeaderName)
 	require.NotEmpty(t, index)
 	firstIndex, err := api.DecodeIndexValue(index)
 	require.NoError(t, err)
+	require.NotNil(t, firstIndex)
 
 	// Send a second write, ensure it is a different index value.
 
@@ -95,6 +101,7 @@ func TestHTTP_Index_Defaults(t *testing.T) {
 	require.NotEmpty(t, index)
 	secondIndex, err := api.DecodeIndexValue(index)
 	require.NoError(t, err)
+	require.NotNil(t, secondIndex)
 
 	require.NotEqual(t, firstIndex.Value, secondIndex.Value)
 	require.NotEmpty(t, firstIndex.Value)

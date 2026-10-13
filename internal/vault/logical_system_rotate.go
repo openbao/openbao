@@ -116,7 +116,7 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback:    b.handleRotate(),
-					Description: "This endpoint requires sudo capability.",
+					Description: "This endpoint requires the sudo capability.",
 					Summary:     "Rotate the encryption key.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
@@ -184,7 +184,7 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback:    b.handleRotateRoot(),
-					Description: "This endpoint requires sudo capability.",
+					Description: "This endpoint requires the sudo capability.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
 							Description: http.StatusText(http.StatusNoContent),

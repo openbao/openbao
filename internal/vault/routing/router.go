@@ -930,7 +930,7 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 	}
 }
 
-// SudoPath checks if the given path requires sudo capability.
+// SudoPath checks if the given path requires the sudo capability.
 func (r *Router) SudoPath(ctx context.Context, path string) bool {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {

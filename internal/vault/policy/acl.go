@@ -39,8 +39,8 @@ type ACL struct {
 }
 
 type CheckOpts struct {
-	RequireSudo bool
-	Unauth      bool
+	SudoRequired bool
+	Unauth       bool
 }
 
 type AuthResults struct {

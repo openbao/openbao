@@ -2,8 +2,8 @@
 sdk/logical: Deprecate the unfortunately-named `Paths.Root` field and introduce `Paths.SudoRequired` as a replacement.   
 ```
 ```release-note:change
-sys/auth: Remove sudo capability enforcement on `sys/auth/*` paths, which are also callable through `sys/mount/auth/*` endpoints. 
+sys/auth: Remove the sudo capability enforcement on `sys/auth/*` paths, which are also callable through `sys/mount/auth/*` endpoints. 
 ```
 ```release-note:bug
-sys/config/ui/headers: Properly require sudo capability on `sys/config/ui/headers` list requests.
+sys/config/ui/headers: Properly require the sudo capability on `sys/config/ui/headers` list requests.
 ```

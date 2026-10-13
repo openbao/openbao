@@ -109,7 +109,7 @@ func Backend(conf *logical.BackendConfig) *backend {
 				acmePathPrefix,
 			},
 
-			Root: []string{
+			SudoRequired: []string{
 				"root",
 				"root/sign-self-issued",
 			},

@@ -225,6 +225,9 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 
 	if specialPaths != nil {
 		sudoPaths = specialPaths.Root
+		if len(specialPaths.SudoRequired) > 0 {
+			sudoPaths = specialPaths.SudoRequired
+		}
 		unauthPaths = specialPaths.Unauthenticated
 	}
 
@@ -249,12 +252,11 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 	for pathIndex, path := range paths {
 		// Construct a top level PathItem which will be populated as the path is processed.
 		pi := OASPathItem{
-			Description: cleanString(p.HelpSynopsis),
+			Description:     cleanString(p.HelpSynopsis),
+			Sudo:            specialPathMatch(path, sudoPaths),
+			Unauthenticated: specialPathMatch(path, unauthPaths),
+			DisplayAttrs:    withoutOperationHints(p.DisplayAttrs),
 		}
-
-		pi.Sudo = specialPathMatch(path, sudoPaths)
-		pi.Unauthenticated = specialPathMatch(path, unauthPaths)
-		pi.DisplayAttrs = withoutOperationHints(p.DisplayAttrs)
 
 		// If the newer style Operations map isn't defined, create one from the legacy fields.
 		operations := p.Operations
@@ -411,7 +413,8 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 			}
 
 			// LIST is represented as GET with a `list` query parameter.
-			if opType == logical.ListOperation {
+			switch opType {
+			case logical.ListOperation:
 				// Only accepts List and maybe Scan (due to the above skipping of ListOperations that also have ReadOperations)
 				description := "Must be set to `true`"
 				if operations[logical.ScanOperation] != nil {
@@ -433,7 +436,7 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 					In:          "query",
 					Schema:      &OASSchema{Type: "string", Enum: []any{"true"}},
 				})
-			} else if opType == logical.ScanOperation {
+			case logical.ScanOperation:
 				// Only accepts Scan and maybe List (due to the above skipping of ScanOperations that also have ReadOperations)
 				description := "Must be set to `true`"
 				if operations[logical.ListOperation] != nil {
@@ -455,7 +458,7 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 					In:          "query",
 					Schema:      &OASSchema{Type: "string", Enum: []any{"true"}},
 				})
-			} else if opType == logical.ReadOperation {
+			case logical.ReadOperation:
 				if operations[logical.ListOperation] != nil {
 					// Accepts both Read and List
 					op.Parameters = append(op.Parameters, OASParameter{

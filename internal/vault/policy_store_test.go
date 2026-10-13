@@ -367,7 +367,7 @@ func TestResponseWrappingPolicy(t *testing.T) {
 
 			result := acl.AllowOperation(ctx, request, false)
 			if result.IsSudo {
-				t.Fatal("unexpected isSudo")
+				t.Fatal("unexpected sudo")
 			}
 			if tc.expectAllowed != result.Allowed {
 				t.Fatalf("Expected %v, got %v", tc.expectAllowed, result.Allowed)

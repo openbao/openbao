@@ -181,7 +181,7 @@ func (x *ProtoError) GetErrCode() int64 {
 // Paths is the structure of special paths that is used for SpecialPaths.
 type Paths struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// SudoRequired are the API paths that require sudo capability to access.
+	// SudoRequired are the API paths that require the sudo capability to access.
 	SudoRequired []string `protobuf:"bytes,1,rep,name=sudo_required,json=sudoRequired,proto3" json:"sudo_required,omitempty"`
 	// Unauthenticated are the paths that can be accessed without any auth.
 	Unauthenticated []string `protobuf:"bytes,2,rep,name=unauthenticated,proto3" json:"unauthenticated,omitempty"`

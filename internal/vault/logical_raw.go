@@ -360,7 +360,7 @@ func (b *RawBackend) rawPaths(prefix string) []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
 					Callback:    b.handleRawRead,
-					Description: "This endpoint requires sudo capability.",
+					Description: "This endpoint requires the sudo capability.",
 					DisplayAttrs: &framework.DisplayAttributes{
 						OperationPrefix: "raw",
 						OperationVerb:   "read",
@@ -381,7 +381,7 @@ func (b *RawBackend) rawPaths(prefix string) []*framework.Path {
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback:    b.handleRawWrite,
-					Description: "This endpoint requires sudo capability.",
+					Description: "This endpoint requires the sudo capability.",
 					DisplayAttrs: &framework.DisplayAttributes{
 						OperationPrefix: "raw",
 						OperationVerb:   "write",
@@ -396,7 +396,7 @@ func (b *RawBackend) rawPaths(prefix string) []*framework.Path {
 				},
 				logical.CreateOperation: &framework.PathOperation{
 					Callback:    b.handleRawWrite,
-					Description: "This endpoint requires sudo capability.",
+					Description: "This endpoint requires the sudo capability.",
 					DisplayAttrs: &framework.DisplayAttributes{
 						OperationPrefix: "raw",
 						OperationVerb:   "write",
@@ -411,7 +411,7 @@ func (b *RawBackend) rawPaths(prefix string) []*framework.Path {
 				},
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback:    b.handleRawDelete,
-					Description: "This endpoint requires sudo capability.",
+					Description: "This endpoint requires the sudo capability.",
 					DisplayAttrs: &framework.DisplayAttributes{
 						OperationPrefix: "raw",
 						OperationVerb:   "delete",
@@ -426,7 +426,7 @@ func (b *RawBackend) rawPaths(prefix string) []*framework.Path {
 				},
 				logical.ListOperation: &framework.PathOperation{
 					Callback:    b.handleRawList,
-					Description: "This endpoint requires sudo capability.",
+					Description: "This endpoint requires the sudo capability.",
 					DisplayAttrs: &framework.DisplayAttributes{
 						OperationPrefix: "raw",
 						OperationVerb:   "list",

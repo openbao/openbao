@@ -36,7 +36,7 @@ message ProtoError {
 
 // Paths is the structure of special paths that is used for SpecialPaths.
 message Paths {
-	// SudoRequired are the API paths that require sudo capability to access.
+	// SudoRequired are the API paths that require the sudo capability to access.
 	repeated string sudo_required = 1;
 
 	// Unauthenticated are the paths that can be accessed without any auth.

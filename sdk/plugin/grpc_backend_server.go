@@ -198,9 +198,15 @@ func (b *backendGRPCPluginServer) SpecialPaths(ctx context.Context, args *pb.Emp
 		}, nil
 	}
 
+	//nolint:staticcheck // Retain to not break existing users.
+	sudoRequiredPaths := paths.Root
+	if len(paths.SudoRequired) > 0 {
+		sudoRequiredPaths = paths.SudoRequired
+	}
+
 	return &pb.SpecialPathsReply{
 		Paths: &pb.Paths{
-			SudoRequired:          paths.SudoRequired,
+			SudoRequired:          sudoRequiredPaths,
 			Unauthenticated:       paths.Unauthenticated,
 			LocalStorage:          paths.LocalStorage,
 			SealWrapStorage:       paths.SealWrapStorage,

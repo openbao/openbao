@@ -53,7 +53,7 @@ var sudoPaths = map[string]*regexp.Regexp{
 	"/sys/internal/inspect/request":                 regexp.MustCompile(`^/sys/internal/inspect/request$`),
 	"/sys/internal/inspect/router/{tag}":            regexp.MustCompile(`^/sys/internal/inspect/router/.+$`),
 	"/sys/leases":                                   regexp.MustCompile(`^/sys/leases$`),
-	"/sys/leases/lookup/":                           regexp.MustCompile(`^/sys/leases/lookup/$`),
+	"/sys/leases/lookup/":                           regexp.MustCompile(`^/sys/leases/lookup/?$`),
 	"/sys/leases/lookup/{prefix}":                   regexp.MustCompile(`^/sys/leases/lookup/.+$`),
 	"/sys/leases/revoke-force/{prefix}":             regexp.MustCompile(`^/sys/leases/revoke-force/.+$`),
 	"/sys/leases/revoke-prefix/{prefix}":            regexp.MustCompile(`^/sys/leases/revoke-prefix/.+$`),

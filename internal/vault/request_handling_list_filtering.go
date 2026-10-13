@@ -112,8 +112,8 @@ func (c *Core) filterListResponse(ctx context.Context, req *logical.Request, una
 		}
 
 		authResults := c.performPolicyChecks(ctx, acl, te, checkReq, entity, &policy.CheckOpts{
-			Unauth:      unauth,
-			RequireSudo: isSudoPath,
+			Unauth:       unauth,
+			SudoRequired: isSudoPath,
 		})
 
 		if authResults.Allowed {

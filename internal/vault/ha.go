@@ -776,7 +776,7 @@ func (c *Core) waitForLeadership(manualStepDown *bool, manualStepDownCh, stopCh 
 			// Can't register lock, bail out
 			c.heldHALock = nil
 			if unlockErr := lock.Unlock(); unlockErr != nil {
-				c.logger.Error("error releasing lock", "error", unlockErr)
+				c.logger.Error("error releasing HA lock", "error", unlockErr)
 			}
 			c.logger.Error("failed registering lock with fencing backend, giving up active state")
 			return false, true

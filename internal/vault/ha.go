@@ -858,7 +858,7 @@ func (c *Core) waitForLeadership(manualStepDown *bool, manualStepDownCh, stopCh 
 		c.logger.Warn("OpenBao is sealed")
 		c.heldHALock = nil
 		if unlockErr := lock.Unlock(); unlockErr != nil {
-			c.logger.Error("error releasing lock", "error", unlockErr)
+			c.logger.Error("error releasing HA lock", "error", unlockErr)
 		}
 		c.stateLock.Unlock()
 		return true, false

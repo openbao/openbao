@@ -24,15 +24,12 @@ func TestStorage_GRPC_ReturnsErrIfStorageNil(t *testing.T) {
 	}
 }
 
-func TestStorage_impl(t *testing.T) {
-	var _ logical.Storage = new(GRPCStorageClient)
-}
-
 func TestStorage_GRPC(t *testing.T) {
 	storage := &logical.InmemStorage{}
 	client, _ := plugin.TestGRPCConn(t, func(s *grpc.Server) {
 		pb.RegisterStorageServer(s, &GRPCStorageServer{
-			impl: storage,
+			impl:    storage,
+			doneCtx: t.Context(),
 		})
 	})
 	defer client.Close()
@@ -50,7 +47,8 @@ func TestStorage_GRPCTransaction(t *testing.T) {
 
 	client, _ := plugin.TestGRPCConn(t, func(s *grpc.Server) {
 		pb.RegisterStorageServer(s, &GRPCStorageServer{
-			impl: storage,
+			impl:    storage,
+			doneCtx: t.Context(),
 		})
 	})
 	defer client.Close()

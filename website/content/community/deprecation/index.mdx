@@ -19,6 +19,19 @@ forum](https://github.com/orgs/openbao/discussions).
 Please refer to the [FAQ](faq.mdx) page for frequently asked questions
 concerning OpenBao feature deprecations.
 
+### Custom token IDs
+
+> Announced **10/2026**, Deprecated in: **v2.8.0**, Removal: **v2.9.0**
+
+The ability to create tokens with arbitrary token IDs via the token store's
+[`auth/token/create` endpoint](/docs/api/auth/token#create-token) will be
+removed. This option was only available to callers using a root token to
+authenticate.
+
+The only remaining way to assign a custom token ID will be the
+`-dev-root-token-id` flag. This flag is available in dev mode only, and root
+tokens created this way before upgrading to v2.9.0 will cease to function.
+
 ### Legacy auth & secrets plugin protocols
 
 > Announced: **10/2026**, Deprecated in: N/A, Removal: **v2.8.0**

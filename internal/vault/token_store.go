@@ -3138,7 +3138,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 	}
 
 	if te.ID != "" {
-		resp.AddWarning("Supplying a custom ID for the token uses the weaker SHA1 hashing instead of the more secure SHA2-256 HMAC for token obfuscation. SHA1 hashed tokens on the wire leads to less secure lookups.")
+		resp.AddWarning("Supplying a custom ID for the token is deprecated and uses the weaker SHA1 hashing instead of the more secure SHA2-256 HMAC for token obfuscation. SHA1 hashed tokens on the wire leads to less secure lookups. This functionality will be removed in v2.9.0.")
 	}
 
 	if err := ts.create(ctx, &te, true); err != nil {

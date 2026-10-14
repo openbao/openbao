@@ -302,9 +302,7 @@ func (b *databaseBackend) GetConnectionWithConfig(ctx context.Context, name stri
 	}
 	_, err = dbw.Initialize(ctx, initReq)
 	if err != nil {
-		if err := dbw.Close(); err != nil {
-			b.Logger().Warn("error closing database connection after initialization", "error", err)
-		}
+		dbw.Close() //nolint:errcheck
 		return nil, err
 	}
 

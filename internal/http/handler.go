@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"maps"
 	"mime"
@@ -244,10 +245,10 @@ func handler(props *vault.HandlerProperties) http.Handler {
 	// Wrap the handler in another handler to trigger all help paths.
 	indexForwardHandler := wrapIndexForwardHandler(mux, core, props)
 	helpWrappedHandler := wrapHelpHandler(indexForwardHandler, core)
-	clientCertHandler := wrapClientCertificateHandler(helpWrappedHandler, props)
-	corsWrappedHandler := wrapCORSHandler(clientCertHandler, core)
+	corsWrappedHandler := wrapCORSHandler(helpWrappedHandler, core)
 	quotaWrappedHandler := rateLimitQuotaWrapping(corsWrappedHandler, core)
-	genericWrappedHandler := genericWrapping(core, quotaWrappedHandler, props)
+	clientCertHandler := wrapClientCertificateHandler(quotaWrappedHandler, props)
+	genericWrappedHandler := genericWrapping(core, clientCertHandler, props)
 	metricsWrappedHandler := wrapMetricsListenerHandler(genericWrappedHandler, props)
 	wrappedHandler := wrapMaxRequestSizeHandler(metricsWrappedHandler, props)
 	// Wrap the handler with PrintablePathCheckHandler to check for non-printable
@@ -281,13 +282,17 @@ func (w *copyResponseWriter) Header() http.Header {
 }
 
 func (w *copyResponseWriter) Write(buf []byte) (int, error) {
-	w.body.Write(buf)
-	return w.wrapped.Write(buf)
+	return w.body.Write(buf)
 }
 
 func (w *copyResponseWriter) WriteHeader(code int) {
 	w.statusCode = code
-	w.wrapped.WriteHeader(code)
+}
+
+func (w *copyResponseWriter) flush() error {
+	w.wrapped.WriteHeader(w.statusCode)
+	_, err := w.wrapped.Write(w.body.Bytes())
+	return err
 }
 
 func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
@@ -303,7 +308,7 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 		ctx := namespace.RootContext(r.Context())
 		err = core.AuditLogger().AuditRequest(ctx, input)
 		if err != nil {
-			respondError(w, status, err)
+			respondError(w, http.StatusInternalServerError, err)
 			return
 		}
 		cw := newCopyResponseWriter(w)
@@ -315,7 +320,13 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 		input.Response = logical.HTTPResponseToLogicalResponse(httpResp)
 		err = core.AuditLogger().AuditResponse(ctx, input)
 		if err != nil {
-			respondError(w, status, err)
+			respondError(w, http.StatusInternalServerError, err)
+			return
+		}
+		err = cw.flush()
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, err)
+			return
 		}
 	})
 }
@@ -856,6 +867,41 @@ func parseQuery(values url.Values) map[string]any {
 		return data
 	}
 	return nil
+}
+
+func parseBodyData(r *http.Request) (map[string]any, int, error) {
+	// Sample the first bytes to determine whether this should be parsed as
+	// a form or as JSON. The amount to look ahead (512 bytes) is arbitrary
+	// but extremely tolerant (i.e. allowing 511 bytes of leading whitespace
+	// and an incorrect content-type).
+	var err error
+	status := http.StatusBadRequest
+	head, err := io.ReadAll(io.LimitReader(r.Body, 512))
+	if err != nil && err != io.EOF {
+		logical.AdjustErrorStatusCode(&status, err)
+		return nil, status, errors.New("error reading data")
+	}
+
+	// Seek back to the start.
+	if err := resetBody(r); err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to reset body: %w", err)
+	}
+
+	var data map[string]any
+	contentType := r.Header.Get("Content-Type")
+	if isForm(head, contentType) {
+		data, err = parseFormRequest(r)
+		if err != nil {
+			logical.AdjustErrorStatusCode(&status, err)
+			return nil, status, errors.New("error parsing form data")
+		}
+	} else {
+		if err = parseJSONRequest(r, &data); err != nil && !errors.Is(err, io.EOF) {
+			return nil, status, err
+		}
+	}
+
+	return data, 0, nil
 }
 
 // parseFormRequest parses values from a form POST.

@@ -107,36 +107,11 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 			// OCSP requests are still bound by the maximum content size.
 			passHTTPReq = true
 		} else {
-			// Sample the first bytes to determine whether this should be parsed as
-			// a form or as JSON. The amount to look ahead (512 bytes) is arbitrary
-			// but extremely tolerant (i.e. allowing 511 bytes of leading whitespace
-			// and an incorrect content-type).
-			head, err := io.ReadAll(io.LimitReader(r.Body, 512))
-			if err != nil && err != io.EOF {
-				status := http.StatusBadRequest
-				logical.AdjustErrorStatusCode(&status, err)
-				return nil, status, errors.New("error reading data")
-			}
-
-			// Seek back to the start.
-			if err := resetBody(r); err != nil {
-				status := http.StatusInternalServerError
-				return nil, status, fmt.Errorf("failed to reset body: %w", err)
-			}
-
-			if isForm(head, contentType) {
-				formData, err := parseFormRequest(r)
-				if err != nil {
-					status := http.StatusBadRequest
-					logical.AdjustErrorStatusCode(&status, err)
-					return nil, status, errors.New("error parsing form data")
-				}
-
-				data = formData
-			} else {
-				if err := parseJSONRequest(r, &data); err != nil && !errors.Is(err, io.EOF) {
-					return nil, http.StatusBadRequest, err
-				}
+			var status int
+			var err error
+			data, status, err = parseBodyData(r)
+			if err != nil {
+				return nil, status, err
 			}
 		}
 

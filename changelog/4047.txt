@@ -1,0 +1,3 @@
+```release-note:improvement
+auth/kubernetes: Allows omitting `kubernetes_ca_cert` to use system CA trust store for connection.
+```

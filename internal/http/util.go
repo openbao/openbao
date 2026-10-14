@@ -174,16 +174,18 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 		// If any role-based quotas are enabled for this namespace/mount, just
 		// do the role resolution once here.
 		if requiresResolveRole {
-			role := core.DetermineRoleFromLoginRequestFromReader(ctx, mountPath, r.Body)
-
-			// Reset our body to the beginning.
-			if err := resetBody(r); err != nil {
-				respondError(w, http.StatusInternalServerError, err)
+			data, status, err := parseBodyData(r)
+			if err != nil {
+				core.Logger().Error("failed to parse body data", "path", path, "error", err)
+				respondError(w, status, err)
+				return
 			}
 
-			// add an entry to the context to prevent recalculating request role unnecessarily
-			r = r.WithContext(context.WithValue(r.Context(), logical.CtxKeyRequestRole{}, role))
-			quotaReq.Role = role
+			if role := core.DetermineRoleFromLoginRequest(ctx, mountPath, data, getConnection(r)); role != "" {
+				// Add an entry to the context to prevent recalculating request role unnecessarily.
+				r = r.WithContext(context.WithValue(r.Context(), logical.CtxKeyRequestRole{}, role))
+				quotaReq.Role = role
+			}
 		}
 
 		quotaResp, err := core.ApplyRateLimitQuota(r.Context(), quotaReq)

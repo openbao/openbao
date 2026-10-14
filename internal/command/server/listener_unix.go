@@ -18,15 +18,10 @@ func unixListenerFactory(l *configutil.Listener, _ hclog.Logger, ui cli.Ui) (net
 		addr = "/run/vault.sock"
 	}
 
-	var cfg *listenerutil.UnixSocketsConfig
-	if l.SocketMode != "" &&
-		l.SocketUser != "" &&
-		l.SocketGroup != "" {
-		cfg = &listenerutil.UnixSocketsConfig{
-			Mode:  l.SocketMode,
-			User:  l.SocketUser,
-			Group: l.SocketGroup,
-		}
+	cfg := &listenerutil.UnixSocketsConfig{
+		Mode:  l.SocketMode,
+		User:  l.SocketUser,
+		Group: l.SocketGroup,
 	}
 
 	ln, err := listenerutil.UnixSocketListener(addr, cfg)

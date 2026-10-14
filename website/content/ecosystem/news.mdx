@@ -12,6 +12,83 @@ import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
 
 ## 2026
 
+### October 2026
+
+<div className="container">
+  <div className="row">
+    <Randomize>
+      <NewsBlurb title="Agentic Identity with OpenBao" memberName="controlplane" link="https://control-plane.io/posts/agentic-identity-with-openbao/">
+        We recently published a deep dive into hardening SPIRE with OpenBao,
+        showing how OpenBao's PKI and Transit engines can act as the
+        cryptographic root of trust behind a SPIFFE identity plane. That post
+        answers how to secure the infrastructure underneath workload identity.
+        This post steps back a level, to a question that keeps coming up: why
+        does an AI agent need an identity of its own at all? Isn't sandboxing
+        it, or tightly scoping its permissions, sufficient?
+      </NewsBlurb>
+    </Randomize>
+  </div>
+</div>
+
+### September 2026
+
+<div className="container">
+  <div className="row">
+    <Randomize>
+      <NewsBlurb title="Integrating OpenBao with KumoMTA" memberName="kumo" link="https://kumomta.com/blog/integrating-openbao">
+        This is effectively a guest post from CM.com, which uses KumoMTA as its
+        email infrastructure. Their Engineering team shared this with us as an
+        example of how they integrated OpenBao as a KeySource backend for
+        KumoMTA and we are excited to share it with the community.
+      </NewsBlurb>
+
+      <NewsBlurb title="QxVault™: Simplifying Secure Secrets Management" memberName="c4a" link="https://crypto4a.com/resources/docs/2026-09-16-qxvault">
+        QxVault™ is a secrets management appliance with a built-in,
+        quantum-safe, FIPS 140-3 Level 3 HSM. It helps organizations and IT
+        professionals deploy and manage secrets instances that are secure,
+        highly resilient, and easy to use. In this whitepaper, we explain how
+        QxVault™ simplifies the deployment and management of highly secure,
+        resilient secrets management solutions.
+      </NewsBlurb>
+
+      <NewsBlurb title="Per-User Access Delegation for AI Agents, on OpenBao" memberName="warden" link="https://wardengateway.com/blog/access-delegation-openbao/">
+        How Warden leverages OpenBao to enforce access delegation: an AI agent
+        calls GitHub as a specific human, and the vault refuses any agent the
+        user never authorized.
+      </NewsBlurb>
+
+      <NewsBlurb title="Securing requestState with OpenBao" memberName="liquidreply" link="https://aaif.io/blog/securing-requeststate-with-openbao">
+        A follow-up to our article at the AAIF Blog Designing RequestState for
+        Multi-Round Trip Requests. All code in this post is from the companion
+        repository `openbao-mcp-requeststate` and runs against a real OpenBao
+        and the official MCP Python SDK.
+      </NewsBlurb>
+
+      <YouTubeTalk title="Sovereign Workload Identities with OpenBao" memberName="adfinis" vid="xR4p2rbre5w">
+        Pascal Reeb's and Toni Tauro's Securosys User & Developer Conference
+        2026 talk, describing how to implement sovereign workload identities
+        with OpenBao, SPIFFE, and SPIRE.
+      </YouTubeTalk>
+
+      <NewsBlurb title="ControlPlane Enterprise for OpenBao Selects PostgreSQL As Recommended Storage Engine" memberName="controlplane" link="https://control-plane.io/posts/enterprise-for-openbao-selects-postgresql/">
+        Although development of HashiCorp Vault has stagnated in critical areas
+        that operators need to productively manage deployments, ControlPlane
+        and OpenBao have proactively addressed several of Vault's most
+        requested features. Many are already implemented, including recursive
+        listing and filtering of list responses.
+      </NewsBlurb>
+
+      <NewsBlurb title="A Realistic Code Execution Exploit Chain in OpenBao and Vault" memberName="controlplane" link="https://control-plane.io/posts/unauthed-to-rce-in-vault-and-openbao/">
+        In collaboration with the upstream OpenBao community, ControlPlane
+        recently fixed a full exploit chain from unauthenticated access to full
+        remote code execution. This is the second-ever remote code execution
+        vulnerability in Vault and OpenBao. This chain combines disclosures
+        from three independent reporters patched in the latest release.
+      </NewsBlurb>
+    </Randomize>
+  </div>
+</div>
+
 ### August 2026
 
 <div className="container">
@@ -74,6 +151,12 @@ import { YouTubeTalk, NewsBlurb } from './lib/News.tsx';
         [Article in German] The OpenBao docs say that migrating is no longer
         possible starting from Vault 1.15.0. Tested empirically, it works, even
         from Vault 2.0.3. The real limit is mounts without a plugin.
+      </NewsBlurb>
+
+      <NewsBlurb title="GitLab Secrets Manager adds ESO, Terraform, API support" memberName="gitlab" link="https://about.gitlab.com/blog/gitlab-secrets-manager-add-eso-terraform-api-support/">
+        Simplify credential management across your stack. GitLab Secrets
+        Manager provides secure retrieval in Kubernetes, Terraform, and
+        external workflows.
       </NewsBlurb>
     </Randomize>
   </div>

@@ -4,9 +4,14 @@ import Member from '../lib/Member.tsx';
 <div className="container">
   <div className="row">
     <Randomize>
+      <Member title="Semaphore UI" logoName="semaphoreui">
+        [Semaphore UI](https://semaphoreui.com/) uses OpenBao to securely store passwords, SSH keys, and other credentials used by automation tasks.
+      </Member>
+
       <Member title="Percona">
         [Percona](https://percona.com/) provides OpenBao integration for managing encryption keys in Percona Server for MongoDB and PostgreSQL Transparent Data Encryption (pg_tde).
       </Member>
+
       <Member title="Securosys">
         [Securosys](https://www.securosys.com/) Primus HSM provides hardware-backed sealing for OpenBao Vaults.
       </Member>
@@ -35,6 +40,7 @@ import Member from '../lib/Member.tsx';
       <Member title="OVHcloud">
           [OVHcloud](https://www.ovhcloud.com/) provides cloud infrastructure and security services that integrate with OpenBao to manage secrets across distributed environments, supporting high availability, private networking, and HSM-backed encryption.
       </Member>
+
       <Member title="DuoKey" logoName="duokey">
         [DuoKey](https://www.duokey.com/) provides a [Software Defined HSM and KMS integrating with OpenBao](https://duokey.com/en/products/vault). Using Multi-Party Computation, keys are never reconstructed and cryptographic operations never expose key material or plaintext, enabling HSM-grade protection and cloud-native scalability.
       </Member>
@@ -45,6 +51,10 @@ import Member from '../lib/Member.tsx';
 
       <Member title="Utimaco" logoName="utimaco">
         [Utimaco](https://utimaco.com/) is a global platform provider of trusted Cybersecurity and Data Protection solutions, and develops leading on-premises and cloud-based hardware security modules, solutions for key management and data protection which integrate with OpenBao.
+      </Member>
+
+      <Member title="Kumo">
+        [KumoMTA](https://kumomta.com/) is an open-source, enterprise-grade Mail Transfer Agent (MTA) designed specifically for high-volume email senders. It integrates natively with OpenBao for key and secrets management.
       </Member>
     </Randomize>
   </div>

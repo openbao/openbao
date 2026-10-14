@@ -9,9 +9,11 @@ The following procedures detail steps for upgrading a plugin that has been mount
 at a path on a running server.
 
 :::info
+
 This guide only applies to external plugins (which are distributed as separate binaries).
 Built-in plugins do **not** need to be upgraded separately (because they are compiled
 into the main OpenBao binary).
+
 :::
 
 ## Upgrading auth and secrets plugins
@@ -199,6 +201,18 @@ transit             v1.12.0+builtin.bao
   are generally unaffected by plugin upgrades and reloads. This is because the lifecycle
   of leases and tokens is handled by core systems within OpenBao. The plugin itself only
   handles renewal and revocation of them when it’s requested by those core systems.
+
+## Upgrading builtin to external
+
+Follow the [above information](#upgrading-auth-and-secrets-plugins) to install
+and upgrade the new external versions of plugins. Then use:
+
+ - `bao auth tune -plugin-version=latest ...` to tune all affected auth mounts.
+ - `bao secrets tune -plugin-version=latest ...` to tune all affected secrets mounts.
+
+and finally reload the plugins individually:
+
+ - `bao plugin reload ...`
 
 [plugin_reload_command]: ../../commands/plugin/reload.mdx
 [plugin_registration]: ../../plugins/plugin-architecture.mdx#plugin-registration

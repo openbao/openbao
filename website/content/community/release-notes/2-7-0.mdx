@@ -1,9 +1,35 @@
 ---
 sidebar_label: 2.7.x
+sidebar_position: -270
 description: Release notes for OpenBao 2.7.x
 ---
 
 # OpenBao 2.7.x release notes
+
+## 2.7.1
+
+**Release date:** October 1, 2026
+
+### SECURITY
+
+* core: Prevent disclosure of `tls_acme_eab_mac_key` from `sys/config/state/sanitized`. GHSA-3237-j65r-m5rp. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
+* core/audit: The unauthenticated "Root Token Generation" and "Rekey" endpoints (which are disabled by default) returned their response, even if audit logging failed. GHSA-q74w-hv5x-6hxf. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
+* auth/approle: Ensure Secret ID cannot be used for authentication after expiration but before tidy is called. GHSA-7m59-mp95-w6ph. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
+* auth/approle: Fix incorrect JSON-decode path when parsing login requests with form data bodies. GHSA-5v22-543h-wg96. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
+* auth/cert: Fix omission of TLS connection propagation when calculating role-based quota. GHSA-5v22-543h-wg96. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
+* auth/kubernetes: Ensure Service Account JWT is validated on renewal, preventing post-revoke usage. GHSA-gf3j-hm38-jhh5. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
+
+### CHANGES
+
+* packaging: Update the default server config included in Linux packages to use the `pebbledb` backend instead of the removed `file` backend. [[GH-4088](https://github.com/openbao/openbao/pull/4088)]
+
+### BUG FIXES
+
+* core/barrier: Persist updates to key rotation config on changes to `disabled` field. [[GH-4107](https://github.com/openbao/openbao/pull/4107)]
+* core/grpc-invalidation: Ensure dispatcher lifecycle correctly handles active, standby state changes without locking conflicts. Resolves GRPC invalidation drops and pre-seal active node hangs. [[GH-4117](https://github.com/openbao/openbao/pull/4117)]
+* storage/raft: Fix `auto_join` breaking on providers that include ports with their discovered addresses. [[GH-4113](https://github.com/openbao/openbao/pull/4113)]
+* storage/postgresql: Switch to `pg_last_wal_replay_lsn()` for applied index value checks. [[GH-4118](https://github.com/openbao/openbao/pull/4118)]
+* api: Honor the error backoff interval after failed `LifetimeWatcher` renewal attempts. [[GH-4036](https://github.com/openbao/openbao/pull/4036)]
 
 ## 2.7.0
 

@@ -389,8 +389,7 @@ func (c *Core) persistAudit(ctx context.Context, table *routing.MountTable, loca
 // setupAudit is invoked after we've loaded the audit able to
 // initialize the audit backends
 func (c *Core) setupAudits(ctx context.Context) error {
-	brokerLogger := c.baseLogger.Named("audit")
-	c.AddLogger(brokerLogger)
+	brokerLogger := c.WithBaseLogger("audit")
 	c.auditBroker = NewAuditBroker(brokerLogger)
 
 	err := c.reconcileAudits(reconcileAuditsRequests{
@@ -548,8 +547,7 @@ func (c *Core) newAuditBackend(ctx context.Context, entry *routing.MountEntry, v
 		return nil, fmt.Errorf("nil backend returned from %q factory function", entry.Type)
 	}
 
-	auditLogger := c.baseLogger.Named("audit")
-	c.AddLogger(auditLogger)
+	auditLogger := c.WithBaseLogger("audit")
 
 	switch entry.Type {
 	case "file":

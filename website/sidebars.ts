@@ -191,6 +191,7 @@ const sidebars: SidebarsConfig = {
                         "commands/kv/patch",
                         "commands/kv/put",
                         "commands/kv/rollback",
+                        "commands/kv/subkeys",
                         "commands/kv/undelete",
                     ],
                     lease: [

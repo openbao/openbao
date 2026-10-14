@@ -33,7 +33,7 @@ type KVSubkeysCommand struct {
 }
 
 func (c *KVSubkeysCommand) Synopsis() string {
-	return "Retrieves the subkeys of a KV without their values"
+	return "Retrieves the subkeys of a secret"
 }
 
 func (c *KVSubkeysCommand) AutocompleteArgs() complete.Predictor {
@@ -49,10 +49,9 @@ func (c *KVSubkeysCommand) Flags() *FlagSets {
 		Name:    "mount",
 		Target:  &c.flagMount,
 		Default: "",
-		Usage: `Specifies the path where the KV backend is mounted. If specified,
-		the next argument will be interpreted as the secret path. If this flag is 
-		not specified, the next argument will be interpreted as the combined mount 
-		path and secret path, with /subkeys/ automatically inserted between them.`,
+		Usage: `Specifies the path where the KV backend is mounted. If specified, the
+		PATH argument is interpreted as the secret path relative to the given mount.
+		Otherwise, PATH is interpreted as the combined mount path and secret path.`,
 	})
 	f.IntVar(&IntVar{
 		Name:    "version",
@@ -76,8 +75,8 @@ func (c *KVSubkeysCommand) Help() string {
 	helpText := `
 Usage: bao kv subkeys [options] PATH
 
-  Retrieves the key structure of a secret from OpenBao's key-value store 
-  without its values. If no secret exists at the given path, an error is 
+  Retrieves the subkeys of a secret from OpenBao's key-value store, replacing
+  leaf values with null. If no secret exists at the given path, an error is
   returned. Requires KV Version 2.
 
       $ bao kv subkeys -mount=secret foo

@@ -311,6 +311,9 @@ func buildSignVerbatimRole(data *framework.FieldData, role *roleEntry) *roleEntr
 		}
 		entry.NoStore = role.NoStore
 		entry.Issuer = role.Issuer
+		// Carry the CNSA 2.0 / enforced-PQC flag so sign-verbatim keeps the
+		// ML-DSA-issuer invariant; clients (e.g. torch) only call sign-verbatim.
+		entry.CNSA20 = role.CNSA20
 		if _, ok := data.GetOk("basic_constraints_valid_for_non_ca"); !ok {
 			entry.BasicConstraintsValidForNonCA = role.BasicConstraintsValidForNonCA
 		}

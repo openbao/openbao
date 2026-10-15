@@ -118,9 +118,7 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 			return
 		case r.Method == http.MethodGet:
 			w.WriteHeader(200)
-			if _, err := w.Write([]byte(getPodResponse)); err != nil {
-				t.Errorf("error writing pod response: %v", err)
-			}
+			_, _ = w.Write([]byte(getPodResponse))
 			return
 		case r.Method == http.MethodPatch:
 			var patches []any

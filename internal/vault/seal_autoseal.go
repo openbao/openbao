@@ -34,6 +34,7 @@ type autoSeal struct {
 
 	barrierType wrapping.WrapperType
 	core        *Core
+	name        string
 	logger      log.Logger
 	metaPrefix  string
 
@@ -53,9 +54,10 @@ type autoSeal struct {
 // Ensure we are implementing the Seal interface
 var _ Seal = (*autoSeal)(nil)
 
-func NewAutoSeal(lowLevel seal.Access) (*autoSeal, error) {
+func NewAutoSeal(lowLevel seal.Access, name string) (*autoSeal, error) {
 	ret := &autoSeal{
 		Access: lowLevel,
+		name:   name,
 	}
 
 	// Having the wrapper type in a field is just a convenience since Seal.BarrierType()
@@ -71,10 +73,11 @@ func NewAutoSeal(lowLevel seal.Access) (*autoSeal, error) {
 
 func NewAutoSealWithHealthCheck(
 	lowLevel seal.Access,
+	name string,
 	enabled bool,
 	timeout, interval, intervalUnhealthy time.Duration,
 ) (*autoSeal, error) {
-	d, err := NewAutoSeal(lowLevel)
+	d, err := NewAutoSeal(lowLevel, name)
 	if err != nil {
 		return nil, err
 	}
@@ -85,6 +88,10 @@ func NewAutoSealWithHealthCheck(
 	d.healthCheckIntervalUnhealthy = intervalUnhealthy
 
 	return d, nil
+}
+
+func (d *autoSeal) Name() string {
+	return d.name
 }
 
 func (d *autoSeal) GetAccess() seal.Access {
@@ -235,6 +242,15 @@ func (d *autoSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 		return nil, fmt.Errorf("failed to decode %q seal configuration: %w", sealType, err)
 	}
 
+	switch conf.Name {
+	case "":
+		conf.Name = d.Name()
+	case d.Name():
+	default:
+		d.core.logger.Error("barrier seal name does not match expected name", "barrier_seal_name", conf.Name, "loaded_seal_name", d.Name())
+		return nil, fmt.Errorf("barrier seal name of %q does not match expected name of %q", conf.Name, d.Name())
+	}
+
 	// Check for a valid seal configuration
 	if err := conf.Validate(); err != nil {
 		d.logger.Error("invalid seal configuration", "seal_type", sealType, "error", err)
@@ -261,6 +277,7 @@ func (d *autoSeal) SetBarrierConfig(ctx context.Context, conf *SealConfig) error
 	}
 
 	conf.Type = d.BarrierType().String()
+	conf.Name = d.Name()
 
 	// Encode the seal configuration
 	buf, err := json.Marshal(conf)
@@ -319,6 +336,15 @@ func (d *autoSeal) RecoveryConfig(ctx context.Context) (*SealConfig, error) {
 		return nil, fmt.Errorf("failed to decode %q seal configuration: %w", sealType, err)
 	}
 
+	switch conf.Name {
+	case "":
+		conf.Name = fmt.Sprintf("%s-recovery", d.Name())
+	case fmt.Sprintf("%s-recovery", d.Name()):
+	default:
+		d.core.logger.Error("recovery seal name does not match expected name", "recovery_seal_name", conf.Name, "loaded_seal_name", d.Name())
+		return nil, fmt.Errorf("recovery seal name of %q does not match expected name of %q", conf.Name, d.Name())
+	}
+
 	// Check for a valid seal configuration
 	if err := conf.ValidateRecovery(); err != nil {
 		d.logger.Error("invalid seal configuration", "seal_type", sealType, "error", err)
@@ -347,6 +373,7 @@ func (d *autoSeal) SetRecoveryConfig(ctx context.Context, conf *SealConfig) erro
 	}
 
 	conf.Type = d.RecoveryType()
+	conf.Name = fmt.Sprintf("%s-recovery", d.Name())
 
 	// Encode the seal configuration
 	buf, err := json.Marshal(conf)

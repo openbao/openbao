@@ -459,8 +459,8 @@ func (c *ServerCommand) runRecoveryMode() int {
 		config.Seals = append(config.Seals, &configutil.KMS{Type: vaultseal.WrapperTypeShamir.String()})
 	}
 
-	if len(config.Seals) > 1 {
-		c.UI.Error("Only one seal block is accepted in recovery mode")
+	if len(config.Seals) > 2 {
+		c.UI.Error("Only two seal blocks are accepted in recovery mode")
 		return 1
 	}
 
@@ -472,7 +472,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	var seal vault.Seal
 	switch configSeal.Type {
 	case string(vaultseal.WrapperTypeShamir):
-		seal = vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+		seal = vault.NewShamirSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()), "default")
 	default:
 		wrapper, config, err := kms.ConfigureWrapper(
 			context.Background(), configSeal.Type, wrapping.WithConfigMap(configSeal.Config),
@@ -484,6 +484,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 
 		seal, err = vault.NewAutoSealWithHealthCheck(
 			vaultseal.NewAccess(wrapper),
+			"default",
 			configSeal.HealthCheckEnabled,
 			configSeal.HealthCheckTimeout,
 			configSeal.HealthCheckInterval,
@@ -2499,8 +2500,9 @@ func CheckStorageMigration(b physical.Backend) (*StorageMigrationStatus, error) 
 	return &status, nil
 }
 
-// setSeal return barrierSeal, barrierWrapper, unwrapSeal, and all the created seals from the configs so we can close them in Run
-// The two errors are the sealConfigError and the regular error
+// setSeal returns barrierSeal, barrierWrapper, unwrapSeal, and all created
+// seals declared in the configs so we can close them in Run method.
+// The two errors are the sealConfigError and the regular error.
 func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, infoKeys *[]string, info map[string]string) (vault.Seal, wrapping.Wrapper, vault.Seal, []vault.Seal, error, error) {
 	var barrierSeal vault.Seal
 	var barrierWrapper wrapping.Wrapper
@@ -2509,25 +2511,22 @@ func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, in
 	if c.flagDevAutoSeal {
 		var err error
 		access, _ := vaultseal.NewTestSeal(nil)
-		barrierSeal, err = vault.NewAutoSeal(access)
+		barrierSeal, err = vault.NewAutoSeal(access, "default")
 		if err != nil {
 			return nil, nil, nil, nil, nil, err
 		}
 		return barrierSeal, nil, nil, nil, nil, nil
 	}
 
+	defaultShamirSeal := &configutil.KMS{Type: vaultseal.WrapperTypeShamir.String()}
 	// Handle the case where no seal is provided
-	switch len(config.Seals) {
-	case 0:
-		config.Seals = append(config.Seals, &configutil.KMS{Type: vaultseal.WrapperTypeShamir.String()})
-	case 1:
-		// If there's only one seal and it's disabled assume they want to
-		// migrate to a shamir seal and simply didn't provide it
-		if config.Seals[0].Disabled {
-			config.Seals = append(config.Seals, &configutil.KMS{Type: vaultseal.WrapperTypeShamir.String()})
-		}
+	if len(config.Seals) == 0 || (len(config.Seals) == 1 && config.Seals[0].Disabled) {
+		// If there's only one seal and it's disabled assume migration to shamir.
+		config.Seals = append(config.Seals, defaultShamirSeal)
 	}
+
 	createdSeals := make([]vault.Seal, len(config.Seals))
+	// TODO(wslabosz): Adjust seal creation.
 	for _, configSeal := range config.Seals {
 		if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
 			configSeal.Type = api.ReadBaoVariable("BAO_SEAL_TYPE")
@@ -2536,7 +2535,7 @@ func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, in
 		var seal vault.Seal
 		switch configSeal.Type {
 		case string(vaultseal.WrapperTypeShamir):
-			seal = vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+			seal = vault.NewShamirSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()), "default")
 		default:
 			wrapper, config, err := kms.ConfigureWrapper(
 				context.Background(), configSeal.Type, wrapping.WithConfigMap(configSeal.Config),
@@ -2548,6 +2547,7 @@ func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, in
 
 			seal, err = vault.NewAutoSealWithHealthCheck(
 				vaultseal.NewAccess(wrapper),
+				"default",
 				configSeal.HealthCheckEnabled,
 				configSeal.HealthCheckTimeout,
 				configSeal.HealthCheckInterval,

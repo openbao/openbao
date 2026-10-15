@@ -51,6 +51,7 @@ const (
 
 type Seal interface {
 	SetCore(*Core)
+	Name() string
 	Init(context.Context) error
 	SetMetaPrefix(string)
 	Finalize(context.Context) error
@@ -75,6 +76,7 @@ type Seal interface {
 
 type defaultSeal struct {
 	core       *Core
+	name       string
 	access     seal.Access
 	metaPrefix string
 
@@ -84,8 +86,12 @@ type defaultSeal struct {
 
 var _ Seal = (*defaultSeal)(nil)
 
+func NewShamirSeal(lowlevel seal.Access, name string) Seal {
+	return &defaultSeal{access: lowlevel, name: name}
+}
+
 func NewDefaultSeal(lowLevel seal.Access) Seal {
-	return &defaultSeal{access: lowLevel}
+	return &defaultSeal{access: lowLevel, name: "default"}
 }
 
 func (d *defaultSeal) checkCore() error {
@@ -93,6 +99,10 @@ func (d *defaultSeal) checkCore() error {
 		return errors.New("seal does not have a core set")
 	}
 	return nil
+}
+
+func (d *defaultSeal) Name() string {
+	return d.name
 }
 
 func (d *defaultSeal) GetAccess() seal.Access {
@@ -181,6 +191,15 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 		return nil, fmt.Errorf("barrier seal type of %q does not match expected type of %q", conf.Type, d.BarrierType())
 	}
 
+	switch conf.Name {
+	case "":
+		conf.Name = d.Name()
+	case d.Name():
+	default:
+		d.core.logger.Error("barrier seal name does not match expected name", "barrier_seal_name", conf.Name, "loaded_seal_name", d.Name())
+		return nil, fmt.Errorf("barrier seal name of %q does not match expected name of %q", conf.Name, d.Name())
+	}
+
 	// Check for a valid seal configuration
 	if err := conf.Validate(); err != nil {
 		d.core.logger.Error("invalid seal configuration", "error", err)
@@ -204,6 +223,7 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 	}
 
 	config.Type = d.BarrierType().String()
+	config.Name = d.Name()
 
 	// If we are doing a raft unseal we do not want to persist the barrier config
 	// because storage isn't setup yet.
@@ -277,6 +297,9 @@ func (d *defaultSeal) GetShamirWrapper() (*seal.ShamirWrapper, error) {
 type SealConfig struct {
 	// The type, for sanity checking
 	Type string `json:"type" mapstructure:"type"`
+
+	// Name of the seal to differ between emergency and primary seals.
+	Name string `json:"name" mapstructure:"name"`
 
 	// SecretShares is the number of shares the secret is split into. This is
 	// the N value of Shamir.
@@ -373,6 +396,7 @@ func (s *SealConfig) ValidateRecovery() error {
 func (s *SealConfig) Clone() *SealConfig {
 	ret := &SealConfig{
 		Type:                 s.Type,
+		Name:                 s.Name,
 		SecretShares:         s.SecretShares,
 		SecretThreshold:      s.SecretThreshold,
 		Nonce:                s.Nonce,

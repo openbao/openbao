@@ -142,7 +142,7 @@ func testVaultServerAllBackends(tb testing.TB) (*api.Client, func()) {
 // the function returns a client, the recovery keys, and a closer function
 func testVaultServerAutoUnseal(tb testing.TB) (*api.Client, []string, func()) {
 	testSeal, _ := seal.NewTestSeal(nil)
-	autoSeal, err := vault.NewAutoSeal(testSeal)
+	autoSeal, err := vault.NewAutoSeal(testSeal, "default")
 	require.NoError(tb, err)
 	return testVaultServerUnsealWithKVVersionWithSeal(tb, "1", autoSeal)
 }
@@ -207,7 +207,7 @@ func testVaultServerCoreConfig(tb testing.TB, coreConfig *vault.CoreConfig) (*ap
 
 func testVaultServerUnauthedEndpointsEnabledWithAutoseal(tb testing.TB) (*api.Client, []string, func()) {
 	testSeal, _ := seal.NewTestSeal(nil)
-	autoSeal, err := vault.NewAutoSeal(testSeal)
+	autoSeal, err := vault.NewAutoSeal(testSeal, "default")
 	require.NoError(tb, err)
 
 	return testVaultServerCoreConfigWithOpts(tb, &vault.CoreConfig{

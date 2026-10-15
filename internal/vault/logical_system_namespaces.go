@@ -370,6 +370,11 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			if err != nil {
 				return nil, fmt.Errorf("unable to parse seal config: %w", err)
 			}
+			if err = configutil.CheckAndResolveSeals(kmses); err != nil {
+				return nil, fmt.Errorf("failed to validate and resolve seal config: %w", err)
+			}
+
+			// TODO(wslabosz): Account for emergency seal.
 			if len(kmses) != 1 {
 				return nil, errors.New("seal config must contain exactly one seal stanza")
 			}
@@ -380,6 +385,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 
 			sealConfig = &SealConfig{
 				Type: kms.Type,
+				Name: kms.Name,
 			}
 
 			if val, ok := kms.Config["shares"]; ok {

@@ -131,9 +131,7 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 				testState.store(p, patchMap)
 			}
 			w.WriteHeader(200)
-			if _, err := w.Write([]byte(updatePodTagsResponse)); err != nil {
-				t.Errorf("error writing pod tags update response: %v", err)
-			}
+			_, _ = w.Write([]byte(updatePodTagsResponse))
 			return
 		default:
 			w.WriteHeader(400)

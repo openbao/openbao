@@ -211,12 +211,21 @@ func prepareTestContainer(t *testing.T, tag, caPublicKeyPEM string) (func(), str
 }
 
 func testSSH(user, host string, auth ssh.AuthMethod, command string) error {
-	client, err := ssh.Dial("tcp", host, &ssh.ClientConfig{
-		User:            user,
-		Auth:            []ssh.AuthMethod{auth},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         5 * time.Second,
-	})
+	var client *ssh.Client
+	var err error
+	// wait for starting test container
+	maxRetries := 10
+	for range maxRetries {
+		client, err = ssh.Dial("tcp", host, &ssh.ClientConfig{
+			User:            user,
+			Auth:            []ssh.AuthMethod{auth},
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			Timeout:         5 * time.Second,
+		})
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
 		return fmt.Errorf("unable to dial sshd to host %q: %v", host, err)
 	}

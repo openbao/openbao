@@ -1799,7 +1799,12 @@ func testTokenStore_Revoke(t *testing.T, ts *TokenStore, ns *namespace.Namespace
 	}
 
 	// tidy is required here, as otherwise the revoked token is still stored until deletion
-	ts.handleTidy(ctx, &logical.Request{}, nil)
+	resp, err := ts.HandleRequest(ctx, &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "tidy",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
 	// waiting on the tidy operation
 	time.Sleep(100 * time.Millisecond)
 	testTokenStore_VerifyNumOfTokens(t, ts, ns, desiredNumOfTokens)
@@ -6218,7 +6223,12 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 	}
 
 	// Call tidy
-	ts.handleTidy(ctx, &logical.Request{}, nil)
+	tidyResp, err := ts.HandleRequest(ctx, &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "tidy",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, tidyResp)
 
 	time.Sleep(200 * time.Millisecond)
 

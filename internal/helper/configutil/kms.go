@@ -16,13 +16,14 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 )
 
-// KMS contains KMS configuration for the server
+// KMS contains KMS configuration for the server.
 type KMS struct {
 	UnusedKeys []string `hcl:",unusedKeys"`
 	Type       string
+
 	// Purpose can be used to allow a string-based specification of what this
 	// KMS is designated for, in situations where we want to allow more than
-	// one KMS to be specified
+	// one KMS to be specified.
 	Purpose []string `hcl:"-"`
 
 	Disabled bool
@@ -46,7 +47,7 @@ func (k *KMS) GoString() string {
 
 func parseKMS(result *[]*KMS, list *ast.ObjectList, blockName string, maxKMS int) error {
 	if len(list.Items) > maxKMS {
-		return fmt.Errorf("only two or less %q blocks are permitted", blockName)
+		return fmt.Errorf("only %d or less %q blocks are permitted", maxKMS, blockName)
 	}
 
 	seals := make([]*KMS, 0, len(list.Items))
@@ -64,8 +65,8 @@ func parseKMS(result *[]*KMS, list *ast.ObjectList, blockName string, maxKMS int
 			return multierror.Prefix(err, fmt.Sprintf("%s.%s:", blockName, key))
 		}
 
-		var purpose []string
 		var err error
+		var purpose []string
 		if v, ok := m["purpose"]; ok {
 			if purpose, err = parseutil.ParseCommaStringSlice(v); err != nil {
 				return multierror.Prefix(fmt.Errorf("unable to parse 'purpose' in kms type %q: %w", key, err), fmt.Sprintf("%s.%s:", blockName, key))
@@ -169,13 +170,11 @@ func parseKMS(result *[]*KMS, list *ast.ObjectList, blockName string, maxKMS int
 }
 
 func ParseKMSes(d string) ([]*KMS, error) {
-	// Parse!
 	obj, err := hclutil.ParseConfig([]byte(d))
 	if err != nil {
 		return nil, err
 	}
 
-	// Start building the result
 	var result struct {
 		Seals []*KMS `hcl:"-"`
 	}
@@ -202,4 +201,57 @@ func ParseKMSes(d string) ([]*KMS, error) {
 	}
 
 	return result.Seals, nil
+}
+
+// CheckSeals validates seals configuration.
+func CheckSeals(seals []*KMS) error {
+	switch len(seals) {
+	case 0:
+	case 1:
+	case 2:
+		// Both seals are enabled.
+		if !seals[0].Disabled && !seals[1].Disabled {
+			if seals[0].Type == "shamir" && seals[1].Type == "shamir" {
+				return errors.New("seals: more than one emergency (shamir) seal found")
+			}
+			if seals[0].Type != "shamir" && seals[1].Type != "shamir" {
+				return errors.New("seals: more than one primary (auto-seal) seal found")
+			}
+		}
+
+		if seals[0].Disabled && seals[1].Disabled {
+			return errors.New("seals: more than one disabled seal found")
+		}
+	case 3:
+		// Check that there's only one of each:
+		// - primary (auto seal)
+		// - emergency (shamir)
+		// - disabled
+		seenDisabled := false
+		seenPrimary := false
+		seenEmergency := false
+		for _, seal := range seals {
+			switch {
+			case seal.Disabled:
+				if seenDisabled {
+					return errors.New("seals: more than one disabled seal found")
+				}
+				seenDisabled = true
+			case seal.Type == "shamir":
+				if seenEmergency {
+					return errors.New("seals: more than one emergency (shamir) seal found")
+				}
+				seenEmergency = true
+			default:
+				if seenPrimary {
+					return errors.New("seals: more than one primary (auto-seal) seal found")
+				}
+				seenPrimary = true
+			}
+		}
+	default:
+		return errors.New("seals: more than three seals declared")
+	}
+
+	return nil
 }

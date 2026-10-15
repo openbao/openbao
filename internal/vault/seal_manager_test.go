@@ -103,6 +103,7 @@ func TestSealManager_SetSeal(t *testing.T) {
 
 			seal := c.sealManager.NamespaceSeal(tt.ns.UUID)
 			require.NotEmpty(t, seal)
+			require.Equal(t, "default", seal.Name())
 
 			require.NotEmpty(t, c.sealManager.NamespaceBarrier(tt.ns.Path))
 			require.NotEmpty(t, c.sealManager.NamespaceSeal(tt.ns.UUID))

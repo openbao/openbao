@@ -474,7 +474,7 @@ func TestRaft_SnapshotAPI_MidstreamFailure(t *testing.T) {
 	t.Parallel()
 
 	seal, setErr := vaultseal.NewToggleableTestSeal(nil)
-	autoSeal, err := vault.NewAutoSeal(seal)
+	autoSeal, err := vault.NewAutoSeal(seal, "default")
 	require.NoError(t, err)
 	cluster, _ := raftCluster(t, &RaftClusterOpts{
 		NumCores: 1,

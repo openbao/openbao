@@ -33,6 +33,7 @@ type autoSeal struct {
 
 	wrapperType wrapping.WrapperType
 	core        *Core
+	name        string
 	logger      log.Logger
 	metaPrefix  string
 
@@ -51,9 +52,10 @@ type autoSeal struct {
 // Ensure we are implementing the Seal interface
 var _ Seal = (*autoSeal)(nil)
 
-func NewAutoSeal(lowLevel seal.Access) (*autoSeal, error) {
+func NewAutoSeal(lowLevel seal.Access, name string) (*autoSeal, error) {
 	ret := &autoSeal{
 		Access: lowLevel,
+		name:   name,
 	}
 
 	// Having the wrapper type in a field is just a convenience since Seal.BarrierType()
@@ -69,10 +71,11 @@ func NewAutoSeal(lowLevel seal.Access) (*autoSeal, error) {
 
 func NewAutoSealWithHealthCheck(
 	lowLevel seal.Access,
+	name string,
 	enabled bool,
 	timeout, interval, intervalUnhealthy time.Duration,
 ) (*autoSeal, error) {
-	d, err := NewAutoSeal(lowLevel)
+	d, err := NewAutoSeal(lowLevel, name)
 	if err != nil {
 		return nil, err
 	}
@@ -83,6 +86,10 @@ func NewAutoSealWithHealthCheck(
 	d.healthCheckIntervalUnhealthy = intervalUnhealthy
 
 	return d, nil
+}
+
+func (d *autoSeal) Name() string {
+	return d.name
 }
 
 func (d *autoSeal) GetAccess() seal.Access {
@@ -237,6 +244,15 @@ func (d *autoSeal) Config(ctx context.Context) (*SealConfig, error) {
 		return nil, fmt.Errorf("failed to decode %q seal configuration: %w", sealType, err)
 	}
 
+	switch conf.Name {
+	case "":
+		conf.Name = fmt.Sprintf("%s-recovery", d.Name())
+	case fmt.Sprintf("%s-recovery", d.Name()):
+	default:
+		d.core.logger.Error("recovery seal name does not match expected name", "recovery_seal_name", conf.Name, "loaded_seal_name", d.Name())
+		return nil, fmt.Errorf("recovery seal name of %q does not match expected name of %q", conf.Name, d.Name())
+	}
+
 	if conf.Purpose != "" && conf.Purpose != Recovery {
 		d.logger.Error("recovery seal purpose does not match loaded purpose", "seal_type", conf.Type, "loaded_type", conf.Purpose)
 		return nil, fmt.Errorf("recovery seal purpose of %q does not match loaded purpose of %q", conf.Type, conf.Purpose)
@@ -267,6 +283,7 @@ func (d *autoSeal) SetConfig(ctx context.Context, conf *SealConfig) error {
 	conf.Purpose = Recovery
 	// Left for backwards compatibility.
 	conf.Type = "shamir"
+	conf.Name = fmt.Sprintf("%s-recovery", d.Name())
 
 	// Encode the seal configuration
 	buf, err := json.Marshal(conf)

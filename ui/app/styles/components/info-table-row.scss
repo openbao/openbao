@@ -66,17 +66,16 @@
   }
 }
 
-.info-table-row.secret-key-row .is-label {
-  white-space: pre-wrap;
+.info-table-row.secret-key-row .is-label:not(.helper-text) {
+  white-space: pre;
   font-family: monospace;
   background-color: $ui-gray-100;
-  padding: 0.15rem 0.35rem;
   border-radius: 3px;
-  display: inline-block;
+  display: inline;
 }
 
-[data-test-label-tooltip] {
-  white-space: pre-wrap;
+.info-table-row.secret-key-row .column {
+  align-self: flex-start;
 }
 
 .info-table-row:not(.is-mobile) .column {

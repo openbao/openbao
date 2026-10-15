@@ -25,6 +25,11 @@
             <span class="is-label helper-text has-text-grey">{{@helperText}}</span>
           </div>
         {{/if}}
+        {{#if (has-block "labelFooter")}}
+          <div class="info-table-row-label-footer">
+            {{yield to="labelFooter"}}
+          </div>
+        {{/if}}
       {{else}}
         <Icon @name="minus" />
       {{/if}}

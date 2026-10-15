@@ -42,6 +42,7 @@ const (
 
 type Seal interface {
 	SetCore(*Core)
+	Name() string
 	Init(context.Context) error
 	SetMetaPrefix(string)
 	Finalize(context.Context) error
@@ -64,6 +65,7 @@ type defaultSeal struct {
 	access seal.Access
 
 	core       *Core
+	name       string
 	metaPrefix string
 
 	config       atomic.Pointer[SealConfig]
@@ -72,8 +74,12 @@ type defaultSeal struct {
 
 var _ Seal = (*defaultSeal)(nil)
 
+func NewShamirSeal(lowlevel seal.Access, name string) Seal {
+	return &defaultSeal{access: lowlevel, name: name}
+}
+
 func NewDefaultSeal(lowLevel seal.Access) Seal {
-	return &defaultSeal{access: lowLevel}
+	return &defaultSeal{access: lowLevel, name: "default"}
 }
 
 func (d *defaultSeal) checkCore() error {
@@ -81,6 +87,10 @@ func (d *defaultSeal) checkCore() error {
 		return errors.New("seal does not have a core set")
 	}
 	return nil
+}
+
+func (d *defaultSeal) Name() string {
+	return d.name
 }
 
 func (d *defaultSeal) GetAccess() seal.Access {
@@ -169,6 +179,15 @@ func (d *defaultSeal) Config(ctx context.Context) (*SealConfig, error) {
 		return nil, fmt.Errorf("barrier wrapper type of %q does not match expected wrapper type of %q", conf.Type, d.WrapperType())
 	}
 
+	switch conf.Name {
+	case "":
+		conf.Name = d.Name()
+	case d.Name():
+	default:
+		d.core.logger.Error("barrier seal name does not match expected name", "barrier_seal_name", conf.Name, "loaded_seal_name", d.Name())
+		return nil, fmt.Errorf("barrier seal name of %q does not match expected name of %q", conf.Name, d.Name())
+	}
+
 	if conf.Purpose != "" && conf.Purpose != Primary {
 		d.core.logger.Error("seal purpose does not match loaded purpose", "seal_type", conf.Type, "loaded_type", conf.Purpose)
 		return nil, fmt.Errorf("seal purpose of %q does not match loaded purpose of %q", conf.Type, conf.Purpose)
@@ -197,6 +216,7 @@ func (d *defaultSeal) SetConfig(ctx context.Context, config *SealConfig) error {
 	}
 
 	config.Type = d.WrapperType().String()
+	config.Name = d.Name()
 	config.Purpose = Primary
 
 	// If we are doing a raft unseal we do not want to persist the barrier config

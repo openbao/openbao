@@ -144,7 +144,7 @@ func TestSysInit_Put_ValidateParams(t *testing.T) {
 
 func TestSysInit_Put_AutoUnseal(t *testing.T) {
 	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
-	autoSeal, err := vault.NewAutoSeal(testSeal)
+	autoSeal, err := vault.NewAutoSeal(testSeal, "default")
 	require.NoError(t, err)
 
 	conf := &vault.CoreConfig{
@@ -180,7 +180,7 @@ func TestSysInit_Put_AutoUnseal(t *testing.T) {
 
 func TestSysInit_Put_ValidateParams_AutoUnseal(t *testing.T) {
 	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Wrapper: "potato"})
-	autoSeal, err := vault.NewAutoSeal(testSeal)
+	autoSeal, err := vault.NewAutoSeal(testSeal, "default")
 	require.NoError(t, err)
 
 	conf := &vault.CoreConfig{

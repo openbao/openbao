@@ -87,7 +87,7 @@ func TestAutoSeal_UpgradeKeys(t *testing.T) {
 	// Set initial encryption key.
 	changeKey("kaz")
 
-	autoSeal, err := NewAutoSeal(testSeal)
+	autoSeal, err := NewAutoSeal(testSeal, "default")
 	require.NoError(t, err)
 
 	autoSeal.SetCore(core)
@@ -195,6 +195,7 @@ func TestAutoSeal_HealthCheck(t *testing.T) {
 	})
 	autoSeal, err := NewAutoSealWithHealthCheck(
 		testSealAccess,
+		"default",
 		true,
 		time.Minute,
 		10*time.Millisecond,

@@ -31,6 +31,9 @@ type SealConfig struct {
 	// Use Purpose to identify the Shamir configuration's role instead.
 	Type string `json:"type" mapstructure:"type"`
 
+	// Name of the seal to differ between emergency and primary seals.
+	Name string `json:"name" mapstructure:"name"`
+
 	// Purpose of the shamir seal.
 	Purpose ShamirPurpose `json:"purpose" mapstructure:"purpose"`
 
@@ -139,6 +142,7 @@ func (s *SealConfig) baseValidation() error {
 func (s *SealConfig) Clone() *SealConfig {
 	ret := &SealConfig{
 		Type:                 s.Type,
+		Name:                 s.Name,
 		Purpose:              s.Purpose,
 		SecretShares:         s.SecretShares,
 		SecretThreshold:      s.SecretThreshold,

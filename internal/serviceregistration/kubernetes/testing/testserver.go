@@ -112,9 +112,7 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 		switch {
 		case namespace != ExpectedNamespace, podName != ExpectedPodName:
 			w.WriteHeader(404)
-			if _, err := w.Write([]byte(notFoundResponse)); err != nil {
-				t.Errorf("error writing not found response: %v", err)
-			}
+			_, _ = w.Write([]byte(notFoundResponse))
 			return
 		case r.Method == http.MethodGet:
 			w.WriteHeader(200)

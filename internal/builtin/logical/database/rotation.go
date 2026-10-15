@@ -547,7 +547,11 @@ func (b *databaseBackend) initQueue(ctx context.Context, conf *logical.BackendCo
 
 			walID, err := framework.PutWAL(ctx, conf.StorageView, staticWALKey, &setCredentialsWAL{RoleName: "vault-readonlytest"})
 			if walID != "" && err == nil {
-				defer framework.DeleteWAL(ctx, conf.StorageView, walID)
+				defer func(ctx context.Context, storage logical.Storage, walID string) {
+					if err := framework.DeleteWAL(ctx, storage, walID); err != nil {
+						b.Logger().Warn("error deleting WAL")
+					}
+				}(ctx, conf.StorageView, walID)
 			}
 			switch {
 			case err == nil:

@@ -102,6 +102,8 @@ const (
 	// IgnoreForBilling used for HCP Link batch tokens and inserted into the InternalMeta
 	// Tokens created for the purpose of HCP Link should bypass counting for billing purposes
 	IgnoreForBilling = "ignore_for_billing"
+
+	migrateAccessorsField = "migrate_accessors"
 )
 
 var (
@@ -640,6 +642,14 @@ func (ts *TokenStore) paths() []*framework.Path {
 				OperationVerb:   "tidy",
 			},
 
+			Fields: map[string]*framework.FieldSchema{
+				migrateAccessorsField: {
+					Type:        framework.TypeBool,
+					Default:     false,
+					Description: "Migrate legacy token accessors storage keys to HMAC-SHA256",
+				},
+			},
+
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: ts.handleTidy,
@@ -806,7 +816,8 @@ type TokenStore struct {
 	saltLock sync.RWMutex
 	salts    map[string]*salt.Salt
 
-	tidyLock sync.Mutex
+	tidyLock              sync.Mutex
+	accessorMigrationLock sync.Mutex
 
 	quitContext context.Context
 
@@ -1128,7 +1139,7 @@ func (ts *TokenStore) SaltID(ctx context.Context, id string) (string, error) {
 	// For all other tokens, use SHA2-256 HMAC for salting. This includes
 	// tokens of older format, but belonging to a namespace other than the root
 	// namespace.
-	return "h" + s.GetHMAC(id), nil
+	return ts.SaltIDWithHMAC(ctx, id)
 }
 
 // rootToken is used to generate a new token with root privileges and no parent
@@ -1226,7 +1237,7 @@ func (ts *TokenStore) createAccessor(ctx context.Context, entry *logical.TokenEn
 
 	// Create index entry, mapping the accessor to the token ID
 	saltCtx := namespace.ContextWithNamespace(ctx, tokenNS)
-	saltID, err := ts.SaltID(saltCtx, entry.Accessor)
+	saltID, err := ts.SaltIDWithHMAC(saltCtx, entry.Accessor)
 	if err != nil {
 		return err
 	}
@@ -2114,13 +2125,25 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 
 	// Clear the accessor index if any
 	if entry.Accessor != "" {
-		accessorSaltedID, err := ts.SaltID(revokeCtx, entry.Accessor)
+		accessorSaltedID, err := ts.SaltIDWithHMAC(revokeCtx, entry.Accessor)
 		if err != nil {
 			return err
 		}
 
 		if err = ts.accessorView(tokenNS).Delete(ctx, accessorSaltedID); err != nil {
 			return fmt.Errorf("failed to delete entry: %w", err)
+		}
+
+		// Fallback for legacy SHA-1-based keys
+		fallbackAccessorSaltedID, err := ts.SaltID(revokeCtx, entry.Accessor)
+		if err != nil {
+			return err
+		}
+
+		if fallbackAccessorSaltedID != accessorSaltedID {
+			if err = ts.accessorView(tokenNS).Delete(ctx, fallbackAccessorSaltedID); err != nil {
+				return fmt.Errorf("failed to delete entry: %w", err)
+			}
 		}
 	}
 
@@ -2349,7 +2372,7 @@ func (ts *TokenStore) lookupByAccessor(ctx context.Context, id string, salted, t
 			return nil, fmt.Errorf("cannot lookup token in different namespace")
 		}
 
-		lookupID, err = ts.SaltID(ctx, id)
+		lookupID, err = ts.SaltIDWithHMAC(ctx, id)
 		if err != nil {
 			return nil, err
 		}
@@ -2359,6 +2382,20 @@ func (ts *TokenStore) lookupByAccessor(ctx context.Context, id string, salted, t
 	if err != nil {
 		return nil, fmt.Errorf("failed to read index using accessor: %w", err)
 	}
+
+	// Fallback for legacy SHA-1 accessors
+	if entry == nil && !salted {
+		lookupID, err = ts.SaltID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+
+		entry, err = ts.accessorView(ns).Get(ctx, lookupID)
+		if err != nil {
+			return nil, fmt.Errorf("error reading legacy index: %v", err)
+		}
+	}
+
 	if entry == nil {
 		return nil, nil
 	}
@@ -2389,6 +2426,15 @@ func (ts *TokenStore) lookupByAccessor(ctx context.Context, id string, salted, t
 	return &aEntry, nil
 }
 
+func (ts *TokenStore) SaltIDWithHMAC(ctx context.Context, id string) (string, error) {
+	s, err := ts.Salt(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return "h" + s.GetHMAC(id), nil
+}
+
 // handleTidy handles the cleaning up of leaked accessor storage entries and
 // cleaning up of leases that are associated to tokens that are expired.
 func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -2402,6 +2448,8 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 	if err != nil {
 		return nil, fmt.Errorf("failed to get namespace from context: %w", err)
 	}
+
+	migrateAccessorsFieldSet := data.Get(migrateAccessorsField).(bool)
 
 	go func() {
 		defer ts.tidyLock.Unlock()
@@ -2519,7 +2567,8 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 				deletedCountAccessorEmptyToken,
 				deletedCountAccessorInvalidToken,
 				deletedCountInvalidTokenInAccessor,
-				deletedCountInvalidCubbyholeKey int64
+				deletedCountInvalidCubbyholeKey,
+				countMigratedAccessors int64
 
 			validCubbyholeKeys := make(map[string]bool)
 
@@ -2624,6 +2673,15 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 						validCubbyholeKeys[te.CubbyholeID] = true
 					}
 				}
+
+				if migrateAccessorsFieldSet {
+					migrated, err := ts.migrateAccessor(quitCtx, saltedAccessor, accessorEntry)
+					if err != nil {
+						tidyErrors = multierror.Append(tidyErrors, err)
+					} else if migrated {
+						countMigratedAccessors++
+					}
+				}
 			}
 
 			// Revoke invalid cubbyhole storage keys
@@ -2654,6 +2712,7 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 			ts.logger.Info("number of revoked tokens which were invalid but present in accessors", "count", deletedCountInvalidTokenInAccessor)
 			ts.logger.Info("number of deleted accessors which had invalid tokens", "count", deletedCountAccessorInvalidToken)
 			ts.logger.Info("number of deleted cubbyhole keys that were invalid", "count", deletedCountInvalidCubbyholeKey)
+			ts.logger.Info("number of migrated accessors:", "count", countMigratedAccessors)
 
 			return tidyErrors.ErrorOrNil()
 		}
@@ -2667,6 +2726,46 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 	resp := &logical.Response{}
 	resp.AddWarning("Tidy operation successfully started. Any information from the operation will be printed to OpenBao's server logs.")
 	return logical.RespondWithStatusCode(resp, req, http.StatusAccepted)
+}
+
+func (ts *TokenStore) migrateAccessor(ctx context.Context, saltedAccessor string, accessorEntry *accessorEntry) (bool, error) {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	if ns.ID != accessorEntry.NamespaceID || strings.HasPrefix(saltedAccessor, "h") {
+		return false, nil
+	}
+
+	newKey, err := ts.SaltIDWithHMAC(ctx, accessorEntry.AccessorID)
+	if err != nil {
+		return false, fmt.Errorf("error salting accessor: %v", err)
+	}
+
+	ts.accessorMigrationLock.Lock()
+	defer ts.accessorMigrationLock.Unlock()
+
+	storedEntry, err := ts.accessorView(ns).Get(ctx, saltedAccessor)
+	if err != nil {
+		return false, fmt.Errorf("error reading legacy accessor; %v", err)
+	}
+	if storedEntry == nil {
+		return false, nil
+	}
+
+	replacementEntry := *storedEntry
+	replacementEntry.Key = newKey
+
+	if err := ts.accessorView(ns).Put(ctx, &replacementEntry); err != nil {
+		return false, fmt.Errorf("error writing migrated accessor: %v", err)
+	}
+
+	if err := ts.accessorView(ns).Delete(ctx, saltedAccessor); err != nil {
+		return false, fmt.Errorf("error deleting legacy accessor: %v", err)
+	}
+
+	return true, nil
 }
 
 // handleUpdateLookupAccessor handles the auth/token/lookup-accessor path for returning

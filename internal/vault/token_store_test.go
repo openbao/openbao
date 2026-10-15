@@ -6600,44 +6600,124 @@ func TestTokenStore_LookupSchemaMatchesHandler(t *testing.T) {
 }
 
 func TestTokenStore_MigrateAccessor(t *testing.T) {
-	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(t.Context())
+	type expected struct {
+		migrationResults []bool
+		sha1Exists       bool
+		hmacExists       bool
+	}
 
 	tokenID := "token-12345"
 	accessorID := "accessor12345"
-	expectedMigration := true
 
-	expectedAccessorEntry := &accessorEntry{
-		TokenID:     tokenID,
-		AccessorID:  accessorID,
-		NamespaceID: namespace.RootNamespaceID,
+	testCases := []struct {
+		name               string
+		entryNamespaceID   string
+		sourceEntryMissing bool
+		storedUnderHMACKey bool
+		expected           expected
+	}{
+		{
+			name: "legacy entry is migrated only once",
+			expected: expected{
+				migrationResults: []bool{true, false},
+				sha1Exists:       false,
+				hmacExists:       true,
+			},
+		},
+		{
+			name:               "entry with HMAC key is skipped",
+			storedUnderHMACKey: true,
+			expected: expected{
+				migrationResults: []bool{false},
+				sha1Exists:       false,
+				hmacExists:       true,
+			},
+		},
+		{
+			name:             "entry from another namespace is skipped",
+			entryNamespaceID: "namespace-12345",
+			expected: expected{
+				migrationResults: []bool{false},
+				sha1Exists:       true,
+				hmacExists:       false,
+			},
+		},
+		{
+			name:               "missing entry creates no HMAC entry",
+			sourceEntryMissing: true,
+			expected: expected{
+				migrationResults: []bool{false},
+				sha1Exists:       false,
+				hmacExists:       false,
+			},
+		},
 	}
 
-	s, err := c.tokenStore.Salt(ctx)
-	require.NoError(t, err)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _, _ := TestCoreUnsealed(t)
+			ctx := namespace.RootContext(t.Context())
 
-	legacySHA1Key := s.SaltID(accessorID)
-	expectedHMACKey := "h" + s.GetHMAC(accessorID)
+			entry := &accessorEntry{
+				TokenID:     tokenID,
+				AccessorID:  accessorID,
+				NamespaceID: namespace.RootNamespaceID,
+			}
 
-	legacyStorageEntry, err := logical.StorageEntryJSON(legacySHA1Key, expectedAccessorEntry)
-	require.NoError(t, err)
+			if tc.entryNamespaceID != "" {
+				entry.NamespaceID = tc.entryNamespaceID
+			}
 
-	expectedStorageValue := legacyStorageEntry.Value
+			s, err := c.tokenStore.Salt(ctx)
+			require.NoError(t, err)
 
-	err = c.tokenStore.accessorView(namespace.RootNamespace).Put(ctx, legacyStorageEntry)
-	require.NoError(t, err)
+			legacySHA1Key := s.SaltID(accessorID)
+			expectedHMACKey := "h" + s.GetHMAC(accessorID)
 
-	migrated, err := c.tokenStore.migrateAccessor(ctx, legacySHA1Key, expectedAccessorEntry)
-	require.NoError(t, err)
-	require.Equal(t, expectedMigration, migrated)
+			sourceKey := legacySHA1Key
+			if tc.storedUnderHMACKey {
+				sourceKey = expectedHMACKey
+			}
 
-	migratedEntry, err := c.tokenStore.accessorView(namespace.RootNamespace).Get(ctx, expectedHMACKey)
-	require.NoError(t, err)
-	require.NotNil(t, migratedEntry)
-	require.Equal(t, expectedHMACKey, migratedEntry.Key)
-	require.Equal(t, expectedStorageValue, migratedEntry.Value)
+			storageEntry, err := logical.StorageEntryJSON(sourceKey, entry)
+			require.NoError(t, err)
 
-	remainingLegacyEntry, err := c.tokenStore.accessorView(namespace.RootNamespace).Get(ctx, legacySHA1Key)
-	require.NoError(t, err)
-	require.Nil(t, remainingLegacyEntry)
+			expectedStorageValue := storageEntry.Value
+
+			if !tc.sourceEntryMissing {
+				err = c.tokenStore.accessorView(namespace.RootNamespace).Put(ctx, storageEntry)
+				require.NoError(t, err)
+			}
+
+			var expectedSHA1Entry *logical.StorageEntry
+			if tc.expected.sha1Exists {
+				expectedSHA1Entry = &logical.StorageEntry{
+					Key:   legacySHA1Key,
+					Value: expectedStorageValue,
+				}
+			}
+
+			var expectedHMACEntry *logical.StorageEntry
+			if tc.expected.hmacExists {
+				expectedHMACEntry = &logical.StorageEntry{
+					Key:   expectedHMACKey,
+					Value: expectedStorageValue,
+				}
+			}
+
+			for _, expectedMigration := range tc.expected.migrationResults {
+				migrated, err := c.tokenStore.migrateAccessor(ctx, sourceKey, entry)
+				require.NoError(t, err)
+				require.Equal(t, expectedMigration, migrated)
+
+				actualSHA1Entry, err := c.tokenStore.accessorView(namespace.RootNamespace).Get(ctx, legacySHA1Key)
+				require.NoError(t, err)
+				require.Equal(t, expectedSHA1Entry, actualSHA1Entry)
+
+				actualHMACEntry, err := c.tokenStore.accessorView(namespace.RootNamespace).Get(ctx, expectedHMACKey)
+				require.NoError(t, err)
+				require.Equal(t, expectedHMACEntry, actualHMACEntry)
+			}
+		})
+	}
 }

@@ -6598,3 +6598,46 @@ func TestTokenStore_LookupSchemaMatchesHandler(t *testing.T) {
 		})
 	}
 }
+
+func TestTokenStore_MigrateAccessor(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(t.Context())
+
+	tokenID := "token-12345"
+	accessorID := "accessor12345"
+	expectedMigration := true
+
+	expectedAccessorEntry := &accessorEntry{
+		TokenID:     tokenID,
+		AccessorID:  accessorID,
+		NamespaceID: namespace.RootNamespaceID,
+	}
+
+	s, err := c.tokenStore.Salt(ctx)
+	require.NoError(t, err)
+
+	legacySHA1Key := s.SaltID(accessorID)
+	expectedHMACKey := "h" + s.GetHMAC(accessorID)
+
+	legacyStorageEntry, err := logical.StorageEntryJSON(legacySHA1Key, expectedAccessorEntry)
+	require.NoError(t, err)
+
+	expectedStorageValue := legacyStorageEntry.Value
+
+	err = c.tokenStore.accessorView(namespace.RootNamespace).Put(ctx, legacyStorageEntry)
+	require.NoError(t, err)
+
+	migrated, err := c.tokenStore.migrateAccessor(ctx, legacySHA1Key, expectedAccessorEntry)
+	require.NoError(t, err)
+	require.Equal(t, expectedMigration, migrated)
+
+	migratedEntry, err := c.tokenStore.accessorView(namespace.RootNamespace).Get(ctx, expectedHMACKey)
+	require.NoError(t, err)
+	require.NotNil(t, migratedEntry)
+	require.Equal(t, expectedHMACKey, migratedEntry.Key)
+	require.Equal(t, expectedStorageValue, migratedEntry.Value)
+
+	remainingLegacyEntry, err := c.tokenStore.accessorView(namespace.RootNamespace).Get(ctx, legacySHA1Key)
+	require.NoError(t, err)
+	require.Nil(t, remainingLegacyEntry)
+}

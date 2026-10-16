@@ -1,0 +1,107 @@
+---
+sidebar_label: subkeys
+description: |-
+  The "kv subkeys" command retrieves the subkeys of a secret from OpenBao's
+  KV Version 2 secrets engine, replacing leaf values with null.
+---
+
+# kv subkeys
+
+:::warning
+
+**NOTE:** This is a [K/V Version 2](../../secrets/kv/kv-v2.mdx) secrets
+engine command, and not available for Version 1.
+
+:::
+
+The `kv subkeys` command retrieves the subkeys of a secret at the specified
+path from OpenBao's key-value store, replacing leaf values with `null`.
+
+This command requires KV Version 2. If no secret exists at the given path,
+an error is returned.
+
+## Examples
+
+Retrieve the subkeys of the secret at path "creds" in the "secret" mount:
+
+```shell-session
+$ bao kv subkeys -mount=secret creds
+==== Secret Path ====
+secret/subkeys/creds
+
+======= Metadata =======
+Key                Value
+---                -----
+created_time       2026-10-13T14:01:15.201531Z
+custom_metadata    <nil>
+deletion_time      n/a
+destroyed          false
+version            1
+
+==== Subkeys ====
+Key         Value
+---         -----
+passcode    <nil>
+```
+
+Retrieve the subkeys of a specific version:
+
+```shell-session
+$ bao kv subkeys -mount=secret -version=2 creds
+```
+
+Limit the returned depth of the structure to top-level keys:
+
+```shell-session
+$ bao kv subkeys -mount=secret -depth=1 creds
+```
+
+Return the subkeys and metadata in JSON format:
+
+```shell-session
+$ bao kv subkeys -mount=secret -format=json creds
+{
+  "request_id": "b5760bd9-e1d9-97a5-62e0-f3af064a0644",
+  "lease_id": "",
+  "lease_duration": 0,
+  "renewable": false,
+  "data": {
+    "metadata": {
+      "created_time": "2026-10-13T14:01:15.201531Z",
+      "custom_metadata": null,
+      "deletion_time": "",
+      "destroyed": false,
+      "version": 1
+    },
+    "subkeys": {
+      "passcode": null
+    }
+  },
+  "warnings": null
+}
+```
+
+## Usage
+
+```shell-session
+bao kv subkeys [options] PATH
+```
+
+### Output options
+
+- `-format` `(string: "table")` - Print the output in the given format. Valid
+  formats are "table", "json", or "yaml". This can also be specified via the
+  `BAO_FORMAT` environment variable.
+
+### Command options
+
+- `-mount` `(string: "")` - Specifies the path where the KV backend is mounted.
+  If specified, the `PATH` argument is interpreted as the secret path relative
+  to the given mount. Otherwise, the `PATH` argument is interpreted as the
+  combined mount path and secret path.
+
+- `-version` `(int: 0)` - Specifies the version to return. If not set, the
+  latest version is returned.
+
+- `-depth` `(int: 0)` - Specifies the maximum nesting depth of the returned
+  subkeys. If not set, no depth limit is applied.

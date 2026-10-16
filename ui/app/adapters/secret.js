@@ -60,16 +60,18 @@ export default ApplicationAdapter.extend({
 
   fetchByQuery(query, action) {
     const { id, backend, wrapTTL } = query;
-    return this.ajax(this.urlForSecret(backend, id), 'GET', this.optionsForQuery(id, action, wrapTTL)).then(
-      (resp) => {
-        if (wrapTTL) {
-          return resp;
-        }
-        resp.id = id;
-        resp.backend = backend;
+    const options = this.optionsForQuery(id, action, wrapTTL);
+    if (action === 'query' && query.scan) {
+      options.data = { scan: true };
+    }
+    return this.ajax(this.urlForSecret(backend, id), 'GET', options).then((resp) => {
+      if (wrapTTL) {
         return resp;
       }
-    );
+      resp.id = id;
+      resp.backend = backend;
+      return resp;
+    });
   },
 
   query(store, type, query) {

@@ -14,6 +14,7 @@ import (
 	logicalKv "github.com/openbao/openbao/v2/internal/builtin/logical/kv"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,8 +36,12 @@ var (
 // which will perform the cleanup of all existing versions of the secret, as
 // well as the secret that was written for comparison.
 func setupKVv2Test(t *testing.T) (func(t *testing.T), *api.KVSecret) {
-	writtenSecret, err := client.KVv2(v2MountPath).Put(t.Context(), secretPath, secretData)
-	require.NoError(t, err)
+	var writtenSecret *api.KVSecret
+	var err error
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		writtenSecret, err = client.KVv2(v2MountPath).Put(t.Context(), secretPath, secretData)
+		require.NoError(collect, err)
+	}, 10*time.Second, time.Second)
 	if writtenSecret == nil || writtenSecret.VersionMetadata == nil {
 		t.Fatal("secret created during kv v2 subtest setup did not have expected contents")
 	}

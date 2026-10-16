@@ -1,0 +1,140 @@
+// Dark theme overrides
+@mixin dark-theme {
+  // Search inputs not covered by .input (power-select search, bare search fields)
+  .ember-power-select-search-input,
+  input[type='search'] {
+    background-color: #1b1b1d;
+    color: #e3e3e3;
+    border-color: rgba(255, 255, 255, 0.15);
+
+    &::placeholder {
+      color: #a0a3ab;
+    }
+
+    &:focus,
+    &:focus-visible {
+      outline: none;
+      border-color: #79c0ab;
+      box-shadow: 0 0 0 0.125em rgba(121, 192, 171, 0.25);
+    }
+  }
+
+  // HDS tokens
+  //  Sidebar
+  --token-side-nav-color-surface-primary: #242526;
+  --token-side-nav-color-foreground-primary: #e3e3e3;
+  --token-side-nav-color-foreground-strong: #ffffff;
+
+  //  Focus rings (keyboard focus on every HDS control)
+  --token-color-focus-action-internal: #79c0ab;
+  --token-color-focus-action-external: rgba(121, 192, 171, 0.5);
+
+  //  Text, links, surfaces for HDS components
+  --token-color-foreground-strong: #ffffff;
+  --token-color-foreground-primary: #e3e3e3;
+  --token-color-foreground-faint: #a0a3ab;
+  --token-color-foreground-action: #79c0ab;
+  --token-color-foreground-action-hover: #64b69e;
+  --token-color-foreground-action-active: #59b197;
+  --token-color-surface-primary: #1b1b1d;
+  --token-color-surface-faint: #242526;
+  --token-color-surface-strong: #2e2f31;
+  --token-color-border-primary: rgba(255, 255, 255, 0.12);
+
+  // Additional overrides
+  // Page title
+  .title,
+  .title > a {
+    color: #e3e3e3;
+  }
+
+  // Toolbar band
+  .toolbar {
+    background-color: #2e2f31;
+    border-color: rgba(255, 255, 255, 0.12);
+
+    &::after {
+      background: linear-gradient(to right, #2e2f31, rgba(46, 47, 49, 0));
+    }
+  }
+
+  .toolbar-link {
+    color: #e3e3e3;
+
+    &:hover:not(.disabled) {
+      background-color: #3a3b3d;
+      color: #79c0ab;
+    }
+  }
+
+  // Text inputs and search fields
+  .input,
+  .textarea,
+  .ember-power-select-trigger {
+    background-color: #1b1b1d;
+    color: #e3e3e3;
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  // Toggle track (off state)
+  .toggle[type='checkbox'] + label::before {
+    background: #3a3b3d;
+  }
+
+  // Cards and list rows
+  .box {
+    background-color: #242526;
+    color: #e3e3e3;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+  }
+
+  // Text helper classes
+  .has-text-black {
+    color: #e3e3e3 !important;
+  }
+
+  .has-text-grey {
+    color: #a0a3ab !important;
+  }
+
+  // "..." menu trigger and its dropdown
+  .popup-menu-trigger {
+    color: #e3e3e3;
+  }
+
+  .popup-menu-content,
+  div > .ember-power-select-options {
+    background-color: #242526;
+    border-color: rgba(255, 255, 255, 0.12);
+
+    button.link,
+    a,
+    .ember-power-select-option {
+      background-color: #242526;
+      color: #e3e3e3;
+
+      &:hover {
+        background-color: #2e2f31;
+        color: #ffffff;
+      }
+    }
+
+    .ember-power-select-option[aria-current='true'] {
+      background-color: #2e2f31;
+      color: #ffffff;
+    }
+  }
+
+  .ember-power-select-search::after {
+    background: #242526;
+  }
+}
+
+:root[data-theme='dark'] {
+  @include dark-theme;
+  background-color: #1b1b1d;
+}
+
+:root[data-theme='dark'] body {
+  color: var(--token-color-foreground-primary);
+}

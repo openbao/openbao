@@ -38,6 +38,7 @@ var (
 func setupKVv2Test(t *testing.T) (func(t *testing.T), *api.KVSecret) {
 	var writtenSecret *api.KVSecret
 	var err error
+	// Wait for upgrading from non-versioned to versioned data
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {
 		writtenSecret, err = client.KVv2(v2MountPath).Put(t.Context(), secretPath, secretData)
 		require.NoError(collect, err)

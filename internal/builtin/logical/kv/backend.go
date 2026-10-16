@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"path"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -58,9 +57,9 @@ type versionedKVBackend struct {
 	// through the backend config.
 	storagePrefix string
 
-	// upgrading is an atomic value denoting if the backend is in the process of
-	// upgrading its data.
-	upgrading atomic.Bool
+	// upgrading remains open while the backend is in the process of upgrading
+	// its data, and is closed after.
+	upgrading chan struct{}
 
 	// globalConfig is a cached value for fast lookup
 	globalConfig     *Configuration
@@ -154,11 +153,19 @@ func VersionedKVFactory(ctx context.Context, conf *logical.BackendConfig) (logic
 	if err != nil {
 		return nil, err
 	}
-	if !upgradeDone {
-		err := b.Upgrade(upgradeCtx, conf.StorageView)
-		if err != nil {
-			return nil, err
-		}
+
+	b.upgrading = make(chan struct{})
+
+	if upgradeDone {
+		// Note that a nil channel would block indefinitely when received
+		// from, so we must construct a closed channel here opposed to just not
+		// creating one.
+		close(b.upgrading)
+		return b, nil
+	}
+
+	if err := b.Upgrade(upgradeCtx, conf.StorageView); err != nil {
+		return nil, err
 	}
 
 	return b, nil

@@ -16,6 +16,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/elliptic"
 	"crypto/mldsa"
 	"crypto/rsa"
 	"crypto/tls"
@@ -42,9 +43,35 @@ const (
 // This can be one of a few key types so the different params may or may not be filled
 type ClusterKeyParams struct {
 	Type string   `json:"type" structs:"type" mapstructure:"type"`
-	X    *big.Int `json:"x" structs:"x" mapstructure:"x"`
-	Y    *big.Int `json:"y" structs:"y" mapstructure:"y"`
 	D    *big.Int `json:"d" structs:"d" mapstructure:"d"`
+
+	// Deprecated: The standard library has deprecated the equivalent
+	// field within crypto/ecdsa. To convert to an ecdsa.PrivateKey, prefer
+	// ecdsa.ParseRawPrivateKey using D's byte representation instead.
+	X *big.Int `json:"x" structs:"x" mapstructure:"x"`
+
+	// Deprecated: The standard library has deprecated the equivalent
+	// field within crypto/ecdsa. To convert to an ecdsa.PrivateKey, prefer
+	// ecdsa.ParseRawPrivateKey using D's byte representation instead.
+	Y *big.Int `json:"y" structs:"y" mapstructure:"y"`
+}
+
+// ECDSAPrivateKey converts the parameters into an ECDSA private key.
+func (c *ClusterKeyParams) ECDSAPrivateKey() (*ecdsa.PrivateKey, error) {
+	var curve elliptic.Curve
+	switch c.Type {
+	case PrivateKeyTypeP521:
+		curve = elliptic.P521()
+	default:
+		return nil, fmt.Errorf("not a known ECDSA key type: %q", c.Type)
+	}
+	if c.D == nil {
+		return nil, errors.New("missing key parameters")
+	}
+	// Round to 8 bits upward since big.Int truncates padding.
+	D := make([]byte, (curve.Params().BitSize+7)/8)
+	c.D.FillBytes(D)
+	return ecdsa.ParseRawPrivateKey(curve, D)
 }
 
 // Secret is used to attempt to unmarshal a Vault secret

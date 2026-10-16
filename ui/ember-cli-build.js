@@ -15,10 +15,6 @@ const isTest = environment === 'test';
 // const isCI = !!process.env.CI;
 
 const appConfig = {
-  'ember-service-worker': {
-    serviceWorkerScope: config.serviceWorkerScope,
-    skipWaitingOnMessage: true,
-  },
   svgJar: {
     //optimize: false,
     //paths: [],

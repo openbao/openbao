@@ -28,7 +28,7 @@
         "lib/kmip/app/*",
         "lib/open-api-explorer/app/*",
         "lib/pki/app/*",
-        "lib/service-worker-authenticated-download/app/*"
+        "lib/service-worker-authenticated-download/*"
       ],
       "core": ["lib/core/addon"],
       "core/*": ["lib/core/addon/*"],

@@ -11,6 +11,8 @@ module.exports = function (environment) {
     modulePrefix: 'vault',
     environment,
     rootURL: '/ui/',
+    // Scope of the service worker in public/sw.js. Has to be kept in sync
+    // with public/sw.js and public/sw-registration.js.
     serviceWorkerScope: '/v1/sys/storage/raft/snapshot',
     locationType: 'history',
     EmberENV: {

@@ -3,16 +3,18 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { createUrlRegEx, urlMatchesAnyPattern } from 'ember-service-worker/service-worker/url-utils';
+// Keep in sync with the paths in sw-registration.js.
+const PATHS = ['/v1/sys/storage/raft/snapshot'];
 
-var patterns = ['/v1/sys/storage/raft/snapshot'];
-var REGEXES = patterns.map(createUrlRegEx);
+function urlMatchesAnyPath(url) {
+  return PATHS.indexOf(new URL(url, self.location).pathname) !== -1;
+}
 
 function sendMessage(message) {
   return self.clients.matchAll({ includeUncontrolled: true, type: 'window' }).then(function (results) {
-    var client = results[0];
+    const client = results[0];
     return new Promise(function (resolve, reject) {
-      var messageChannel = new MessageChannel();
+      const messageChannel = new MessageChannel();
       messageChannel.port2.onmessage = function (event) {
         if (event.data.error) {
           reject(event.data.error);
@@ -27,7 +29,7 @@ function sendMessage(message) {
 }
 
 function authenticateRequest(request) {
-  // copy the reaquest headers so we can mutate them
+  // copy the request headers so we can mutate them
   const headers = new Headers(request.headers);
 
   // get and set vault token so the request is authenticated
@@ -39,7 +41,7 @@ function authenticateRequest(request) {
     return fetch(
       new Request(request.url, {
         method: request.method,
-        headers,
+        headers: headers,
       })
     );
   });
@@ -48,7 +50,7 @@ function authenticateRequest(request) {
 self.addEventListener('fetch', function (fetchEvent) {
   const request = fetchEvent.request;
 
-  if (urlMatchesAnyPattern(request.url, REGEXES) && request.method === 'GET') {
+  if (urlMatchesAnyPath(request.url) && request.method === 'GET') {
     return fetchEvent.respondWith(authenticateRequest(request));
   } else {
     return fetchEvent.respondWith(fetch(request));

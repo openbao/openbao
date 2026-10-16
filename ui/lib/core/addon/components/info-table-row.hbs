@@ -3,7 +3,7 @@
     <div
       class="column is-one-quarter {{if this.hasLabelOverflow 'label-overflow'}}"
       data-test-label-div
-      {{did-insert this.calculateLabelOverflow}}
+      {{invoke this.calculateLabelOverflow}}
     >
       {{#if @label}}
         {{#if this.hasLabelOverflow}}

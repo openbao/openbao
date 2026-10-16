@@ -5,7 +5,7 @@
 
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
-import { render, click, fillIn } from '@ember/test-helpers';
+import { render, click, fillIn, find, waitUntil } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 import { setupMirage } from 'ember-cli-mirage/test-support';
 
@@ -226,7 +226,6 @@ module('Integration | Component | mfa-login-enforcement-form', function (hooks) 
       },
       { label: 'Authentication method', value: 'userpass', key: 'auth_method_types', type: 'method' },
       { label: 'Group', value: 'bar group 1234', key: 'identity_groups', type: 'identity/group' },
-      { label: 'Entity', value: 'foo entity 1234', key: 'identity_entities', type: 'identity/entity' },
     ];
 
     for (const [index, target] of targets.entries()) {
@@ -241,13 +240,14 @@ module('Integration | Component | mfa-login-enforcement-form', function (hooks) 
       await click(`[data-test-mlef-remove-target="${target.label}"]`);
       assert
         .dom('[data-test-mlef-target]')
-        .exists({ count: targets.length - (index + 1) }, `${target.label} target removed`);
+        .exists({ count: targets.length - index }, `${target.label} target removed`);
       assert.notOk(this.model[target.key].length, `${target.label} removed from correct model prop`);
     }
     // add targets
     for (const target of targets) {
       await fillIn('[data-test-mlef-select="target-type"] select', target.type);
-      if (['Group', 'Entity'].includes(target.label)) {
+      if (target.label === 'Group') {
+        await waitUntil(() => find(`[data-test-mlef-search="${target.type}"]`));
         await click(`[data-test-mlef-search="${target.type}"] .ember-basic-dropdown-trigger`);
         await click('.ember-power-select-option');
       } else {

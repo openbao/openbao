@@ -160,11 +160,12 @@ cKumubUxOfFdy1ZvAAAAEm5jY0BtYnAudWJudC5sb2NhbA==
 	dockerImageTagSupportsNoRSA1 = "8.4_p1-r3-ls48"
 )
 
-func prepareTestContainer(t *testing.T, tag, caPublicKeyPEM string) (func(), string) {
+func prepareTestContainer(t *testing.T, tag, caPublicKeyPEM string) string {
 	if tag == "" {
 		tag = dockerImageTagSupportsNoRSA1
 	}
 	runner, err := docker.NewServiceRunner(docker.RunOptions{
+		Testing:       t,
 		ContainerName: "openssh",
 		ImageRepo:     "docker.mirror.hashicorp.services/linuxserver/openssh-server",
 		ImageTag:      tag,
@@ -178,7 +179,9 @@ func prepareTestContainer(t *testing.T, tag, caPublicKeyPEM string) (func(), str
 	})
 	require.NoError(t, err)
 
-	svc, err := runner.StartService(t.Context(), func(ctx context.Context, host string, port int) (docker.ServiceConfig, error) {
+	timer, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
+	t.Cleanup(cancel)
+	svc, startErr := runner.StartService(timer, func(ctx context.Context, host string, port int) (docker.ServiceConfig, error) {
 		ipaddr, err := net.ResolveIPAddr("ip", host)
 		if err != nil {
 			return nil, err
@@ -206,8 +209,8 @@ func prepareTestContainer(t *testing.T, tag, caPublicKeyPEM string) (func(), str
 
 		return docker.NewServiceHostPort(ipaddr.String(), port), nil
 	})
-	require.NoError(t, err)
-	return svc.Cleanup, svc.Config.Address()
+	require.NoError(t, startErr)
+	return svc.Config.Address()
 }
 
 func testSSH(user, host string, auth ssh.AuthMethod, command string) error {
@@ -680,8 +683,7 @@ func TestSSHBackend_OTPRoleCrud(t *testing.T) {
 }
 
 func TestSSHBackend_OTPCreate(t *testing.T) {
-	cleanup, sshAddress := prepareTestContainer(t, "", "")
-	defer cleanup()
+	sshAddress := prepareTestContainer(t, "", "")
 
 	host, port, err := net.SplitHostPort(sshAddress)
 	require.NoError(t, err)
@@ -886,8 +888,7 @@ func TestSSHBackend_CA(t *testing.T) {
 }
 
 func testSSHBackend_CA(t *testing.T, dockerImageTag, caPublicKey, caPrivateKey, algorithmSigner string, expectError bool) {
-	cleanup, sshAddress := prepareTestContainer(t, dockerImageTag, caPublicKey)
-	defer cleanup()
+	sshAddress := prepareTestContainer(t, dockerImageTag, caPublicKey)
 	b, _ := CreateBackendWithStorage(t)
 
 	roleOptions := map[string]any{
@@ -962,8 +963,7 @@ func testSSHBackend_CA(t *testing.T, dockerImageTag, caPublicKey, caPrivateKey, 
 }
 
 func TestSSHBackend_CAUpgradeAlgorithmSigner(t *testing.T) {
-	cleanup, sshAddress := prepareTestContainer(t, dockerImageTagSupportsRSA1, testCAPublicKey)
-	defer cleanup()
+	sshAddress := prepareTestContainer(t, dockerImageTagSupportsRSA1, testCAPublicKey)
 	b, _ := CreateBackendWithStorage(t)
 
 	// Old role entries between 1.4.3 and 1.5.2 had algorithm_signer default to
@@ -3043,8 +3043,7 @@ func TestSSHBackend_BasicIssuerOperations(t *testing.T) {
 	}
 
 	// prepare test container to test SSH
-	cleanup, sshAddress := prepareTestContainer(t, dockerImageTagSupportsRSA1, caPublicKey)
-	defer cleanup()
+	sshAddress := prepareTestContainer(t, dockerImageTagSupportsRSA1, caPublicKey)
 
 	// try to sign a key with the role, should succeed as there is an issuer configured as default
 	resp, err = b.HandleRequest(t.Context(), signReq)
@@ -3130,8 +3129,7 @@ func TestSSHBackend_DefaultIssuerBehavior(t *testing.T) {
 	require.NoError(t, err)
 
 	// SSH should fail since we're using a different issuer
-	cleanup, sshAddress := prepareTestContainer(t, dockerImageTagSupportsRSA1, "")
-	defer cleanup()
+	sshAddress := prepareTestContainer(t, dockerImageTagSupportsRSA1, "")
 
 	err = testSSH(testUserName, sshAddress, ssh.PublicKeys(certSigner), "date")
 	if err == nil {

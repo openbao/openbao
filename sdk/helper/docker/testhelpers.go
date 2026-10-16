@@ -14,11 +14,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/cenkalti/backoff/v5"
@@ -31,6 +32,7 @@ import (
 	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
+	"golang.org/x/sync/errgroup"
 )
 
 type Runner struct {
@@ -61,6 +63,7 @@ type RunOptions struct {
 	LogStderr              io.Writer
 	LogStdout              io.Writer
 	VolumeNameToMountPoint map[string]string
+	Testing                *testing.T
 
 	// WriteInto is provided instead of Runner.CopyTo(...) so that it executes
 	// before the container starts, providing an opportunity to provision
@@ -73,31 +76,14 @@ func NewDockerAPI() (*client.Client, error) {
 	return client.New(client.FromEnv, client.WithAPIVersion(client.MinAPIVersion))
 }
 
+// NewServiceRunner configures and creates a Docker client.
 func NewServiceRunner(opts RunOptions) (*Runner, error) {
 	dapi, err := NewDockerAPI()
 	if err != nil {
 		return nil, err
 	}
 
-	if opts.NetworkName == "" {
-		opts.NetworkName = os.Getenv("TEST_DOCKER_NETWORK_NAME")
-	}
-	if opts.NetworkName != "" {
-		listResult, err := dapi.NetworkList(context.TODO(), client.NetworkListOptions{
-			Filters: make(client.Filters).Add("name", opts.NetworkName),
-		})
-		nets := listResult.Items
-		if err != nil {
-			return nil, err
-		}
-		if len(nets) != 1 {
-			return nil, fmt.Errorf("expected exactly one docker network named %q, got %d", opts.NetworkName, len(nets))
-		}
-		opts.NetworkID = nets[0].ID
-	}
-	if opts.NetworkID == "" {
-		opts.NetworkID = os.Getenv("TEST_DOCKER_NETWORK_ID")
-	}
+	// Name a future container.
 	if opts.ContainerName == "" {
 		if strings.Contains(opts.ImageRepo, "/") {
 			return nil, errors.New("ContainerName is required for non-library images")
@@ -209,7 +195,12 @@ var _ io.Writer = &LogConsumerWriter{}
 // 'addSuffix' will add a random UUID to the end of the container name.
 // 'forceLocalAddr' will force the container address returned to be in the
 // form of '127.0.0.1:1234' where 1234 is the mapped container port.
-func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr bool, connect ServiceAdapter) (*Service, string, error) {
+func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr bool, connect ServiceAdapter) (
+	service *Service,
+	containerID string,
+	initErr error,
+) {
+	// Delete any running container with a name that matches the name of a container we want to start.
 	if d.RunOptions.PreDelete {
 		name := d.RunOptions.ContainerName
 		matches, err := d.DockerAPI.ContainerList(ctx, client.ContainerListOptions{
@@ -227,12 +218,19 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 			}
 		}
 	}
+
+	// Configure options and request that the Docker Daemon create the container with a unique ID.
+	// Return a StartResult struct with an IP address.
 	result, err := d.Start(ctx, addSuffix, forceLocalAddr)
 	if err != nil {
 		return nil, "", err
 	}
+	service = &Service{
+		StartResult: result,
+		Container:   result.Container,
+	}
+	containerID = result.Container.ID
 
-	var wg sync.WaitGroup
 	consumeLogs := false
 	var logStdout, logStderr io.Writer
 	if d.RunOptions.LogStdout != nil && d.RunOptions.LogStderr != nil {
@@ -256,29 +254,30 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 	// Vault on stdout/stderr before it sends the signal, and we don't want to
 	// run the PostStart until we've hooked into the docker logs.
 	if consumeLogs {
-		wg.Add(1)
-		go func() {
+		errGroup, errGroupCtx := errgroup.WithContext(d.RunOptions.Testing.Context())
+		errGroup.Go(func() error {
 			// We must run inside a goroutine because we're using Follow:true,
 			// and StdCopy will block until the log stream is closed.
-			stream, err := d.DockerAPI.ContainerLogs(context.Background(), result.Container.ID, client.ContainerLogsOptions{
+			stream, err := d.DockerAPI.ContainerLogs(errGroupCtx, result.Container.ID, client.ContainerLogsOptions{
 				ShowStdout: true,
 				ShowStderr: true,
 				Timestamps: !d.RunOptions.OmitLogTimestamps,
 				Details:    true,
 				Follow:     true,
 			})
-			wg.Done()
 			if err != nil {
-				d.RunOptions.LogConsumer(fmt.Sprintf("error reading container logs: %v", err))
+				return err
 			} else {
 				_, err := stdcopy.StdCopy(logStdout, logStderr, stream)
-				if err != nil {
-					d.RunOptions.LogConsumer(fmt.Sprintf("error demultiplexing docker logs: %v", err))
-				}
+				return err
 			}
-		}()
+		})
+
+		streamErr := errGroup.Wait()
+		if streamErr != nil {
+			return nil, "", fmt.Errorf("TESTHELPERS: Error reading container logs: %v", streamErr)
+		}
 	}
-	wg.Wait()
 
 	if d.RunOptions.PostStart != nil {
 		if err := d.RunOptions.PostStart(result.Container.ID, result.RealIP); err != nil {
@@ -286,48 +285,17 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 		}
 	}
 
-	cleanup := func() {
-		for range 10 {
-			if func() bool {
-				// Container removal may take a little bit, but do not
-				// prematurely time out because our parent context was
-				// cancelled on us.
-				cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-				defer cancel()
-
-				// We don't necessarily have anywhere to surface this error
-				// so swallow it.
-				_, err := d.DockerAPI.ContainerRemove(cleanupCtx, result.Container.ID, client.ContainerRemoveOptions{Force: true})
-				if err == nil || errdefs.IsNotFound(err) {
-					return true
-				}
-
-				return false
-			}() {
-				// OK to return early
-				return
-			}
-
-			time.Sleep(1 * time.Second)
-		}
+	host, portStr, splitErr := net.SplitHostPort(result.Addrs[0])
+	if splitErr != nil {
+		return nil, "", splitErr
 	}
-
-	pieces := strings.Split(result.Addrs[0], ":")
-	portInt, err := strconv.Atoi(pieces[1])
+	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		return nil, "", err
 	}
 
-	bo := backoff.NewExponentialBackOff()
-	bo.MaxInterval = time.Second * 5
-
 	op := func() (ServiceConfig, error) {
-		container, err := d.DockerAPI.ContainerInspect(ctx, result.Container.ID, client.ContainerInspectOptions{})
-		if err != nil || !container.Container.State.Running {
-			return nil, backoff.Permanent(fmt.Errorf("failed inspect or container %q not running (%v): %w", result.Container.ID, container.Container.State.Status, err))
-		}
-
-		c, err := connect(ctx, pieces[0], portInt)
+		c, err := connect(ctx, host, port)
 		if err != nil {
 			return nil, err
 		}
@@ -337,25 +305,20 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 		return c, nil
 	}
 
+	bo := backoff.NewExponentialBackOff()
+	bo.MaxInterval = time.Second * 5
 	config, err := backoff.Retry(ctx, op, backoff.WithBackOff(bo), backoff.WithMaxElapsedTime(2*time.Minute))
 	if err != nil {
-		if !d.RunOptions.DoNotAutoRemove {
-			cleanup()
-		}
 		return nil, "", err
 	}
+	service.Config = config
+	initErr = nil
 
-	return &Service{
-		Config:      config,
-		Cleanup:     cleanup,
-		Container:   result.Container,
-		StartResult: result,
-	}, result.Container.ID, nil
+	return service, containerID, initErr
 }
 
 type Service struct {
 	Config      ServiceConfig
-	Cleanup     func()
 	Container   *container.InspectResponse
 	StartResult *StartResult
 }
@@ -441,7 +404,12 @@ func (d *Runner) pull(ctx context.Context, image string, opts client.ImagePullOp
 	}
 }
 
-func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*StartResult, error) {
+func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (
+	result *StartResult,
+	startErr error,
+) {
+	d.RunOptions.Testing.Helper()
+	// Draft name of the container with a unique ID.
 	name := d.RunOptions.ContainerName
 	if addSuffix {
 		suffix, err := uuid.GenerateUUID()
@@ -451,6 +419,7 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 		name += "-" + suffix
 	}
 
+	// Assign unique name and other options to a container.
 	cfg := &container.Config{
 		Hostname: name,
 		Image:    fmt.Sprintf("%s:%s", d.RunOptions.ImageRepo, d.RunOptions.ImageTag),
@@ -458,6 +427,8 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 		Env:      d.RunOptions.Env,
 		Cmd:      d.RunOptions.Cmd,
 	}
+
+	// Configure port of container.
 	if len(d.RunOptions.Ports) > 0 {
 		cfg.ExposedPorts = make(network.PortSet)
 		for _, p := range d.RunOptions.Ports {
@@ -467,11 +438,16 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 			}
 			cfg.ExposedPorts[port] = struct{}{}
 		}
+	} else {
+		return nil, errors.New("TESTHELPERS, docker: Missing ports in configuration.")
 	}
+
+	// Configure first command of the executable inside the container.
 	if len(d.RunOptions.Entrypoint) > 0 {
 		cfg.Entrypoint = d.RunOptions.Entrypoint
 	}
 
+	// Configure the host and Linux Capabilities limiting the container.
 	hostConfig := &container.HostConfig{
 		AutoRemove:      !d.RunOptions.DoNotAutoRemove,
 		PublishAllPorts: true,
@@ -479,6 +455,8 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 	if len(d.RunOptions.Capabilities) > 0 {
 		hostConfig.CapAdd = d.RunOptions.Capabilities
 	}
+
+	// Configure host ports to align with container ports.
 	if len(d.RunOptions.PublishPorts) > 0 {
 		hostConfig.PortBindings = make(network.PortMap)
 		for hostPort, containerPort := range d.RunOptions.PublishPorts {
@@ -487,13 +465,10 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 		}
 	}
 
+	// Configure a container's NetworkID.
 	netConfig := &network.NetworkingConfig{}
-	if d.RunOptions.NetworkID != "" {
-		netConfig.EndpointsConfig = map[string]*network.EndpointSettings{
-			d.RunOptions.NetworkID: {},
-		}
-	}
 
+	// Configure access to an Image Repository, then download the Image.
 	var opts client.ImagePullOptions
 	if d.RunOptions.AuthUsername != "" && d.RunOptions.AuthPassword != "" {
 		var buf bytes.Buffer
@@ -508,6 +483,7 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 	}
 	d.pull(ctx, cfg.Image, opts)
 
+	// Configure insecure volumes for the container.
 	for vol, mtpt := range d.RunOptions.VolumeNameToMountPoint {
 		hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
 			Type:     "volume",
@@ -517,6 +493,7 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 		})
 	}
 
+	// Produce the container, and schedule its removal.
 	c, err := d.DockerAPI.ContainerCreate(ctx, client.ContainerCreateOptions{
 		Config:           cfg,
 		HostConfig:       hostConfig,
@@ -527,14 +504,27 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 	if err != nil {
 		return nil, fmt.Errorf("container create failed: %v", err)
 	}
+	d.RunOptions.Testing.Cleanup(func() {
+		errGroup, errGroupCtx := errgroup.WithContext(context.Background())
+		errGroup.Go(func() error {
+			forceRemove := client.ContainerRemoveOptions{Force: true}
+			_, removeErr := d.DockerAPI.ContainerRemove(errGroupCtx, c.ID, forceRemove)
+			return removeErr
+		})
+		cleanupErr := errGroup.Wait()
+		if cleanupErr != nil {
+			d.RunOptions.Testing.Log(cleanupErr.Error())
+		}
+	})
 
+	// Copy data to the container file system.
 	for from, to := range d.RunOptions.CopyFromTo {
 		if err := copyToContainer(ctx, d.DockerAPI, c.ID, from, to); err != nil {
-			_, _ = d.DockerAPI.ContainerRemove(ctx, c.ID, client.ContainerRemoveOptions{})
 			return nil, err
 		}
 	}
 
+	// Copy data to the container file system.
 	for destination, contents := range d.RunOptions.WriteInto {
 		// Convert our provided contents to a tarball to ship up.
 		tar, err := contents.ToTarball()
@@ -551,57 +541,110 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 		}
 	}
 
+	// Request the Docker Daemon to start a container. Remove it when an error occurs.
 	_, err = d.DockerAPI.ContainerStart(ctx, c.ID, client.ContainerStartOptions{})
 	if err != nil {
-		_, _ = d.DockerAPI.ContainerRemove(ctx, c.ID, client.ContainerRemoveOptions{})
 		return nil, fmt.Errorf("container start failed: %v", err)
 	}
 
+	// Read data about the newly created container.
 	inspect, err := d.DockerAPI.ContainerInspect(ctx, c.ID, client.ContainerInspectOptions{})
 	if err != nil {
-		_, _ = d.DockerAPI.ContainerRemove(ctx, c.ID, client.ContainerRemoveOptions{})
 		return nil, err
 	}
+	result = &StartResult{Container: &inspect.Container}
 
-	var addrs []string
+	// Schedule test dial to container. This closure ensures the error
+	// will be evaluated after Runner.Start exits, then it can modify
+	// the error before the func returns.
+	defer func() {
+		if startErr == nil {
+			timer, cancel := context.WithTimeout(ctx, 15*time.Second)
+			defer cancel()
+			startErr = testCallContainer(timer, result.Addrs[0])
+		}
+	}()
+
+	// Prepare the list of IP addresses to write into the StartResult struct.
 	for _, port := range d.RunOptions.Ports {
+		// Parse & evaluate configured port for the absence of a protocol to avoid
+		// the accidental adoption of TCP in the subsequent ParsePort func.
 		pieces := strings.Split(port, "/")
 		if len(pieces) < 2 {
 			return nil, fmt.Errorf("expected port of the form 1234/tcp, got: %s", port)
 		}
 		if d.RunOptions.NetworkID != "" && !forceLocalAddr {
-			addrs = append(addrs, fmt.Sprintf("%s:%s", cfg.Hostname, pieces[0]))
+			result.Addrs = append(result.Addrs, fmt.Sprintf("%s:%s", cfg.Hostname, pieces[0]))
 		} else {
 			p, err := network.ParsePort(port)
 			if err != nil {
 				return nil, err
 			}
-			mapped, ok := inspect.Container.NetworkSettings.Ports[p]
+			mapped, ok := result.Container.NetworkSettings.Ports[p]
+			// Verify presence of a configured port in the running container.
 			if !ok || len(mapped) == 0 {
 				return nil, fmt.Errorf("no port mapping found for %s", port)
 			}
-			addrs = append(addrs, fmt.Sprintf("127.0.0.1:%s", mapped[0].HostPort))
+			result.Addrs = append(result.Addrs, fmt.Sprintf("127.0.0.1:%s", mapped[0].HostPort))
 		}
 	}
 
-	var realIP string
+	// Read the IP Address of the container.
+	networks := result.Container.NetworkSettings.Networks
 	if d.RunOptions.NetworkID == "" {
-		if len(inspect.Container.NetworkSettings.Networks) > 1 {
-			return nil, fmt.Errorf("set d.RunOptions.NetworkName instead for container with multiple networks: %v", inspect.Container.NetworkSettings.Networks)
+		if len(networks) > 1 {
+			return nil, fmt.Errorf("set d.RunOptions.NetworkName instead for container with multiple networks: %v", networks)
 		}
-		for _, network := range inspect.Container.NetworkSettings.Networks {
-			realIP = network.IPAddress.String()
+		// When the NewServiceRunner fails to identify a NetworkID, then this
+		// loop that reads one item from a map will identify the network.
+		for _, network := range networks {
+			result.RealIP = network.IPAddress.String()
 			break
 		}
 	} else {
-		realIP = inspect.Container.NetworkSettings.Networks[d.RunOptions.NetworkName].IPAddress.String()
+		result.RealIP = networks[d.RunOptions.NetworkName].IPAddress.String()
 	}
 
-	return &StartResult{
-		Container: &inspect.Container,
-		Addrs:     addrs,
-		RealIP:    realIP,
-	}, nil
+	if result.Container.State.Running {
+		startErr = nil
+	} else {
+		startErr = fmt.Errorf("TESTHELPERS: Container %s status is %s.", result.Container.ID, result.Container.State.Status)
+	}
+	return result, startErr
+}
+
+// testCallContainer calls a TCP port and reports any failures.
+func testCallContainer(ctx context.Context, address string) error {
+	// Configure a caller.
+	caller := net.Dialer{
+		Timeout: 1 * time.Minute,
+	}
+
+	// Open a TCP connection, and schedule closing it.
+	conn, connErr := caller.DialContext(ctx, "tcp", address)
+	if connErr != nil {
+		return connErr
+	}
+	defer func() error {
+		return conn.Close()
+	}()
+
+	// Wait 10 seconds for reading & writing.
+	timer := time.Now().Add(10 * time.Second)
+	setErr := conn.SetDeadline(timer)
+	if setErr != nil {
+		return setErr
+	}
+
+	// Transmit data to the container.
+	msg := []byte("test test test")
+	_, writeErr := conn.Write(msg)
+	if writeErr != nil {
+		return writeErr
+	}
+
+	// Success!
+	return nil
 }
 
 func (d *Runner) RefreshFiles(ctx context.Context, containerID string) error {

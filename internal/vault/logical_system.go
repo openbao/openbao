@@ -647,6 +647,7 @@ func getVersion(d *framework.FieldData) (version string, builtin bool, err error
 }
 
 func (b *SystemBackend) handlePluginReloadUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	scope := d.Get("scope").(string)
 	pluginName := d.Get("plugin").(string)
 	pluginMounts := d.Get("mounts").([]string)
 
@@ -657,13 +658,29 @@ func (b *SystemBackend) handlePluginReloadUpdate(ctx context.Context, req *logic
 		return logical.ErrorResponse("plugin or mounts must be provided"), nil
 	}
 
+	var global bool
+	switch scope {
+	case "":
+	case "global":
+		global = true
+	default:
+		return logical.ErrorResponse(`scope must be unset or "global"`), nil
+	}
+
+	if global && b.Core.Standby() {
+		// Fast-path to forwarding here so we don't make it halfway through a
+		// reload and then attempt to write to storage to propagate to other
+		// nodes.
+		return nil, logical.ErrReadOnly
+	}
+
 	if pluginName != "" {
-		err := b.Core.reloadMatchingPlugin(ctx, pluginName)
+		err := b.Core.reloadMatchingPlugin(ctx, pluginName, global)
 		if err != nil {
 			return handleError(err)
 		}
 	} else if len(pluginMounts) > 0 {
-		err := b.Core.reloadMatchingPluginMounts(ctx, pluginMounts)
+		err := b.Core.reloadMatchingPluginMounts(ctx, pluginMounts, global)
 		if err != nil {
 			return handleError(err)
 		}
@@ -1896,7 +1913,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 	if kvUpgrade {
 		resp := &logical.Response{}
 		resp.AddWarning(fmt.Sprintf("Upgrading mount from version %d to version %d. This mount will be unavailable for a brief period and will resume service shortly.", meVersion, optVersion))
-		if err := b.Core.reloadBackendCommon(ctx, mountEntry, isAuth); err != nil {
+		if err := b.Core.reloadBackendCommon(ctx, mountEntry, isAuth, false); err != nil {
 			b.Core.logger.Error("mount tuning of options: could not reload backend", "error", err, "path", path, "options", mountEntry.Options)
 			return handleError(err)
 		}

@@ -263,7 +263,7 @@ func TestCore_EnableCredential_aws_ec2(t *testing.T) {
 	c2, err := NewCore(conf)
 	require.NoError(t, err)
 	defer c2.Shutdown()
-	c2.credentialBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
+	c2.credentialBackends["aws"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
 		return &be.Noop{
 			BackendType: logical.TypeCredential,
 		}, nil
@@ -370,7 +370,17 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 		}
 	}
 
-	oldCredential := c.auth
+	oldCredential := c.auth.ShallowClone()
+	for i, entry := range oldCredential.Entries {
+		entry, err := entry.Clone()
+		require.NoError(t, err)
+		// Running plugin metadata is populated during setup, not loaded from
+		// storage. Clear it out so comparing against a freshly loaded mount
+		// table does not fail.
+		entry.RunningVersion, entry.RunningSha256 = "", ""
+		oldCredential.Entries[i] = entry
+	}
+
 	if err := c.loadCredentials(ctx, false); err != nil {
 		t.Fatal(err)
 	}

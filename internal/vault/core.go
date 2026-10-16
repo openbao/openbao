@@ -2192,6 +2192,18 @@ type standardUnsealStrategy struct {
 func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c *Core) error {
 	c.logger.Debug("standard unseal starting")
 
+	// Force a refresh of seal configs to account for e.g., rotations or
+	// snapshot restores. Notably, we do not do this when unsealing a standby
+	// because seal migration may be pending, in which case we want to keep
+	// the cached configs specially prepared by adjustForSealMigration around.
+	// Refreshing configs normally may otherwise error on standbys in seal
+	// migration mode due to a mismatch between instantiated seal type and
+	// stored seal type.
+	_ = c.seal.SetBarrierConfig(ctx, nil)
+	if c.seal.RecoveryKeySupported() {
+		_ = c.seal.SetRecoveryConfig(ctx, nil)
+	}
+
 	// Clear forwarding clients; we're active
 	c.clearForwardingClients()
 
@@ -2354,12 +2366,6 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 	c.physicalCache.Purge(ctx)
 	if !c.cachingDisabled {
 		c.physicalCache.SetEnabled(true)
-	}
-
-	// Purge these for safety in case of a rotation
-	_ = c.seal.SetBarrierConfig(ctx, nil)
-	if c.seal.RecoveryKeySupported() {
-		_ = c.seal.SetRecoveryConfig(ctx, nil)
 	}
 
 	// Load prior un-updated store into version history cache to compare

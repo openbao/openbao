@@ -616,7 +616,10 @@ func (p *ParsedCSRBundle) ToCSRBundle() (*CSRBundle, error) {
 		result.CSR = strings.TrimSpace(string(pem.EncodeToMemory(&block)))
 	}
 
-	if len(p.PrivateKeyBytes) > 0 {
+	if len(p.PrivateKeyBytes) > 0 && p.PrivateKeyType == ExternalPrivateKey {
+		result.PrivateKeyType = ExternalPrivateKey
+		result.PrivateKey = strings.TrimSpace(string(p.PrivateKeyBytes))
+	} else if len(p.PrivateKeyBytes) > 0 {
 		block.Bytes = p.PrivateKeyBytes
 		switch p.PrivateKeyType {
 		case RSAPrivateKey:

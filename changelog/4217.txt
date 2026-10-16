@@ -1,0 +1,3 @@
+```release-note:bug
+secrets/pki: Fix intermediate CSR generation with `external_key_ref` creating a key within the mount instead of using the external key. Intermediates generated this way before the fix still hold a mount-managed key; check `key_type` on their keys and regenerate them.
+```

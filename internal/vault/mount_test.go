@@ -829,7 +829,7 @@ func TestCore_MountTable_UpgradeToTyped(t *testing.T) {
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err := c.enableAudit(namespace.RootContext(t.Context()), me, true)
+	err := c.enableAudit(namespace.RootContext(t.Context()), me)
 	require.NoError(t, err)
 
 	c.credentialBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
@@ -942,7 +942,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 				b = new(bool)
 				*b = false
 			}
-			return c.persistAudit(ctx, mt, *b)
+			return c.persistAudit(ctx, barrier, mt, *b)
 		}
 		mt = c.audit
 	}

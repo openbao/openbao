@@ -6,6 +6,7 @@ package vault
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -20,8 +21,11 @@ import (
 	"github.com/mitchellh/copystructure"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/salt"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/audit"
+	auditFile "github.com/openbao/openbao/v2/internal/builtin/audit/file"
+	"github.com/openbao/openbao/v2/internal/command/server"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
 	"github.com/openbao/openbao/v2/internal/vault/routing"
@@ -46,8 +50,42 @@ func TestAudit_ReadOnlyViewDuringMount(t *testing.T) {
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err := c.enableAudit(namespace.RootContext(t.Context()), me, true)
+	err := c.enableAudit(namespace.RootContext(t.Context()), me)
 	require.NoError(t, err)
+}
+
+// TestCore_EnableAudit_PersistsSalt verifies that config-driven audit device
+// creation persists audit backend's salt in storage.
+func TestCore_EnableAudit_PersistsSalt(t *testing.T) {
+	c := TestCoreWithConfig(t, &CoreConfig{
+		RawConfig: &server.Config{
+			Audits: []*server.AuditDevice{
+				{
+					Type: "file",
+					Path: "file",
+					Options: map[string]string{
+						"file_path": filepath.Join(t.TempDir(), "file-audit.log"),
+						"skip_test": "true",
+					},
+				},
+			},
+		},
+		AuditBackends: map[string]audit.Factory{"file": auditFile.Factory},
+	})
+	_, _ = TestInitUnsealCore(t, c)
+
+	require.True(t, c.auditBroker.IsRegistered("file/"))
+
+	require.Len(t, c.audit.Entries, 1)
+	entry := c.audit.Entries[0]
+
+	view, err := c.mountEntryView(entry)
+	require.NoError(t, err)
+
+	stored, err := view.Get(namespace.RootContext(t.Context()), salt.DefaultLocation)
+	require.NoError(t, err)
+	require.NotNil(t, stored)
+	require.NotEmpty(t, stored.Value)
 }
 
 func TestCore_EnableAudit(t *testing.T) {
@@ -59,7 +97,7 @@ func TestCore_EnableAudit(t *testing.T) {
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err := c.enableAudit(namespace.RootContext(t.Context()), me, true)
+	err := c.enableAudit(namespace.RootContext(t.Context()), me)
 	require.NoError(t, err)
 
 	if !c.auditBroker.IsRegistered("foo/") {
@@ -100,7 +138,7 @@ func TestCore_EnableAudit_MixedFailures(t *testing.T) {
 		return nil, errors.New("failing enabling")
 	}
 
-	if err := c.persistAudit(t.Context(), &routing.MountTable{
+	if err := c.persistAudit(t.Context(), c.barrier, &routing.MountTable{
 		Type: auditTableType,
 		Entries: []*routing.MountEntry{
 			{
@@ -121,29 +159,29 @@ func TestCore_EnableAudit_MixedFailures(t *testing.T) {
 	}
 
 	// Both should set up successfully
-	err := c.setupAudits(t.Context())
+	err := c.setupAudits(t.Context(), false)
 	require.NoError(t, err)
 
 	// We expect this to work because the other entry is still valid
 	c.audit.Entries[0].Type = "fail"
-	if err := c.persistAudit(t.Context(), c.audit, false); err != nil {
+	if err := c.persistAudit(t.Context(), c.barrier, c.audit, false); err != nil {
 		t.Fatal(err)
 	}
 
 	c.audit = nil
 
-	err = c.setupAudits(t.Context())
+	err = c.setupAudits(t.Context(), false)
 	require.NoError(t, err)
 
 	// No audit backend set up successfully, so expect error
 	c.audit.Entries[1].Type = "fail"
-	if err := c.persistAudit(t.Context(), c.audit, false); err != nil {
+	if err := c.persistAudit(t.Context(), c.barrier, c.audit, false); err != nil {
 		t.Fatal(err)
 	}
 
 	c.audit = nil
 
-	err = c.setupAudits(t.Context())
+	err = c.setupAudits(t.Context(), false)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -159,7 +197,7 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 		return nil, errors.New("failing enabling")
 	}
 
-	if err := c.persistAudit(t.Context(), &routing.MountTable{
+	if err := c.persistAudit(t.Context(), c.barrier, &routing.MountTable{
 		Type: auditTableType,
 		Entries: []*routing.MountEntry{
 			{
@@ -186,7 +224,7 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 	}
 
 	// Both should set up successfully
-	err := c.setupAudits(t.Context())
+	err := c.setupAudits(t.Context(), false)
 	require.NoError(t, err)
 
 	rawLocal, err := c.barrier.Get(t.Context(), coreLocalAuditConfigPath)
@@ -203,7 +241,7 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 	}
 
 	c.audit.Entries[1].Local = true
-	if err := c.persistAudit(t.Context(), c.audit, false); err != nil {
+	if err := c.persistAudit(t.Context(), c.barrier, c.audit, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -248,7 +286,7 @@ func TestCore_DisableAudit(t *testing.T) {
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err = c.enableAudit(namespace.RootContext(t.Context()), me, true)
+	err = c.enableAudit(namespace.RootContext(t.Context()), me)
 	require.NoError(t, err)
 
 	existed, err = c.disableAudit(namespace.RootContext(t.Context()), "foo", true)

@@ -1,0 +1,3 @@
+```release-note:bug
+secrets/pki: Trim whitespace from cluster config's `path` and `aia_path` options.
+```

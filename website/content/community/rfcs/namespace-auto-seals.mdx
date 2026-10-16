@@ -212,6 +212,19 @@ case strings.HasPrefix(key, "sys/namespaces/") &&
     c.sealManager.ReloadSealConfig(ctx, ns)
 ```
 
+#### Seal status propagation
+
+When a boot-sealed namespace recovers, both of the following approaches will
+be used to propagate the unsealed state to standby nodes:
+
+- Each node contacts the KMS independently, consistent with how the root
+  namespace behaves on standby nodes.
+- The active node forwards the root key to standbys via gRPC, reducing KMS
+  calls and speeding up recovery for deep namespace trees.
+
+The order in which the two mechanisms are invoked will be determined during
+implementation.
+
 ### Boot-Time KMS Failure Recovery
 
 When a namespace KMS is unreachable at startup, `RegisterSealedBarrier` in
@@ -292,17 +305,7 @@ credential rotation once the KMS is reachable again.
 
 ## Unresolved Questions
 
-**Seal status propagation on standby nodes.** When a boot-sealed namespace
-recovers, two approaches exist for propagating the unsealed state to standby
-nodes:
-
-- Each node contacts the KMS independently (consistent with how the root
-  namespace behaves on standby nodes).
-- The active node forwards the root key to standbys via gRPC (fewer KMS calls,
-  faster recovery for deep namespace trees).
-
-The trade-offs between consistency, KMS load, and implementation complexity have
-not been resolved.
+None.
 
 ## Related Issues
 

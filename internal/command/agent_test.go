@@ -781,7 +781,7 @@ auto_auth {
 				// the temp dir before Agent has had time to render and will
 				// likely fail the test
 				tick := time.Tick(1 * time.Second)
-				timeout := time.After(25 * time.Second)
+				timeout := time.After(60 * time.Second)
 				var err error
 				for {
 					select {

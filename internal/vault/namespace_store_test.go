@@ -114,10 +114,10 @@ func TestNamespaceStore(t *testing.T) {
 	require.Equal(t, "in-progress", status)
 
 	// Wait until deletion has finished.
-	require.EventuallyWithT(t, func(t *assert.CollectT) {
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
 		ns, err = s.ListNamespaces(ctx, ListNamespaceOpts{})
-		require.NoError(t, err)
-		require.Empty(t, ns)
+		require.NoError(collect, err)
+		require.Empty(collect, ns)
 	}, 10*time.Second, time.Second)
 
 	// Store should be empty.

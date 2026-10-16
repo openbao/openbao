@@ -2,7 +2,6 @@ package kv
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"path"
 	"strings"
@@ -28,23 +27,31 @@ func (b *versionedKVBackend) perfSecondaryCheck() bool {
 
 func (b *versionedKVBackend) upgradeCheck(next framework.OperationFunc) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		if b.upgrading.Load() {
-			// Sleep for a very short time before returning. This helps clients
-			// that are trying to access a mount immediately upon enabling be
-			// more likely to behave correctly since the operation should take
-			// almost no time.
-			time.Sleep(15 * time.Millisecond)
-
-			if b.upgrading.Load() {
-				if b.perfSecondaryCheck() {
-					return logical.ErrorResponse("Waiting for the primary to upgrade from non-versioned to versioned data. This backend will be unavailable for a brief period and will resume service when the primary is finished."), logical.ErrInvalidRequest
-				} else {
-					return logical.ErrorResponse("Upgrading from non-versioned to versioned data. This backend will be unavailable for a brief period and will resume service shortly."), logical.ErrInvalidRequest
-				}
-			}
+		// Run an initial fast check to see if the upgrade was already
+		// completed. This has minimal overhead opposed to e.g., an atomic load
+		// as we're not constructing the larger select statement below just yet.
+		select {
+		case <-b.upgrading:
+			return next(ctx, req, data)
+		default:
 		}
 
-		return next(ctx, req, data)
+		// Fall back to waiting for the upgrade for a short time before giving
+		// up, but also respect context cancellation. This helps clients that
+		// are trying to access a mount immediately upon enabling be more likely
+		// to behave correctly since the operation should take almost no time.
+		select {
+		case <-b.upgrading:
+			return next(ctx, req, data)
+		case <-time.After(time.Second):
+		case <-ctx.Done():
+		}
+
+		if b.perfSecondaryCheck() {
+			return logical.ErrorResponse("Waiting for the primary to upgrade from non-versioned to versioned data. This backend will be unavailable for a brief period and will resume service when the primary is finished."), logical.ErrInvalidRequest
+		} else {
+			return logical.ErrorResponse("Upgrading from non-versioned to versioned data. This backend will be unavailable for a brief period and will resume service shortly."), logical.ErrInvalidRequest
+		}
 	}
 }
 
@@ -80,16 +87,14 @@ func (b *versionedKVBackend) Upgrade(ctx context.Context, s logical.Storage) err
 		return nil
 	}
 
-	if !b.upgrading.CompareAndSwap(false, true) {
-		return errors.New("upgrade already in process")
-	}
-
 	// If we are a replication secondary or performance standby, wait until the primary has finished
 	// upgrading.
 	if b.perfSecondaryCheck() {
 		b.Logger().Info("upgrade not running on performance replication secondary or performance standby")
 
 		go func() {
+			defer close(b.upgrading)
+
 			for {
 				time.Sleep(time.Second)
 
@@ -97,7 +102,6 @@ func (b *versionedKVBackend) Upgrade(ctx context.Context, s logical.Storage) err
 				// shutting down. Close this go routine and set the upgrade
 				// flag back to 0 for good measure.
 				if ctx.Err() != nil {
-					b.upgrading.Store(false)
 					return
 				}
 
@@ -110,8 +114,6 @@ func (b *versionedKVBackend) Upgrade(ctx context.Context, s logical.Storage) err
 					break
 				}
 			}
-
-			b.upgrading.Store(false)
 		}()
 
 		return nil
@@ -275,7 +277,7 @@ func (b *versionedKVBackend) Upgrade(ctx context.Context, s logical.Storage) err
 			b.Logger().Error("writing upgrade done resulted in an error", "error", err)
 		}
 
-		b.upgrading.Store(false)
+		close(b.upgrading)
 	}()
 
 	return nil

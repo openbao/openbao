@@ -27,33 +27,14 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 	b, err := VersionedKVFactory(t.Context(), config)
 	require.NoError(t, err)
 
-	// Wait for the upgrade to finish
-	timeout := time.After(20 * time.Second)
-	ticker := time.Tick(time.Second)
-
-	for {
-		select {
-		case <-timeout:
-			t.Fatal("timeout expired waiting for upgrade")
-		case <-ticker:
-			req := &logical.Request{
-				Operation: logical.ReadOperation,
-				Path:      "config",
-				Storage:   config.StorageView,
-			}
-
-			resp, err := b.HandleRequest(t.Context(), req)
-			require.NoErrorf(t, err, "unable to read config: %s", err)
-
-			if resp != nil && !resp.IsError() {
-				return b, config.StorageView
-			}
-
-			if resp == nil || (resp.IsError() && strings.Contains(resp.Error().Error(), "Upgrading from non-versioned to versioned")) {
-				t.Log("waiting for upgrade to complete")
-			}
-		}
+	// Wait for the upgrade to finish.
+	select {
+	case <-b.(*versionedKVBackend).upgrading:
+	case <-time.After(10 * time.Second):
+		t.Fatal("timeout expired waiting for upgrade")
 	}
+
+	return b, config.StorageView
 }
 
 // getKeySet will produce a set of the keys that exist in m

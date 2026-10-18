@@ -1,8 +1,8 @@
 <div
   class="field string-list form-section"
   data-test-component="string-list"
-  {{invoke this.autoSize}}
-  {{invoke this.autoSizeUpdate onUpdate=true}}
+  {{did-insert this.autoSize}}
+  {{did-update this.autoSizeUpdate}}
   data-test-input
   ...attributes
 >

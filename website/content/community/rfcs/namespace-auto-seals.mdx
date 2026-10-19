@@ -25,7 +25,7 @@ exists for updating seal credentials on an existing sealable namespace.
 The invalidation framework does not cover namespace seal configuration changes,
 leaving standby nodes with stale wrappers after a credential update.
 
-## User-Facing Description
+## User-facing description
 
 ### Creating a Sealable Namespace with an Auto Seal
 
@@ -48,9 +48,9 @@ separately.
 
 ### Updating Seal Credentials and Keys
 
-| Method | Path                                    |
-| ------ | --------------------------------------- |
-| `PUT`  | `/v1/sys/namespaces/<path>/config/seal` |
+| **Method** | **Path**                                |
+| ---------- | --------------------------------------- |
+| `PUT`      | `/v1/sys/namespaces/<path>/config/seal` |
 
 This endpoint accepts the same seal configuration string format as namespace
 creation. It handles credential updates within the same seal type: the seal
@@ -67,9 +67,9 @@ not handled by this endpoint.
 
 ### Reading Seal Configuration
 
-| Method | Path                                    |
-| ------ | --------------------------------------- |
-| `GET`  | `/v1/sys/namespaces/<path>/config/seal` |
+| **Method** | **Path**                                |
+| ---------- | --------------------------------------- |
+| `GET`      | `/v1/sys/namespaces/<path>/config/seal` |
 
 Returns provider-supplied configuration metadata: non-sensitive fields such as
 provider type, endpoint URL, and key identifier. Sensitive fields (credentials,
@@ -153,7 +153,7 @@ When a seal wrapper is initialized, it exposes a metadata map populated by the
 provider. Non-sensitive fields such as provider type, endpoint URL, and key
 identifier are typically included. Sensitive fields such as credentials or tokens
 are expected to be omitted by the provider. OpenBao does not apply an additional
-redaction layer, relying on the provider's own omission — consistent with how
+redaction layer, relying on the provider's own omission  consistent with how
 global seal metadata is handled at server startup. The exact set of fields
 exposed by each provider depends on its wrapper implementation.
 

@@ -18,7 +18,7 @@
         name={{concat "useText-" this.elementId}}
         class="switch is-rounded is-success is-small"
         checked={{this.key.enterAsText}}
-        onchange={{action (toggle "enterAsText" this.key)}}
+        {{on "change" this.toggleText}}
       />
       <label for={{concat "useText-" this.elementId}}>
         Enter as text
@@ -31,7 +31,7 @@
     <div class="control">
       <textarea
         class="textarea"
-        oninput={{action "updateData"}}
+        {{on "input" this.updateData}}
         data-test-pgp-file-textarea={{true}}
       >{{this.key.value}}</textarea>
     </div>
@@ -50,7 +50,7 @@
             id="file-input"
             class="file-input"
             type="file"
-            onchange={{action "pickedFile"}}
+            {{on "change" this.pickedFile}}
             data-test-pgp-file-input={{true}}
           />
           <span class="file-cta is-fullwidth">
@@ -65,7 +65,7 @@
               {{/if}}
             </label>
             {{#if this.key.filename}}
-              <button type="button" class="file-delete-button" {{action "clearKey"}} data-test-pgp-clear={{true}}>
+              <button type="button" class="file-delete-button" {{on "click" this.clearKey}} data-test-pgp-clear={{true}}>
                 <Icon @name="x" aria-label="Close" />
               </button>
             {{/if}}

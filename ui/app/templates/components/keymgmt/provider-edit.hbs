@@ -84,7 +84,7 @@
               @mode="edit"
               @replace={{true}}
               @queryParams={{hash itemType="provider"}}
-              disabled={{(not @model.canEdit)}}
+              disabled={{not @model.canEdit}}
             >
               Update credentials
             </ToolbarSecretLink>

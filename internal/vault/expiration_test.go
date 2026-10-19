@@ -60,7 +60,7 @@ func TestExpiration_Metrics(t *testing.T) {
 
 	exp := testCore.expiration
 
-	if err := exp.Restore(nil); err != nil {
+	if err := exp.Restore(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -451,7 +451,7 @@ func TestExpiration_Tidy(t *testing.T) {
 
 	exp := testCore.expiration
 
-	if err := exp.Restore(nil); err != nil {
+	if err := exp.Restore(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -741,7 +741,7 @@ func benchmarkExpirationBackend(b *testing.B, physicalBackend physical.Backend, 
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err = exp.Restore(nil)
+		err = exp.Restore()
 		// Restore
 		require.NoErrorf(b, err, "err: %v", err)
 	}
@@ -837,7 +837,7 @@ func TestExpiration_Restore(t *testing.T) {
 	}
 
 	// Restore
-	err = exp.Restore(nil)
+	err = exp.Restore()
 	require.NoError(t, err)
 
 	// Would like to test here, but this is a race with the expiration of the leases.
@@ -2821,7 +2821,7 @@ func TestExpiration_MarkIrrevocable(t *testing.T) {
 	err = c.stopExpiration()
 	require.NoError(t, err)
 
-	err = exp.Restore(nil)
+	err = exp.Restore()
 	require.NoError(t, err)
 
 	loadedLE, err = exp.loadEntry(ctx, leaseID)

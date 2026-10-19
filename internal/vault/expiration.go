@@ -409,13 +409,14 @@ func (c *Core) setupExpiration(e ExpireLeaseStrategy, standby bool) error {
 
 	// Restore the existing state
 	c.logger.Info("restoring leases")
-	errorFunc := func() {
-		c.logger.Error("shutting down")
-		if err := c.Shutdown(); err != nil {
-			c.logger.Error("error shutting down core", "error", err)
+	go func() {
+		if err := c.expiration.Restore(); err != nil {
+			c.logger.Error("shutting down")
+			if err := c.Shutdown(); err != nil {
+				c.logger.Error("error shutting down core", "error", err)
+			}
 		}
-	}
-	go c.expiration.Restore(errorFunc) //nolint:errcheck
+	}()
 
 	quit := c.expiration.quitCh
 	go func() {
@@ -635,17 +636,17 @@ func (m *ExpirationManager) Tidy(ctx context.Context) error {
 // Restore is used to recover the lease states when starting.
 //
 // This is used after starting the vault.
-func (m *ExpirationManager) Restore(errorFunc func()) error {
+func (m *ExpirationManager) Restore() error {
 	if !m.useCache {
 		return nil
 	}
 
-	return m.restore(m.collectLeases, nil /* global */, errorFunc)
+	return m.restore(m.collectLeases, nil /* global */)
 }
 
 // Restore is used to restore the leases belonging to a particular namespace
 // when it unseals.
-func (m *ExpirationManager) RestoreNamespace(ns *namespace.Namespace, errorFunc func()) error {
+func (m *ExpirationManager) RestoreNamespace(ns *namespace.Namespace) error {
 	if m.core.Standby() {
 		m.logger.Info("skipping namespace lease restoration - standby")
 		return nil
@@ -661,10 +662,10 @@ func (m *ExpirationManager) RestoreNamespace(ns *namespace.Namespace, errorFunc 
 		return map[*namespace.Namespace][]string{
 			ns.Clone(false): leases,
 		}, len(leases), nil
-	}, ns, errorFunc)
+	}, ns)
 }
 
-func (m *ExpirationManager) restore(collect func() (map[*namespace.Namespace][]string, int, error), restoreNs *namespace.Namespace, errorFunc func()) (retErr error) {
+func (m *ExpirationManager) restore(collect func() (map[*namespace.Namespace][]string, int, error), restoreNs *namespace.Namespace) (retErr error) {
 	defer func() {
 		// Turn off restore mode. We can do this safely without the lock because
 		// if restore mode finished successfully, restore mode was already
@@ -684,9 +685,6 @@ func (m *ExpirationManager) restore(collect func() (map[*namespace.Namespace][]s
 			retErr = nil
 		default:
 			m.logger.Error("error restoring leases", "error", retErr)
-			if errorFunc != nil {
-				errorFunc()
-			}
 		}
 	}()
 

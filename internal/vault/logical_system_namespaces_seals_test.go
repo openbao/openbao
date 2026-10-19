@@ -752,10 +752,10 @@ func TestNamespaceBackend_MigrateBarrier_Cluster(t *testing.T) {
 
 	// wait until namespace is propagated
 	require.EventuallyWithT(t, func(ct *assert.CollectT) {
-		for _, core := range cluster.Cores {
+		for i, core := range cluster.Cores {
 			got, err := core.namespaceStore.GetNamespaceByPath(rootCtx, "cluster-migrate")
 			assert.NoError(ct, err)
-			assert.NotNil(ct, got, "namespace not yet visible on core %d", core.coreNumber)
+			assert.NotNil(ct, got, "namespace not yet visible on core %d", i)
 		}
 	}, 10*time.Second, 50*time.Millisecond)
 
@@ -785,10 +785,10 @@ func TestNamespaceBackend_MigrateBarrier_Cluster(t *testing.T) {
 	waitForMigrationToFinish(t, active.Core, ns, namespace.TypeSealable)
 
 	require.EventuallyWithT(t, func(ct *assert.CollectT) {
-		for _, core := range cluster.Cores {
+		for i, core := range cluster.Cores {
 			got, err := core.namespaceStore.GetNamespaceByPath(rootCtx, "cluster-migrate")
 			if assert.NoError(ct, err) && assert.NotNil(ct, got) {
-				assert.False(ct, got.Tainted, "namespace should not be tainted on core %d after migration", core.coreNumber)
+				assert.False(ct, got.Tainted, "namespace should not be tainted on core %d after migration", i)
 			}
 		}
 	}, 5*time.Minute, 100*time.Millisecond)

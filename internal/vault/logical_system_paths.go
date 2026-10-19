@@ -1528,12 +1528,13 @@ func (b *SystemBackend) auditPaths() []*framework.Path {
 						OperationVerb:   "enable",
 						OperationSuffix: "device",
 					},
-					Summary: "Enable a new audit device at the supplied path.",
+					Summary: "Enable a new audit device at the given path.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
-							Description: "OK",
+							Description: http.StatusText(http.StatusNoContent),
 						}},
 					},
+					ForwardPerformanceStandby: true,
 				},
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handleDisableAudit,
@@ -1544,9 +1545,10 @@ func (b *SystemBackend) auditPaths() []*framework.Path {
 					Summary: "Disable the audit device at the given path.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
-							Description: "OK",
+							Description: http.StatusText(http.StatusNoContent),
 						}},
 					},
+					ForwardPerformanceStandby: true,
 				},
 			},
 

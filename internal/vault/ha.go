@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"sort"
 	"strings"
@@ -856,44 +857,36 @@ func (c *Core) waitForLeadership(manualStepDown *bool, manualStepDownCh, stopCh 
 		return true, false
 	}
 
-	// This block is used to wipe barrier/seal state and verify that
-	// everything is sane. If we have no sanity in the barrier, we actually
-	// seal, as there's little we can do.
-	{
-		c.seal.SetBarrierConfig(activeCtx, nil) //nolint:errcheck
-		if c.seal.RecoveryKeySupported() {
-			c.seal.SetRecoveryConfig(activeCtx, nil) //nolint:errcheck
+	if err := c.performKeyUpgrades(activeCtx); err != nil {
+		c.logger.Error("error performing key upgrades", "error", err)
+
+		// If we fail due to anything other than a context canceled
+		// error we should shutdown as we may have the incorrect Keys.
+		if !strings.Contains(err.Error(), context.Canceled.Error()) {
+			// We call this in a goroutine so that we can give up the
+			// statelock and have this shut us down; sealInternal has a
+			// workflow where it watches for the stopCh to close so we want
+			// to return from here
+			go func() {
+				if err := c.Shutdown(); err != nil {
+					c.logger.Error("error shutting down core", "error", err)
+				}
+			}()
 		}
 
-		if err := c.performKeyUpgrades(activeCtx); err != nil {
-			c.logger.Error("error performing key upgrades", "error", err)
+		c.heldHALock = nil
+		if err := lock.Unlock(); err != nil {
+			c.logger.Error("error releasing HA lock", "error", err)
+		}
+		c.stateLock.Unlock()
+		metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
 
-			// If we fail due to anything other than a context canceled
-			// error we should shutdown as we may have the incorrect Keys.
-			if !strings.Contains(err.Error(), context.Canceled.Error()) {
-				// We call this in a goroutine so that we can give up the
-				// statelock and have this shut us down; sealInternal has a
-				// workflow where it watches for the stopCh to close so we want
-				// to return from here
-				go func() {
-					if err := c.Shutdown(); err != nil {
-						c.logger.Error("error shutting down core", "error", err)
-					}
-				}()
-			}
-
-			c.heldHALock = nil
-			lock.Unlock()
-			c.stateLock.Unlock()
-			metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
-
-			// If we are shutting down we should return from this function,
-			// otherwise continue
-			if !strings.Contains(err.Error(), context.Canceled.Error()) {
-				return false, true
-			} else {
-				return true, false
-			}
+		// If we are shutting down we should return from this function,
+		// otherwise continue
+		if !strings.Contains(err.Error(), context.Canceled.Error()) {
+			return false, true
+		} else {
+			return true, false
 		}
 	}
 
@@ -1607,11 +1600,20 @@ func (c *Core) advertiseLeader(ctx context.Context, uuid string, leaderLostCh <-
 	}
 
 	keyParams := &certutil.ClusterKeyParams{
-		Type: corePrivateKeyTypeP521,
-		X:    key.X,
-		Y:    key.Y,
-		D:    key.D,
+		Type: certutil.PrivateKeyTypeP521,
+		D:    &big.Int{},
+
+		// These fields are deprecated (both in the standard library and in
+		// sdk) and can safely be removed in a future release since they are
+		// no longer read and keys are constructed purely via D. However,
+		// since earlier releases required X and Y in addition to D, we'll
+		// keep writing them for a few releases to avoid breaking downgrades
+		// immediately and provide a transitional phase instead.
+		X: key.X, Y: key.Y,
 	}
+
+	d, _ := key.Bytes()
+	keyParams.D.SetBytes(d)
 
 	locCert := c.localClusterCert.Load()
 	if locCert == nil {

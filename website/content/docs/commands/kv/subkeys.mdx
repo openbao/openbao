@@ -17,9 +17,6 @@ engine command, and not available for Version 1.
 The `kv subkeys` command retrieves the subkeys of a secret at the specified
 path from OpenBao's key-value store, replacing leaf values with `null`.
 
-This command requires KV Version 2. If no secret exists at the given path,
-an error is returned.
-
 ## Examples
 
 Retrieve the subkeys of the secret at path "creds" in the "secret" mount:
@@ -54,31 +51,6 @@ Limit the returned depth of the structure to top-level keys:
 
 ```shell-session
 $ bao kv subkeys -mount=secret -depth=1 creds
-```
-
-Return the subkeys and metadata in JSON format:
-
-```shell-session
-$ bao kv subkeys -mount=secret -format=json creds
-{
-  "request_id": "b5760bd9-e1d9-97a5-62e0-f3af064a0644",
-  "lease_id": "",
-  "lease_duration": 0,
-  "renewable": false,
-  "data": {
-    "metadata": {
-      "created_time": "2026-10-13T14:01:15.201531Z",
-      "custom_metadata": null,
-      "deletion_time": "",
-      "destroyed": false,
-      "version": 1
-    },
-    "subkeys": {
-      "passcode": null
-    }
-  },
-  "warnings": null
-}
 ```
 
 ## Usage

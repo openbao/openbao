@@ -4,16 +4,12 @@
 package http
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
-	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault"
-	"github.com/openbao/openbao/v2/internal/version"
 )
 
 func handleSysHealth(core *vault.Core) http.Handler {
@@ -30,7 +26,7 @@ func handleSysHealth(core *vault.Core) http.Handler {
 }
 
 func handleSysHealthGet(core *vault.Core, w http.ResponseWriter, r *http.Request) {
-	code, body, err := getSysHealthRaw(core, r)
+	code, body, err := getSysHealth(core, r)
 	if err != nil {
 		core.Logger().Error("error checking health", "error", err)
 		respondError(w, code, nil)
@@ -51,7 +47,7 @@ func handleSysHealthGet(core *vault.Core, w http.ResponseWriter, r *http.Request
 }
 
 func handleSysHealthHead(core *vault.Core, w http.ResponseWriter, r *http.Request) {
-	code, body, _ := getSysHealthRaw(core, r)
+	code, body, _ := getSysHealth(core, r)
 
 	if body != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -59,7 +55,7 @@ func handleSysHealthHead(core *vault.Core, w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(code)
 }
 
-func getSysHealthRaw(core *vault.Core, r *http.Request) (int, *HealthResponse, error) {
+func getSysHealth(core *vault.Core, r *http.Request) (int, *vault.HealthResponse, error) {
 	fd := &framework.FieldData{
 		Raw:    parseQuery(r.URL.Query()),
 		Schema: vault.SysHealthSchema,
@@ -72,74 +68,5 @@ func getSysHealthRaw(core *vault.Core, r *http.Request) (int, *HealthResponse, e
 
 	ctx := namespace.RootContext(r.Context())
 
-	return getSysHealth(ctx, core, fd)
-}
-
-func getSysHealth(ctx context.Context, core *vault.Core, fd *framework.FieldData) (int, *HealthResponse, error) {
-	var err error
-
-	// Check system status
-	sealed := core.Sealed()
-	standby := core.Standby()
-	var replicationState consts.ReplicationState
-	if standby {
-		replicationState = core.ActiveNodeReplicationState()
-	} else {
-		replicationState = core.ReplicationState()
-	}
-
-	init, err := core.Initialized(ctx)
-	if err != nil {
-		return http.StatusInternalServerError, nil, err
-	}
-
-	// Determine the status code
-	code := fd.Get("activecode").(int)
-	switch {
-	case !init:
-		code = fd.Get("uninitcode").(int)
-	case sealed:
-		code = fd.Get("sealedcode").(int)
-	case standby:
-		// Check if being a standby is allowed for the purpose of a 200 OK
-		standbyOK := fd.Get("standbyok").(bool)
-		if !standbyOK {
-			code = fd.Get("standbycode").(int)
-		}
-	}
-
-	hr := &HealthResponse{
-		Initialized:                init,
-		Sealed:                     sealed,
-		Standby:                    standby,
-		ReplicationPerformanceMode: replicationState.GetPerformanceString(),
-		ReplicationDRMode:          replicationState.GetDRString(),
-		ServerTimeUTC:              time.Now().UTC().Unix(),
-		Version:                    version.GetVersion().VersionNumber(),
-	}
-
-	// Fetch the local cluster name and identifier
-	if !sealed {
-		cluster, err := core.Cluster(ctx)
-		if err != nil {
-			return http.StatusInternalServerError, nil, err
-		}
-
-		hr.ClusterName = cluster.Name
-		hr.ClusterID = cluster.ID
-	}
-
-	return code, hr, nil
-}
-
-type HealthResponse struct {
-	Initialized                bool   `json:"initialized"`
-	Sealed                     bool   `json:"sealed"`
-	Standby                    bool   `json:"standby"`
-	ReplicationPerformanceMode string `json:"replication_performance_mode"`
-	ReplicationDRMode          string `json:"replication_dr_mode"`
-	ServerTimeUTC              int64  `json:"server_time_utc"`
-	Version                    string `json:"version"`
-	ClusterName                string `json:"cluster_name,omitempty"`
-	ClusterID                  string `json:"cluster_id,omitempty"`
+	return core.GetSysHealth(ctx, fd)
 }

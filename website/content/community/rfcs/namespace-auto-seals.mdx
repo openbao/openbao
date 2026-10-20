@@ -41,12 +41,9 @@ key is wrapped by the KMS immediately and the namespace is operational without
 any manual unseal step. This mirrors the behavior of the global Auto Seal.
 
 If the KMS is later decommissioned, the operator must migrate the namespace seal
-to Shamir before decommissioning the KMS key. The [Emergency Seal](emergency-seal.mdx)
-and [Parallel Unseal](parallel-unseal.mdx) RFCs provide additional recovery
-paths for permanent KMS loss; those proposals have been approved and are tracked
-separately.
+to Shamir before decommissioning the KMS key.
 
-### Updating Seal Credentials and Keys
+### Updating Seal Credentials
 
 | **Method** | **Path**                                |
 | ---------- | --------------------------------------- |
@@ -56,7 +53,7 @@ This endpoint accepts the same seal configuration string format as namespace
 creation. It handles credential updates within the same seal type: the seal
 provider and KMS key must remain the same; only the credentials used to reach
 the KMS may change. The new configuration must successfully decrypt the existing
-stored barrier key before the old configuration is released. If that
+stored barrier key before the previous configuration is removed. If that
 verification fails, the update is rejected and the existing configuration is
 kept intact.
 
@@ -93,15 +90,10 @@ The affected namespace cannot be initialized: its sealed data is inaccessible
 and its mounts and auth backends are not loaded. All child namespaces of the
 affected namespace are also unavailable for the same reason.
 
-OpenBao periodically retries the KMS connection at a configurable interval.
-Once the KMS becomes reachable, OpenBao unseals the namespace and executes the
-standard post-unseal initialization sequence, including loading the namespace
-mounts and policies. The namespace unseals automatically and requires no
-operator intervention.
-
-While the KMS remains unreachable, `GET /v1/sys/namespaces/<path>/seal-status`
-reports the namespace as sealed. Once the unseal sequence completes
-successfully, the endpoint transitions to reporting the namespace as unsealed.
+OpenBao periodically retries the KMS connection. Once the KMS becomes
+reachable, OpenBao unseals the namespace and executes the standard post-unseal
+initialization sequence, including loading the namespace mounts and policies.
+The namespace unseals automatically and requires no operator intervention.
 
 #### KMS unreachable after boot
 
@@ -125,23 +117,14 @@ No automatic unseal mechanism is required for this condition because the
 namespace itself remains unsealed and operational. Once KMS connectivity is
 restored, operations requiring access to the KMS can proceed normally.
 
-The [Emergency Seal](emergency-seal.mdx) and [Parallel Unseal](parallel-unseal.mdx)
-RFCs address persistent KMS failure where the sealed data cannot be recovered.
-Note that these are current proposals and have not been implemented yet.
-
 ## Technical Description
 
-### Credential and Key Updates (PUT /config/seal)
+### Credential Updates (PUT /config/seal)
 
-This endpoint handles credential rotation only: same seal type, same KMS key,
-updated credentials. If the seal type changes, the request is rejected. For
-auto-seal types, the new configuration is verified against the existing stored
-barrier key before the old configuration is released. If verification fails,
-the update is rejected and the existing configuration is kept intact. This is
-the test-before-swap guard.
-
-Key migration (changing to a different KMS key or provider) is not handled by
-this endpoint.
+A request that changes the seal type is rejected. For auto-seal types, the
+verification described above, where the new configuration must decrypt the
+existing stored barrier key, is referred to in this RFC as the test-before-swap
+guard.
 
 Sealing a parent namespace implicitly makes all descendant namespaces
 inaccessible, regardless of their individual seal configuration. This is
@@ -153,7 +136,7 @@ When a seal wrapper is initialized, it exposes a metadata map populated by the
 provider. Non-sensitive fields such as provider type, endpoint URL, and key
 identifier are typically included. Sensitive fields such as credentials or tokens
 are expected to be omitted by the provider. OpenBao does not apply an additional
-redaction layer, relying on the provider's own omission  consistent with how
+redaction layer, relying on the provider's own omission, consistent with how
 global seal metadata is handled at server startup. The exact set of fields
 exposed by each provider depends on its wrapper implementation.
 
@@ -195,8 +178,9 @@ retrieves the stored barrier key from the KMS and unseals the namespace. The
 standard post-unseal sequence then loads the namespace mounts and policies.
 Manual retry via the unseal endpoint is also possible at any time.
 
-The background process runs on all nodes. On standby nodes the post-unseal
-sequence is limited and the process has no side effects beyond the retry itself.
+The background process runs on the active node only. Standby nodes obtain the
+unsealed state through the mechanisms described in
+[Seal status propagation](#seal-status-propagation).
 
 ### Audit
 
@@ -210,19 +194,16 @@ Seal type migration is not in scope for this RFC.
 
 ## Security Implications
 
-A KMS compromise for one namespace does not compromise the barrier keys of other
-namespaces or the root namespace, because each namespace's barrier key can be
-wrapped by an independently configured KMS. This is a security improvement over
-a single global key wrapping all namespace data.
+Each namespace's barrier key is wrapped by its own KMS key. Compromise of one
+KMS key does not expose the barrier keys of other namespaces or the root
+namespace. Namespaces whose keys are held in the same KMS, however, share that
+KMS as a single point of compromise: if the KMS itself is compromised, all keys
+it holds are compromised. Full isolation requires separate KMS instances.
 
 Access to the namespace barrier is gated by KMS access controls. An operator
 who loses KMS access loses the ability to unseal the namespace. This is the
 same model as the global auto-seal and places the same responsibility on the
 operator to maintain KMS availability and access.
-
-When KMS access is permanently lost, the [Emergency Seal](emergency-seal.mdx)
-RFC provides a recovery path via emergency unseal keys; that proposal has been
-approved and is tracked separately.
 
 The test-before-swap guard on `PUT /config/seal` prevents an operator from
 inadvertently configuring a new wrapper that cannot read the existing stored
@@ -251,11 +232,6 @@ monitoring systems to observe this state.
 
 Namespace creation without a seal parameter continues to work exactly as before.
 Existing tooling that creates namespaces without specifying a seal is unaffected.
-
-Until the Emergency Seal RFC is implemented, tenants relying on KMS-protected
-namespaces should follow the existing operational model for KMS outage response:
-restore KMS connectivity to allow the namespace to unseal automatically, or
-perform a credential rotation once the KMS is reachable again.
 
 ## Unresolved Questions
 

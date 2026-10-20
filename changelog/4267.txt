@@ -1,0 +1,3 @@
+```release-note:improvement
+transit: Allow creation of datakey protected with External Key encryption.
+```

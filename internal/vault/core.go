@@ -1816,55 +1816,21 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 		return err
 	}
 
-	// Do post-unseal setup if HA is not enabled
-	if c.ha == nil {
-		runPostUnseal := func(context.Context) error {
-			// We still need to set up cluster info even if it's not part of a
-			// cluster right now. This also populates the cached cluster object.
-			if err := c.setupCluster(ctx); err != nil {
-				c.logger.Error("cluster setup failed", "error", err)
-				return err
-			}
+	// Success!
+	c.sealed.Store(false)
+	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 1, nil)
+	c.logger.Info("vault is unsealed")
 
-			if err := c.migrateSeal(ctx); err != nil {
-				c.logger.Error("seal migration error", "error", err)
-				return err
-			}
-
-			ctx, ctxCancel := context.WithCancel(namespace.RootContext(context.Background()))
-			if err := c.postUnseal(ctx, ctxCancel, standardUnsealStrategy{}); err != nil {
-				c.logger.Error("post-unseal setup failed", "error", err)
-				return err
-			}
-			return nil
-		}
-
-		if err := runPostUnseal(ctx); err != nil {
-			err = errors.Join(err, c.sealManager.sealAll())
-			c.logger.Warn("OpenBao is sealed")
-			return err
-		}
-
-		// Force a cache bust here, which will also run migration code
-		if c.seal.RecoveryKeySupported() {
-			c.seal.SetRecoveryConfig(ctx, nil)
-		}
-
-		c.standby.Store(false)
-	} else {
-		// Go to standby mode, wait until we are active to unseal
+	// Launch the HA loop in the background if in HA mode. We schedule this
+	// before calling into service registration just to parallelize a little
+	// better.
+	if c.ha != nil {
 		c.haLoopDoneCh = make(chan struct{})
 		c.manualStepDownCh = make(chan struct{}, 1)
 		c.haLoopStopCh.Store(make(chan struct{}, 1))
 		c.haLoopRestartCh.Store(make(chan struct{}, 1))
 		go c.runHALoop(c.haLoopDoneCh, c.manualStepDownCh, c.haLoopStopCh.Load().(chan struct{}), c.haLoopRestartCh.Load().(chan struct{}))
 	}
-
-	// Success!
-	c.sealed.Store(false)
-	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 1, nil)
-
-	c.logger.Info("vault is unsealed")
 
 	if c.serviceRegistration != nil {
 		if err := c.serviceRegistration.NotifySealedStateChange(false); err != nil {
@@ -1874,6 +1840,45 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 			c.logger.Warn("failed to notify initialized status", "error", err)
 		}
 	}
+
+	if c.ha != nil {
+		// We're done here in HA mode and will wait for the HA subsystem to
+		// eventually trigger the right post-unseal procedure.
+		return nil
+	}
+
+	// Do post-unseal setup if HA is not enabled.
+	if err := func() error {
+		// We still need to set up cluster info even if it's not part of a
+		// cluster right now. This also populates the cached cluster object.
+		if err := c.setupCluster(ctx); err != nil {
+			c.logger.Error("cluster setup failed", "error", err)
+			return err
+		}
+
+		if err := c.migrateSeal(ctx); err != nil {
+			c.logger.Error("seal migration error", "error", err)
+			return err
+		}
+
+		ctx, ctxCancel := context.WithCancel(namespace.RootContext(context.Background()))
+		if err := c.postUnseal(ctx, ctxCancel, standardUnsealStrategy{}); err != nil {
+			c.logger.Error("post-unseal setup failed", "error", err)
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Join(err, c.sealInternalWithOptions(sealOptions{
+			// We don't want to grab the state lock, neither do we need to
+			// repeat preSeal since a postUnseal failure already runs it.
+		}))
+	}
+
+	// Force a cache bust here, which will also run migration code
+	_ = c.seal.SetRecoveryConfig(ctx, nil)
+
+	c.standby.Store(false)
+
 	return nil
 }
 
@@ -2066,10 +2071,18 @@ func (c *Core) UIHeaders() (http.Header, error) {
 // sealInternal is an internal method used to seal the vault.  It does not do
 // any authorization checking.
 func (c *Core) sealInternal() error {
-	return c.sealInternalWithOptions(true)
+	return c.sealInternalWithOptions(sealOptions{
+		preSeal:       true,
+		grabStateLock: true,
+	})
 }
 
-func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
+type sealOptions struct {
+	preSeal       bool
+	grabStateLock bool
+}
+
+func (c *Core) sealInternalWithOptions(opts sealOptions) error {
 	// Mark sealed, and if already marked return
 	if swapped := c.sealed.CompareAndSwap(false, true); !swapped {
 		return nil
@@ -2105,26 +2118,17 @@ func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 		activeCtxCancel()
 	}
 
-	// Do pre-seal teardown if HA is not enabled
+	// If we are keeping the lock we already have the state write lock held.
+	// Otherwise grab it here so that when stopCh is triggered we are locked.
+	if opts.grabStateLock {
+		cancelCtxAndLock()
+		defer c.stateLock.Unlock()
+	}
+
 	if c.ha == nil {
-		if grabStateLock {
-			cancelCtxAndLock()
-			defer c.stateLock.Unlock()
-		}
-		// Even in a non-HA context we key off of this for some things
+		// Even in a non-HA context we key off of this for some things.
 		c.standby.Store(true)
-
-		// Stop requests from processing
-		activeCtxCancel()
 	} else {
-		// If we are keeping the lock we already have the state write lock
-		// held. Otherwise grab it here so that when stopCh is triggered we are
-		// locked.
-		if grabStateLock {
-			cancelCtxAndLock()
-			defer c.stateLock.Unlock()
-		}
-
 		// If we are trying to acquire the lock, force it to return with nil so
 		// runHALoop will exit. If we are active, signal the standby goroutine
 		// to shut down and wait for completion. We have the state lock here so
@@ -2135,15 +2139,17 @@ func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 		// Wait for runHALoop to stop.
 		<-c.haLoopDoneCh
 		c.logger.Debug("runHALoop done")
-
-		// Stop requests from processing.
-		activeCtxCancel()
 	}
 
-	// Stop all running subsystems.
-	if err := c.preSeal(); err != nil {
-		c.logger.Error("pre-seal teardown failed", "error", err)
-		return errors.New("internal error")
+	// Stop requests from processing.
+	activeCtxCancel()
+
+	if opts.preSeal {
+		// Stop all running subsystems.
+		if err := c.preSeal(); err != nil {
+			c.logger.Error("pre-seal teardown failed", "error", err)
+			return errors.New("internal error")
+		}
 	}
 
 	// Perform additional cleanup upon sealing.

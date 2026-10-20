@@ -80,12 +80,13 @@ material; the full seal configuration is never returned.
 
 If the KMS configured for a namespace is unreachable at server startup, OpenBao
 records the affected namespace in an internal list and allows the server startup
-sequence to complete normally. The root namespace and all other namespaces remain
-unaffected.
+sequence to complete normally.
 
-The affected namespace cannot be initialized: its sealed data is inaccessible
-and its mounts and auth backends are not loaded. All child namespaces of the
-affected namespace are also unavailable for the same reason.
+The affected namespace remains sealed: its data is inaccessible and its mounts
+and auth backends are not loaded. All child namespaces of the affected namespace
+are also sealed and are skipped during server initialization. Parent namespaces,
+up to and including the root namespace, and all unrelated namespaces are
+unaffected.
 
 OpenBao periodically retries the KMS connection. Once the KMS becomes
 reachable, OpenBao unseals the namespace and executes the standard post-unseal

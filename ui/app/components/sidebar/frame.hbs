@@ -21,6 +21,7 @@
               data-test-console-toggle
               {{on "click" (fn (mut this.console.isOpen) (not this.console.isOpen))}}
             />
+            <Sidebar::ThemeToggle />
             <Sidebar::UserMenu />
           </:actions>
         </Hds::SideNav::Header>

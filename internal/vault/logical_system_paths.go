@@ -12,6 +12,34 @@ import (
 	"github.com/openbao/openbao/v2/internal/vault/policy"
 )
 
+var SysHealthSchema = map[string]*framework.FieldSchema{
+	"standbyok": {
+		Type:        framework.TypeBool,
+		Description: "Specifies if being a standby should still return the active status code.",
+		Default:     false,
+	},
+	"activecode": {
+		Type:        framework.TypeInt,
+		Description: "Specifies the status code for an active node.",
+		Default:     http.StatusOK,
+	},
+	"standbycode": {
+		Type:        framework.TypeInt,
+		Description: "Specifies the status code for a standby node.",
+		Default:     http.StatusTooManyRequests, // Consul warning code
+	},
+	"sealedcode": {
+		Type:        framework.TypeInt,
+		Description: "Specifies the status code for a sealed node.",
+		Default:     http.StatusServiceUnavailable,
+	},
+	"uninitcode": {
+		Type:        framework.TypeInt,
+		Description: "Specifies the status code for an uninitialized node.",
+		Default:     http.StatusNotImplemented,
+	},
+}
+
 func (b *SystemBackend) configPaths() []*framework.Path {
 	return []*framework.Path{
 		{
@@ -478,28 +506,7 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 
 		{
 			Pattern: "health$",
-			Fields: map[string]*framework.FieldSchema{
-				"standbyok": {
-					Type:        framework.TypeBool,
-					Description: "Specifies if being a standby should still return the active status code.",
-				},
-				"activecode": {
-					Type:        framework.TypeInt,
-					Description: "Specifies the status code for an active node.",
-				},
-				"standbycode": {
-					Type:        framework.TypeInt,
-					Description: "Specifies the status code for a standby node.",
-				},
-				"sealedcode": {
-					Type:        framework.TypeInt,
-					Description: "Specifies the status code for a sealed node.",
-				},
-				"uninitcode": {
-					Type:        framework.TypeInt,
-					Description: "Specifies the status code for an uninitialized node.",
-				},
-			},
+			Fields:  SysHealthSchema,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
 					DisplayAttrs: &framework.DisplayAttributes{

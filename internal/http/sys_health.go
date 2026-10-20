@@ -4,13 +4,12 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
-	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault"
@@ -30,21 +29,8 @@ func handleSysHealth(core *vault.Core) http.Handler {
 	})
 }
 
-func fetchStatusCode(r *http.Request, field string) (int, bool, bool) {
-	var err error
-	statusCode := http.StatusOK
-	if statusCodeStr, statusCodeOk := r.URL.Query()[field]; statusCodeOk {
-		statusCode, err = strconv.Atoi(statusCodeStr[0])
-		if err != nil || len(statusCodeStr) < 1 {
-			return http.StatusBadRequest, false, false
-		}
-		return statusCode, true, true
-	}
-	return statusCode, false, true
-}
-
 func handleSysHealthGet(core *vault.Core, w http.ResponseWriter, r *http.Request) {
-	code, body, err := getSysHealth(core, r)
+	code, body, err := getSysHealthRaw(core, r)
 	if err != nil {
 		core.Logger().Error("error checking health", "error", err)
 		respondError(w, code, nil)
@@ -65,7 +51,7 @@ func handleSysHealthGet(core *vault.Core, w http.ResponseWriter, r *http.Request
 }
 
 func handleSysHealthHead(core *vault.Core, w http.ResponseWriter, r *http.Request) {
-	code, body, _ := getSysHealth(core, r)
+	code, body, _ := getSysHealthRaw(core, r)
 
 	if body != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -73,45 +59,24 @@ func handleSysHealthHead(core *vault.Core, w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(code)
 }
 
-func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, error) {
+func getSysHealthRaw(core *vault.Core, r *http.Request) (int, *HealthResponse, error) {
+	fd := &framework.FieldData{
+		Raw:    parseQuery(r.URL.Query()),
+		Schema: vault.SysHealthSchema,
+	}
+
+	err := fd.Validate()
+	if err != nil {
+		return http.StatusBadRequest, nil, err
+	}
+
+	ctx := namespace.RootContext(r.Context())
+
+	return getSysHealth(ctx, core, fd)
+}
+
+func getSysHealth(ctx context.Context, core *vault.Core, fd *framework.FieldData) (int, *HealthResponse, error) {
 	var err error
-
-	// Check if being a standby is allowed for the purpose of a 200 OK
-	standbyOKStr, standbyOK := r.URL.Query()["standbyok"]
-	if standbyOK {
-		standbyOK, err = parseutil.ParseBool(standbyOKStr[0])
-		if err != nil {
-			return http.StatusBadRequest, nil, fmt.Errorf("bad value for standbyok parameter: %w", err)
-		}
-	}
-
-	uninitCode := http.StatusNotImplemented
-	if code, found, ok := fetchStatusCode(r, "uninitcode"); !ok {
-		return http.StatusBadRequest, nil, nil
-	} else if found {
-		uninitCode = code
-	}
-
-	sealedCode := http.StatusServiceUnavailable
-	if code, found, ok := fetchStatusCode(r, "sealedcode"); !ok {
-		return http.StatusBadRequest, nil, nil
-	} else if found {
-		sealedCode = code
-	}
-
-	standbyCode := http.StatusTooManyRequests // Consul warning code
-	if code, found, ok := fetchStatusCode(r, "standbycode"); !ok {
-		return http.StatusBadRequest, nil, nil
-	} else if found {
-		standbyCode = code
-	}
-
-	activeCode := http.StatusOK
-	if code, found, ok := fetchStatusCode(r, "activecode"); !ok {
-		return http.StatusBadRequest, nil, nil
-	} else if found {
-		activeCode = code
-	}
 
 	// Check system status
 	sealed := core.Sealed()
@@ -123,22 +88,23 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, erro
 		replicationState = core.ReplicationState()
 	}
 
-	ctx := namespace.RootContext(r.Context())
 	init, err := core.Initialized(ctx)
 	if err != nil {
 		return http.StatusInternalServerError, nil, err
 	}
 
 	// Determine the status code
-	code := activeCode
+	code := fd.Get("activecode").(int)
 	switch {
 	case !init:
-		code = uninitCode
+		code = fd.Get("uninitcode").(int)
 	case sealed:
-		code = sealedCode
+		code = fd.Get("sealedcode").(int)
 	case standby:
+		// Check if being a standby is allowed for the purpose of a 200 OK
+		standbyOK := fd.Get("standbyok").(bool)
 		if !standbyOK {
-			code = standbyCode
+			code = fd.Get("standbycode").(int)
 		}
 	}
 

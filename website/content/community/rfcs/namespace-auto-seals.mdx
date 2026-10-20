@@ -88,10 +88,12 @@ are also sealed and are skipped during server initialization. Parent namespaces,
 up to and including the root namespace, and all unrelated namespaces are
 unaffected.
 
-OpenBao periodically retries the KMS connection. Once the KMS becomes
-reachable, OpenBao unseals the namespace and executes the standard post-unseal
-initialization sequence, including loading the namespace mounts and policies.
-The namespace unseals automatically and requires no operator intervention.
+OpenBao periodically retries the KMS connection. The retry interval, and
+whether it is configurable, will be determined during implementation. Once the
+KMS becomes reachable, OpenBao unseals the namespace and executes the standard
+post-unseal initialization sequence, including loading the namespace mounts and
+policies. The namespace unseals automatically and requires no operator
+intervention.
 
 #### KMS unreachable after boot
 
@@ -177,9 +179,9 @@ retrieves the stored barrier key from the KMS and unseals the namespace. The
 standard post-unseal sequence then loads the namespace mounts and policies.
 Manual retry via the unseal endpoint is also possible at any time.
 
-The background process runs on the active node only. Standby nodes obtain the
-unsealed state through the mechanisms described in
-[Seal status propagation](#seal-status-propagation).
+Which nodes run the background process will be determined during
+implementation, together with the order of the propagation mechanisms described
+in [Seal status propagation](#seal-status-propagation).
 
 ### Audit
 

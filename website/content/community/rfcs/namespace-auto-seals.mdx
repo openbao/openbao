@@ -2,7 +2,7 @@
 sidebar_label: Per-Namespace Auto Seals
 description: |-
   An RFC proposing Auto Seal (HSM/KMS) support for sealable namespaces,
-  credential update endpoints, and the authorization and cluster coordination
+  a credential update endpoint, and the authorization and cluster coordination
   model required to operate namespace seals safely.
 ---
 
@@ -39,9 +39,6 @@ returned at creation time. Their generation can be deferred by specifying the
 number of shares as `0`. The namespace starts in its unsealed state: the barrier
 key is wrapped by the KMS immediately and the namespace is operational without
 any manual unseal step. This mirrors the behavior of the global Auto Seal.
-
-If the KMS is later decommissioned, the operator must migrate the namespace seal
-to Shamir before decommissioning the KMS key.
 
 ### Updating Seal Credentials
 
@@ -142,8 +139,9 @@ exposed by each provider depends on its wrapper implementation.
 
 ### Authorization
 
-`PUT /config/seal` requires `update` capability on the namespace path. These
-operations act on the namespace's own root key, not on the global seal or any
+`PUT /config/seal` requires `update` capability on the namespace path, and
+`GET /config/seal` requires `read` capability on the same path. Both operations
+act on the namespace's own seal configuration, not on the global seal or any
 parent namespace's seal.
 
 ### Cluster Behavior

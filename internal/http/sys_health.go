@@ -14,6 +14,11 @@ import (
 
 func handleSysHealth(core *vault.Core) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !core.Sealed() {
+			handleLogicalNoForward(core).ServeHTTP(w, r)
+			return
+		}
+
 		switch r.Method {
 		case "GET":
 			handleSysHealthGet(core, w, r)

@@ -4729,6 +4729,30 @@ func (core *Core) GetSysHealth(ctx context.Context, fd *framework.FieldData) (in
 	return code, hr, nil
 }
 
+func (b *SystemBackend) handleHealth(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	code, body, err := b.Core.GetSysHealth(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf []byte
+	if req.Operation != logical.HeaderOperation {
+		buf, err = json.Marshal(body)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	httpResp := &logical.Response{
+		Data: map[string]any{
+			logical.HTTPStatusCode:  code,
+			logical.HTTPRawBody:     buf,
+			logical.HTTPContentType: "application/json",
+		},
+	}
+	return httpResp, nil
+}
+
 func (b *SystemBackend) handleHAStatus(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	// We're always the leader if we're handling this request.
 	nodes, err := b.Core.getHAMembers()

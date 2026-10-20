@@ -41,6 +41,22 @@ var SysHealthSchema = map[string]*framework.FieldSchema{
 }
 
 func (b *SystemBackend) configPaths() []*framework.Path {
+	sysHealthOperation := &framework.PathOperation{
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationVerb:   "read",
+			OperationSuffix: "health-status",
+		},
+		Summary: "Returns the health status of OpenBao.",
+		Responses: map[int][]framework.Response{
+			200: {{Description: "initialized, unsealed, and active"}},
+			429: {{Description: "unsealed and standby"}},
+			472: {{Description: "data recovery mode replication secondary and active"}},
+			501: {{Description: "not initialized"}},
+			503: {{Description: "sealed"}},
+		},
+		Callback: b.handleHealth,
+	}
+
 	return []*framework.Path{
 		{
 			Pattern: "config/cors$",
@@ -508,20 +524,8 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 			Pattern: "health$",
 			Fields:  SysHealthSchema,
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ReadOperation: &framework.PathOperation{
-					DisplayAttrs: &framework.DisplayAttributes{
-						OperationVerb:   "read",
-						OperationSuffix: "health-status",
-					},
-					Summary: "Returns the health status of OpenBao.",
-					Responses: map[int][]framework.Response{
-						200: {{Description: "initialized, unsealed, and active"}},
-						429: {{Description: "unsealed and standby"}},
-						472: {{Description: "data recovery mode replication secondary and active"}},
-						501: {{Description: "not initialized"}},
-						503: {{Description: "sealed"}},
-					},
-				},
+				logical.ReadOperation:   sysHealthOperation,
+				logical.HeaderOperation: sysHealthOperation,
 			},
 
 			HelpSynopsis:    strings.TrimSpace(sysHelp["health"][0]),

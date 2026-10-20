@@ -70,9 +70,10 @@ Most strings contained within requests and responses are hashed with a salt usin
 :::warning
 
 Currently, only strings that come from JSON or returned in JSON are
-HMAC'd. Other data types, like integers, booleans, and so on, are passed
-through in plaintext. We recommend that all sensitive data be provided as string values
-inside all JSON sent to OpenBao (i.e., that integer values are provided in quotes).
+HMAC'd. Other data types, like integers, booleans, RFC3339 timestamps, and so
+on, are passed through in plaintext. We recommend that all sensitive data be
+provided as string values inside all JSON sent to OpenBao (e.g., that integer
+values are provided in quotes).
 
 :::
 

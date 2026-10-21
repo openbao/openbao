@@ -37,7 +37,6 @@
     color: #e3e3e3;
   }
 
-  // Toolbar band
   .toolbar {
     background-color: #2e2f31;
     border-color: rgba(255, 255, 255, 0.12);
@@ -55,7 +54,7 @@
     }
   }
 
-  // Text inputs and search fields
+  // Text inputs, textareas, select triggers
   .input,
   .textarea,
   .ember-power-select-trigger {
@@ -76,7 +75,6 @@
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
   }
 
-  // Empty state
   .empty-state {
     background: #242526;
     color: #a0a3ab;
@@ -87,6 +85,7 @@
     color: #e3e3e3;
   }
 
+  // Invert built-in diagrams so that they are visible against a dark background
   img[src*='/images/'] {
     filter: invert(0.9) hue-rotate(180deg);
   }
@@ -96,15 +95,32 @@
     color: #e3e3e3 !important;
   }
 
-  .has-text-grey {
+  .has-text-grey,
+  .has-text-grey-dark {
     color: #a0a3ab !important;
   }
 
-  // "..." menu trigger and its dropdown
+  // "Namespace" label on the login form
+  .toolbar-namespace-picker .is-label {
+    color: #a0a3ab;
+  }
+
+  // Form labels
+  .is-label {
+    color: #e3e3e3;
+  }
+
+  // "..." menu trigger
   .popup-menu-trigger {
     color: #e3e3e3;
   }
 
+  // Display name heading in the user menu
+  .popup-menu-content .menu-label {
+    color: #ffffff;
+  }
+
+  // Dropdown menus
   .popup-menu-content,
   div > .ember-power-select-options {
     background-color: #242526;
@@ -126,10 +142,6 @@
       background-color: #2e2f31;
       color: #ffffff;
     }
-  }
-
-  .ember-power-select-search::after {
-    background: #242526;
   }
 }
 

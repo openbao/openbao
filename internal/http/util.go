@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/buffer"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
@@ -147,7 +148,7 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 		// configuration at this point (because core is sealed) and let the request
 		// bypass rate limiting right into core if it has queued up right before the
 		// unseal process begins.
-		nsHeader := namespace.HeaderFromContext(r.Context())
+		nsHeader := r.Header.Get(consts.NamespaceHeaderName)
 		ns, trimmedPath := core.ResolveNamespaceFromRequest(nsHeader, path)
 		if ns == nil {
 			ns = namespace.RootNamespace

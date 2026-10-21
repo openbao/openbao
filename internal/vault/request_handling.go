@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/textproto"
 	"slices"
 	"strconv"
 	"strings"
@@ -608,7 +609,8 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	stop := context.AfterFunc(httpCtx, cancel)
 	defer stop()
 
-	nsHeader := namespace.HeaderFromContext(httpCtx)
+	nsHeader := textproto.MIMEHeader(req.Headers).Get(consts.NamespaceHeaderName)
+
 	contextNS, err := namespace.FromContext(httpCtx)
 	haveContextNS := err == nil
 

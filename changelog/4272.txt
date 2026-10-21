@@ -1,0 +1,3 @@
+```release-note:improvement
+secrets/transit: Support public key export for keys of type `external-key`.
+```

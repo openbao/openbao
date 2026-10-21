@@ -10,6 +10,7 @@ import (
 	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/mldsa"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
@@ -142,7 +143,7 @@ func (b *backend) pathPolicyExportRead(ctx context.Context, req *logical.Request
 	switch version {
 	case "":
 		for k, v := range p.Keys {
-			exportKey, err := getExportKey(p, &v, exportType, format)
+			exportKey, err := b.getExportKey(ctx, p, &v, exportType, format)
 			if err != nil {
 				return nil, err
 			}
@@ -169,7 +170,7 @@ func (b *backend) pathPolicyExportRead(ctx context.Context, req *logical.Request
 			return logical.ErrorResponse("version does not exist or cannot be found"), logical.ErrInvalidRequest
 		}
 
-		exportKey, err := getExportKey(p, &key, exportType, format)
+		exportKey, err := b.getExportKey(ctx, p, &key, exportType, format)
 		if err != nil {
 			return nil, err
 		}
@@ -188,7 +189,7 @@ func (b *backend) pathPolicyExportRead(ctx context.Context, req *logical.Request
 	return resp, nil
 }
 
-func getExportKey(policy *keysutil.Policy, key *keysutil.KeyEntry, exportType string, format string) (string, error) {
+func (b *backend) getExportKey(ctx context.Context, policy *keysutil.Policy, key *keysutil.KeyEntry, exportType string, format string) (string, error) {
 	if policy == nil {
 		return "", errors.New("nil policy provided")
 	}
@@ -210,14 +211,9 @@ func getExportKey(policy *keysutil.Policy, key *keysutil.KeyEntry, exportType st
 			if format == "der" || format == "pem" {
 				return "", errors.New("unknown format for HMAC key; supported values are `` or `raw`")
 			}
-
 			return strings.TrimSpace(base64.StdEncoding.EncodeToString(key.Key)), nil
 		case keysutil.KeyType_RSA2048, keysutil.KeyType_RSA3072, keysutil.KeyType_RSA4096:
-			rsaKey, err := encodeRSAPrivateKey(key, format)
-			if err != nil {
-				return "", err
-			}
-			return rsaKey, nil
+			return encodeRSAPrivateKey(key, format)
 		}
 	case exportTypeSigningKey:
 		switch policy.Type {
@@ -231,30 +227,16 @@ func getExportKey(policy *keysutil.Policy, key *keysutil.KeyEntry, exportType st
 			default:
 				curve = elliptic.P256()
 			}
-
-			ecKey, err := keyEntryToECPrivateKey(key, curve, format)
-			if err != nil {
-				return "", err
-			}
-			return ecKey, nil
+			return encodeECPrivateKey(key, curve, format)
 		case keysutil.KeyType_ED25519:
 			if len(key.Key) == 0 {
 				return "", nil
 			}
-
 			return encodeED25519PrivateKey(key, format)
 		case keysutil.KeyType_RSA2048, keysutil.KeyType_RSA3072, keysutil.KeyType_RSA4096:
-			rsaKey, err := encodeRSAPrivateKey(key, format)
-			if err != nil {
-				return "", err
-			}
-			return rsaKey, nil
+			return encodeRSAPrivateKey(key, format)
 		case keysutil.KeyType_MLDSA44, keysutil.KeyType_MLDSA65, keysutil.KeyType_MLDSA87:
-			mldsaKey, err := encodeMLDSAPrivateKey(key, format)
-			if err != nil {
-				return "", err
-			}
-			return mldsaKey, nil
+			return encodeMLDSAPrivateKey(key, format)
 		}
 	case exportTypePublicKey:
 		switch policy.Type {
@@ -268,26 +250,15 @@ func getExportKey(policy *keysutil.Policy, key *keysutil.KeyEntry, exportType st
 			default:
 				curve = elliptic.P256()
 			}
-
-			ecKey, err := keyEntryToECPublicKey(key, curve, format)
-			if err != nil {
-				return "", err
-			}
-			return ecKey, nil
+			return encodeECPublicKey(key, curve, format)
 		case keysutil.KeyType_ED25519:
 			return encodeED25519PublicKey(key, format)
 		case keysutil.KeyType_RSA2048, keysutil.KeyType_RSA3072, keysutil.KeyType_RSA4096:
-			rsaKey, err := encodeRSAPublicKey(key, format)
-			if err != nil {
-				return "", err
-			}
-			return rsaKey, nil
+			return encodeRSAPublicKey(key, format)
 		case keysutil.KeyType_MLDSA44, keysutil.KeyType_MLDSA65, keysutil.KeyType_MLDSA87:
-			mldsaKey, err := encodeMLDSAPublicKey(key, format, policy.Type.MLDSAParams())
-			if err != nil {
-				return "", err
-			}
-			return mldsaKey, nil
+			return encodeMLDSAPublicKey(key, format, policy.Type.MLDSAParams())
+		case keysutil.KeyType_ExternalKey:
+			return encodeExternalPublicKey(ctx, b.System(), key, format)
 		}
 	case exportTypeCertificateChain:
 		if key.CertificateChain == nil {
@@ -307,7 +278,7 @@ func getExportKey(policy *keysutil.Policy, key *keysutil.KeyEntry, exportType st
 		return certificateChain, nil
 	}
 
-	return "", fmt.Errorf("unknown key type %v for export type %v", policy.Type, exportType)
+	return "", fmt.Errorf("unsupported key type %q for export type %q", policy.Type, exportType)
 }
 
 func encodeRSAPrivateKey(key *keysutil.KeyEntry, format string) (string, error) {
@@ -371,29 +342,10 @@ func encodeRSAPublicKey(key *keysutil.KeyEntry, format string) (string, error) {
 		return "", errors.New("requested to encode an RSA public key with no RSA key present")
 	}
 
-	// Encode the RSA public key in PEM format to return over the API
-	derBytes, err := x509.MarshalPKIXPublicKey(publicKey)
-	if err != nil {
-		return "", fmt.Errorf("error marshaling RSA public key: %w", err)
-	}
-
-	if format == "der" {
-		return base64.StdEncoding.EncodeToString(derBytes), nil
-	}
-
-	pemBlock := &pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: derBytes,
-	}
-	pemBytes := pem.EncodeToMemory(pemBlock)
-	if len(pemBytes) == 0 {
-		return "", errors.New("failed to PEM-encode RSA public key")
-	}
-
-	return string(pemBytes), nil
+	return encodePublicKey(publicKey, format)
 }
 
-func keyEntryToECPrivateKey(k *keysutil.KeyEntry, curve elliptic.Curve, format string) (string, error) {
+func encodeECPrivateKey(k *keysutil.KeyEntry, curve elliptic.Curve, format string) (string, error) {
 	if format == "raw" {
 		return "", errors.New("unknown key format for ec key; supported values are ``, `der`, or `pem`")
 	}
@@ -444,7 +396,7 @@ func keyEntryToECPrivateKey(k *keysutil.KeyEntry, curve elliptic.Curve, format s
 	return strings.TrimSpace(string(pem.EncodeToMemory(&pemBlock))), nil
 }
 
-func keyEntryToECPublicKey(k *keysutil.KeyEntry, curve elliptic.Curve, format string) (string, error) {
+func encodeECPublicKey(k *keysutil.KeyEntry, curve elliptic.Curve, format string) (string, error) {
 	if format == "raw" {
 		return "", errors.New("unknown key format for ec key; supported values are ``, `der`, or `pem`")
 	}
@@ -459,22 +411,7 @@ func keyEntryToECPublicKey(k *keysutil.KeyEntry, curve elliptic.Curve, format st
 		Y:     k.EC_Y,
 	}
 
-	blockType := "PUBLIC KEY"
-	derBytes, err := x509.MarshalPKIXPublicKey(&pubKey)
-	if err != nil {
-		return "", err
-	}
-
-	if format == "der" {
-		return base64.StdEncoding.EncodeToString(derBytes), nil
-	}
-
-	pemBlock := pem.Block{
-		Type:  blockType,
-		Bytes: derBytes,
-	}
-
-	return strings.TrimSpace(string(pem.EncodeToMemory(&pemBlock))), nil
+	return encodePublicKey(&pubKey, format)
 }
 
 func encodeED25519PrivateKey(k *keysutil.KeyEntry, format string) (string, error) {
@@ -513,24 +450,7 @@ func encodeED25519PublicKey(k *keysutil.KeyEntry, format string) (string, error)
 		return "", err
 	}
 
-	pubKey := ed25519.PublicKey(pubRaw)
-
-	blockType := "PUBLIC KEY"
-	derBytes, err := x509.MarshalPKIXPublicKey(pubKey)
-	if err != nil {
-		return "", err
-	}
-
-	if format == "der" {
-		return base64.StdEncoding.EncodeToString(derBytes), nil
-	}
-
-	pemBlock := pem.Block{
-		Type:  blockType,
-		Bytes: derBytes,
-	}
-
-	return strings.TrimSpace(string(pem.EncodeToMemory(&pemBlock))), nil
+	return encodePublicKey(ed25519.PublicKey(pubRaw), format)
 }
 
 func encodeMLDSAPrivateKey(k *keysutil.KeyEntry, format string) (string, error) {
@@ -576,19 +496,62 @@ func encodeMLDSAPublicKey(k *keysutil.KeyEntry, format string, params mldsa.Para
 		return "", err
 	}
 
-	derBytes, err := x509.MarshalPKIXPublicKey(pubKey)
+	return encodePublicKey(pubKey, format)
+}
+
+func encodeExternalPublicKey(ctx context.Context, sys logical.SystemView, k *keysutil.KeyEntry, format string) (string, error) {
+	ext, err := sys.GetExternalKey(ctx, k.ExternalKeyRef)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to fetch external key: %w", err)
+	}
+
+	public, err := ext.ExportPublic(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch external key's public key: %w", err)
+	}
+
+	raw := format == "raw"
+
+	if format == "" {
+		switch public.(type) {
+		// These default to exporting as PEM.
+		case *rsa.PublicKey, *ecdsa.PublicKey:
+			return encodePublicKey(public, format)
+		// Others default to exporting raw.
+		default:
+			raw = true
+		}
+	}
+
+	if raw {
+		switch public := public.(type) {
+		case *mldsa.PublicKey:
+			return base64.StdEncoding.EncodeToString(public.Bytes()), nil
+		case ed25519.PublicKey:
+			return base64.StdEncoding.EncodeToString(public), nil
+		default:
+			return "", errors.New("unsupported key format; supported values are `der`, or `pem`")
+		}
+	}
+
+	// For remaining formats, delegate to the common helper.
+	return encodePublicKey(public, format)
+}
+
+func encodePublicKey(public crypto.PublicKey, format string) (string, error) {
+	der, err := x509.MarshalPKIXPublicKey(public)
+	if err != nil {
+		return "", fmt.Errorf("failed to DER-encode public key: %w", err)
 	}
 
 	if format == "der" {
-		return base64.StdEncoding.EncodeToString(derBytes), nil
+		return base64.StdEncoding.EncodeToString(der), nil
 	}
 
-	return strings.TrimSpace(string(pem.EncodeToMemory(&pem.Block{
+	return string(pem.EncodeToMemory(&pem.Block{
 		Type:  "PUBLIC KEY",
-		Bytes: derBytes,
-	}))), nil
+		Bytes: der,
+	})), nil
 }
 
 const pathExportHelpSyn = `Export named encryption or signing key`

@@ -251,7 +251,8 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
 			val, err := os.ReadFile(out)
 			require.NoError(collect, err)
-			os.Remove(out)
+			err = os.Remove(out)
+			require.NoError(collect, err)
 			require.NotEmpty(collect, val)
 			if removeJWTAfterReading {
 				_, err = os.Stat(in)

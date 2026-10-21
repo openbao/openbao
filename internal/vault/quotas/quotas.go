@@ -288,6 +288,10 @@ func NewManager(logger log.Logger, ms *metricsutil.ClusterMetricSink, detectDead
 		dbAndCacheLock:       &locking.SyncRWMutex{},
 	}
 
+	// Setup replaces these with the stored configuration. Until it runs, a standby
+	// that has never been active still exempts the defaultExemptPaths.
+	manager.rateLimitPathManager.AddPaths(defaultExemptPaths)
+
 	if detectDeadlocks {
 		logger.Debug("enabling deadlock detection")
 		manager.quotaLock = &locking.DeadlockRWMutex{}

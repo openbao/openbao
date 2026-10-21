@@ -771,6 +771,14 @@ func TestTokenStore_AccessorIndex(t *testing.T) {
 		t.Fatalf("bad: %#v", out)
 	}
 
+	require.True(t, strings.HasPrefix(out.Accessor, consts.TokenAccessorPrefix))
+
+	s, err := ts.Salt(ctx)
+	require.NoError(t, err)
+	entry, err := ts.accessorView(namespace.RootNamespace).Get(ctx, "h"+s.GetHMAC(out.Accessor))
+	require.NoError(t, err)
+	require.NotNil(t, entry)
+
 	aEntry, err := ts.lookupByAccessor(ctx, out.Accessor, false, false)
 	require.NoError(t, err)
 

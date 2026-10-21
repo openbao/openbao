@@ -7,6 +7,7 @@ import { module, test } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
 import { render, click, fillIn, triggerEvent, waitUntil } from '@ember/test-helpers';
 import hbs from 'htmlbars-inline-precompile';
+import EmberObject from '@ember/object';
 
 let file;
 const fileEvent = () => {
@@ -98,7 +99,7 @@ module('Integration | Component | pgp file', function (hooks) {
   });
 
   test('toggling back and forth', async function (assert) {
-    const key = { value: '' };
+    const key = EmberObject.create({ value: '', enterAsText: false });
     const event = fileEvent();
     this.set('key', key);
     this.set('index', 0);

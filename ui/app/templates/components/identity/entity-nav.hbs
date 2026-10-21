@@ -26,7 +26,7 @@
   <ToolbarActions>
     {{#if (eq this.identityType "entity")}}
       <ToolbarLink
-        @route={{"vault.cluster.access.identity.merge"}}
+        @route="vault.cluster.access.identity.merge"
         @model={{pluralize this.identityType}}
         data-test-entity-merge-link={{true}}
       >

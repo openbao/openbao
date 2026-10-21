@@ -26,10 +26,10 @@ import (
 
 	"github.com/openbao/openbao/v2/internal/builtin/plugin"
 
-	"github.com/openbao/openbao/v2/internal/builtin/audit/syslog"
-
 	"github.com/openbao/openbao/v2/internal/builtin/audit/file"
+	"github.com/openbao/openbao/v2/internal/builtin/audit/http"
 	"github.com/openbao/openbao/v2/internal/builtin/audit/socket"
+	"github.com/openbao/openbao/v2/internal/builtin/audit/syslog"
 	"github.com/stretchr/testify/require"
 
 	"github.com/go-test/deep"
@@ -80,11 +80,17 @@ func TestNewCore_configureAuditBackends(t *testing.T) {
 				"syslog": syslog.Factory,
 			},
 		},
+		"http": {
+			backends: map[string]audit.Factory{
+				"http": http.Factory,
+			},
+		},
 		"all": {
 			backends: map[string]audit.Factory{
 				"file":   file.Factory,
 				"socket": socket.Factory,
 				"syslog": syslog.Factory,
+				"http":   http.Factory,
 			},
 		},
 	}

@@ -14,8 +14,8 @@
             <Select
               @label="Multi-factor authentication method"
               @options={{constraint.methods}}
-              @valueAttribute={{"id"}}
-              @labelAttribute={{"label"}}
+              @valueAttribute="id"
+              @labelAttribute="label"
               @isFullwidth={{true}}
               @noDefault={{true}}
               @selectedValue={{constraint.selectedId}}

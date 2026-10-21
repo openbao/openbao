@@ -27,33 +27,14 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 	b, err := VersionedKVFactory(t.Context(), config)
 	require.NoError(t, err)
 
-	// Wait for the upgrade to finish
-	timeout := time.After(20 * time.Second)
-	ticker := time.Tick(time.Second)
-
-	for {
-		select {
-		case <-timeout:
-			t.Fatal("timeout expired waiting for upgrade")
-		case <-ticker:
-			req := &logical.Request{
-				Operation: logical.ReadOperation,
-				Path:      "config",
-				Storage:   config.StorageView,
-			}
-
-			resp, err := b.HandleRequest(t.Context(), req)
-			require.NoErrorf(t, err, "unable to read config: %s", err)
-
-			if resp != nil && !resp.IsError() {
-				return b, config.StorageView
-			}
-
-			if resp == nil || (resp.IsError() && strings.Contains(resp.Error().Error(), "Upgrading from non-versioned to versioned")) {
-				t.Log("waiting for upgrade to complete")
-			}
-		}
+	// Wait for the upgrade to finish.
+	select {
+	case <-b.(*versionedKVBackend).upgrading:
+	case <-time.After(10 * time.Second):
+		t.Fatal("timeout expired waiting for upgrade")
 	}
+
+	return b, config.StorageView
 }
 
 // getKeySet will produce a set of the keys that exist in m
@@ -371,6 +352,27 @@ func TestVersionedKV_Data_Delete(t *testing.T) {
 	require.NoError(t, err)
 
 	if !parsed.After(time.Now().Add(-1*time.Minute)) || !parsed.Before(time.Now()) {
+		t.Fatalf("Bad response: %#v", resp)
+	}
+
+	// Read the key metadata directly to verify it was refreshed by the delete.
+	req = &logical.Request{
+		Operation: logical.ReadOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+	}
+
+	resp, err = b.HandleRequest(t.Context(), req)
+	if err != nil || resp == nil || resp.IsError() {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	updatedTime, err := time.Parse(time.RFC3339Nano, resp.Data["updated_time"].(string))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !updatedTime.After(time.Now().Add(-1*time.Minute)) || !updatedTime.Before(time.Now()) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 }

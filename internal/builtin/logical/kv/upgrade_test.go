@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
-	"time"
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
@@ -61,9 +60,7 @@ func TestVersionedKV_Upgrade(t *testing.T) {
 	}
 
 	// wait for upgrade to finish
-	for b.(*versionedKVBackend).upgrading.Load() {
-		time.Sleep(time.Second)
-	}
+	<-b.(*versionedKVBackend).upgrading
 
 	for i := range 1024 * 1024 {
 		data := map[string]any{

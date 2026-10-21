@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"crypto/fips140"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -2135,14 +2136,16 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 		}
 
 		// Fallback for legacy SHA-1-based keys
-		fallbackAccessorSaltedID, err := ts.SaltID(revokeCtx, entry.Accessor)
-		if err != nil {
-			return err
-		}
+		if !fips140.Enforced() {
+			fallbackAccessorSaltedID, err := ts.SaltID(revokeCtx, entry.Accessor)
+			if err != nil {
+				return err
+			}
 
-		if fallbackAccessorSaltedID != accessorSaltedID {
-			if err = ts.accessorView(tokenNS).Delete(ctx, fallbackAccessorSaltedID); err != nil {
-				return fmt.Errorf("failed to delete entry: %w", err)
+			if fallbackAccessorSaltedID != accessorSaltedID {
+				if err = ts.accessorView(tokenNS).Delete(ctx, fallbackAccessorSaltedID); err != nil {
+					return fmt.Errorf("failed to delete entry: %w", err)
+				}
 			}
 		}
 	}
@@ -2384,15 +2387,17 @@ func (ts *TokenStore) lookupByAccessor(ctx context.Context, id string, salted, t
 	}
 
 	// Fallback for legacy SHA-1 accessors
-	if entry == nil && !salted {
-		lookupID, err = ts.SaltID(ctx, id)
+	if entry == nil && !salted && !fips140.Enforced() {
+		oldLookupID, err := ts.SaltID(ctx, id)
 		if err != nil {
 			return nil, err
 		}
 
-		entry, err = ts.accessorView(ns).Get(ctx, lookupID)
-		if err != nil {
-			return nil, fmt.Errorf("error reading legacy index: %v", err)
+		if oldLookupID != lookupID {
+			entry, err = ts.accessorView(ns).Get(ctx, oldLookupID)
+			if err != nil {
+				return nil, fmt.Errorf("error reading legacy index: %v", err)
+			}
 		}
 	}
 
@@ -2712,7 +2717,7 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 			ts.logger.Info("number of revoked tokens which were invalid but present in accessors", "count", deletedCountInvalidTokenInAccessor)
 			ts.logger.Info("number of deleted accessors which had invalid tokens", "count", deletedCountAccessorInvalidToken)
 			ts.logger.Info("number of deleted cubbyhole keys that were invalid", "count", deletedCountInvalidCubbyholeKey)
-			ts.logger.Info("number of migrated accessors:", "count", countMigratedAccessors)
+			ts.logger.Info("number of migrated accessors", "count", countMigratedAccessors)
 
 			return tidyErrors.ErrorOrNil()
 		}

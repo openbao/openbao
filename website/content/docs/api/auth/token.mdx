@@ -820,12 +820,28 @@ valid in the above steps will be deleted.
 | :----- | :----------------- |
 | `POST` | `/auth/token/tidy` |
 
+### Parameters
+
+- `migrate_accessors` `(bool: false)` – If `true` accessor storage keys will be
+migrated from salted SHA-1 to HMAC-SHA256. Accessor values remain unchanged. 
+Each legacy SHA-1 entry would be deleted after its replacement has been successfully 
+stored under the HMAC-SHA256 key. Entries already stored under HMAC-SHA256 keys
+will be skipped.
+
+### Sample payload
+```json
+{
+  "migrate_accessors": true
+}
+```
+
 ### Sample request
 
 ```shell-session
 $ curl \
     --header "X-Vault-Token: ..." \
     --request POST \
+    --data @payload.json \
     http://127.0.0.1:8200/v1/auth/token/tidy
 ```
 

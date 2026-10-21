@@ -7,8 +7,14 @@ import { inject as service } from '@ember/service';
 import Route from '@ember/routing/route';
 
 export default Route.extend({
+  theme: service(),
   routing: service('router'),
   namespaceService: service('namespace'),
+
+  beforeModel() {
+    // Start theme service so that every page can receive updates from the OS. Mainly, the login page that has no sidebar.
+    this.theme;
+  },
 
   actions: {
     willTransition() {

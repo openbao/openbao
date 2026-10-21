@@ -8,9 +8,22 @@ export default class ThemeService extends Service {
   // Read saved value
   @tracked choice = localStorage.getItem(STORAGE_KEY);
 
-  // Paint saved theme
+  mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+  // Paint saved theme and call repaint whenever theme changes in OS
   constructor() {
     super(...arguments);
+    this.mediaQuery.addEventListener('change', this.handleSystemChange);
+    this.apply();
+  }
+
+  willDestroy() {
+    super.willDestroy(...arguments);
+    this.mediaQuery.removeEventListener('change', this.handleSystemChange);
+  }
+
+  @action
+  handleSystemChange() {
     this.apply();
   }
 
@@ -36,7 +49,7 @@ export default class ThemeService extends Service {
 
   // Check OS preference and set data-theme data attribute
   apply() {
-    const systemMode = window.matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
+    const systemMode = this.mediaQuery.matches ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', this.choice ?? systemMode); // use OS preference if user has not made a choice yet
   }
 }

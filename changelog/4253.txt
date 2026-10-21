@@ -1,0 +1,3 @@
+```release-note: feature
+ui: add a dark mode and a manual theme toggle to sidebar
+```

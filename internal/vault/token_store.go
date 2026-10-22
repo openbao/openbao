@@ -59,7 +59,7 @@ const (
 	// secondary parent based index
 	parentPrefix = "parent/"
 
-	// hmacStorageKeyPrefix identifies HMAC-derived storage keys
+	// hmacStorageKeyPrefix is prepended to HMAC-derived storage keys.
 	hmacStorageKeyPrefix = "h"
 
 	// tokenSubPath is the sub-path used for the token store

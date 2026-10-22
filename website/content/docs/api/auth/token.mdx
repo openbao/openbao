@@ -822,13 +822,14 @@ valid in the above steps will be deleted.
 
 ### Parameters
 
-- `migrate_accessors` `(bool: false)` – If `true` accessor storage keys will be
-migrated from salted SHA-1 to HMAC-SHA256. Accessor values remain unchanged. 
-Each legacy SHA-1 entry would be deleted after its replacement has been successfully 
+- `migrate_accessors` `(bool: false)` – If `true`, accessor storage keys will be
+migrated from salted SHA-1 to HMAC-SHA256. Accessor values remain unchanged.
+Each legacy SHA-1 entry is deleted after its replacement has been successfully
 stored under the HMAC-SHA256 key. Entries already stored under HMAC-SHA256 keys
 will be skipped.
 
 ### Sample payload
+
 ```json
 {
   "migrate_accessors": true

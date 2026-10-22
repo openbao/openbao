@@ -549,7 +549,7 @@ func (b *databaseBackend) initQueue(ctx context.Context, conf *logical.BackendCo
 			if walID != "" && err == nil {
 				defer func(ctx context.Context, storage logical.Storage, walID string) {
 					if err := framework.DeleteWAL(ctx, storage, walID); err != nil {
-						b.Logger().Warn("error deleting WAL")
+						b.Logger().Warn("error deleting WAL", "error", err)
 					}
 				}(ctx, conf.StorageView, walID)
 			}

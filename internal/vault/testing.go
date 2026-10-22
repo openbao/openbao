@@ -616,9 +616,7 @@ func TestAddTestPlugin(t testing.T, c *Core, name string, pluginType consts.Plug
 		}
 		// Ensure that the file is closed and written. This seems to be
 		// necessary on Linux systems.
-		if err := out.Close(); err != nil {
-			t.Fatalf("error closing copied file: %v", err)
-		}
+		require.NoError(t, out.Close(), "error closing copied file")
 
 		dirPath = tempDir
 	}

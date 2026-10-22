@@ -67,7 +67,7 @@ export default Route.extend({
   beforeModel() {
     const secret = this.secretParam();
     const backend = this.enginePathParam();
-    const { tab } = this.paramsFor('vault.cluster.secrets.backend.list-root');
+    const { tab } = this.paramsFor(this.routeName);
     const secretEngine = this.store.peekRecord('secret-engine', backend);
     const type = secretEngine?.engineType;
     assert('secretEngine.engineType is not defined', !!type);
@@ -119,6 +119,7 @@ export default Route.extend({
         .lazyPaginatedQuery(modelType, {
           id: secret,
           backend,
+          scan: this.isScan,
           responsePath: 'data.keys',
           page: params.page || 1,
           pageFilter: params.pageFilter,
@@ -218,7 +219,7 @@ export default Route.extend({
       const backend = this.enginePathParam();
       const is404 = error.httpStatus === 404;
       /* eslint-disable-next-line ember/no-controller-access-in-routes */
-      const hasModel = this.controllerFor(this.routeName).hasModel;
+      const hasModel = this.controllerFor(this.controllerName || this.routeName).hasModel;
 
       // this will occur if we've deleted something,
       // and navigate to its parent and the parent doesn't exist -

@@ -21,7 +21,7 @@
         {{else}}
           <Icon @name={{if @item.isFolder "folder" (or @item.icon "file")}} class="has-text-grey-light" />
         {{/if}}
-        {{if (eq @item.id " ") "(self)" (or @item.keyWithoutParent @item.id)}}
+        {{if (eq @item.id " ") "(self)" (if @showFullPath @item.id (or @item.keyWithoutParent @item.id))}}
       </SecretLink>
     </div>
     <div class="column has-text-right">

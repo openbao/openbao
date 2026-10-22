@@ -10,7 +10,7 @@ go 1.26.0
 require (
 	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/go-jose/go-jose/v4 v4.1.6
-	github.com/go-test/deep v1.1.1
+	github.com/go-test/deep v1.1.2
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.6.3

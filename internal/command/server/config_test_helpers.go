@@ -908,9 +908,7 @@ func testParseUserLockouts(t *testing.T) {
 	}
 	list, _ := obj.Node.(*ast.ObjectList)
 	objList := list.Filter("user_lockout")
-	if err := configutil.ParseUserLockouts(config.SharedConfig, objList); err != nil {
-		t.Fatalf("error parsing user lockouts: %v", err)
-	}
+	require.NoError(t, configutil.ParseUserLockouts(config.SharedConfig, objList), "error parsing user lockouts")
 
 	sort.Slice(config.UserLockouts[:], func(i, j int) bool {
 		return config.UserLockouts[i].Type < config.UserLockouts[j].Type

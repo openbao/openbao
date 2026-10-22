@@ -312,17 +312,16 @@ func SplitIDFromString(input string) (string, string) {
 	switch {
 	case strings.HasPrefix(input, consts.LegacyBatchTokenPrefix):
 		prefix = consts.LegacyBatchTokenPrefix
-		input = input[2:]
-
+		input = input[len(prefix):]
 	case strings.HasPrefix(input, consts.LegacyServiceTokenPrefix):
 		prefix = consts.LegacyServiceTokenPrefix
-		input = input[2:]
+		input = input[len(prefix):]
 	case strings.HasPrefix(input, consts.BatchTokenPrefix):
 		prefix = consts.BatchTokenPrefix
-		input = input[4:]
+		input = input[len(prefix):]
 	case strings.HasPrefix(input, consts.ServiceTokenPrefix):
 		prefix = consts.ServiceTokenPrefix
-		input = input[4:]
+		input = input[len(prefix):]
 	case strings.HasPrefix(input, consts.TokenAccessorPrefix):
 		prefix = consts.TokenAccessorPrefix
 		input = input[len(prefix):]

@@ -106,10 +106,6 @@ const (
 	// IgnoreForBilling used for HCP Link batch tokens and inserted into the InternalMeta
 	// Tokens created for the purpose of HCP Link should bypass counting for billing purposes
 	IgnoreForBilling = "ignore_for_billing"
-
-	// migrateAccessorsField names the tidy endpoint option for migrating accessor
-	// storage keys from salted SHA-1 to HMAC-SHA256
-	migrateAccessorsField = "migrate_accessors"
 )
 
 var (
@@ -646,14 +642,6 @@ func (ts *TokenStore) paths() []*framework.Path {
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: operationPrefixToken,
 				OperationVerb:   "tidy",
-			},
-
-			Fields: map[string]*framework.FieldSchema{
-				migrateAccessorsField: {
-					Type:        framework.TypeBool,
-					Default:     false,
-					Description: "Migrate legacy SHA-1 token accessor storage keys to HMAC-SHA256",
-				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -2485,8 +2473,6 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 		return nil, fmt.Errorf("failed to get namespace from context: %w", err)
 	}
 
-	migrateAccessorsFieldSet := data.Get(migrateAccessorsField).(bool)
-
 	go func() {
 		defer ts.tidyLock.Unlock()
 		logger := ts.logger.Named("tidy")
@@ -2710,13 +2696,11 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 					}
 				}
 
-				if migrateAccessorsFieldSet {
-					migrated, err := ts.migrateAccessor(quitCtx, saltedAccessor, accessorEntry)
-					if err != nil {
-						tidyErrors = multierror.Append(tidyErrors, err)
-					} else if migrated {
-						countMigratedAccessors++
-					}
+				migrated, err := ts.migrateAccessor(quitCtx, saltedAccessor, accessorEntry)
+				if err != nil {
+					tidyErrors = multierror.Append(tidyErrors, err)
+				} else if migrated {
+					countMigratedAccessors++
 				}
 			}
 

@@ -773,9 +773,9 @@ func TestTokenStore_AccessorIndex(t *testing.T) {
 
 	require.True(t, strings.HasPrefix(out.Accessor, consts.TokenAccessorPrefix))
 
-	s, err := ts.Salt(ctx)
+	hmacKey, err := ts.SaltIDWithHMAC(ctx, out.Accessor)
 	require.NoError(t, err)
-	entry, err := ts.accessorView(namespace.RootNamespace).Get(ctx, "h"+s.GetHMAC(out.Accessor))
+	entry, err := ts.accessorView(namespace.RootNamespace).Get(ctx, hmacKey)
 	require.NoError(t, err)
 	require.NotNil(t, entry)
 
@@ -796,6 +796,10 @@ func TestTokenStore_AccessorIndex(t *testing.T) {
 	ent2.ID = ""
 	ent2.NamespaceID = ns1.ID
 	testMakeTokenDirectly(t, ctx, ts, &ent2)
+
+	require.NotEqual(t, out.Accessor, ent2.Accessor)
+	require.True(t, strings.HasPrefix(ent2.Accessor, consts.TokenAccessorPrefix))
+	require.True(t, strings.HasSuffix(ent2.Accessor, "."+ns1.ID))
 
 	aEntry, err = ts.lookupByAccessor(ctx, ent2.Accessor, false, false)
 	require.Error(t, err)

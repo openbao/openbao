@@ -390,7 +390,7 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 
 		nsHeader := r.Header.Get(consts.NamespaceHeaderName)
 		if nsHeader != "" {
-			// Setting the namespace in the header to be included in the response
+			// Set the namespace in the header to be echo'd in the response.
 			nw.Header().Set(consts.NamespaceHeaderName, nsHeader)
 		}
 
@@ -398,7 +398,6 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 		ctx = addMaximumJsonMemoryToContext(ctx, maxRequestJsonMemory)
 		ctx = addMaximumJsonStringsToContext(ctx, maxRequestJsonStrings)
 
-		ctx = namespace.ContextWithNamespaceHeader(ctx, nsHeader)
 		r = r.WithContext(ctx)
 
 		// Set some response headers with raft node id (if applicable) and hostname, if available

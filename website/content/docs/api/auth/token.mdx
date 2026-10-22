@@ -813,6 +813,11 @@ in storage, and if not will delete the accessor. If the token still exists in
 storage but shouldn't, tidy will try to revoke it and any child leases it might
 have, then delete the accessor.
 
+Each tidy run migrates the storage keys of legacy token accessors from salted SHA-1
+to HMAC-SHA256. Token accessor values remain unchanged. Each legacy SHA-1 entry is
+deleted after its replacement has been successfully stored under the HMAC-SHA256 key.
+Entries already stored under HMAC-SHA256 keys will be skipped.
+
 Finally, any cubbyhole entries that are associated with tokens which weren't deemed
 valid in the above steps will be deleted.
 
@@ -820,29 +825,12 @@ valid in the above steps will be deleted.
 | :----- | :----------------- |
 | `POST` | `/auth/token/tidy` |
 
-### Parameters
-
-- `migrate_accessors` `(bool: false)` – If `true`, accessor storage keys will be
-migrated from salted SHA-1 to HMAC-SHA256. Accessor values remain unchanged.
-Each legacy SHA-1 entry is deleted after its replacement has been successfully
-stored under the HMAC-SHA256 key. Entries already stored under HMAC-SHA256 keys
-will be skipped.
-
-### Sample payload
-
-```json
-{
-  "migrate_accessors": true
-}
-```
-
 ### Sample request
 
 ```shell-session
 $ curl \
     --header "X-Vault-Token: ..." \
     --request POST \
-    --data @payload.json \
     http://127.0.0.1:8200/v1/auth/token/tidy
 ```
 

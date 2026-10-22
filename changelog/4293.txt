@@ -1,0 +1,3 @@
+```release-note:bug
+core/ha: Fix `sys/health` being unresponsive while a standby becomes active.
+```

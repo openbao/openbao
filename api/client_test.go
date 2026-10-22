@@ -708,9 +708,7 @@ func TestParsingErrorCase(t *testing.T) {
 func TestClientTimeoutSetting(t *testing.T) {
 	t.Setenv(EnvVaultClientTimeout, "10")
 	config := DefaultConfig()
-	if err := config.ReadEnvironment(); err != nil {
-		t.Fatalf("error reading environment: %v", err)
-	}
+	require.NoError(t, config.ReadEnvironment(), "error reading environment")
 	_, err := NewClient(config)
 	require.NoError(t, err)
 }

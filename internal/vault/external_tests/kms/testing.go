@@ -153,6 +153,8 @@ func ExerciseTransitForKey(t *testing.T, client *api.Client, baseName string, en
 			t.Parallel()
 			ExerciseTransitEncryptDecrypt(t, client, "keys", baseName)
 			ExerciseTransitEncryptDecrypt(t, client, "transit", baseName)
+			ExerciseTransitDataKeys(t, client, "keys", baseName)
+			ExerciseTransitDataKeys(t, client, "transit", baseName)
 		})
 	}
 	if signVerify {
@@ -193,6 +195,36 @@ func ExerciseTransitEncryptDecrypt(t *testing.T, client *api.Client, mountName s
 	decrypted := resp.Data["plaintext"]
 	require.NotEmpty(t, decrypted)
 	require.Equal(t, decrypted, plaintextEncoded)
+}
+
+func ExerciseTransitDataKeys(t *testing.T, client *api.Client, mountName string, keyName string) {
+	encryptPath := fmt.Sprintf("%v/datakey/plaintext/%v", mountName, keyName)
+	decryptPath := fmt.Sprintf("%v/decrypt/%v", mountName, keyName)
+
+	resp, err := client.Logical().Write(encryptPath, nil)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "ciphertext")
+	require.Contains(t, resp.Data, "plaintext")
+
+	ciphertext := resp.Data["ciphertext"]
+	require.NotEmpty(t, ciphertext)
+
+	dataKey := resp.Data["plaintext"].(string)
+	require.NotEmpty(t, dataKey)
+
+	require.NotEqual(t, ciphertext, dataKey)
+
+	resp, err = client.Logical().Write(decryptPath, map[string]any{
+		"ciphertext": ciphertext,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "plaintext")
+
+	decrypted := resp.Data["plaintext"]
+	require.NotEmpty(t, decrypted)
+	require.Equal(t, decrypted, dataKey)
 }
 
 func ExerciseTransitSignVerify(t *testing.T, client *api.Client, mountName string, keyName string) {

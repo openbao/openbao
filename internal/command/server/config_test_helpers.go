@@ -839,9 +839,7 @@ listener "tcp" {
 	}
 	list, _ := obj.Node.(*ast.ObjectList)
 	objList := list.Filter("listener")
-	if err := configutil.ParseListeners(config.SharedConfig, objList); err != nil {
-		t.Fatalf("error parsing listeners: %v", err)
-	}
+	require.NoError(t, configutil.ParseListeners(config.SharedConfig, objList), "error parsing listeners")
 	listeners := config.Listeners
 	if len(listeners) == 0 {
 		t.Fatal("expected at least one listener in the config")

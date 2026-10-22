@@ -652,7 +652,7 @@ func (ts *TokenStore) paths() []*framework.Path {
 				migrateAccessorsField: {
 					Type:        framework.TypeBool,
 					Default:     false,
-					Description: "Migrate legacy token accessors storage keys to HMAC-SHA256",
+					Description: "Migrate legacy SHA-1 token accessor storage keys to HMAC-SHA256",
 				},
 			},
 

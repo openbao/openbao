@@ -279,8 +279,19 @@ func (b *databaseBackend) pathStaticCredsRead() framework.OperationFunc {
 		respData := map[string]any{
 			"username":            role.StaticAccount.Username,
 			"ttl":                 role.StaticAccount.CredentialTTL().Seconds(),
-			"rotation_period":     role.StaticAccount.RotationPeriod.Seconds(),
 			"last_vault_rotation": role.StaticAccount.LastVaultRotation,
+			"next_vault_rotation": role.StaticAccount.NextVaultRotation,
+		}
+		if role.StaticAccount.RotationPeriod != 0 {
+			respData["rotation_period"] = role.StaticAccount.RotationPeriod.Seconds()
+		} else if role.StaticAccount.RotationSchedule != "" {
+			// `else` is important here since the scheduler implicitly
+			// sets RotationShedule when RotationPeriod is used
+			respData["rotation_schedule"] = role.StaticAccount.RotationSchedule
+		}
+		if (role.StaticAccount.RotationSchedule != "" || role.StaticAccount.RotationPeriod != 0) &&
+			role.StaticAccount.RotationWindow != 0 {
+			respData["rotation_window"] = role.StaticAccount.RotationWindow.Seconds()
 		}
 
 		switch role.CredentialType {

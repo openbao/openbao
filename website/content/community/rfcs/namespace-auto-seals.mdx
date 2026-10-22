@@ -1,9 +1,7 @@
 ---
 sidebar_label: Per-Namespace Auto Seals
 description: |-
-  An RFC proposing Auto Seal (HSM/KMS) support for sealable namespaces,
-  a credential update endpoint, and the authorization and cluster coordination
-  model required to operate namespace seals safely.
+  An OpenBao RFC proposing Auto Seal support for sealable namespaces.
 ---
 
 # Per-Namespace Auto Seals
@@ -11,19 +9,17 @@ description: |-
 ## Summary
 
 Per-namespace sealing, introduced in OpenBao v2.6, allows individual namespaces
-to maintain their own barrier protected by a dedicated seal. This RFC extends
-that feature to support Auto Seal backends (HSMs and KMSes) at namespace
-creation, defines a dedicated endpoint for credential updates, and establishes
-the authorization and cluster coordination model required to operate namespace
-seals safely.
+to maintain their own barrier protected by a dedicated Shamir seal. This RFC
+extends that feature to support Auto Seal configuration, defines a dedicated
+endpoint for later seal configuration updates, and establishes the authorization
+coordination coordination model required to operate namespace Auto Seals within
+a cluster.
 
 ## Problem Statement
 
-The namespace creation endpoint rejects non-Shamir seal types. No endpoint
-exists for updating seal credentials on an existing sealable namespace.
-
-The invalidation framework does not cover namespace seal configuration changes,
-leaving standby nodes with stale wrappers after a credential update.
+Namespace sealing in OpenBao only supports Shamir seals. As an alternative,
+namespace operators may prefer to use Auto Unseal to reduce operational
+complexity and better ensure availability.
 
 ## User-facing description
 
@@ -183,15 +179,10 @@ Which nodes run the background process will be determined during
 implementation, together with the order of the propagation mechanisms described
 in [Seal status propagation](#seal-status-propagation).
 
-### Audit
-
-Standard OpenBao request/response audit logging covers all operations.
-Credentials and key material are HMAC'd by default unless `log_raw` is enabled.
-
 ## Downsides
 
-No significant design downsides have been identified so far.
-Seal type migration is not in scope for this RFC.
+No significant downsides have been identified so far. Seal migration is not in
+scope for this RFC.
 
 ## Security Implications
 
@@ -240,5 +231,4 @@ None.
 
 ## Related Issues
 
-- https://github.com/openbao/openbao/issues/3333
-- https://github.com/openbao/openbao/pull/3660
+None.

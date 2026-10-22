@@ -1,0 +1,6 @@
+```release-note:change
+auth/token: Use the `a.<accessor>[.<namespace>]` format and HMAC-SHA256-derived storage keys for new token accessors.
+```
+```release-note:improvement
+auth/token: Add `migrate_accessors` option to `auth/token/tidy` to migrate legacy accessor storage keys from SHA-1 to HMAC-SHA256.
+```

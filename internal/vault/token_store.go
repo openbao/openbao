@@ -59,6 +59,9 @@ const (
 	// secondary parent based index
 	parentPrefix = "parent/"
 
+	// hmacStorageKeyPrefix identifies HMAC-derived storage keys
+	hmacStorageKeyPrefix = "h"
+
 	// tokenSubPath is the sub-path used for the token store
 	// view. This is nested under the system view.
 	tokenSubPath = "token/"
@@ -104,6 +107,8 @@ const (
 	// Tokens created for the purpose of HCP Link should bypass counting for billing purposes
 	IgnoreForBilling = "ignore_for_billing"
 
+	// migrateAccessorsField names the tidy endpoint option for migrating accessor
+	// storage keys from salted SHA-1 to HMAC-SHA256
 	migrateAccessorsField = "migrate_accessors"
 )
 
@@ -1140,7 +1145,7 @@ func (ts *TokenStore) SaltID(ctx context.Context, id string) (string, error) {
 	// For all other tokens, use SHA2-256 HMAC for salting. This includes
 	// tokens of older format, but belonging to a namespace other than the root
 	// namespace.
-	return ts.SaltIDWithHMAC(ctx, id)
+	return hmacStorageKeyPrefix + s.GetHMAC(id), nil
 }
 
 // rootToken is used to generate a new token with root privileges and no parent
@@ -2463,7 +2468,7 @@ func (ts *TokenStore) SaltIDWithHMAC(ctx context.Context, id string) (string, er
 		return "", err
 	}
 
-	return "h" + s.GetHMAC(id), nil
+	return hmacStorageKeyPrefix + s.GetHMAC(id), nil
 }
 
 // handleTidy handles the cleaning up of leaked accessor storage entries and
@@ -2765,7 +2770,7 @@ func (ts *TokenStore) migrateAccessor(ctx context.Context, saltedAccessor string
 		return false, err
 	}
 
-	if ns.ID != accessorEntry.NamespaceID || strings.HasPrefix(saltedAccessor, "h") {
+	if ns.ID != accessorEntry.NamespaceID || strings.HasPrefix(saltedAccessor, hmacStorageKeyPrefix) {
 		return false, nil
 	}
 

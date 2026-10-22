@@ -56,3 +56,36 @@ func listenerWrapProxy(ln net.Listener, l *configutil.Listener) (net.Listener, e
 
 	return newLn, nil
 }
+
+// isLoopback reports whether the host portion of a listener bind address
+// refers to the loopback interface. The address is a "host:port" string.
+// Any hostname that is not a loopback IP literal (127.x, ::1) is treated as
+// non-loopback, since it may resolve to an externally reachable address.
+func isLoopback(addr string) bool {
+	// Handle "host:port" for both IPv4 and IPv6. For IPv6, the host part is
+	// bracketed (e.g. [::1]:8200); SplitHostPort strips the brackets.
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		// Not a host:port form (e.g. a unix socket path or a bare address);
+		// treat as non-loopback for safety.
+		return false
+	}
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+	return ip.IsLoopback()
+}
+
+// ListenerInsecure reports whether a listener configuration should trigger a
+// startup warning: plaintext (TLS disabled) bound to a non-loopback address.
+// Unix sockets are exempt.
+func ListenerInsecure(l *configutil.Listener) bool {
+	if l == nil || l.Type != "tcp" || !l.TLSDisable {
+		return false
+	}
+	return !isLoopback(l.Address)
+}

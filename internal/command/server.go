@@ -44,6 +44,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/builtinplugins"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/kmsplugin"
+	"github.com/openbao/openbao/v2/internal/helper/kmsplugin/sealhint"
 	"github.com/openbao/openbao/v2/internal/helper/listenerutil"
 	loghelper "github.com/openbao/openbao/v2/internal/helper/logging"
 	"github.com/openbao/openbao/v2/internal/helper/metricsutil"
@@ -404,6 +405,16 @@ func (c *ServerCommand) runRecoveryMode() int {
 		log:    api.ReadBaoVariable("BAO_GRPC_LOGGING") != "",
 	})
 
+	// In strict mode, unknown/unsupported configuration fields are fatal at
+	// startup rather than warnings.
+	if config.StrictUnknownKeys && len(configErrors) > 0 {
+		for _, cErr := range configErrors {
+			c.UI.Output(cErr.String())
+		}
+		c.UI.Output("strict_unknown_keys is enabled; refusing to start due to configuration errors")
+		return 1
+	}
+
 	if config.Storage == nil {
 		c.UI.Output("A storage backend must be specified")
 		return 1
@@ -474,11 +485,15 @@ func (c *ServerCommand) runRecoveryMode() int {
 	case string(vaultseal.WrapperTypeShamir):
 		seal = vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 	default:
+		sealKeySanitizeHint(c, config)
 		wrapper, config, err := kms.ConfigureWrapper(
 			context.Background(), configSeal.Type, wrapping.WithConfigMap(configSeal.Config),
 		)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error configuring seal %q: %s", configSeal.Type, err))
+			if configSeal.Type == "static" {
+				c.UI.Error(sealhint.KeyDiagnostic(configSeal.Config))
+			}
 			return 1
 		}
 
@@ -779,6 +794,14 @@ func (c *ServerCommand) InitListeners(logger hclog.Logger, config *server.Config
 
 	var errMsg error
 	for i, lnConfig := range config.Listeners {
+		if server.ListenerInsecure(lnConfig) {
+			c.logger.Warn(
+				"insecure listener configuration: plaintext (TLS disabled) listener is bound to a non-loopback address",
+				"address", lnConfig.Address,
+				"listener_type", lnConfig.Type,
+				"hint", "use TLS or bind to a loopback address (127.0.0.1 or ::1) for non-local access",
+			)
+		}
 		ln, props, cg, err := server.NewListener(lnConfig, c.logger, c.UI)
 		if err != nil {
 			errMsg = fmt.Errorf("Error initializing listener of type %s: %s", lnConfig.Type, err)
@@ -2501,6 +2524,23 @@ func CheckStorageMigration(b physical.Backend) (*StorageMigrationStatus, error) 
 
 // setSeal return barrierSeal, barrierWrapper, unwrapSeal, and all the created seals from the configs so we can close them in Run
 // The two errors are the sealConfigError and the regular error
+// sealKeySanitizeHint augments the static-seal key configuration of a
+// server.Config before the KMS catalog configures the seal wrapper. The
+// canonical whitespace-tolerance fix lives in the external
+// go-kms-wrapping dependency; until it ships, leading/trailing whitespace
+// (a trailing newline from "openssl rand -base64 32" is the common case) is
+// stripped here, with a warning on stderr when material is trimmed so an
+// operator can verify the key file is intact. Keys with embedded or
+// mid-string whitespace are left untouched: they are rejected by the static
+// wrapper's length dispatch ("unknown encoding for AES-256 key") and the
+// boot error is surfaced verbatim below.
+func sealKeySanitizeHint(c *ServerCommand, config *server.Config) {
+	hints := sealhint.SanitizeSeals(config.Seals)
+	for _, h := range hints {
+		c.UI.Warn(h)
+	}
+}
+
 func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, infoKeys *[]string, info map[string]string) (vault.Seal, wrapping.Wrapper, vault.Seal, []vault.Seal, error, error) {
 	var barrierSeal vault.Seal
 	var barrierWrapper wrapping.Wrapper
@@ -2538,6 +2578,7 @@ func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, in
 		case string(vaultseal.WrapperTypeShamir):
 			seal = vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 		default:
+			sealKeySanitizeHint(c, config)
 			wrapper, config, err := kms.ConfigureWrapper(
 				context.Background(), configSeal.Type, wrapping.WithConfigMap(configSeal.Config),
 			)

@@ -37,3 +37,75 @@ either `X-Vault-Token: <token>` or `Authorization: Bearer <token>`.
 The Token auth method has a full HTTP API. Please see the
 [Token auth method API](../api/auth/token.mdx) for more
 details.
+
+## Mount options
+
+The token store mount supports options that are set at mount time with
+`bao secrets mount -options=...` or tuned afterwards with
+`bao secrets tune -options=...`. Because the token store is a
+non-reloadable singleton, option changes made via
+`bao secrets tune` take effect on subsequent requests without
+restarting the server.
+
+### require_display_name
+
+When the `require_display_name` option is set to `true` on a token
+store mount, every token mint performed against that mount must
+supply a `display_name`. A mint without a `display_name` is rejected
+with a `400`-class error:
+
+```text
+display name required: the require_display_name mount option is
+enabled on this token store mount; supply a display_name
+```
+
+When the option is absent or set to anything other than `true`, a
+mint without a `display_name` succeeds and the new token records the
+default display name `token`.
+
+Example:
+
+```shell-session
+$ bao secrets tune -options=require_display_name=true auth/token/
+
+$ bao secrets list auth/token/create -options=display_name=svc-x
+Key                Value
+---                -----
+auth_token         s.abcdef...
+display_name       svc-x
+```
+
+If the display name were omitted on that mount, the request would
+fail with the error shown above.
+
+To disable the requirement, remove the option:
+
+```shell-session
+$ bao secrets tune -options=require_display_name= auth/token/
+```
+
+### Max lease TTL
+
+The token store has **no mount-level `max_lease_ttl` by default**; a
+fresh install clamps minted token TTLs to the global system default
+(`max_lease_ttl`, 32 days). For tighter security, cap the token store
+explicitly with `bao secrets tune` on the token mount, for example 72
+hours as a "stolen key should not survive days" floor:
+
+```shell-session
+$ bao secrets tune -max-lease-ttl=72h auth/token/
+```
+
+Minting a token with a TTL that exceeds the mount's effective ceiling
+is rejected or clamped by the token store; see the warning emitted on
+role creation when `explicit_max_ttl` exceeds the mount maximum.
+
+To restore the global system default for the token mount, tune it back
+to `system`:
+
+```shell-session
+$ bao secrets tune -max-lease-ttl=system auth/token/
+```
+
+An explicitly tuned value is preserved until changed; there is no
+mount-creation-time default that silently overrides your tuning.

@@ -562,6 +562,23 @@ api_addr = "https://[2001:1c04:90d:1c00:a00:27ff:fefa:58ec]:8200"
 cluster_addr = "https://[2001:1c04:90d:1c00:a00:27ff:fefa:58ec]:8201"
 ```
 
+
+### Insecure listener warning
+
+When a TCP listener is configured with `tls_disable = true` (or no `tls_cert_file` /
+`tls_key_file`) and bound to a **non-loopback** address such as `0.0.0.0`, `::`, or a
+specific network IP (e.g. `192.168.1.5`), OpenBao emits a startup warning:
+
+```
+[WARN] insecure listener configuration: plaintext (TLS disabled) listener is bound to a
+non-loopback address address="0.0.0.0:8200" listener_type="tcp"
+```
+
+The warning is informational only; the server still starts. To remove the warning, either
+enable TLS on the listener or bind it to a loopback address (`127.0.0.1` / `[::1]`).
+Binding a plaintext listener to a loopback address is common for local development and is
+not flagged.
+
 [golang-tls]: https://golang.org/src/crypto/tls/cipher_suites.go
 [api-addr]: ../index.mdx#api_addr
 [cluster-addr]: ../index.mdx#cluster_addr

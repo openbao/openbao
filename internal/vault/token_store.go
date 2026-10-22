@@ -2825,6 +2825,24 @@ func (ts *TokenStore) handleCreate(ctx context.Context, req *logical.Request, d 
 	return ts.handleCreateCommon(ctx, req, d, false, nil)
 }
 
+// mountRequireDisplayName reports whether the mount backing this token
+// creation request has the require_display_name mount option enabled. The
+// value is read live from the mount entry so that a `bao mount tune`
+// round-trip takes effect without a backend reload.
+func (ts *TokenStore) mountRequireDisplayName(ctx context.Context, req *logical.Request) bool {
+	mountPoint := req.MountPoint
+	if mountPoint == "" {
+		mountPoint = "auth/token/"
+	}
+	ts.core.stateLock.RLock()
+	entry := ts.core.router.MatchingMountEntry(ctx, mountPoint)
+	ts.core.stateLock.RUnlock()
+	if entry == nil {
+		return false
+	}
+	return entry.Options["require_display_name"] == "true"
+}
+
 // handleCreateCommon handles the auth/token/create path for creation of new tokens
 func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Request, d *framework.FieldData, orphan bool, role *tsRoleEntry) (*logical.Response, error) {
 	resp := &logical.Response{} // Initialize resp early here
@@ -3006,7 +3024,11 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 	}
 
 	// Attach the given display name if any
-	if displayName := d.Get("display_name").(string); displayName != "" {
+	displayName := d.Get("display_name").(string)
+	if ts.mountRequireDisplayName(ctx, req) && displayName == "" {
+		return logical.ErrorResponse("display name required: the require_display_name mount option is enabled on this token store mount; supply a display_name"), logical.ErrInvalidRequest
+	}
+	if displayName != "" {
 		full := "token-" + displayName
 		full = displayNameSanitize.ReplaceAllString(full, "-")
 		full = strings.TrimSuffix(full, "-")

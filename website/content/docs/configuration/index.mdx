@@ -127,6 +127,22 @@ to specify where the configuration is.
   the read cache used by the physical storage subsystem. This will very
   significantly impact performance.
 
+- `strict_unknown_keys` `(bool: false)` – When set to `true`, OpenBao treats
+  unknown or unsupported configuration fields as a fatal error at startup
+  instead of the default warning. By default, OpenBao logs a warning for each
+  unrecognized field (for example, `unknown or unsupported field root_token_id
+  found in configuration at <file>:<line>:<column>`) and continues to start.
+  Enabling this option is useful in environments where configuration drift or
+  typos should fail fast:
+
+  ```hcl
+  strict_unknown_keys = true
+  ```
+
+  When `strict_unknown_keys` is enabled and any unknown or unsupported fields
+  are present, the server refuses to start and prints each diagnostic to the
+  console.
+
 - `initialize` <code>([Initialize][initialize]: &lt;none&gt;)</code> – Specifies one-time
   [declarative self-initialization][initialize]. Can be specified multiple times.
 

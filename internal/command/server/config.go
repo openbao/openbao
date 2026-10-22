@@ -59,6 +59,12 @@ type Config struct {
 	DisablePrintableCheck    bool `hcl:"-"`
 	DisablePrintableCheckRaw any  `hcl:"disable_printable_check"`
 
+	// StrictUnknownKeys, when enabled, turns the "unknown or unsupported field"
+	// config diagnostics into a fatal error at startup (refusing to start)
+	// instead of a warning.
+	StrictUnknownKeys    bool `hcl:"-"`
+	StrictUnknownKeysRaw any  `hcl:"strict_unknown_keys"`
+
 	EnableUI    bool `hcl:"-"`
 	EnableUIRaw any  `hcl:"ui"`
 
@@ -533,6 +539,11 @@ func (c *Config) Merge(c2 *Config) *Config {
 		result.DisableCache = c2.DisableCache
 	}
 
+	result.StrictUnknownKeys = c.StrictUnknownKeys
+	if c2.StrictUnknownKeys {
+		result.StrictUnknownKeys = c2.StrictUnknownKeys
+	}
+
 	result.DisableSentinelTrace = c.DisableSentinelTrace
 	if c2.DisableSentinelTrace {
 		result.DisableSentinelTrace = c2.DisableSentinelTrace
@@ -924,6 +935,12 @@ func ParseConfig(d, source string) (*Config, error) {
 
 	if result.DisablePrintableCheckRaw != nil {
 		if result.DisablePrintableCheck, err = parseutil.ParseBool(result.DisablePrintableCheckRaw); err != nil {
+			return nil, err
+		}
+	}
+
+	if result.StrictUnknownKeysRaw != nil {
+		if result.StrictUnknownKeys, err = parseutil.ParseBool(result.StrictUnknownKeysRaw); err != nil {
 			return nil, err
 		}
 	}

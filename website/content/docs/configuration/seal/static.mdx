@@ -56,6 +56,27 @@ To create a sample key, use the `openssl rand` command:
 $ openssl rand -out /openbao/secrets/unseal-20250606-1.key 32
 ```
 
+
+:::note Key material format
+
+The static seal does **not** tolerate stray whitespace in key material.
+When generating a base64-encoded key, the common shell idiom
+`openssl rand -base64 32` emits a **trailing newline** that will make
+the key length land outside the supported encodings, and the server will
+fail to start with an `unknown encoding` error. Generate base64 keys
+without the newline:
+
+```
+$ openssl rand -base64 32 | tr -d '\\n'
+```
+
+(Or keep using raw 32-byte keys via `openssl rand -out <file> 32`,
+which is what the `file://` syntax above expects.) Leading/trailing
+whitespace in key fields is trimmed before the seal is configured, with
+a warning on stderr; embedded whitespace is not tolerated.
+
+:::
+
 ## `static` parameters
 
 These parameters apply to the `static` stanza in the OpenBao configuration

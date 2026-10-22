@@ -1,3 +1,3 @@
 ```release-note:bug
-core/ha: Fix `sys/health` being unresponsive while a standby becomes active.
+core: Fix rate limit exempt paths being unresponsive during post-unseal.
 ```

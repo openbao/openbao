@@ -3049,7 +3049,7 @@ func (c *Core) setupQuotas(ctx context.Context) error {
 
 // RateLimitPathExempt reports whether the path is exempt from rate limit quotas.
 func (c *Core) RateLimitPathExempt(path string) bool {
-	return c.quotaManager != nil && c.quotaManager.RateLimitPathExempt(path)
+	return c.quotaManager == nil || c.quotaManager.RateLimitPathExempt(path)
 }
 
 // ApplyRateLimitQuota checks the request against all the applicable quota rules.

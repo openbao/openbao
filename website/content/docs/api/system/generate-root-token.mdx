@@ -15,6 +15,17 @@ and work with the respective set of key shares.
 
 :::
 
+All endpoints require an authenticated token. Unlike the deprecated
+`sys/generate-root/*` endpoints, no `sudo` capability is needed: a policy
+granting `read` (progress), `update` (start and provide key shares) and
+`delete` (cancel) on `sys/generate-root-token/*` is sufficient.
+
+```hcl
+path "sys/generate-root-token/*" {
+  capabilities = ["read", "update", "delete"]
+}
+```
+
 ## Read root token generation progress
 
 This endpoint reads the configuration and process of the current root token generation
@@ -28,6 +39,7 @@ attempt.
 
 ```shell-session
 $ curl \
+    --header "X-Vault-Token: ..." \
     http://127.0.0.1:8200/v1/sys/generate-root-token/attempt
 ```
 
@@ -80,6 +92,7 @@ root token generation attempt can take place at a time.
 
 ```shell-session
 $ curl \
+    --header "X-Vault-Token: ..." \
     --request POST \
     http://127.0.0.1:8200/v1/sys/generate-root-token/attempt
 ```
@@ -111,6 +124,7 @@ any progress made. This must be called to change the OTP or PGP key being used.
 
 ```shell-session
 $ curl \
+    --header "X-Vault-Token: ..." \
     --request DELETE \
     http://127.0.0.1:8200/v1/sys/generate-root-token/attempt
 ```
@@ -146,6 +160,7 @@ nonce must be provided with each call.
 
 ```shell-session
 $ curl \
+    --header "X-Vault-Token: ..." \
     --request POST \
     --data @payload.json \
     http://127.0.0.1:8200/v1/sys/generate-root-token/update

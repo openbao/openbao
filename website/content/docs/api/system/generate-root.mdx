@@ -8,10 +8,10 @@ description: |-
 :::warning
 
 Note: As of v2.5.3 usage of these endpoints is [deprecated](/community/deprecation/unauthed-generate-root/)
-and will be disabled by default. Consider using
-[`auth/token/create`](../auth/token.mdx) to create new root tokens from existing
-tokens or the new authenticated
-[`sys/generate-root-token`](./generate-root-token.mdx) endpoint.
+and they are disabled by default. Use the authenticated
+[`sys/generate-root-token`](./generate-root-token.mdx) endpoints instead.
+[`auth/token/create`](../auth/token.mdx) can only create new root tokens when
+the calling token is itself a root token; `sudo` capability is not enough.
 To re-enable, see the documentation around the `disable_unauthed_generate_root_endpoints`
 [listener parameter](../../configuration/listener/unix.mdx): it is suggested to
 do so only for the short period of time required to create a new root token.

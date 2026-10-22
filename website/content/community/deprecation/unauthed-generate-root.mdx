@@ -8,17 +8,25 @@ description: |-
 
 ## What
 
-In OpenBao v2.5.3, the `disable_unauthed_generate_root_endpoints` parameter will be
-set to `true` by default (currently `false`), preventing all requests to the
-unauthenticated `sys/generate-root/*` endpoints.
+Since OpenBao v2.5.3, the `disable_unauthed_generate_root_endpoints` listener
+parameter defaults to `true`, preventing all requests to the unauthenticated
+`sys/generate-root/*` endpoints. Set it to `false` on a listener to re-enable
+them temporarily.
 
-Instead, users can call the `auth/token/create` endpoint with a token with
-`sudo` permission to create new root tokens.
+Use the authenticated [`sys/generate-root-token`](/docs/api/system/generate-root-token)
+endpoints instead, available since OpenBao v2.6.0. They take the same key
+shares, but require a token whose policy grants access to
+`sys/generate-root-token/*`. `bao operator generate-root` uses these
+endpoints since v2.6.0.
+
+`auth/token/create` only creates a root token when the calling token itself
+has the `root` policy; `sudo` capability is not enough. It therefore does not
+replace generating a root token from key shares.
 
 ## Why
 
 These endpoints pose a security risk. An unauthenticated attacker may call
-the cancel endpoint (`DELETE /sys/generate-root/init`), interrupting a valid
+the cancel endpoint (`DELETE /sys/generate-root/attempt`), interrupting a valid
 generate root operation. Additionally, an attacker may choose to initiate
 their own generate root operation.
 

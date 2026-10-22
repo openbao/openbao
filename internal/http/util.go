@@ -139,6 +139,14 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 			return
 		}
 
+		// Namespace resolution below waits on core's state lock, which is held
+		// for the whole of post-unseal while the node becomes active. Rate limit
+		// exempt paths like sys/health skip it.
+		if core.RateLimitPathExempt(path) {
+			handler.ServeHTTP(w, r)
+			return
+		}
+
 		// NOTE: The namespace and mount resolved here may differ from the ones
 		// later resolved in core and used for the remainder of request handling.
 		// For example, this can happen if there is a seal->unseal transition

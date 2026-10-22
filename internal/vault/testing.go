@@ -1132,6 +1132,11 @@ func (c *TestCluster) ensureCoresSealed() error {
 	return nil
 }
 
+func TestHoldStateLock(c *Core) func() {
+	c.stateLock.Lock()
+	return c.stateLock.Unlock
+}
+
 type TestListener struct {
 	net.Listener
 	Address *net.TCPAddr

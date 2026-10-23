@@ -2133,7 +2133,7 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 			}
 
 			// Fallback for legacy SHA-1-based keys
-			if !fips140.Enforced() && isLegacyRootAccessor(tokenNS, entry.Accessor) {
+			if isLegacyRootAccessor(tokenNS, entry.Accessor) && !fips140.Enforced() {
 				fallbackAccessorSaltedID, err := ts.SaltID(revokeCtx, entry.Accessor)
 				if err != nil {
 					return err

@@ -771,6 +771,14 @@ func TestTokenStore_AccessorIndex(t *testing.T) {
 		t.Fatalf("bad: %#v", out)
 	}
 
+	require.True(t, strings.HasPrefix(out.Accessor, consts.TokenAccessorPrefix))
+
+	hmacKey, err := ts.SaltIDWithHMAC(ctx, out.Accessor)
+	require.NoError(t, err)
+	entry, err := ts.accessorView(namespace.RootNamespace).Get(ctx, hmacKey)
+	require.NoError(t, err)
+	require.NotNil(t, entry)
+
 	aEntry, err := ts.lookupByAccessor(ctx, out.Accessor, false, false)
 	require.NoError(t, err)
 
@@ -788,6 +796,10 @@ func TestTokenStore_AccessorIndex(t *testing.T) {
 	ent2.ID = ""
 	ent2.NamespaceID = ns1.ID
 	testMakeTokenDirectly(t, ctx, ts, &ent2)
+
+	require.NotEqual(t, out.Accessor, ent2.Accessor)
+	require.True(t, strings.HasPrefix(ent2.Accessor, consts.TokenAccessorPrefix))
+	require.True(t, strings.HasSuffix(ent2.Accessor, "."+ns1.ID))
 
 	aEntry, err = ts.lookupByAccessor(ctx, ent2.Accessor, false, false)
 	require.Error(t, err)
@@ -1799,7 +1811,12 @@ func testTokenStore_Revoke(t *testing.T, ts *TokenStore, ns *namespace.Namespace
 	}
 
 	// tidy is required here, as otherwise the revoked token is still stored until deletion
-	ts.handleTidy(ctx, &logical.Request{}, nil)
+	resp, err := ts.HandleRequest(ctx, &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "tidy",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
 	// waiting on the tidy operation
 	time.Sleep(100 * time.Millisecond)
 	testTokenStore_VerifyNumOfTokens(t, ts, ns, desiredNumOfTokens)
@@ -6218,7 +6235,12 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 	}
 
 	// Call tidy
-	ts.handleTidy(ctx, &logical.Request{}, nil)
+	tidyResp, err := ts.HandleRequest(ctx, &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "tidy",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, tidyResp)
 
 	time.Sleep(200 * time.Millisecond)
 
@@ -6595,6 +6617,129 @@ func TestTokenStore_LookupSchemaMatchesHandler(t *testing.T) {
 
 			// Use the framework's existing response validation with strict mode
 			schema.ValidateResponseData(t, responseSchema, handlerResp.Data, true)
+		})
+	}
+}
+
+func TestTokenStore_MigrateAccessor(t *testing.T) {
+	type expected struct {
+		migrationResults []bool
+		sha1Exists       bool
+		hmacExists       bool
+	}
+
+	tokenID := "token-12345"
+	accessorID := "accessor12345"
+
+	testCases := []struct {
+		name               string
+		entryNamespaceID   string
+		sourceEntryMissing bool
+		storedUnderHMACKey bool
+		expected           expected
+	}{
+		{
+			name: "legacy entry is migrated only once",
+			expected: expected{
+				migrationResults: []bool{true, false},
+				sha1Exists:       false,
+				hmacExists:       true,
+			},
+		},
+		{
+			name:               "entry with HMAC key is skipped",
+			storedUnderHMACKey: true,
+			expected: expected{
+				migrationResults: []bool{false},
+				sha1Exists:       false,
+				hmacExists:       true,
+			},
+		},
+		{
+			name:             "entry from another namespace is skipped",
+			entryNamespaceID: "namespace-12345",
+			expected: expected{
+				migrationResults: []bool{false},
+				sha1Exists:       true,
+				hmacExists:       false,
+			},
+		},
+		{
+			name:               "missing entry creates no HMAC entry",
+			sourceEntryMissing: true,
+			expected: expected{
+				migrationResults: []bool{false},
+				sha1Exists:       false,
+				hmacExists:       false,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _, _ := TestCoreUnsealed(t)
+			ctx := namespace.RootContext(t.Context())
+
+			entry := &accessorEntry{
+				TokenID:     tokenID,
+				AccessorID:  accessorID,
+				NamespaceID: namespace.RootNamespaceID,
+			}
+
+			if tc.entryNamespaceID != "" {
+				entry.NamespaceID = tc.entryNamespaceID
+			}
+
+			s, err := c.tokenStore.Salt(ctx)
+			require.NoError(t, err)
+
+			legacySHA1Key := s.SaltID(accessorID)
+			expectedHMACKey := "h" + s.GetHMAC(accessorID)
+
+			sourceKey := legacySHA1Key
+			if tc.storedUnderHMACKey {
+				sourceKey = expectedHMACKey
+			}
+
+			storageEntry, err := logical.StorageEntryJSON(sourceKey, entry)
+			require.NoError(t, err)
+
+			expectedStorageValue := storageEntry.Value
+
+			if !tc.sourceEntryMissing {
+				err = c.tokenStore.accessorView(namespace.RootNamespace).Put(ctx, storageEntry)
+				require.NoError(t, err)
+			}
+
+			var expectedSHA1Entry *logical.StorageEntry
+			if tc.expected.sha1Exists {
+				expectedSHA1Entry = &logical.StorageEntry{
+					Key:   legacySHA1Key,
+					Value: expectedStorageValue,
+				}
+			}
+
+			var expectedHMACEntry *logical.StorageEntry
+			if tc.expected.hmacExists {
+				expectedHMACEntry = &logical.StorageEntry{
+					Key:   expectedHMACKey,
+					Value: expectedStorageValue,
+				}
+			}
+
+			for _, expectedMigration := range tc.expected.migrationResults {
+				migrated, err := c.tokenStore.migrateAccessor(ctx, sourceKey, entry)
+				require.NoError(t, err)
+				require.Equal(t, expectedMigration, migrated)
+
+				actualSHA1Entry, err := c.tokenStore.accessorView(namespace.RootNamespace).Get(ctx, legacySHA1Key)
+				require.NoError(t, err)
+				require.Equal(t, expectedSHA1Entry, actualSHA1Entry)
+
+				actualHMACEntry, err := c.tokenStore.accessorView(namespace.RootNamespace).Get(ctx, expectedHMACKey)
+				require.NoError(t, err)
+				require.Equal(t, expectedHMACEntry, actualHMACEntry)
+			}
 		})
 	}
 }

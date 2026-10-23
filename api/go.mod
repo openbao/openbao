@@ -9,8 +9,8 @@ go 1.26.0
 
 require (
 	github.com/cenkalti/backoff/v5 v5.0.3
-	github.com/go-jose/go-jose/v4 v4.1.5
-	github.com/go-test/deep v1.1.1
+	github.com/go-jose/go-jose/v4 v4.1.6
+	github.com/go-test/deep v1.1.2
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.6.3
@@ -19,7 +19,7 @@ require (
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.2.0
 	github.com/hashicorp/hcl v1.0.1-vault-7
 	github.com/stretchr/testify v1.12.1
-	golang.org/x/net v0.59.0
+	golang.org/x/net v0.61.0
 	golang.org/x/time v0.16.0
 )
 
@@ -34,8 +34,8 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 )
 
 retract v2.0.0

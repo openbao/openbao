@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/buffer"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
@@ -139,6 +140,14 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 			return
 		}
 
+		// Namespace resolution below waits on core's state lock, which is held
+		// for the whole of post-unseal while the node becomes active. Rate limit
+		// exempt paths like sys/health skip it.
+		if core.RateLimitPathExempt(path) {
+			handler.ServeHTTP(w, r)
+			return
+		}
+
 		// NOTE: The namespace and mount resolved here may differ from the ones
 		// later resolved in core and used for the remainder of request handling.
 		// For example, this can happen if there is a seal->unseal transition
@@ -147,7 +156,7 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 		// configuration at this point (because core is sealed) and let the request
 		// bypass rate limiting right into core if it has queued up right before the
 		// unseal process begins.
-		nsHeader := namespace.HeaderFromContext(r.Context())
+		nsHeader := r.Header.Get(consts.NamespaceHeaderName)
 		ns, trimmedPath := core.ResolveNamespaceFromRequest(nsHeader, path)
 		if ns == nil {
 			ns = namespace.RootNamespace

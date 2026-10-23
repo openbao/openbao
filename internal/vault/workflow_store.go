@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/openbao/openbao/sdk/v2/framework"
-	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
@@ -358,19 +357,10 @@ func (ws *WorkflowStore) Execute(ctx context.Context, reqId string, path string,
 		// long.
 		profiles.WithRequestIdentifierPrefix(fmt.Sprintf("%v.%v.workflow.%v", reqId, authedStr, path)),
 
-		// Execute our request handler here; here is where we validate that
-		// this policy can only access requests under its own namespace and
-		// forbid requests to parent namespaces.
+		// Execute our request handler here; we rely on switchedLockHandleRequest
+		// to validate that this execution can only issue requests under its own
+		// namespace and forbids requests to parent namespaces.
 		profiles.WithRequestHandler(func(ctx context.Context, profileReq *logical.Request) (*logical.Response, error) {
-			// When a namespace header exists in the synthetic request, we have
-			// to inject it into the namespace header.
-			if values, ok := profileReq.Headers[consts.NamespaceHeaderName]; ok {
-				if len(values) > 1 {
-					return nil, fmt.Errorf("have %d values for %q header; expected only 1", len(values), consts.NamespaceHeaderName)
-				}
-				ctx = namespace.ContextWithNamespaceHeader(ctx, values[0])
-			}
-
 			// Set our connection to match. This allows use of cert auth and
 			// login MFA from within profiles.
 			profileReq.Connection = req.Connection

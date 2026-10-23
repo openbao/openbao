@@ -1,0 +1,6 @@
+```release-note:bug
+core/mount: Fix unintended namespace mount entry persistence to the root storage while migrating from legacy storage backend.
+```
+```release-note:bug
+core/auth: Fix unintended namespace auth mount entry persistence to the root storage while migrating from legacy storage backend.
+```

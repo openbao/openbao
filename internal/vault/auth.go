@@ -547,6 +547,7 @@ func (c *Core) loadCredentialsForNamespace(ctx context.Context, ns *namespace.Na
 	if _, ok := c.barrier.(logical.TransactionalStorage); !ok {
 		return c.loadLegacyCredentialsForNamespace(ctx, ns)
 	}
+
 	return c.loadTransactionalCredentialsForNamespace(ctx, ns)
 }
 
@@ -595,51 +596,15 @@ func (c *Core) loadTransactionalCredentialsForNamespace(ctx context.Context, ns 
 		return nil
 	}
 
-	view := c.NamespaceView(ns)
-	globalEntries, localEntries, err := listTransactionalCredentialsForNamespace(ctx, view)
-	if err != nil {
-		return fmt.Errorf("failed to list auth mounts for namespace: %w", err)
-	}
-
-	for index, uuid := range globalEntries {
-		entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreAuthConfigPath, uuid)
-		if err != nil {
-			return fmt.Errorf("error loading auth mount table entry ([%v] %v/%v): %w", ns.ID, index, uuid, err)
-		}
-
-		if entry != nil {
-			c.auth.Entries = append(c.auth.Entries, entry)
-		}
-	}
-
-	for index, uuid := range localEntries {
-		entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreLocalAuthConfigPath, uuid)
-		if err != nil {
-			return fmt.Errorf("error loading local auth mount table entry ([%v] %v/%v): %w", ns.ID, index, uuid, err)
-		}
-
-		if entry != nil {
-			c.auth.Entries = append(c.auth.Entries, entry)
+	for _, prefix := range []string{coreAuthConfigPath, coreLocalAuthConfigPath} {
+		if entries, err := c.collectMountEntries(ctx, ns, prefix); err != nil {
+			return err
+		} else {
+			c.auth.Entries = append(c.auth.Entries, entries...)
 		}
 	}
 
 	return nil
-}
-
-// listTransactionalCredentialsForNamespace retrieves list of
-// auth mount entries (global & local) using provided barrier.
-func listTransactionalCredentialsForNamespace(ctx context.Context, barrier logical.Storage) ([]string, []string, error) {
-	globalEntries, err := barrier.List(ctx, coreAuthConfigPath+"/")
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed listing core auth mounts: %w", err)
-	}
-
-	localEntries, err := barrier.List(ctx, coreLocalAuthConfigPath+"/")
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed listing core local auth mounts: %w", err)
-	}
-
-	return globalEntries, localEntries, nil
 }
 
 // loadLegacyCredentials reads the legacy, single-entry combined auth
@@ -833,7 +798,9 @@ func (c *Core) runCredentialUpdates(ctx context.Context, barrier logical.Storage
 	return nil
 }
 
-// persistAuth is used to persist the auth table after modification
+// persistAuth is used to persist the auth table after modification.
+// Note that for a full-table save (`runCredentialUpdates` / mount==""),
+// barrier must be root-scoped to not overlap the namespace scope.
 func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *routing.MountTable, local *bool, mount string) error {
 	if barrier == nil {
 		return errors.New("nil barrier encountered while persisting auth mount changes")
@@ -929,14 +896,17 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 		writeTable = func(mt *routing.MountTable, prefix string) (int, error) {
 			var size int
 			var found bool
-			currentEntries := make(map[string]struct{}, len(mt.Entries))
+			currentEntries := make(map[string]map[string]struct{}, len(mt.Entries))
 			for index, mtEntry := range mt.Entries {
 				if mount != "" && mtEntry.UUID != mount {
 					continue
 				}
 
 				found = true
-				currentEntries[mtEntry.UUID] = struct{}{}
+				if currentEntries[mtEntry.NamespaceID] == nil {
+					currentEntries[mtEntry.NamespaceID] = map[string]struct{}{}
+				}
+				currentEntries[mtEntry.NamespaceID][mtEntry.UUID] = struct{}{}
 
 				// Encode the mount table into JSON. There is little value in
 				// compressing short entries.
@@ -953,10 +923,16 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 					Value: encoded,
 				}
 
-				// Write to the backend.
-				if err := barrier.Put(ctx, sEntry); err != nil {
-					c.logger.Error("failed to persist auth mount table entry", "index", index, "uuid", mtEntry.UUID, "error", err)
-					return -1, err
+				if mount == "" {
+					if err := NamespaceScopedView(barrier, mtEntry.Namespace).Put(ctx, sEntry); err != nil {
+						c.logger.Error("failed to persist auth mount table entry", "index", index, "uuid", mtEntry.UUID, "error", err)
+						return -1, err
+					}
+				} else {
+					if err := barrier.Put(ctx, sEntry); err != nil {
+						c.logger.Error("failed to persist auth mount table entry", "index", index, "uuid", mtEntry.UUID, "error", err)
+						return -1, err
+					}
 				}
 
 				size += len(encoded)
@@ -983,27 +959,33 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 				}
 
 				for nsIndex, ns := range allNamespaces {
+					view := NamespaceScopedView(barrier, ns)
 					// List all entries and remove any deleted ones.
-					presentEntries, err := barrier.List(ctx, prefix+"/")
+					presentEntries, err := view.List(ctx, prefix+"/")
 					if err != nil {
 						return -1, fmt.Errorf("failed to list entries in namespace %v (%v) for removal: %w", ns.ID, nsIndex, err)
 					}
 
 					for index, presentEntry := range presentEntries {
-						if _, present := currentEntries[presentEntry]; present {
+						if _, present := currentEntries[ns.ID][presentEntry]; present {
 							continue
 						}
 
-						if err := barrier.Delete(ctx, prefix+"/"+presentEntry); err != nil {
+						if err := view.Delete(ctx, prefix+"/"+presentEntry); err != nil {
 							return -1, fmt.Errorf("failed to remove deleted mount %v (%d) in namespace %v (%v): %w", presentEntry, index, ns.ID, nsIndex, err)
 						}
 					}
-				}
-			}
 
-			// Finally, delete the legacy entries, if any.
-			if err := barrier.Delete(ctx, prefix); err != nil {
-				return -1, err
+					// Remove the legacy entry.
+					if err := view.Delete(ctx, prefix); err != nil {
+						return -1, err
+					}
+				}
+			} else {
+				// Finally, delete the legacy entries, if any.
+				if err := barrier.Delete(ctx, prefix); err != nil {
+					return -1, err
+				}
 			}
 
 			return size, nil

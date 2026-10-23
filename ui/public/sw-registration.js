@@ -9,7 +9,10 @@ if ('serviceWorker' in navigator) {
       scope: '/v1/sys/storage/raft/snapshot',
     })
     .then(function (registration) {
-      window.addEventListener('pagehide', function () {
+      window.addEventListener('pagehide', function (event) {
+        if (event.persisted) {
+          return;
+        }
         registration.unregister();
       });
     })

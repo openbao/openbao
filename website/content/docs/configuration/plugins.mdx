@@ -75,7 +75,7 @@ plugin versions.
 
 - `image` `(string: required)` - OCI artifact/image URL including registry and
   repository. Conflicts with the `command` value. One of `image` or `command`
-  is required. `image` may be pinned by digest and directly specify the plugin
+  is required. `image` may be pinned by OCI artifact digest and directly specify the plugin
   version via its tag. See notes on `version` and several examples below.
 
 - `command` `(string: required)` - Command name of the plugin that has been
@@ -94,7 +94,7 @@ plugin versions.
 - `env` `([]string: optional)` - Any environment variables to pass to the running plugin.
 
 - `sha256sum` `(string: optional)` - Expected SHA-256 digest of the plugin
-  binary (read: not an OCI image digest). Must be a 64-character hexadecimal
+  binary (read: not an OCI artifact digest). Must be a 64-character hexadecimal
   string if set. This is only required when `image` is set but not pinned by
   image digest, and **optional** otherwise. When set, OpenBao will revalidate
   the digest of the plugin binary on disk against what was configured

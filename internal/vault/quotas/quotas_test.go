@@ -160,6 +160,16 @@ func TestQuotas_QueryResolveRole_RateLimitQuotas(t *testing.T) {
 	require.False(t, required)
 }
 
+func TestQuotas_DefaultExemptPathsBeforeSetup(t *testing.T) {
+	qm, err := NewManager(logging.NewVaultLogger(log.Trace), metricsutil.BlackholeSink(), true)
+	require.NoError(t, err)
+
+	for _, path := range defaultExemptPaths {
+		require.True(t, qm.RateLimitPathExempt(path), path)
+	}
+	require.False(t, qm.RateLimitPathExempt("secret/foo"))
+}
+
 func TestQuotas_HandleNamespaceDeletion(t *testing.T) {
 	qm, err := NewManager(logging.NewVaultLogger(log.Trace), metricsutil.BlackholeSink(), true)
 	require.NoError(t, err)

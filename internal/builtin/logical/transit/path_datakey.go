@@ -135,17 +135,20 @@ func (b *backend) pathDatakeyWrite(ctx context.Context, req *logical.Request, d 
 		return nil, err
 	}
 
-	var factory any
+	var factories []any
 	associatedData := d.Get("associated_data").(string)
 	if len(associatedData) != 0 {
 		if !p.Type.AssociatedDataSupported() {
 			return logical.ErrorResponse("'associated_data' provided for non-AEAD cipher suite %v", p.Type.String()), logical.ErrInvalidRequest
 		}
 
-		factory = AssocDataFactory{associatedData}
+		factories = append(factories, AssocDataFactory{associatedData})
+	}
+	if p.Type == keysutil.KeyType_ExternalKey {
+		factories = append(factories, b.ExternalKeyFactory(ctx))
 	}
 
-	ciphertext, err := p.EncryptWithFactory(ver, context, nil, base64.StdEncoding.EncodeToString(newKey), factory)
+	ciphertext, err := p.EncryptWithFactory(ver, context, nil, base64.StdEncoding.EncodeToString(newKey), factories...)
 	if err != nil {
 		switch err.(type) {
 		case errutil.UserError:

@@ -93,6 +93,8 @@ func knownTransitKeyTypes() []transitKeyType {
 }
 
 func SetupTransit(t *testing.T, client *api.Client) {
+	t.Helper()
+
 	err := client.Sys().Mount("transit", &api.MountInput{
 		Type: "transit",
 	})
@@ -100,6 +102,8 @@ func SetupTransit(t *testing.T, client *api.Client) {
 }
 
 func ExerciseTransitWithTransitKMS(t *testing.T, client *api.Client) {
+	t.Helper()
+
 	SetupTransit(t, client)
 
 	keyTypes := knownTransitKeyTypes()
@@ -128,6 +132,8 @@ func ExerciseTransitWithTransitKMS(t *testing.T, client *api.Client) {
 }
 
 func ExerciseTransitForKey(t *testing.T, client *api.Client, baseName string, encryptDecrypt bool, signVerify bool) {
+	t.Helper()
+
 	transitPath := fmt.Sprintf("transit/keys/%v", baseName)
 
 	extKeyGrantPath := fmt.Sprintf("sys/external-keys/configs/kms/keys/%v/grants/transit", baseName)
@@ -153,6 +159,8 @@ func ExerciseTransitForKey(t *testing.T, client *api.Client, baseName string, en
 			t.Parallel()
 			ExerciseTransitEncryptDecrypt(t, client, "keys", baseName)
 			ExerciseTransitEncryptDecrypt(t, client, "transit", baseName)
+			ExerciseTransitDataKeys(t, client, "keys", baseName)
+			ExerciseTransitDataKeys(t, client, "transit", baseName)
 		})
 	}
 	if signVerify {
@@ -161,10 +169,18 @@ func ExerciseTransitForKey(t *testing.T, client *api.Client, baseName string, en
 			ExerciseTransitSignVerify(t, client, "keys", baseName)
 			ExerciseTransitSignVerify(t, client, "transit", baseName)
 		})
+		t.Run("export-public", func(t *testing.T) {
+			t.Parallel()
+			a := ExerciseTransitExportPublic(t, client, "keys", baseName)
+			b := ExerciseTransitExportPublic(t, client, "transit", baseName)
+			require.Equal(t, a, b)
+		})
 	}
 }
 
 func ExerciseTransitEncryptDecrypt(t *testing.T, client *api.Client, mountName string, keyName string) {
+	t.Helper()
+
 	encryptPath := fmt.Sprintf("%v/encrypt/%v", mountName, keyName)
 	decryptPath := fmt.Sprintf("%v/decrypt/%v", mountName, keyName)
 
@@ -195,7 +211,39 @@ func ExerciseTransitEncryptDecrypt(t *testing.T, client *api.Client, mountName s
 	require.Equal(t, decrypted, plaintextEncoded)
 }
 
+func ExerciseTransitDataKeys(t *testing.T, client *api.Client, mountName string, keyName string) {
+	encryptPath := fmt.Sprintf("%v/datakey/plaintext/%v", mountName, keyName)
+	decryptPath := fmt.Sprintf("%v/decrypt/%v", mountName, keyName)
+
+	resp, err := client.Logical().Write(encryptPath, nil)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "ciphertext")
+	require.Contains(t, resp.Data, "plaintext")
+
+	ciphertext := resp.Data["ciphertext"]
+	require.NotEmpty(t, ciphertext)
+
+	dataKey := resp.Data["plaintext"].(string)
+	require.NotEmpty(t, dataKey)
+
+	require.NotEqual(t, ciphertext, dataKey)
+
+	resp, err = client.Logical().Write(decryptPath, map[string]any{
+		"ciphertext": ciphertext,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "plaintext")
+
+	decrypted := resp.Data["plaintext"]
+	require.NotEmpty(t, decrypted)
+	require.Equal(t, decrypted, dataKey)
+}
+
 func ExerciseTransitSignVerify(t *testing.T, client *api.Client, mountName string, keyName string) {
+	t.Helper()
+
 	signPath := fmt.Sprintf("%v/sign/%v", mountName, keyName)
 	verifyPath := fmt.Sprintf("%v/verify/%v", mountName, keyName)
 
@@ -228,7 +276,28 @@ func ExerciseTransitSignVerify(t *testing.T, client *api.Client, mountName strin
 	require.Equal(t, verified, true)
 }
 
+func ExerciseTransitExportPublic(t *testing.T, client *api.Client, mountName string, keyName string) string {
+	t.Helper()
+
+	path := fmt.Sprintf("%s/export/public-key/%s", mountName, keyName)
+
+	resp, err := client.Logical().Read(path)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	keys, ok := resp.Data["keys"].(map[string]any)
+	require.True(t, ok)
+	require.Len(t, keys, 1)
+
+	public, ok := keys["1"].(string)
+	require.True(t, ok)
+
+	return public
+}
+
 func SetupPKI(t *testing.T, client *api.Client) {
+	t.Helper()
+
 	err := client.Sys().Mount("pki", &api.MountInput{
 		Type: "pki",
 	})
@@ -242,6 +311,8 @@ func SetupPKI(t *testing.T, client *api.Client) {
 }
 
 func ExercisePKIWithTransitKMS(t *testing.T, client *api.Client) {
+	t.Helper()
+
 	SetupPKI(t, client)
 
 	keyTypes := knownTransitKeyTypes()
@@ -276,6 +347,8 @@ func ExercisePKIWithTransitKMS(t *testing.T, client *api.Client) {
 }
 
 func ExercisePKIForKey(t *testing.T, client *api.Client, baseName string) {
+	t.Helper()
+
 	extKeyGrantPath := fmt.Sprintf("sys/external-keys/configs/kms/keys/%v/grants/pki", baseName)
 	_, err := client.Logical().Write(extKeyGrantPath, nil)
 	require.NoError(t, err)
@@ -292,6 +365,8 @@ func ExercisePKIForKey(t *testing.T, client *api.Client, baseName string) {
 }
 
 func ExercisePKIRootCA(t *testing.T, client *api.Client, mountName string, keyName string, extKeyRef string) {
+	t.Helper()
+
 	// Generate a root CA certificate.
 	issuerName := fmt.Sprintf("kms-root-%v", keyName)
 	rootGeneratePath := fmt.Sprintf("%v/issuers/generate/root/kms", mountName)
@@ -321,6 +396,8 @@ func ExercisePKIRootCA(t *testing.T, client *api.Client, mountName string, keyNa
 }
 
 func ExercisePKIIntermediateCA(t *testing.T, client *api.Client, mountName string, keyName string, extKeyRef string) {
+	t.Helper()
+
 	// Generate a root CA certificate. Make it Ed25519 for speed.
 	issuerName := fmt.Sprintf("kms-int-%v", keyName)
 	rootName := fmt.Sprintf("kms-int-%v-root", keyName)
@@ -412,6 +489,8 @@ func ExercisePKIIntermediateCA(t *testing.T, client *api.Client, mountName strin
 }
 
 func ExercisePKICA(t *testing.T, client *api.Client, mountName string, issuerName string) {
+	t.Helper()
+
 	// Ensure we can issue leaf certificates using this issuer.
 	leafIssuePath := fmt.Sprintf("%v/issuer/%v/issue/testing", mountName, issuerName)
 	resp, err := client.Logical().Write(leafIssuePath, map[string]any{

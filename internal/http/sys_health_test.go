@@ -248,3 +248,17 @@ func TestSysHealth_head(t *testing.T) {
 		}
 	}
 }
+
+func TestSysHealth_StateLockWriteHeld(t *testing.T) {
+	core, _, _ := vault.TestCoreUnsealed(t)
+	ln, addr := TestServer(t, core)
+	defer func() {
+		require.NoError(t, ln.Close())
+	}()
+
+	release := vault.TestHoldStateLock(core)
+	defer release()
+
+	resp := testHttpGet(t, "", addr+"/v1/sys/health")
+	testResponseStatus(t, resp, 200)
+}

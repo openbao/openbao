@@ -4,22 +4,21 @@
 package http
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"strconv"
-	"time"
 
-	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault"
-	"github.com/openbao/openbao/v2/internal/version"
 )
 
 func handleSysHealth(core *vault.Core) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if core.HasActiveContext() {
+			handleLogicalNoForward(core).ServeHTTP(w, r)
+			return
+		}
+
 		switch r.Method {
 		case "GET":
 			handleSysHealthGet(core, w, r)
@@ -29,19 +28,6 @@ func handleSysHealth(core *vault.Core) http.Handler {
 			respondError(w, http.StatusMethodNotAllowed, nil)
 		}
 	})
-}
-
-func fetchStatusCode(r *http.Request, field string) (int, bool, bool) {
-	var err error
-	statusCode := http.StatusOK
-	if statusCodeStr, statusCodeOk := r.URL.Query()[field]; statusCodeOk {
-		statusCode, err = strconv.Atoi(statusCodeStr[0])
-		if err != nil || len(statusCodeStr) < 1 {
-			return http.StatusBadRequest, false, false
-		}
-		return statusCode, true, true
-	}
-	return statusCode, false, true
 }
 
 func handleSysHealthGet(core *vault.Core, w http.ResponseWriter, r *http.Request) {
@@ -74,107 +60,18 @@ func handleSysHealthHead(core *vault.Core, w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(code)
 }
 
-func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, error) {
-	var err error
-
-	// Check if being a standby is allowed for the purpose of a 200 OK
-	standbyOKStr, standbyOK := r.URL.Query()["standbyok"]
-	if standbyOK {
-		standbyOK, err = parseutil.ParseBool(standbyOKStr[0])
-		if err != nil {
-			return http.StatusBadRequest, nil, fmt.Errorf("bad value for standbyok parameter: %w", err)
-		}
+func getSysHealth(core *vault.Core, r *http.Request) (int, *vault.HealthResponse, error) {
+	fd := &framework.FieldData{
+		Raw:    parseQuery(r.URL.Query()),
+		Schema: vault.SysHealthSchema,
 	}
 
-	uninitCode := http.StatusNotImplemented
-	if code, found, ok := fetchStatusCode(r, "uninitcode"); !ok {
-		return http.StatusBadRequest, nil, nil
-	} else if found {
-		uninitCode = code
-	}
-
-	sealedCode := http.StatusServiceUnavailable
-	if code, found, ok := fetchStatusCode(r, "sealedcode"); !ok {
-		return http.StatusBadRequest, nil, nil
-	} else if found {
-		sealedCode = code
-	}
-
-	standbyCode := http.StatusTooManyRequests // Consul warning code
-	if code, found, ok := fetchStatusCode(r, "standbycode"); !ok {
-		return http.StatusBadRequest, nil, nil
-	} else if found {
-		standbyCode = code
-	}
-
-	activeCode := http.StatusOK
-	if code, found, ok := fetchStatusCode(r, "activecode"); !ok {
-		return http.StatusBadRequest, nil, nil
-	} else if found {
-		activeCode = code
-	}
-
-	// Check system status
-	sealed := core.Sealed()
-	standby := core.Standby()
-	var replicationState consts.ReplicationState
-	if standby {
-		replicationState = core.ActiveNodeReplicationState()
-	} else {
-		replicationState = core.ReplicationState()
-	}
-
-	ctx := namespace.RootContext(context.Background())
-	init, err := core.Initialized(ctx)
+	err := fd.Validate()
 	if err != nil {
-		return http.StatusInternalServerError, nil, err
+		return http.StatusBadRequest, nil, err
 	}
 
-	// Determine the status code
-	code := activeCode
-	switch {
-	case !init:
-		code = uninitCode
-	case sealed:
-		code = sealedCode
-	case standby:
-		if !standbyOK {
-			code = standbyCode
-		}
-	}
+	ctx := namespace.RootContext(r.Context())
 
-	hr := &HealthResponse{
-		Initialized:                init,
-		Sealed:                     sealed,
-		Standby:                    standby,
-		ReplicationPerformanceMode: replicationState.GetPerformanceString(),
-		ReplicationDRMode:          replicationState.GetDRString(),
-		ServerTimeUTC:              time.Now().UTC().Unix(),
-		Version:                    version.GetVersion().VersionNumber(),
-	}
-
-	// Fetch the local cluster name and identifier
-	if !sealed {
-		cluster, err := core.Cluster(ctx)
-		if err != nil {
-			return http.StatusInternalServerError, nil, err
-		}
-
-		hr.ClusterName = cluster.Name
-		hr.ClusterID = cluster.ID
-	}
-
-	return code, hr, nil
-}
-
-type HealthResponse struct {
-	Initialized                bool   `json:"initialized"`
-	Sealed                     bool   `json:"sealed"`
-	Standby                    bool   `json:"standby"`
-	ReplicationPerformanceMode string `json:"replication_performance_mode"`
-	ReplicationDRMode          string `json:"replication_dr_mode"`
-	ServerTimeUTC              int64  `json:"server_time_utc"`
-	Version                    string `json:"version"`
-	ClusterName                string `json:"cluster_name,omitempty"`
-	ClusterID                  string `json:"cluster_id,omitempty"`
+	return core.GetSysHealth(ctx, fd, false)
 }

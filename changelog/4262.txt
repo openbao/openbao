@@ -1,0 +1,3 @@
+```release-note:improvement
+core: The health endpoint (`sys/health`) is now more accurate, by routing it through the normal OpenBao routing stack, if unsealed.
+```

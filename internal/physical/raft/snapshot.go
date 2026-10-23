@@ -195,13 +195,13 @@ func (f *BoltSnapshotStore) openFromFSM() (*raft.SnapshotMeta, io.ReadCloser, er
 	n, err := io.Copy(io.Discard, metaReadCloser)
 	if err != nil {
 		f.logger.Error("failed to read state file", "error", err)
-		metaReadCloser.Close()
-		readCloser.Close()
+		metaReadCloser.Close() //nolint:errcheck
+		readCloser.Close()     //nolint:errcheck
 		return nil, nil, err
 	}
 
 	meta.Size = n
-	metaReadCloser.Close()
+	metaReadCloser.Close() //nolint:errcheck
 
 	return meta, readCloser, nil
 }

@@ -133,7 +133,9 @@ func (i *Influxdb) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (re
 			if merr.ErrorOrNil() != nil {
 				// Attempt rollback only when the response has an error
 				if response != nil && response.Error() != nil {
-					attemptRollback(cli, username, rollbackIFQL)
+					if rollbackErr := attemptRollback(cli, username, rollbackIFQL); rollbackErr != nil {
+						merr = multierror.Append(merr, fmt.Errorf("error rolling back user creation: %w", rollbackErr))
+					}
 				}
 
 				return dbplugin.NewUserResponse{}, fmt.Errorf("failed to run query in InfluxDB: %w", merr)

@@ -316,9 +316,8 @@ func (l *raftLayer) CALookup(context.Context) ([]*x509.Certificate, error) {
 }
 
 // Stop shuts down the raft layer.
-func (l *raftLayer) Stop() error {
-	l.Close()
-	return nil
+func (l *raftLayer) Stop() {
+	l.Close() //nolint:errcheck
 }
 
 // Handoff is used to hand off a connection to the

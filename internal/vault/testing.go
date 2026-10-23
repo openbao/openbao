@@ -585,7 +585,7 @@ func TestAddTestPlugin(t testing.T, c *Core, name string, pluginType consts.Plug
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
 
 	dirPath := filepath.Dir(os.Args[0])
 	fileName := filepath.Base(os.Args[0])
@@ -605,7 +605,7 @@ func TestAddTestPlugin(t testing.T, c *Core, name string, pluginType consts.Plug
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer out.Close()
+		defer out.Close() //nolint:errcheck
 
 		if _, err = io.Copy(out, file); err != nil {
 			t.Fatal(err)
@@ -616,7 +616,7 @@ func TestAddTestPlugin(t testing.T, c *Core, name string, pluginType consts.Plug
 		}
 		// Ensure that the file is closed and written. This seems to be
 		// necessary on Linux systems.
-		out.Close()
+		require.NoError(t, out.Close(), "error closing copied file")
 
 		dirPath = tempDir
 	}
@@ -631,7 +631,7 @@ func TestAddTestPlugin(t testing.T, c *Core, name string, pluginType consts.Plug
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer reader.Close()
+	defer reader.Close() //nolint:errcheck
 
 	// Find out the sha256
 	hash := sha256.New()

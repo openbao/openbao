@@ -29,6 +29,7 @@ func TestSysHealth_get(t *testing.T) {
 		"replication_dr_mode":          consts.ReplicationUnknown.GetDRString(),
 		"initialized":                  false,
 		"sealed":                       true,
+		"ready":                        false,
 		"standby":                      true,
 	}
 	testResponseStatus(t, resp, 501)
@@ -59,6 +60,7 @@ func TestSysHealth_get(t *testing.T) {
 		"replication_dr_mode":          consts.ReplicationUnknown.GetDRString(),
 		"initialized":                  true,
 		"sealed":                       true,
+		"ready":                        false,
 		"standby":                      true,
 	}
 	testResponseStatus(t, resp, 503)
@@ -93,6 +95,7 @@ func TestSysHealth_get(t *testing.T) {
 		"replication_dr_mode":          consts.ReplicationDRDisabled.GetDRString(),
 		"initialized":                  true,
 		"sealed":                       false,
+		"ready":                        true,
 		"standby":                      false,
 	}
 	testResponseStatus(t, resp, 200)
@@ -130,6 +133,7 @@ func TestSysHealth_customcodes(t *testing.T) {
 		"replication_dr_mode":          consts.ReplicationUnknown.GetDRString(),
 		"initialized":                  false,
 		"sealed":                       true,
+		"ready":                        false,
 		"standby":                      true,
 	}
 	testResponseStatus(t, resp, 581)
@@ -161,6 +165,7 @@ func TestSysHealth_customcodes(t *testing.T) {
 		"replication_dr_mode":          consts.ReplicationUnknown.GetDRString(),
 		"initialized":                  true,
 		"sealed":                       true,
+		"ready":                        false,
 		"standby":                      true,
 	}
 	testResponseStatus(t, resp, 523)
@@ -196,6 +201,7 @@ func TestSysHealth_customcodes(t *testing.T) {
 		"replication_dr_mode":          consts.ReplicationDRDisabled.GetDRString(),
 		"initialized":                  true,
 		"sealed":                       false,
+		"ready":                        true,
 		"standby":                      false,
 	}
 	testResponseStatus(t, resp, 202)

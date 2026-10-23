@@ -4665,6 +4665,7 @@ func (b *SystemBackend) handleLeaderStatus(ctx context.Context, req *logical.Req
 type HealthResponse struct {
 	Initialized                bool   `json:"initialized"`
 	Sealed                     bool   `json:"sealed"`
+	Ready                      bool   `json:"ready"`
 	Standby                    bool   `json:"standby"`
 	ReplicationPerformanceMode string `json:"replication_performance_mode"`
 	ReplicationDRMode          string `json:"replication_dr_mode"`
@@ -4674,7 +4675,7 @@ type HealthResponse struct {
 	ClusterID                  string `json:"cluster_id,omitempty"`
 }
 
-func (core *Core) GetSysHealth(ctx context.Context, fd *framework.FieldData) (int, *HealthResponse, error) {
+func (core *Core) GetSysHealth(ctx context.Context, fd *framework.FieldData, viaRouter bool) (int, *HealthResponse, error) {
 	// Check system status
 	sealed := core.Sealed()
 	standby := core.Standby()
@@ -4708,6 +4709,7 @@ func (core *Core) GetSysHealth(ctx context.Context, fd *framework.FieldData) (in
 	hr := &HealthResponse{
 		Initialized:                init,
 		Sealed:                     sealed,
+		Ready:                      viaRouter,
 		Standby:                    standby,
 		ReplicationPerformanceMode: replicationState.GetPerformanceString(),
 		ReplicationDRMode:          replicationState.GetDRString(),
@@ -4730,7 +4732,7 @@ func (core *Core) GetSysHealth(ctx context.Context, fd *framework.FieldData) (in
 }
 
 func (b *SystemBackend) handleHealth(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	code, body, err := b.Core.GetSysHealth(ctx, d)
+	code, body, err := b.Core.GetSysHealth(ctx, d, true)
 	if err != nil {
 		return nil, err
 	}

@@ -14,7 +14,7 @@ import (
 
 func handleSysHealth(core *vault.Core) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !core.Sealed() {
+		if core.HasActiveContext() {
 			handleLogicalNoForward(core).ServeHTTP(w, r)
 			return
 		}
@@ -73,5 +73,5 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *vault.HealthResponse
 
 	ctx := namespace.RootContext(r.Context())
 
-	return core.GetSysHealth(ctx, fd)
+	return core.GetSysHealth(ctx, fd, false)
 }

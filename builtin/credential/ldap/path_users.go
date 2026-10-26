@@ -70,6 +70,9 @@ func pathUsers(b *backend) *framework.Path {
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.pathUserResolvePath,
+			},
 			logical.DeleteOperation: &framework.PathOperation{
 				Callback: b.pathUserDelete,
 			},
@@ -101,6 +104,22 @@ func (b *backend) User(ctx context.Context, s logical.Storage, n string) (*UserE
 	}
 
 	return &result, nil
+}
+
+func (b *backend) pathUserResolvePath(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	username := d.Get("name").(string)
+	cfg, err := b.Config(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if cfg == nil {
+		return logical.ErrorResponse("ldap backend not configured"), nil
+	}
+	if !*cfg.CaseSensitiveNames {
+		username = strings.ToLower(username)
+	}
+
+	return logical.ResolvePathResponse("users/" + username)
 }
 
 func (b *backend) pathUserDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {

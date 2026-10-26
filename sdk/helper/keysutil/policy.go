@@ -393,15 +393,19 @@ func NewPolicy(config PolicyConfig) *Policy {
 		DeletionAllowed:      config.DeletionAllowed,
 		AllowPlaintextBackup: config.AllowPlaintextBackup,
 		VersionTemplate:      config.VersionTemplate,
-		StoragePrefix:        config.StoragePrefix,
+		StoragePrefix:        strings.TrimSuffix(config.StoragePrefix, "/") + "/",
 	}
 }
 
 // LoadPolicy will load a policy from the provided storage path and set the
 // necessary un-exported variables. It is particularly useful when accessing a
 // policy without the lock manager.
-func LoadPolicy(ctx context.Context, s logical.Storage, path string) (*Policy, error) {
-	raw, err := s.Get(ctx, path)
+func LoadPolicy(ctx context.Context, s logical.Storage, name string) (*Policy, error) {
+	if path.Clean(name) != name {
+		return nil, fmt.Errorf("cannot load policy with relative name")
+	}
+
+	raw, err := s.Get(ctx, name)
 	if err != nil {
 		return nil, err
 	}
@@ -576,7 +580,11 @@ type archivedKeys struct {
 func (p *Policy) LoadArchive(ctx context.Context, storage logical.Storage) (*archivedKeys, error) {
 	archive := &archivedKeys{}
 
-	raw, err := storage.Get(ctx, path.Join(p.StoragePrefix, "archive", p.Name))
+	if path.Clean(p.Name) != p.Name {
+		return nil, errors.New("cannot load backup with relative path name")
+	}
+
+	raw, err := storage.Get(ctx, p.StoragePrefix+"archive/"+p.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -593,6 +601,10 @@ func (p *Policy) LoadArchive(ctx context.Context, storage logical.Storage) (*arc
 }
 
 func (p *Policy) storeArchive(ctx context.Context, storage logical.Storage, archive *archivedKeys) error {
+	if path.Clean(p.Name) != p.Name {
+		return errors.New("cannot store archive with relative path name")
+	}
+
 	// Encode the policy
 	buf, err := json.Marshal(archive)
 	if err != nil {
@@ -601,7 +613,7 @@ func (p *Policy) storeArchive(ctx context.Context, storage logical.Storage, arch
 
 	// Write the policy into storage
 	err = storage.Put(ctx, &logical.StorageEntry{
-		Key:   path.Join(p.StoragePrefix, "archive", p.Name),
+		Key:   p.StoragePrefix + "archive/" + p.Name,
 		Value: buf,
 	})
 	if err != nil {
@@ -701,6 +713,10 @@ func (p *Policy) Persist(ctx context.Context, storage logical.Storage) (retErr e
 		return errors.New("key has been deleted, not persisting")
 	}
 
+	if path.Clean(p.Name) != p.Name {
+		return errors.New("cannot store policy with relative path name")
+	}
+
 	// Other functions will take care of restoring other values; this is just
 	// responsible for archiving and keys since the archive function can modify
 	// keys. At the moment one of the other functions calling persist will also
@@ -734,7 +750,7 @@ func (p *Policy) Persist(ctx context.Context, storage logical.Storage) (retErr e
 
 	// Write the policy into storage
 	err = storage.Put(ctx, &logical.StorageEntry{
-		Key:   path.Join(p.StoragePrefix, "policy", p.Name),
+		Key:   p.StoragePrefix + "policy/" + p.Name,
 		Value: buf,
 	})
 	if err != nil {

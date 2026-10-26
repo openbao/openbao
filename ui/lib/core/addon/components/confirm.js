@@ -5,7 +5,7 @@
 
 import Component from '@ember/component';
 import { computed } from '@ember/object';
-import layout from '../templates/components/confirm';
+import layout from './confirm';
 import { next } from '@ember/runloop';
 
 /**

@@ -137,11 +137,49 @@
         color: #ffffff;
       }
     }
+  }
 
-    .ember-power-select-option[aria-current='true'] {
-      background-color: #2e2f31;
-      color: #ffffff;
+  // Dropdown selects
+  .select select {
+    background-color: #242526;
+    color: #e3e3e3;
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: none;
+
+    &:focus,
+    &:focus-visible,
+    &:active,
+    &.is-active {
+      border-color: #1563ff;
     }
+  }
+
+  .b64-toggle {
+    background-color: #242526;
+    color: #e3e3e3;
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 3px 1px rgba(0, 0, 0, 0.4);
+
+    &:hover {
+      background-color: #2e2f31;
+    }
+
+    &:focus:not(:active) {
+      box-shadow: 0 0 0 0.125em rgba(21, 99, 255, 0.25);
+    }
+
+    &.is-input {
+      box-shadow: none;
+    }
+  }
+
+  .select::after {
+    filter: invert(1);
+  }
+
+  .ember-power-select-option[aria-current='true'] {
+    background-color: #2e2f31;
+    color: #ffffff;
   }
 
   // Box variations

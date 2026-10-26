@@ -634,34 +634,34 @@ func (c *CSRBundle) ToParsedCSRBundle() (*ParsedCSRBundle, error) {
 // to a PEM-based string certificate bundle
 func (p *ParsedCSRBundle) ToCSRBundle() (*CSRBundle, error) {
 	result := &CSRBundle{}
-	block := pem.Block{
-		Type: "CERTIFICATE REQUEST",
-	}
 
 	if len(p.CSRBytes) > 0 {
-		block.Bytes = p.CSRBytes
-		result.CSR = strings.TrimSpace(string(pem.EncodeToMemory(&block)))
+		result.CSR = strings.TrimSpace(string(pem.EncodeToMemory(&pem.Block{
+			Type:  "CERTIFICATE REQUEST",
+			Bytes: p.CSRBytes,
+		})))
 	}
 
 	if len(p.PrivateKeyBytes) > 0 {
-		block.Bytes = p.PrivateKeyBytes
+		result.PrivateKeyType = p.PrivateKeyType
+		block := pem.Block{Bytes: p.PrivateKeyBytes}
+
 		switch p.PrivateKeyType {
 		case RSAPrivateKey:
-			result.PrivateKeyType = "rsa"
 			block.Type = "RSA PRIVATE KEY"
 		case ECPrivateKey:
-			result.PrivateKeyType = "ec"
 			block.Type = "EC PRIVATE KEY"
-		case Ed25519PrivateKey:
-			result.PrivateKeyType = "ed25519"
+		case Ed25519PrivateKey, MLDSAPrivateKey:
 			block.Type = "PRIVATE KEY"
-		case MLDSAPrivateKey:
-			result.PrivateKeyType = "mldsa"
-			block.Type = "PRIVATE KEY"
+		case ExternalPrivateKey:
+			result.PrivateKey = strings.TrimSpace(string(p.PrivateKeyBytes))
 		default:
 			return nil, errutil.InternalError{Err: "Could not determine private key type when creating block"}
 		}
-		result.PrivateKey = strings.TrimSpace(string(pem.EncodeToMemory(&block)))
+
+		if block.Type != "" {
+			result.PrivateKey = strings.TrimSpace(string(pem.EncodeToMemory(&block)))
+		}
 	}
 
 	return result, nil

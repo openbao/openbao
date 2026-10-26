@@ -92,6 +92,9 @@ using the same name as specified here.`,
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.pathCRLResolvePath,
+			},
 			logical.DeleteOperation: &framework.PathOperation{
 				Callback: b.pathCRLDelete,
 			},
@@ -200,6 +203,11 @@ func (b *backend) pathCRLDelete(ctx context.Context, req *logical.Request, d *fr
 	delete(b.crls, name)
 
 	return nil, nil
+}
+
+func (b *backend) pathCRLResolvePath(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	name := strings.ToLower(d.Get("name").(string))
+	return logical.ResolvePathResponse("crls/" + name)
 }
 
 func (b *backend) pathCRLRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {

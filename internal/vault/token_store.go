@@ -810,8 +810,7 @@ type TokenStore struct {
 	saltLock sync.RWMutex
 	salts    map[string]*salt.Salt
 
-	tidyLock              sync.Mutex
-	accessorMigrationLock sync.RWMutex
+	tidyLock sync.Mutex
 
 	quitContext context.Context
 
@@ -1169,16 +1168,49 @@ func (ts *TokenStore) tokenStoreAccessorList(ctx context.Context, req *logical.R
 	}
 	nsID := ns.ID
 
-	entries, err := ts.accessorView(ns).List(ctx, "")
+	resp := &logical.Response{}
+	var entries []*logical.StorageEntry
+
+	err = func() error {
+		var storage logical.Storage = ts.accessorView(ns)
+
+		if s, ok := storage.(logical.TransactionalStorage); ok {
+			tx, err := s.BeginReadOnlyTx(ctx)
+			if err != nil {
+				return fmt.Errorf("error starting accessor read transaction: %w", err)
+			}
+			defer tx.Rollback(ctx) //nolint:errcheck
+
+			storage = tx
+		}
+
+		keys, err := storage.List(ctx, "")
+		if err != nil {
+			return err
+		}
+
+		entries = make([]*logical.StorageEntry, 0, len(keys))
+		for _, key := range keys {
+			entry, err := readAccessorEntry(ctx, storage, key, "")
+			if err != nil {
+				resp.AddWarning(fmt.Sprintf("error reading found accessor entry: associated error is %q", err.Error()))
+				continue
+			}
+
+			if entry != nil {
+				entries = append(entries, entry)
+			}
+		}
+
+		return nil
+	}()
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &logical.Response{}
-
 	ret := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		aEntry, err := ts.lookupByAccessor(ctx, entry, true, false)
+		aEntry, err := ts.decodeAccessorEntry(ctx, entry, false)
 		if err != nil {
 			resp.AddWarning(fmt.Sprintf("Found an accessor entry that could not be successfully decoded; associated error is %q", err.Error()))
 			continue
@@ -1201,6 +1233,23 @@ func (ts *TokenStore) tokenStoreAccessorList(ctx context.Context, req *logical.R
 		"keys": ret,
 	}
 	return resp, nil
+}
+
+func readAccessorEntry(ctx context.Context, storage logical.Storage, lookupID, fallbackID string) (*logical.StorageEntry, error) {
+	entry, err := storage.Get(ctx, lookupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read index using accessor: %w", err)
+	}
+
+	// Fallback for legacy SHA-1 accessors
+	if entry == nil && fallbackID != "" {
+		entry, err = storage.Get(ctx, fallbackID)
+		if err != nil {
+			return nil, fmt.Errorf("error reading legacy index: %w", err)
+		}
+	}
+
+	return entry, nil
 }
 
 // createAccessor is used to create an identifier for the token ID.
@@ -2124,30 +2173,29 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 			return err
 		}
 
-		if err := func() error {
-			ts.accessorMigrationLock.RLock()
-			defer ts.accessorMigrationLock.RUnlock()
+		var legacyAccessorSaltedID string
+		if isLegacyRootAccessor(tokenNS, entry.Accessor) && !fips140.Enforced() {
+			legacyAccessorSaltedID, err = ts.SaltID(revokeCtx, entry.Accessor)
+			if err != nil {
+				return err
+			}
+		}
 
-			if err := ts.accessorView(tokenNS).Delete(ctx, accessorSaltedID); err != nil {
+		err = logical.WithTransaction(ctx, ts.accessorView(tokenNS), func(s logical.Storage) error {
+			if err := s.Delete(ctx, accessorSaltedID); err != nil {
 				return fmt.Errorf("failed to delete entry: %w", err)
 			}
 
 			// Fallback for legacy SHA-1-based keys
-			if isLegacyRootAccessor(tokenNS, entry.Accessor) && !fips140.Enforced() {
-				fallbackAccessorSaltedID, err := ts.SaltID(revokeCtx, entry.Accessor)
-				if err != nil {
-					return err
-				}
-
-				if fallbackAccessorSaltedID != accessorSaltedID {
-					if err = ts.accessorView(tokenNS).Delete(ctx, fallbackAccessorSaltedID); err != nil {
-						return fmt.Errorf("failed to delete entry: %w", err)
-					}
+			if legacyAccessorSaltedID != "" && legacyAccessorSaltedID != accessorSaltedID {
+				if err := s.Delete(ctx, legacyAccessorSaltedID); err != nil {
+					return fmt.Errorf("failed to delete entry: %w", err)
 				}
 			}
 
 			return nil
-		}(); err != nil {
+		})
+		if err != nil {
 			return err
 		}
 	}
@@ -2351,8 +2399,6 @@ func (ts *TokenStore) handleCreateAgainstRole(ctx context.Context, req *logical.
 }
 
 func (ts *TokenStore) lookupByAccessor(ctx context.Context, id string, salted, tainted bool) (*accessorEntry, error) {
-	var aEntry accessorEntry
-
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -2383,45 +2429,54 @@ func (ts *TokenStore) lookupByAccessor(ctx context.Context, id string, salted, t
 		}
 	}
 
-	entry, err := func() (*logical.StorageEntry, error) {
-		ts.accessorMigrationLock.RLock()
-		defer ts.accessorMigrationLock.RUnlock()
-
-		entry, err := ts.accessorView(ns).Get(ctx, lookupID)
+	fallbackID := ""
+	if isLegacyRootAccessor(ns, id) && !salted && !fips140.Enforced() {
+		fallbackID, err = ts.SaltID(ctx, id)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read index using accessor: %w", err)
+			return nil, err
 		}
+		if fallbackID == lookupID {
+			fallbackID = ""
+		}
+	}
 
-		// Fallback for legacy SHA-1 accessors
-		if entry == nil && !salted && isLegacyRootAccessor(ns, id) {
-			if fips140.Enforced() {
-				return nil, &logical.StatusBadRequest{Err: "legacy SHA-1 accessor lookup is not allowed in FIPS140-only mode"}
-			}
+	raw, err := func() (*logical.StorageEntry, error) {
+		var storage logical.Storage = ts.accessorView(ns)
 
-			oldLookupID, err := ts.SaltID(ctx, id)
-			if err != nil {
-				return nil, err
-			}
-
-			if oldLookupID != lookupID {
-				entry, err = ts.accessorView(ns).Get(ctx, oldLookupID)
+		if fallbackID != "" {
+			if transactional, ok := storage.(logical.TransactionalStorage); ok {
+				tx, err := transactional.BeginReadOnlyTx(ctx)
 				if err != nil {
-					return nil, fmt.Errorf("error reading legacy index: %w", err)
+					return nil, fmt.Errorf("error starting accessor read transaction: %w", err)
 				}
+				defer tx.Rollback(ctx) //nolint:errcheck
+
+				storage = tx
 			}
 		}
 
-		return entry, nil
+		return readAccessorEntry(ctx, storage, lookupID, fallbackID)
 	}()
 	if err != nil {
 		return nil, err
 	}
+
+	if raw == nil && isLegacyRootAccessor(ns, id) && !salted && fips140.Enforced() {
+		return nil, &logical.StatusBadRequest{
+			Err: "legacy SHA-1 accessor lookup is not allowed in FIPS140-only mode",
+		}
+	}
+
+	return ts.decodeAccessorEntry(ctx, raw, tainted)
+}
+
+func (ts *TokenStore) decodeAccessorEntry(ctx context.Context, entry *logical.StorageEntry, tainted bool) (*accessorEntry, error) {
 	if entry == nil {
 		return nil, nil
 	}
 
-	err = jsonutil.DecodeJSON(entry.Value, &aEntry)
-	// If we hit an error, assume it's a pre-struct straight token ID
+	var aEntry accessorEntry
+	err := jsonutil.DecodeJSON(entry.Value, &aEntry)
 	if err != nil {
 		te, err := ts.lookupInternal(ctx, string(entry.Value), false, tainted)
 		if err != nil {
@@ -2763,29 +2818,40 @@ func (ts *TokenStore) migrateAccessor(ctx context.Context, saltedAccessor string
 		return false, fmt.Errorf("error salting accessor: %w", err)
 	}
 
-	ts.accessorMigrationLock.Lock()
-	defer ts.accessorMigrationLock.Unlock()
+	storage, ok := ts.accessorView(ns).(logical.TransactionalStorage)
+	if !ok {
+		return false, fmt.Errorf("accessor storage does not support transactions")
+	}
 
-	storedEntry, err := ts.accessorView(ns).Get(ctx, saltedAccessor)
+	migrated := false
+	err = logical.WithTransaction(ctx, storage, func(s logical.Storage) error {
+		storedEntry, err := s.Get(ctx, saltedAccessor)
+		if err != nil {
+			return fmt.Errorf("error reading legacy accessor: %w", err)
+		}
+		if storedEntry == nil {
+			return nil
+		}
+
+		replacementEntry := *storedEntry
+		replacementEntry.Key = newKey
+
+		if err := s.Put(ctx, &replacementEntry); err != nil {
+			return fmt.Errorf("error writing migrated accessor: %w", err)
+		}
+
+		if err := s.Delete(ctx, saltedAccessor); err != nil {
+			return fmt.Errorf("error deleting legacy accessor: %w", err)
+		}
+
+		migrated = true
+		return nil
+	})
 	if err != nil {
-		return false, fmt.Errorf("error reading legacy accessor: %w", err)
-	}
-	if storedEntry == nil {
-		return false, nil
+		return false, err
 	}
 
-	replacementEntry := *storedEntry
-	replacementEntry.Key = newKey
-
-	if err := ts.accessorView(ns).Put(ctx, &replacementEntry); err != nil {
-		return false, fmt.Errorf("error writing migrated accessor: %w", err)
-	}
-
-	if err := ts.accessorView(ns).Delete(ctx, saltedAccessor); err != nil {
-		return false, fmt.Errorf("error deleting legacy accessor: %w", err)
-	}
-
-	return true, nil
+	return migrated, nil
 }
 
 // handleUpdateLookupAccessor handles the auth/token/lookup-accessor path for returning

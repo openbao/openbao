@@ -1,0 +1,21 @@
+```release-note:security
+secrets/transit: Ensure imported key backup does not allow clobbering arbitrary keys through path traversal. GHSA-5pmx-2p74-x478.
+```
+```release-note:security
+secrets/identity: Ensure client_type=public is denied with client_credentials=true in the OIDC provider. GHSA-q824-44ff-f5j5.
+```
+```release-note:security
+secrets/ssh: Deny wildcards (*) in SSH certificate identity templating by default. Configurable via the `allow_wildcards_in_identity_templates` parameter. GHSA-h76r-48x5-36hg.
+```
+```release-note:security
+secrets/approle: Add resolve path canonicalization in Role ID paths. GHSA-736f-82w7-hj22.
+```
+```release-note:security
+auth/cert: Add missing resolve path canonicalization to CRL paths. GHSA-736f-82w7-hj22.
+```
+```release-note:security
+auth/ldap: Add resolve path canonicalization to user, group paths. GHSA-736f-82w7-hj22.
+```
+```release-note:security
+auth/radius: Add resolve path canonicalization to user paths. GHSA-736f-82w7-hj22.
+```

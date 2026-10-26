@@ -191,11 +191,8 @@ export default class PkiActionModel extends Model {
   })
   notBeforeDuration;
 
-  @attr('string') managedKeyName;
-  @attr('string', {
-    label: 'Managed key UUID',
-  })
-  managedKeyId;
+  @attr('string') externalKeyConfig;
+  @attr('string') externalKeyName;
 
   @attr({
     label: 'Not valid after',

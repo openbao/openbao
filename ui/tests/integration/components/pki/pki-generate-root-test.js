@@ -144,7 +144,7 @@ module('Integration | Component | pki-generate-root', function (hooks) {
     assert
       .dom(SELECTORS.toggleGroupDescription)
       .hasText(
-        'This certificate type is kms, meaning managed keys will be used. Below, you will name the key and tell OpenBao where to find it in your KMS or HSM.',
+        'This certificate type is kms, meaning external keys will be used. Below, you will name the key and tell OpenBao where to find it in your KMS or HSM.',
         `has correct description for type=${this.type}`
       );
     assert.strictEqual(this.model.type, this.type);
@@ -153,11 +153,11 @@ module('Integration | Component | pki-generate-root', function (hooks) {
       .exists({ count: 3 }, '3 form fields under keyParams toggle');
     assert.dom(SELECTORS.fieldByName('keyName')).exists(`Key name field shown when type=${this.type}`);
     assert
-      .dom(SELECTORS.fieldByName('managedKeyName'))
-      .exists(`Managed key name field shown when type=${this.type}`);
+      .dom(SELECTORS.fieldByName('externalKeyConfig'))
+      .exists(`External key config field shown when type=${this.type}`);
     assert
-      .dom(SELECTORS.fieldByName('managedKeyId'))
-      .exists(`Managed key id field shown when type=${this.type}`);
+      .dom(SELECTORS.fieldByName('externalKeyName'))
+      .exists(`External key name field shown when type=${this.type}`);
   });
 
   test('it shows errors before submit if form is invalid', async function (assert) {

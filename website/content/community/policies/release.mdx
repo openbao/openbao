@@ -14,6 +14,7 @@ a better release process going forward.
 ## Pre-release checklist
 
  - [ ] Designate a release manager and assign them this issue.
+ - [ ] File any missing GHSAs for security issues.
  - [ ] Clone this template into a GitHub release issue.
  - [ ] Identify target release version (major, minor, or patch & GA or beta) and
        milestone. Add this issue to the identified milestone.
@@ -22,10 +23,9 @@ a better release process going forward.
       - [ ] Community meeting
       - [ ] GitHub milestones
       - [ ] Helm chart team
- - [ ] Ensure relevant features and bug fixes are present in the release.
- - [ ] Update Go version pinning in `/.go-version` and in the the `toolchain`
-       directive in `go.mod`; go-releaser uses this version via a custom
-       (in-repo) `set-up-go` action.
+ - [ ] Ensure relevant features and bug fixes are present in the release, minus
+       security issues.
+ - [ ] Update Go version in `/.go-version`.
  - [ ] Update external dependencies with vulnerabilities. Major changes should
        be done earlier in the release cycle to give the community time to find
        any breaking issues.
@@ -51,6 +51,11 @@ a better release process going forward.
 
 ## Release checklist
 
+ - [ ] Open PR to rebase any security patches from the `openbao-security`
+       repository. When multiple security issues are fixed in a single
+       release, prepare a single large PR on top of `main` with each security
+       issue as a squashed commit (referencing the `openbao-security` pull
+       request) and one additional commit containing all changelog entries.
  - [ ] Open & merge PR to update `CHANGELOG.md` and release notes on website.
       - [ ] Patch versions should go in the corresponding minor version's
             existing page; new minor and major versions should get their own
@@ -77,7 +82,10 @@ a better release process going forward.
       - [ ] OpenBao Core mailing list (cc TSC mailing list)
       - [ ] Link from Zulip
       - [ ] Mention in next community meeting & TSC meetings.
- - [ ] Publish any security advisory drafts fixed in this release.
+ - [ ] Publish any GHSA advisories for this release. Adjust for uniform
+       language in description and check severity assignments. Request CVE
+       assignment and immediately make any GHSAs public. CVE assignments can
+       take a while so the project has opted not to wait.
  - [ ] Close the release milestone on GitHub.
  - [ ] For large releases, work with the OpenSSF for a release blog post.
  - [ ] For new major or minor versions, create a `release/<version>` branch

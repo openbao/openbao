@@ -34,8 +34,8 @@ export default class PkiActionModel extends Model {
   serialNumber: string;
   addBasicConstraints: boolean;
   notBeforeDuration: string;
-  managedKeyName: string;
-  managedKeyId: string;
+  externalKeyConfig: string;
+  externalKeyName: string;
   customTtl: string;
   ttl: string;
   notAfter: string;

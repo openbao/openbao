@@ -1,0 +1,3 @@
+```release-note:bug
+ui: Fix namespace selector from not working when resizing browser window. Re-directs now happen regardless of window size.
+```

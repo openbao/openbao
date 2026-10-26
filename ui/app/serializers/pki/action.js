@@ -37,6 +37,10 @@ export default class PkiActionSerializer extends ApplicationSerializer {
     // we label it as subject_serial_number to differentiate from the vault generated UUID
     data.serial_number = data.subject_serial_number;
 
+    if (snapshot.record.type === 'kms' && data.external_key_config && data.external_key_name) {
+      data.external_key_ref = `${data.external_key_config}:${data.external_key_name}`;
+    }
+
     const payload = {};
     allowedPayloadAttributes.forEach((key) => {
       if ('undefined' !== typeof data[key]) {
@@ -47,7 +51,10 @@ export default class PkiActionSerializer extends ApplicationSerializer {
   }
 
   _allowedParamsByType(actionType, type) {
-    const keyFields = keyParamsByType(type).map((attrName) => underscore(attrName).toLowerCase());
+    const keyFields =
+      type === 'kms'
+        ? ['key_name', 'external_key_ref']
+        : keyParamsByType(type).map((attrName) => underscore(attrName).toLowerCase());
     const commonProps = [
       'alt_names',
       'common_name',

@@ -160,6 +160,53 @@
   .box.is-shadowless {
     background-color: transparent;
   }
+
+  // Modals
+  .modal-background {
+    background: #0f0f10;
+  }
+
+  .modal-card {
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .modal-card-head {
+    background-color: #2e2f31;
+    border-bottom-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .is-highlight {
+    .modal-card-head {
+      background: #3a3220;
+      border-color: #6b5a1e;
+    }
+
+    .modal-card-title {
+      color: #f2d36b;
+    }
+  }
+
+  .modal-card-body,
+  .modal-card-custom,
+  .modal-card-foot {
+    background-color: #242526;
+    color: #e3e3e3;
+  }
+
+  .modal-card-foot-outlined {
+    background: #2e2f31;
+    border-top-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .modal-card .copy-text {
+    background-color: #1b1b1d;
+  }
+
+  // Bold text and table headers
+  strong,
+  table th {
+    color: #ffffff;
+  }
 }
 
 :root[data-theme='dark'] {

@@ -844,7 +844,12 @@ func generateCert(sc *storageContext,
 		}
 	}
 
-	parsedBundle, err := generateCABundle(sc, input, data, randomSource)
+	generator, err := keyGenerator(sc, input)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	parsedBundle, err := certutil.CreateCertificateWithKeyGenerator(data, randomSource, generator)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -893,8 +898,14 @@ func generateIntermediateCSR(sc *storageContext, input *inputBundle, randomSourc
 		return nil, nil, errutil.InternalError{Err: "nil parameters received from parameter bundle generation"}
 	}
 
+	generator, err := keyGenerator(sc, input)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	addBasicConstraints := input.apiData != nil && input.apiData.Get("add_basic_constraints").(bool)
-	parsedBundle, err := generateCSRBundle(sc, input, creation, addBasicConstraints, randomSource)
+
+	parsedBundle, err := certutil.CreateCSRWithKeyGenerator(creation, addBasicConstraints, randomSource, generator)
 	if err != nil {
 		return nil, nil, err
 	}

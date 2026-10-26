@@ -1,14 +1,25 @@
+## 2.6.5
+## October 26, 2026
+
+* auth/cert: Add resolve path canonicalization to CRL paths. GHSA-736f-82w7-hj22. [[GH-4325](https://github.com/openbao/openbao/pull/4325)]
+* auth/ldap: Add resolve path canonicalization to user, group paths. GHSA-736f-82w7-hj22. [[GH-4325](https://github.com/openbao/openbao/pull/4325)]
+* auth/radius: Add resolve path canonicalization to user paths. GHSA-736f-82w7-hj22. [[GH-4325](https://github.com/openbao/openbao/pull/4325)]
+* secrets/approle: Add resolve path canonicalization in Role ID paths. GHSA-736f-82w7-hj22. [[GH-4325](https://github.com/openbao/openbao/pull/4325)]
+* secrets/identity: Ensure `client_type=public` is denied with `client_credentials=true` in the OIDC provider. GHSA-q824-44ff-f5j5. [[GH-4325](https://github.com/openbao/openbao/pull/4325)]
+* secrets/ssh: Deny wildcards (`*`) in SSH certificate identity templating by default. Configurable via the `allow_wildcards_in_identity_templates` parameter. GHSA-h76r-48x5-36hg. [[GH-4325](https://github.com/openbao/openbao/pull/4325)]
+* secrets/transit: Ensure imported key backup does not allow clobbering arbitrary keys through path traversal. GHSA-5pmx-2p74-x478. [[GH-4325](https://github.com/openbao/openbao/pull/4325)]
+
 ## 2.6.4
 ## October 1, 2026
 
 SECURITY:
 
-core: Prevent disclosure of `tls_acme_eab_mac_key` from `sys/config/state/sanitized`. GHSA-3237-j65r-m5rp. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
-core/audit: The unauthenticated "Root Token Generation" and "Rekey" endpoints (which are disabled by default) returned their response, even if audit logging failed. GHSA-q74w-hv5x-6hxf. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
-auth/approle: Ensure Secret ID cannot be used for authentication after expiration but before tidy is called. GHSA-7m59-mp95-w6ph. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
-auth/approle: Fix incorrect JSON-decode path when parsing login requests with form data bodies. GHSA-5v22-543h-wg96. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
-auth/cert: Fix omission of TLS connection propagation when calculating role-based quota. GHSA-5v22-543h-wg96. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
-auth/kubernetes: Ensure Service Account JWT is validated on renewal, preventing post-revoke usage. GHSA-gf3j-hm38-jhh5. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
+* core: Prevent disclosure of `tls_acme_eab_mac_key` from `sys/config/state/sanitized`. GHSA-3237-j65r-m5rp. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
+* core/audit: The unauthenticated "Root Token Generation" and "Rekey" endpoints (which are disabled by default) returned their response, even if audit logging failed. GHSA-q74w-hv5x-6hxf. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
+* auth/approle: Ensure Secret ID cannot be used for authentication after expiration but before tidy is called. GHSA-7m59-mp95-w6ph. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
+* auth/approle: Fix incorrect JSON-decode path when parsing login requests with form data bodies. GHSA-5v22-543h-wg96. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
+* auth/cert: Fix omission of TLS connection propagation when calculating role-based quota. GHSA-5v22-543h-wg96. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
+* auth/kubernetes: Ensure Service Account JWT is validated on renewal, preventing post-revoke usage. GHSA-gf3j-hm38-jhh5. [[GH-4148](https://github.com/openbao/openbao/pull/4148)]
 
 ## 2.6.3
 ## September 23, 2026

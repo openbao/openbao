@@ -80,7 +80,7 @@ func (b *backend) pathSignIssueCertificateHelper(sc *storageContext, req *logica
 	} else {
 		defaultPrincipal := role.DefaultUser
 		if role.DefaultUserTemplate {
-			defaultPrincipal, err = b.renderPrincipal(role.DefaultUser, req, true)
+			defaultPrincipal, err = b.renderPrincipal(role.DefaultUser, req, role.AllowCommasInIdentityTemplates, role.AllowWildcardsInIdentityTemplates)
 			if err != nil {
 				return nil, err
 			}
@@ -164,7 +164,7 @@ func (b *backend) pathSignIssueCertificateHelper(sc *storageContext, req *logica
 	return response, nil
 }
 
-func (b *backend) renderPrincipal(principal string, req *logical.Request, allowCommasInIdentityTemplates bool) (string, error) {
+func (b *backend) renderPrincipal(principal string, req *logical.Request, allowCommasInIdentityTemplates bool, allowWildcardsInIdentityTemplates bool) (string, error) {
 	if req.EntityID == "" {
 		return principal, nil
 	}
@@ -197,7 +197,10 @@ func (b *backend) renderPrincipal(principal string, req *logical.Request, allowC
 		Mode:   identitytpl.ACLTemplating,
 	}
 	if !allowCommasInIdentityTemplates {
-		input.BlockedSubstitutions = []string{","}
+		input.BlockedSubstitutions = append(input.BlockedSubstitutions, ",")
+	}
+	if !allowWildcardsInIdentityTemplates {
+		input.BlockedSubstitutions = append(input.BlockedSubstitutions, "*")
 	}
 
 	_, renderedPrincipal, err := identitytpl.PopulateString(input)
@@ -221,7 +224,7 @@ func (b *backend) calculateValidPrincipals(data *framework.FieldData, req *logic
 	// Build list of allowed Principals from template and static principalsAllowedByRole
 	var allowedPrincipals []string
 	if enableTemplating {
-		rendered, err := b.renderPrincipal(principalsAllowedByRole, req, role.AllowCommasInIdentityTemplates)
+		rendered, err := b.renderPrincipal(principalsAllowedByRole, req, role.AllowCommasInIdentityTemplates, role.AllowWildcardsInIdentityTemplates)
 		if err != nil {
 			return nil, err
 		}

@@ -74,6 +74,9 @@ func pathUsers(b *backend) *framework.Path {
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.pathUserResolvePath,
+			},
 			logical.DeleteOperation: &framework.PathOperation{
 				Callback: b.pathUserDelete,
 			},
@@ -93,6 +96,11 @@ func pathUsers(b *backend) *framework.Path {
 		HelpSynopsis:    pathUserHelpSyn,
 		HelpDescription: pathUserHelpDesc,
 	}
+}
+
+func (b *backend) pathUserResolvePath(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	username := strings.ToLower(d.Get("name").(string))
+	return logical.ResolvePathResponse("users/" + username)
 }
 
 func (b *backend) userExistenceCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {

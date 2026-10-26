@@ -12,6 +12,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSysHealth_get(t *testing.T) {
@@ -266,4 +267,18 @@ func TestSysHealth_head(t *testing.T) {
 			t.Fatalf("HEAD %v expected no body, received \"%v\".", queryurl, data)
 		}
 	}
+}
+
+func TestSysHealth_StateLockWriteHeld(t *testing.T) {
+	core, _, _ := vault.TestCoreUnsealed(t)
+	ln, addr := TestServer(t, core)
+	defer func() {
+		require.NoError(t, ln.Close())
+	}()
+
+	release := vault.TestHoldStateLock(core)
+	defer release()
+
+	resp := testHttpGet(t, "", addr+"/v1/sys/health")
+	testResponseStatus(t, resp, 200)
 }

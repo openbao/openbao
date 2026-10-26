@@ -139,7 +139,7 @@
     }
   }
 
-  // Dropdown selects
+  // Plain select dropdowns
   .select select {
     background-color: #242526;
     color: #e3e3e3;
@@ -154,6 +154,7 @@
     }
   }
 
+  // Base64 encode/decode toggle
   .b64-toggle {
     background-color: #242526;
     color: #e3e3e3;
@@ -254,4 +255,8 @@
 
 :root[data-theme='dark'] body {
   color: var(--token-color-foreground-primary);
+}
+
+:where(:root[data-theme='dark']) a:hover {
+  color: #e3e3e3;
 }

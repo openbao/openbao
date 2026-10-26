@@ -1,0 +1,3 @@
+```release-note:improvement
+core/ha: Prefix newly generated cluster names with `openbao-cluster-*` instead of `vault-cluster-*`.
+```

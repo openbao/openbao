@@ -167,7 +167,7 @@ func (c *Core) setupCluster(ctx context.Context) error {
 				return err
 			}
 
-			c.clusterName = fmt.Sprintf("vault-cluster-%08x", clusterNameBytes)
+			c.clusterName = fmt.Sprintf("openbao-cluster-%08x", clusterNameBytes)
 		}
 
 		cluster.Name = c.clusterName

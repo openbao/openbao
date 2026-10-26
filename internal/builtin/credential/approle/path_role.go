@@ -188,6 +188,9 @@ can only be set during role creation and once set, it can't be reset later.`,
 		},
 		ExistenceCheck: b.pathRoleExistenceCheck,
 		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ResolvePathOperation: &framework.PathOperation{
+				Callback: b.pathRoleResolvePath("role/", ""),
+			},
 			logical.CreateOperation: &framework.PathOperation{
 				Callback:  b.pathRoleCreateUpdate,
 				Responses: responseOK,
@@ -355,6 +358,9 @@ can only be set during role creation and once set, it can't be reset later.`,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/local-secret-ids"),
+				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.pathRoleLocalSecretIDsRead,
 					Responses: map[int][]framework.Response{
@@ -396,6 +402,9 @@ can only be set during role creation and once set, it can't be reset later.`,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/policies"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback:  b.pathRolePoliciesUpdate,
 					Responses: responseNoContent,
@@ -447,6 +456,9 @@ of CIDR blocks. If set, specifies the blocks of IP addresses which can perform t
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/bound-cidr-list"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback:  b.pathRoleBoundCIDRUpdate,
 					Responses: responseNoContent,
@@ -493,6 +505,9 @@ IP addresses which can perform the login operation.`,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/secret-id-bound-cidrs"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback:  b.pathRoleSecretIDBoundCIDRUpdate,
 					Responses: responseNoContent,
@@ -537,6 +552,9 @@ IP addresses which can perform the login operation.`,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/token-bound-cidrs"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback:  b.pathRoleTokenBoundCIDRUpdate,
 					Responses: responseNoContent,
@@ -582,6 +600,9 @@ IP addresses which can perform the login operation.`,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/bind-secret-ids"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback:  b.pathRoleBindSecretIDUpdate,
 					Responses: responseNoContent,
@@ -626,6 +647,9 @@ IP addresses which can perform the login operation.`,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/secret-id-num-uses"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback:  b.pathRoleSecretIDNumUsesUpdate,
 					Responses: responseNoContent,
@@ -671,6 +695,9 @@ to 0, meaning no expiration.`,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/secret-id-ttl"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback:  b.pathRoleSecretIDTTLUpdate,
 					Responses: responseNoContent,
@@ -720,6 +747,9 @@ to 0, meaning no expiration.`,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/period"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback:  b.pathRolePeriodUpdate,
 					Responses: responseNoContent,
@@ -770,6 +800,9 @@ to 0, meaning no expiration.`,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/token-num-uses"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback:  b.pathRoleTokenNumUsesUpdate,
 					Responses: responseNoContent,
@@ -814,6 +847,9 @@ to 0, meaning no expiration.`,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/token-ttl"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback:  b.pathRoleTokenTTLUpdate,
 					Responses: responseNoContent,
@@ -858,6 +894,9 @@ to 0, meaning no expiration.`,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/token-max-ttl"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback:  b.pathRoleTokenMaxTTLUpdate,
 					Responses: responseNoContent,
@@ -902,6 +941,9 @@ to 0, meaning no expiration.`,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/role-id"),
+				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.pathRoleRoleIDRead,
 					Responses: map[int][]framework.Response{
@@ -972,6 +1014,9 @@ Overrides secret_id_ttl role option when supplied. May not be longer than role's
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/secret-id"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.pathRoleSecretIDUpdate,
 					Responses: map[int][]framework.Response{
@@ -1041,6 +1086,9 @@ Overrides secret_id_ttl role option when supplied. May not be longer than role's
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/secret-id/lookup"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.pathRoleSecretIDLookupUpdate,
 					Responses: map[int][]framework.Response{
@@ -1113,6 +1161,9 @@ Overrides secret_id_ttl role option when supplied. May not be longer than role's
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/secret-id/destroy"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback:  b.pathRoleSecretIDDestroyUpdateDelete,
 					Responses: responseNoContent,
@@ -1149,6 +1200,9 @@ Overrides secret_id_ttl role option when supplied. May not be longer than role's
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/secret-id-accessor/lookup"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.pathRoleSecretIDAccessorLookupUpdate,
 					Responses: map[int][]framework.Response{
@@ -1221,6 +1275,9 @@ Overrides secret_id_ttl role option when supplied. May not be longer than role's
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/secret-id-accessor/destroy"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback:  b.pathRoleSecretIDAccessorDestroyUpdateDelete,
 					Responses: responseNoContent,
@@ -1283,6 +1340,9 @@ Overrides secret_id_ttl role option when supplied. May not be longer than role's
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ResolvePathOperation: &framework.PathOperation{
+					Callback: b.pathRoleResolvePath("role/", "/custom-secret-id"),
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.pathRoleCustomSecretIDUpdate,
 					Responses: map[int][]framework.Response{
@@ -1337,6 +1397,19 @@ func (b *backend) pathRoleExistenceCheck(ctx context.Context, req *logical.Reque
 	}
 
 	return role != nil, nil
+}
+
+// pathRoleResolvePath is used to handle path-resolution across all role
+// operations.
+func (b *backend) pathRoleResolvePath(prefix string, suffix string) framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+		roleName := strings.ToLower(d.Get("role_name").(string))
+		result := prefix + roleName + suffix
+		if strings.HasSuffix(req.Path, "/") {
+			result += "/"
+		}
+		return logical.ResolvePathResponse(result)
+	}
 }
 
 // pathRoleList is used to list all the Roles registered with the backend.

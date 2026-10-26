@@ -6,6 +6,19 @@ description: Release notes for OpenBao 2.6.x
 
 # OpenBao 2.6.x release notes
 
+## v2.6.5
+
+**Release date:** October 26, 2026
+
+### SECURITY
+
+* auth/cert: Add resolve path canonicalization to CRL paths. GHSA-736f-82w7-hj22. [[GH-4325](https://github.com/openbao/openbao/pull/4325)]
+* auth/ldap: Add resolve path canonicalization to user, group paths. GHSA-736f-82w7-hj22. [[GH-4325](https://github.com/openbao/openbao/pull/4325)]
+* auth/radius: Add resolve path canonicalization to user paths. GHSA-736f-82w7-hj22. [[GH-4325](https://github.com/openbao/openbao/pull/4325)]
+* secrets/approle: Add resolve path canonicalization in Role ID paths. GHSA-736f-82w7-hj22. [[GH-4325](https://github.com/openbao/openbao/pull/4325)]
+* secrets/identity: Ensure `client_type=public` is denied with `client_credentials=true` in the OIDC provider. GHSA-q824-44ff-f5j5. [[GH-4325](https://github.com/openbao/openbao/pull/4325)]
+* secrets/ssh: Deny wildcards (`*`) in SSH certificate identity templating by default. Configurable via the `allow_wildcards_in_identity_templates` parameter. GHSA-h76r-48x5-36hg. [[GH-4325](https://github.com/openbao/openbao/pull/4325)]
+
 ## v2.6.4
 
 **Release date:** October 1, 2026

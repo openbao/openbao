@@ -424,6 +424,17 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 			return logical.ErrorResponse("'oidc_discovery_url' contains '.well-known' component"), nil
 		}
 
+		if config.staticEndpoints() {
+			if err := checkJWKSURL(ctx, config.OIDCJWKSURL, config.OIDCDiscoveryCAPEM); err != nil {
+				if !skipJwksValidation {
+					b.Logger().Error("error checking oidc_jwks_url", "error", err)
+					return logical.ErrorResponse("error checking oidc_jwks_url: %s", err.Error()), nil
+				}
+				resp.AddWarning("error checking oidc_jwks_url")
+			}
+			break
+		}
+
 		var err error
 		if config.OIDCClientID != "" && config.OIDCClientSecret != "" {
 			_, err = b.createProvider(config)
@@ -449,8 +460,7 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 
 		// Try to verify a correctly formatted JWT. The signature will fail to match, but other
 		// errors with fetching the remote keyset should be reported.
-		testJWT := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.NHVaYe26MbtOYhSKkoKYdFVomg4i8ZJd8_-RU8VNbftc4TSMb4bXP3l3YlNWACwyXPGffz5aXHc6lty1Y2t4SWRqGteragsVdZufDn5BlnJl9pdR_kdVFUsra2rWKEofkZeIC4yWytE58sMIihvo9H1ScmmVwBcQP6XETqYd0aSHp1gOa9RdUPDvoXQ5oqygTqVtxaDr6wUFKrKItgBMzWIdNZ6y7O9E0DhEPTbE9rfBo6KTFsHAZnMg4k68CDp2woYIaXbmYTWcvbzIuHO7_37GT79XdIwkm95QJ7hYC9RiwrV7mesbY4PAahERJawntho0my942XheVLmGwLMBkQ"
-		_, err = keyset.VerifySignature(ctx, testJWT)
+		_, err = keyset.VerifySignature(ctx, jwksProbeJWT)
 		if err == nil {
 			err = errors.New("unexpected verification of JWT")
 		}
@@ -532,6 +542,28 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 	return nil, nil
 }
 
+// jwksProbeJWT is a well-formed JWT. Its signature doesn't match a real key.
+const jwksProbeJWT = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.NHVaYe26MbtOYhSKkoKYdFVomg4i8ZJd8_-RU8VNbftc4TSMb4bXP3l3YlNWACwyXPGffz5aXHc6lty1Y2t4SWRqGteragsVdZufDn5BlnJl9pdR_kdVFUsra2rWKEofkZeIC4yWytE58sMIihvo9H1ScmmVwBcQP6XETqYd0aSHp1gOa9RdUPDvoXQ5oqygTqVtxaDr6wUFKrKItgBMzWIdNZ6y7O9E0DhEPTbE9rfBo6KTFsHAZnMg4k68CDp2woYIaXbmYTWcvbzIuHO7_37GT79XdIwkm95QJ7hYC9RiwrV7mesbY4PAahERJawntho0my942XheVLmGwLMBkQ" // gitleaks:allow
+
+// checkJWKSURL fetches the key set and verifies jwksProbeJWT against it. A
+// signature mismatch means the key set loaded. Any other error is reported.
+func checkJWKSURL(ctx context.Context, jwksURL, caPEM string) error {
+	keyset, err := jwt.NewJSONWebKeySet(ctx, jwksURL, caPEM)
+	if err != nil {
+		return err
+	}
+
+	_, err = keyset.VerifySignature(ctx, jwksProbeJWT)
+	switch {
+	case err == nil:
+		return errors.New("unexpected verification of JWT")
+	case strings.Contains(err.Error(), "failed to verify id token signature"):
+		return nil
+	default:
+		return err
+	}
+}
+
 func (b *jwtAuthBackend) createProvider(config *jwtConfig) (*oidc.Provider, error) {
 	supportedSigAlgs := make([]oidc.Alg, len(config.JWTSupportedAlgs))
 	for i, a := range config.JWTSupportedAlgs {
@@ -542,9 +574,19 @@ func (b *jwtAuthBackend) createProvider(config *jwtConfig) (*oidc.Provider, erro
 		supportedSigAlgs = []oidc.Alg{oidc.RS256}
 	}
 
+	opts := []oidc.Option{oidc.WithProviderCA(config.OIDCDiscoveryCAPEM)}
+	if config.staticEndpoints() {
+		opts = append(opts, oidc.WithProviderConfig(&oidc.ProviderConfig{
+			AuthURL:     config.OIDCAuthorizationURL,
+			TokenURL:    config.OIDCTokenURL,
+			JWKSURL:     config.OIDCJWKSURL,
+			UserInfoURL: config.OIDCUserInfoURL,
+		}))
+	}
+
 	c, err := oidc.NewConfig(config.OIDCDiscoveryURL, config.OIDCClientID,
 		oidc.ClientSecret(config.OIDCClientSecret), supportedSigAlgs, []string{},
-		oidc.WithProviderCA(config.OIDCDiscoveryCAPEM))
+		opts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating provider: %w", err)
 	}
@@ -701,6 +743,12 @@ func (c jwtConfig) authType() int {
 	}
 
 	return unconfigured
+}
+
+// staticEndpoints reports whether provider endpoints are configured directly
+// instead of discovered.
+func (c jwtConfig) staticEndpoints() bool {
+	return c.OIDCAuthorizationURL != ""
 }
 
 func (c jwtConfig) validateStaticEndpoints() error {

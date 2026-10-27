@@ -508,6 +508,77 @@ func TestConfig_OIDC_StaticEndpoints(t *testing.T) {
 		}
 	})
 
+	t.Run("skips discovery", func(t *testing.T) {
+		b, storage := getBackend(t)
+		s.getRequests()
+
+		// The issuer host doesn't resolve, so any discovery attempt fails.
+		data := static()
+		data["oidc_discovery_url"] = "https://issuer.invalid"
+
+		resp, err := b.HandleRequest(t.Context(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data:      data,
+		})
+		require.NoError(t, err)
+		require.False(t, resp != nil && resp.IsError(), "resp: %#v", resp)
+
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
+			Operation: logical.CreateOperation,
+			Path:      "role/test",
+			Storage:   storage,
+			Data: map[string]any{
+				"user_claim":            "email",
+				"allowed_redirect_uris": []string{"https://example.com"},
+			},
+		})
+		require.NoError(t, err)
+		require.False(t, resp != nil && resp.IsError(), "resp: %#v", resp)
+
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "oidc/auth_url",
+			Storage:   storage,
+			Data: map[string]any{
+				"role":         "test",
+				"redirect_uri": "https://example.com",
+			},
+		})
+		require.NoError(t, err)
+		require.False(t, resp != nil && resp.IsError(), "resp: %#v", resp)
+		require.True(t, strings.HasPrefix(resp.Data["auth_url"].(string), s.server.URL+"/auth?"), resp.Data["auth_url"])
+
+		for _, r := range s.getRequests() {
+			require.NotEqual(t, "/.well-known/openid-configuration", r.URL.Path)
+		}
+	})
+
+	t.Run("unreachable JWKS URL", func(t *testing.T) {
+		b, storage := getBackend(t)
+
+		data := static()
+		data["oidc_jwks_url"] = s.server.URL + "/certs_missing"
+
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data:      data,
+		}
+		resp, err := b.HandleRequest(t.Context(), req)
+		require.NoError(t, err)
+		require.True(t, resp.IsError())
+		require.True(t, strings.HasPrefix(resp.Error().Error(), "error checking oidc_jwks_url: "), resp.Error())
+
+		data["skip_jwks_validation"] = true
+		resp, err = b.HandleRequest(t.Context(), req)
+		require.NoError(t, err)
+		require.False(t, resp.IsError())
+		require.Equal(t, []string{"error checking oidc_jwks_url"}, resp.Warnings)
+	})
+
 	tests := map[string]struct {
 		change func(map[string]any)
 		err    string

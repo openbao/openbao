@@ -1,0 +1,3 @@
+```release-note:improvement
+auth/jwt: Add `oidc_authorization_url`, `oidc_token_url`, `oidc_jwks_url`, `oidc_userinfo_url` and `oidc_device_auth_url` to configure OIDC provider endpoints directly and skip discovery, for when OpenBao cannot reach the issuer's public URL.
+```

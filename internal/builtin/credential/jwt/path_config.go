@@ -721,7 +721,8 @@ type jwtConfig struct {
 	OverrideAllowedServerNames []string       `json:"override_allowed_server_names"`
 	NamespaceInState           bool           `json:"namespace_in_state"`
 
-	// Static provider endpoints. When set, OIDC discovery is skipped.
+	// OIDCAuthorizationURL and the fields below configure provider endpoints
+	// directly. When they are set, OIDC discovery is skipped.
 	OIDCAuthorizationURL string `json:"oidc_authorization_url"`
 	OIDCTokenURL         string `json:"oidc_token_url"`
 	OIDCJWKSURL          string `json:"oidc_jwks_url"`

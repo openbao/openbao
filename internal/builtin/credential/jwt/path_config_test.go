@@ -613,7 +613,11 @@ func TestConfig_OIDC_StaticEndpoints(t *testing.T) {
 		},
 		"relative URL": {
 			change: func(d map[string]any) { d["oidc_jwks_url"] = "/certs" },
-			err:    "'oidc_jwks_url' must be an absolute URL",
+			err:    "'oidc_jwks_url' must be an absolute http or https URL",
+		},
+		"non-HTTP scheme": {
+			change: func(d map[string]any) { d["oidc_token_url"] = "ftp://keycloak.example.com/token" },
+			err:    "'oidc_token_url' must be an absolute http or https URL",
 		},
 	}
 

@@ -785,8 +785,8 @@ func (c jwtConfig) validateStaticEndpoints() error {
 		}
 		set = true
 		u, err := url.Parse(e.value)
-		if err != nil || u.Scheme == "" || u.Host == "" {
-			return fmt.Errorf("'%s' must be an absolute URL", e.field)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return fmt.Errorf("'%s' must be an absolute http or https URL", e.field)
 		}
 	}
 

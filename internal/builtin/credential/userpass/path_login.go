@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
@@ -25,7 +24,7 @@ var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("dummy"), bcrypt.DefaultCo
 
 func pathLogin(b *backend) *framework.Path {
 	return &framework.Path{
-		Pattern: "login/" + framework.GenericNameRegex("username"),
+		Pattern: "login/" + usernamePathRegex(),
 
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixUserpass,
@@ -59,7 +58,10 @@ func pathLogin(b *backend) *framework.Path {
 }
 
 func (b *backend) pathLoginAliasLookahead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	username := strings.ToLower(d.Get("username").(string))
+	username, err := getUsername(d)
+	if err != nil {
+		return nil, err
+	}
 	if username == "" {
 		return nil, errors.New("missing username")
 	}
@@ -74,7 +76,10 @@ func (b *backend) pathLoginAliasLookahead(ctx context.Context, req *logical.Requ
 }
 
 func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	username := strings.ToLower(d.Get("username").(string))
+	username, err := getUsername(d)
+	if err != nil {
+		return nil, err
+	}
 
 	password := d.Get("password").(string)
 	if password == "" {

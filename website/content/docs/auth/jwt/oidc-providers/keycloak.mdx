@@ -60,6 +60,38 @@ bao write auth/oidc/config \
 
 ```
 
+### 2.2 Keycloak not reachable at its public URL
+
+OIDC discovery requires OpenBao to reach Keycloak at the issuer URL. If it
+can't, for example because Keycloak runs in the same cluster behind a gateway
+that rejects internal traffic, configure the endpoints directly. OpenBao then
+skips discovery.
+
+| **Field** | **Reached by** | **Example** |
+| :--- | :--- | :--- |
+| **'oidc_discovery_url'** | Nobody, used only as the expected issuer | `https://<KEYCLOAK_URL>/realms/<REALM-NAME>` |
+| **'oidc_authorization_url'** | Users' browsers | `https://<KEYCLOAK_URL>/realms/<REALM-NAME>/protocol/openid-connect/auth` |
+| **'oidc_token_url'** | OpenBao | `http://<KEYCLOAK_SERVICE>/realms/<REALM-NAME>/protocol/openid-connect/token` |
+| **'oidc_jwks_url'** | OpenBao | `http://<KEYCLOAK_SERVICE>/realms/<REALM-NAME>/protocol/openid-connect/certs` |
+| **'oidc_userinfo_url'** | OpenBao | `http://<KEYCLOAK_SERVICE>/realms/<REALM-NAME>/protocol/openid-connect/userinfo` |
+| **'oidc_device_auth_url'** | OpenBao, only for device flow | `http://<KEYCLOAK_SERVICE>/realms/<REALM-NAME>/protocol/openid-connect/auth/device` |
+
+Keycloak's `hostname` option must be set to the public URL. Otherwise tokens
+issued through the internal endpoints carry the internal URL as `iss`, and
+OpenBao rejects them.
+
+```bash
+bao write auth/oidc/config \
+  oidc_client_id="bao-client" \
+  oidc_client_secret="<CLIENT_SECRET>" \
+  default_role="admin-sso" \
+  oidc_discovery_url="https://<KEYCLOAK_URL>/realms/<REALM-NAME>" \
+  oidc_authorization_url="https://<KEYCLOAK_URL>/realms/<REALM-NAME>/protocol/openid-connect/auth" \
+  oidc_token_url="http://<KEYCLOAK_SERVICE>/realms/<REALM-NAME>/protocol/openid-connect/token" \
+  oidc_jwks_url="http://<KEYCLOAK_SERVICE>/realms/<REALM-NAME>/protocol/openid-connect/certs" \
+  oidc_userinfo_url="http://<KEYCLOAK_SERVICE>/realms/<REALM-NAME>/protocol/openid-connect/userinfo"
+```
+
 ## 3. The Role Configuration
 
 The role maps authenticated Keycloak users to OpenBao policies.

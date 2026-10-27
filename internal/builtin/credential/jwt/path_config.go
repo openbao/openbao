@@ -258,6 +258,15 @@ func (b *jwtAuthBackend) configDeviceAuthURL(ctx context.Context, s logical.Stor
 		return nil
 	}
 
+	if config.staticEndpoints() {
+		if config.OIDCDeviceAuthURL == "" {
+			return errors.New("no device auth endpoint url configured")
+		}
+		b.cachedConfig.deviceAuthURL = config.OIDCDeviceAuthURL
+		b.cachedConfig.deviceTokenURL = config.OIDCTokenURL
+		return nil
+	}
+
 	caCtx, err := b.createCAContext(b.providerCtx, config.OIDCDiscoveryCAPEM, config.OverrideAllowedServerNames)
 	if err != nil {
 		return fmt.Errorf("error creating context for device auth: %w", err)

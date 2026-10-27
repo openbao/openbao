@@ -1714,6 +1714,112 @@ func getTestJWKS(t *testing.T, pubKey string) []byte {
 	return data
 }
 
+func TestOIDC_StaticEndpoints_Device(t *testing.T) {
+	setup := func(t *testing.T, deviceURL bool) (logical.Backend, logical.Storage, *oidcProvider) {
+		b, storage := getBackend(t)
+		s := newOIDCProvider(t)
+		t.Cleanup(s.server.Close)
+		s.clientID = "abc"
+		s.clientSecret = "def"
+		s.code = "abc"
+		s.customClaims = sampleClaims("")
+
+		cert, err := s.getTLSCert()
+		require.NoError(t, err)
+
+		data := map[string]any{
+			"oidc_discovery_url":     s.server.URL,
+			"oidc_discovery_ca_pem":  cert,
+			"oidc_client_id":         s.clientID,
+			"oidc_client_secret":     s.clientSecret,
+			"oidc_authorization_url": s.server.URL + "/auth",
+			"oidc_token_url":         s.server.URL + "/token",
+			"oidc_jwks_url":          s.server.URL + "/certs",
+			"oidc_userinfo_url":      s.server.URL + "/userinfo",
+			"jwt_supported_algs":     []string{"ES256"},
+		}
+		if deviceURL {
+			data["oidc_device_auth_url"] = s.server.URL + "/device"
+		}
+
+		resp, err := b.HandleRequest(t.Context(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data:      data,
+		})
+		require.NoError(t, err)
+		require.False(t, resp != nil && resp.IsError(), "resp: %#v", resp)
+
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
+			Operation: logical.CreateOperation,
+			Path:      "role/test",
+			Storage:   storage,
+			Data: map[string]any{
+				"user_claim":            "email",
+				"allowed_redirect_uris": []string{"https://example.com"},
+				"callback_mode":         "device",
+			},
+		})
+		require.NoError(t, err)
+		require.False(t, resp != nil && resp.IsError(), "resp: %#v", resp)
+
+		return b, storage, s
+	}
+
+	authURL := func(b logical.Backend, storage logical.Storage) (*logical.Response, error) {
+		return b.HandleRequest(t.Context(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "oidc/auth_url",
+			Storage:   storage,
+			Data: map[string]any{
+				"role":         "test",
+				"redirect_uri": "https://example.com",
+				"client_nonce": "456",
+			},
+		})
+	}
+
+	t.Run("login", func(t *testing.T) {
+		b, storage, s := setup(t, true)
+
+		resp, err := authURL(b, storage)
+		require.NoError(t, err)
+		require.False(t, resp.IsError(), "resp: %#v", resp)
+
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "oidc/poll",
+			Storage:   storage,
+			Data: map[string]any{
+				"state":        resp.Data["state"],
+				"client_nonce": "456",
+			},
+		})
+		require.NoError(t, err)
+		require.False(t, resp.IsError(), "resp: %#v", resp)
+		require.Equal(t, "bob@example.com", resp.Auth.Alias.Name)
+
+		var paths []string
+		for _, r := range s.getRequests() {
+			paths = append(paths, r.URL.Path)
+		}
+		require.Contains(t, paths, "/device")
+		require.NotContains(t, paths, "/.well-known/openid-configuration")
+	})
+
+	t.Run("no device URL", func(t *testing.T) {
+		b, storage, s := setup(t, false)
+
+		_, err := authURL(b, storage)
+		require.EqualError(t, err, "no device auth endpoint url configured")
+
+		for _, r := range s.getRequests() {
+			require.NotEqual(t, "/.well-known/openid-configuration", r.URL.Path)
+		}
+	})
+}
+
 func TestOIDC_ValidRedirect(t *testing.T) {
 	tests := []struct {
 		uri      string

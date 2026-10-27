@@ -74,6 +74,26 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 				Type:        framework.TypeCommaStringSlice,
 				Description: "The response types to request. Allowed values are 'code' and 'id_token'. Defaults to 'code'.",
 			},
+			"oidc_authorization_url": {
+				Type:        framework.TypeString,
+				Description: `The provider's authorization endpoint. Setting this, "oidc_token_url", "oidc_jwks_url" and "oidc_userinfo_url" skips OIDC discovery. "oidc_discovery_url" is then used only as the expected issuer.`,
+			},
+			"oidc_token_url": {
+				Type:        framework.TypeString,
+				Description: `The provider's token endpoint. Required when "oidc_authorization_url" is set.`,
+			},
+			"oidc_jwks_url": {
+				Type:        framework.TypeString,
+				Description: `The provider's JWKS endpoint. Required when "oidc_authorization_url" is set.`,
+			},
+			"oidc_userinfo_url": {
+				Type:        framework.TypeString,
+				Description: `The provider's userinfo endpoint. Required when "oidc_authorization_url" is set.`,
+			},
+			"oidc_device_auth_url": {
+				Type:        framework.TypeString,
+				Description: `The provider's device authorization endpoint. Optional, only used with "oidc_authorization_url".`,
+			},
 			"jwks_url": {
 				Type:        framework.TypeString,
 				Description: `JWKS URL to use to authenticate signatures. Cannot be used with "oidc_discovery_url" or "jwt_validation_pubkeys".`,
@@ -231,8 +251,8 @@ func (b *jwtAuthBackend) configDeviceAuthURL(ctx context.Context, s logical.Stor
 	b.l.Lock()
 	defer b.l.Unlock()
 
-	if config.OIDCDeviceAuthURL != "" {
-		if config.OIDCDeviceAuthURL == "N/A" {
+	if config.deviceAuthURL != "" {
+		if config.deviceAuthURL == "N/A" {
 			return errors.New("no device auth endpoint url discovered")
 		}
 		return nil
@@ -254,12 +274,12 @@ func (b *jwtAuthBackend) configDeviceAuthURL(ctx context.Context, s logical.Stor
 	}
 	err = json.Unmarshal(body, &daj)
 	if err != nil || daj.DeviceAuthURL == "" {
-		b.cachedConfig.OIDCDeviceAuthURL = "N/A"
+		b.cachedConfig.deviceAuthURL = "N/A"
 		return errors.New("no device auth endpoint url discovered")
 	}
 
-	b.cachedConfig.OIDCDeviceAuthURL = daj.DeviceAuthURL
-	b.cachedConfig.OIDCTokenURL = daj.TokenURL
+	b.cachedConfig.deviceAuthURL = daj.DeviceAuthURL
+	b.cachedConfig.deviceTokenURL = daj.TokenURL
 	return nil
 }
 
@@ -294,6 +314,11 @@ func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reques
 			"oidc_client_id":                config.OIDCClientID,
 			"oidc_response_mode":            config.OIDCResponseMode,
 			"oidc_response_types":           config.OIDCResponseTypes,
+			"oidc_authorization_url":        config.OIDCAuthorizationURL,
+			"oidc_token_url":                config.OIDCTokenURL,
+			"oidc_jwks_url":                 config.OIDCJWKSURL,
+			"oidc_userinfo_url":             config.OIDCUserInfoURL,
+			"oidc_device_auth_url":          config.OIDCDeviceAuthURL,
 			"default_role":                  config.DefaultRole,
 			"jwt_validation_pubkeys":        config.JWTValidationPubKeys,
 			"jwt_supported_algs":            config.JWTSupportedAlgs,
@@ -326,6 +351,11 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		OIDCClientSecret:           d.Get("oidc_client_secret").(string),
 		OIDCResponseMode:           d.Get("oidc_response_mode").(string),
 		OIDCResponseTypes:          d.Get("oidc_response_types").([]string),
+		OIDCAuthorizationURL:       d.Get("oidc_authorization_url").(string),
+		OIDCTokenURL:               d.Get("oidc_token_url").(string),
+		OIDCJWKSURL:                d.Get("oidc_jwks_url").(string),
+		OIDCUserInfoURL:            d.Get("oidc_userinfo_url").(string),
+		OIDCDeviceAuthURL:          d.Get("oidc_device_auth_url").(string),
 		JWKSURL:                    d.Get("jwks_url").(string),
 		JWKSCAPEM:                  d.Get("jwks_ca_pem").(string),
 		DefaultRole:                d.Get("default_role").(string),
@@ -374,6 +404,10 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 	}
 	if config.hasCustomProviderDiscovery() {
 		methodCount++
+	}
+
+	if err := config.validateStaticEndpoints(); err != nil {
+		return logical.ErrorResponse(err.Error()), nil
 	}
 
 	resp := &logical.Response{}
@@ -628,10 +662,17 @@ type jwtConfig struct {
 	OverrideAllowedServerNames []string       `json:"override_allowed_server_names"`
 	NamespaceInState           bool           `json:"namespace_in_state"`
 
+	// Static provider endpoints. When set, OIDC discovery is skipped.
+	OIDCAuthorizationURL string `json:"oidc_authorization_url"`
+	OIDCTokenURL         string `json:"oidc_token_url"`
+	OIDCJWKSURL          string `json:"oidc_jwks_url"`
+	OIDCUserInfoURL      string `json:"oidc_userinfo_url"`
+	OIDCDeviceAuthURL    string `json:"oidc_device_auth_url"`
+
 	ParsedJWTPubKeys []crypto.PublicKey `json:"-"`
 	// These are looked up from OIDCDiscoveryURL when needed
-	OIDCDeviceAuthURL string `json:"-"`
-	OIDCTokenURL      string `json:"-"`
+	deviceAuthURL  string
+	deviceTokenURL string
 }
 
 const (
@@ -660,6 +701,39 @@ func (c jwtConfig) authType() int {
 	}
 
 	return unconfigured
+}
+
+func (c jwtConfig) validateStaticEndpoints() error {
+	endpoints := []struct{ field, value string }{
+		{"oidc_authorization_url", c.OIDCAuthorizationURL},
+		{"oidc_token_url", c.OIDCTokenURL},
+		{"oidc_jwks_url", c.OIDCJWKSURL},
+		{"oidc_userinfo_url", c.OIDCUserInfoURL},
+		{"oidc_device_auth_url", c.OIDCDeviceAuthURL},
+	}
+
+	set := false
+	for _, e := range endpoints {
+		if e.value == "" {
+			continue
+		}
+		set = true
+		u, err := url.Parse(e.value)
+		if err != nil || u.Scheme == "" || u.Host == "" {
+			return fmt.Errorf("'%s' must be an absolute URL", e.field)
+		}
+	}
+
+	switch {
+	case !set:
+		return nil
+	case c.OIDCDiscoveryURL == "":
+		return errors.New("'oidc_discovery_url' must be set when static OIDC endpoints are configured")
+	case c.OIDCAuthorizationURL == "" || c.OIDCTokenURL == "" || c.OIDCJWKSURL == "" || c.OIDCUserInfoURL == "":
+		return errors.New("'oidc_authorization_url', 'oidc_token_url', 'oidc_jwks_url' and 'oidc_userinfo_url' must be set together")
+	}
+
+	return nil
 }
 
 // hasType returns whether the list of response types includes the requested

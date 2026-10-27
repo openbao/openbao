@@ -39,6 +39,11 @@ func TestConfig_JWT_Read(t *testing.T) {
 		"oidc_client_id":                "",
 		"oidc_response_mode":            "",
 		"oidc_response_types":           []string{},
+		"oidc_authorization_url":        "",
+		"oidc_token_url":                "",
+		"oidc_jwks_url":                 "",
+		"oidc_userinfo_url":             "",
+		"oidc_device_auth_url":          "",
 		"override_allowed_server_names": []string{},
 		"default_role":                  "",
 		"jwt_validation_pubkeys":        []string{testJWTPubKey},
@@ -205,6 +210,11 @@ func TestConfig_JWKS_Update(t *testing.T) {
 		"oidc_client_id":                "",
 		"oidc_response_mode":            "form_post",
 		"oidc_response_types":           []string{},
+		"oidc_authorization_url":        "",
+		"oidc_token_url":                "",
+		"oidc_jwks_url":                 "",
+		"oidc_userinfo_url":             "",
+		"oidc_device_auth_url":          "",
 		"override_allowed_server_names": []string{},
 		"default_role":                  "",
 		"jwt_validation_pubkeys":        []string{},
@@ -448,6 +458,111 @@ func TestConfig_OIDC_Write(t *testing.T) {
 		if !resp.IsError() {
 			t.Fatalf("test '%s', expected error", test.id)
 		}
+	}
+}
+
+func TestConfig_OIDC_StaticEndpoints(t *testing.T) {
+	s := newOIDCProvider(t)
+	defer s.server.Close()
+
+	cert, err := s.getTLSCert()
+	require.NoError(t, err)
+
+	static := func() map[string]any {
+		return map[string]any{
+			"oidc_discovery_url":     s.server.URL,
+			"oidc_discovery_ca_pem":  cert,
+			"oidc_client_id":         "abc",
+			"oidc_client_secret":     "def",
+			"oidc_authorization_url": s.server.URL + "/auth",
+			"oidc_token_url":         s.server.URL + "/token",
+			"oidc_jwks_url":          s.server.URL + "/certs",
+			"oidc_userinfo_url":      s.server.URL + "/userinfo",
+			"oidc_device_auth_url":   s.server.URL + "/device",
+		}
+	}
+
+	t.Run("round trip", func(t *testing.T) {
+		b, storage := getBackend(t)
+
+		resp, err := b.HandleRequest(t.Context(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data:      static(),
+		})
+		require.NoError(t, err)
+		require.False(t, resp != nil && resp.IsError(), "resp: %#v", resp)
+
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      configPath,
+			Storage:   storage,
+		})
+		require.NoError(t, err)
+		for k, v := range static() {
+			if k == "oidc_client_secret" {
+				continue
+			}
+			require.Equal(t, v, resp.Data[k], k)
+		}
+	})
+
+	tests := map[string]struct {
+		change func(map[string]any)
+		err    string
+	}{
+		"missing discovery URL": {
+			change: func(d map[string]any) {
+				delete(d, "oidc_discovery_url")
+				d["jwt_validation_pubkeys"] = []string{testJWTPubKey}
+			},
+			err: "'oidc_discovery_url' must be set when static OIDC endpoints are configured",
+		},
+		"missing token URL": {
+			change: func(d map[string]any) { delete(d, "oidc_token_url") },
+			err:    "'oidc_authorization_url', 'oidc_token_url', 'oidc_jwks_url' and 'oidc_userinfo_url' must be set together",
+		},
+		"missing authorization URL": {
+			change: func(d map[string]any) { delete(d, "oidc_authorization_url") },
+			err:    "'oidc_authorization_url', 'oidc_token_url', 'oidc_jwks_url' and 'oidc_userinfo_url' must be set together",
+		},
+		"missing userinfo URL": {
+			change: func(d map[string]any) { delete(d, "oidc_userinfo_url") },
+			err:    "'oidc_authorization_url', 'oidc_token_url', 'oidc_jwks_url' and 'oidc_userinfo_url' must be set together",
+		},
+		"optional URL only": {
+			change: func(d map[string]any) {
+				delete(d, "oidc_authorization_url")
+				delete(d, "oidc_token_url")
+				delete(d, "oidc_jwks_url")
+				delete(d, "oidc_userinfo_url")
+			},
+			err: "'oidc_authorization_url', 'oidc_token_url', 'oidc_jwks_url' and 'oidc_userinfo_url' must be set together",
+		},
+		"relative URL": {
+			change: func(d map[string]any) { d["oidc_jwks_url"] = "/certs" },
+			err:    "'oidc_jwks_url' must be an absolute URL",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			b, storage := getBackend(t)
+
+			data := static()
+			tc.change(data)
+
+			resp, err := b.HandleRequest(t.Context(), &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      configPath,
+				Storage:   storage,
+				Data:      data,
+			})
+			require.NoError(t, err)
+			require.True(t, resp.IsError())
+			require.EqualError(t, resp.Error(), tc.err)
+		})
 	}
 }
 

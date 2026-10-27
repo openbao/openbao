@@ -432,6 +432,16 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		}
 
 		if config.staticEndpoints() {
+			// Building the provider makes no network calls in static mode, so
+			// its errors are config errors that skip_jwks_validation can't waive.
+			if config.OIDCClientID != "" {
+				provider, err := b.createProvider(config)
+				if err != nil {
+					return logical.ErrorResponse("error creating OIDC provider: %s", err.Error()), nil
+				}
+				provider.Done()
+			}
+
 			if err := checkJWKSURL(ctx, config.OIDCJWKSURL, config.OIDCDiscoveryCAPEM); err != nil {
 				if !skipJwksValidation {
 					b.Logger().Error("error checking oidc_jwks_url", "error", err)

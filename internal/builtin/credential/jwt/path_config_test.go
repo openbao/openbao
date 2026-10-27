@@ -615,6 +615,20 @@ func TestConfig_OIDC_StaticEndpoints(t *testing.T) {
 			change: func(d map[string]any) { d["oidc_jwks_url"] = "/certs" },
 			err:    "'oidc_jwks_url' must be an absolute http or https URL",
 		},
+		"invalid issuer": {
+			change: func(d map[string]any) {
+				d["oidc_discovery_url"] = "keycloak.example.com/realms/test"
+				d["skip_jwks_validation"] = true
+			},
+			err: "error creating OIDC provider: error creating provider: NewConfig: invalid provider config: Config.Validate: issuer keycloak.example.com/realms/test schema is not http or https: invalid issuer",
+		},
+		"invalid CA": {
+			change: func(d map[string]any) {
+				d["oidc_discovery_ca_pem"] = "not a certificate"
+				d["skip_jwks_validation"] = true
+			},
+			err: "error creating OIDC provider: error creating provider: NewConfig: invalid provider config: Config.Validate: invalid CA certificate",
+		},
 		"non-HTTP scheme": {
 			change: func(d map[string]any) { d["oidc_token_url"] = "ftp://keycloak.example.com/token" },
 			err:    "'oidc_token_url' must be an absolute http or https URL",

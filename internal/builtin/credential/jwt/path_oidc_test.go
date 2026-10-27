@@ -1808,6 +1808,30 @@ func TestOIDC_StaticEndpoints_Device(t *testing.T) {
 		require.NotContains(t, paths, "/.well-known/openid-configuration")
 	})
 
+	t.Run("poll after reset", func(t *testing.T) {
+		b, storage, _ := setup(t, true)
+
+		resp, err := authURL(b, storage)
+		require.NoError(t, err)
+		require.False(t, resp.IsError(), "resp: %#v", resp)
+
+		// A config write between authorization and poll clears the cached config.
+		b.(*jwtAuthBackend).reset()
+
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "oidc/poll",
+			Storage:   storage,
+			Data: map[string]any{
+				"state":        resp.Data["state"],
+				"client_nonce": "456",
+			},
+		})
+		require.NoError(t, err)
+		require.False(t, resp.IsError(), "resp: %#v", resp)
+		require.Equal(t, "bob@example.com", resp.Auth.Alias.Name)
+	})
+
 	t.Run("no device URL", func(t *testing.T) {
 		b, storage, s := setup(t, false)
 

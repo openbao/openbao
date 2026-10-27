@@ -251,19 +251,17 @@ func (b *jwtAuthBackend) configDeviceAuthURL(ctx context.Context, s logical.Stor
 	b.l.Lock()
 	defer b.l.Unlock()
 
-	if config.deviceAuthURL != "" {
-		if config.deviceAuthURL == "N/A" {
-			return errors.New("no device auth endpoint url discovered")
-		}
-		return nil
-	}
-
 	if config.staticEndpoints() {
 		if config.OIDCDeviceAuthURL == "" {
 			return errors.New("no device auth endpoint url configured")
 		}
-		b.cachedConfig.deviceAuthURL = config.OIDCDeviceAuthURL
-		b.cachedConfig.deviceTokenURL = config.OIDCTokenURL
+		return nil
+	}
+
+	if config.deviceAuthURL != "" {
+		if config.deviceAuthURL == "N/A" {
+			return errors.New("no device auth endpoint url discovered")
+		}
 		return nil
 	}
 
@@ -721,9 +719,20 @@ type jwtConfig struct {
 	OIDCDeviceAuthURL    string `json:"oidc_device_auth_url"`
 
 	ParsedJWTPubKeys []crypto.PublicKey `json:"-"`
-	// These are looked up from OIDCDiscoveryURL when needed
+	// configDeviceAuthURL discovers these from OIDCDiscoveryURL. They stay
+	// empty when static endpoints are configured.
 	deviceAuthURL  string
 	deviceTokenURL string
+}
+
+// deviceEndpoints returns the device authorization and token URLs. Static
+// endpoints come from the stored config, so a reset() between the device
+// authorization and the poll doesn't lose them.
+func (c *jwtConfig) deviceEndpoints() (authURL, tokenURL string) {
+	if c.staticEndpoints() {
+		return c.OIDCDeviceAuthURL, c.OIDCTokenURL
+	}
+	return c.deviceAuthURL, c.deviceTokenURL
 }
 
 const (

@@ -69,7 +69,7 @@ skips discovery.
 
 | **Field** | **Reached by** | **Example** |
 | :--- | :--- | :--- |
-| **'oidc_discovery_url'** | Nobody, used only as the expected issuer | `https://<KEYCLOAK_URL>/realms/<REALM-NAME>` |
+| **'oidc_discovery_url'** | Nobody, OIDC roles check ID token issuers against it | `https://<KEYCLOAK_URL>/realms/<REALM-NAME>` |
 | **'oidc_authorization_url'** | Users' browsers | `https://<KEYCLOAK_URL>/realms/<REALM-NAME>/protocol/openid-connect/auth` |
 | **'oidc_token_url'** | OpenBao | `http://<KEYCLOAK_SERVICE>/realms/<REALM-NAME>/protocol/openid-connect/token` |
 | **'oidc_jwks_url'** | OpenBao | `http://<KEYCLOAK_SERVICE>/realms/<REALM-NAME>/protocol/openid-connect/certs` |
@@ -79,6 +79,9 @@ skips discovery.
 Keycloak's `hostname` option must be set to the public URL. Otherwise tokens
 issued through the internal endpoints carry the internal URL as `iss`, and
 OpenBao rejects them.
+
+JWT roles on this mount don't check `iss` against `oidc_discovery_url`. Set
+`bound_issuer` to the public realm URL if you use them.
 
 ```bash
 bao write auth/oidc/config \

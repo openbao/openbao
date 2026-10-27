@@ -76,7 +76,7 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 			},
 			"oidc_authorization_url": {
 				Type:        framework.TypeString,
-				Description: `The provider's authorization endpoint. Setting this, "oidc_token_url", "oidc_jwks_url" and "oidc_userinfo_url" skips OIDC discovery. "oidc_discovery_url" is then used only as the expected issuer.`,
+				Description: `The provider's authorization endpoint. Setting this, "oidc_token_url", "oidc_jwks_url" and "oidc_userinfo_url" skips OIDC discovery. "oidc_discovery_url" is then used only as the issuer that OIDC roles check ID tokens against. JWT roles check the issuer only through "bound_issuer".`,
 			},
 			"oidc_token_url": {
 				Type:        framework.TypeString,

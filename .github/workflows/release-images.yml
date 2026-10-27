@@ -196,11 +196,33 @@ jobs:
 
       - name: Sign images w/ Cosign
         run: |
+          GITHUB_WORKFLOW="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release-images.yml"
+
+          case "$GITHUB_REPOSITORY" in
+            openbao/openbao)
+              # If on the main repository, strictly limit to tags and release
+              # branches. Usually, container images are triggered by release
+              # publication resulting in a tags/... ref, but rebuilds may occur
+              # on release branches without a tag.
+              IDENTITY_REGEXP="^${GITHUB_WORKFLOW}@refs/(tags/v.+|heads/release/.+)$"
+              ;;
+            *)
+              # Otherwise, allow releasing from anywhere.
+              IDENTITY_REGEXP="^${GITHUB_WORKFLOW}@.*"
+              ;;
+          esac
+
           images=""
           for tag in $(jq -r '.[]' <<< "$TAGS"); do
             images+="${tag}@${DIGEST} "
           done
+
+          # Sign & immediately verify:
           cosign sign --yes ${images}
+          cosign verify \
+            --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
+            --certificate-identity-regexp="$IDENTITY_REGEXP" \
+            ${images}
         env:
           TAGS: ${{ steps.tags.outputs.tags }}
           DIGEST: ${{ steps.build.outputs.digest }}

@@ -4,9 +4,30 @@ import { action } from '@ember/object';
 
 const STORAGE_KEY = 'theme';
 
+function readChoice() {
+  try {
+    const val = window.localStorage.getItem(STORAGE_KEY);
+    return val === 'light' || val === 'dark' ? val : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeChoice(choice) {
+  try {
+    if (choice) {
+      window.localStorage.setItem(STORAGE_KEY, choice);
+    } else {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+  } catch {
+    // localStorage blocked by browser. Fall back on OS preference.
+  }
+}
+
 export default class ThemeService extends Service {
   // Read saved value
-  @tracked choice = localStorage.getItem(STORAGE_KEY);
+  @tracked choice = readChoice();
 
   mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
@@ -38,12 +59,7 @@ export default class ThemeService extends Service {
       this.choice = null;
     }
 
-    if (this.choice) {
-      localStorage.setItem(STORAGE_KEY, this.choice);
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-
+    writeChoice(this.choice);
     this.apply();
   }
 

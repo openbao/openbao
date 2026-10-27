@@ -257,6 +257,7 @@
   color: var(--token-color-foreground-primary);
 }
 
+// Links
 :where(:root[data-theme='dark']) a:hover {
   color: #e3e3e3;
 }

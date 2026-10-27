@@ -1465,6 +1465,80 @@ func TestLogin_JWKS_Concurrent(t *testing.T) {
 	}
 }
 
+func TestLogin_StaticEndpoints(t *testing.T) {
+	b, storage := getBackend(t)
+	s := newOIDCProvider(t)
+	defer s.server.Close()
+
+	cert, err := s.getTLSCert()
+	require.NoError(t, err)
+
+	// The issuer host doesn't resolve, so any discovery attempt fails.
+	resp, err := b.HandleRequest(t.Context(), &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data: map[string]any{
+			"oidc_discovery_url":     "https://issuer.invalid",
+			"oidc_discovery_ca_pem":  cert,
+			"oidc_authorization_url": s.server.URL + "/auth",
+			"oidc_token_url":         s.server.URL + "/token",
+			"oidc_jwks_url":          s.server.URL + "/certs",
+			"oidc_userinfo_url":      s.server.URL + "/userinfo",
+			"bound_issuer":           "https://issuer.invalid",
+			"jwt_supported_algs":     []string{"ES256"},
+		},
+	})
+	require.NoError(t, err)
+	require.False(t, resp != nil && resp.IsError(), "resp: %#v", resp)
+
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
+		Operation: logical.ReadOperation,
+		Path:      configPath,
+		Storage:   storage,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "valid", resp.Data["status"], resp.Warnings)
+
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/test",
+		Storage:   storage,
+		Data: map[string]any{
+			"role_type":       "jwt",
+			"bound_audiences": "vault",
+			"user_claim":      "sub",
+		},
+	})
+	require.NoError(t, err)
+	require.False(t, resp != nil && resp.IsError(), "resp: %#v", resp)
+
+	jwtData, _ := getTestJWT(t, ecdsaPrivKey, sqjwt.Claims{
+		Subject:   "alice",
+		Issuer:    "https://issuer.invalid",
+		NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+		Audience:  sqjwt.Audience{"vault"},
+	}, struct{}{})
+
+	resp, err = b.HandleRequest(t.Context(), &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data: map[string]any{
+			"role": "test",
+			"jwt":  jwtData,
+		},
+		Connection: &logical.Connection{RemoteAddr: "127.0.0.1"},
+	})
+	require.NoError(t, err)
+	require.False(t, resp.IsError(), "resp: %#v", resp)
+	require.Equal(t, "alice", resp.Auth.Alias.Name)
+
+	for _, r := range s.getRequests() {
+		require.NotEqual(t, "/.well-known/openid-configuration", r.URL.Path)
+	}
+}
+
 func TestResolveRole(t *testing.T) {
 	cfg := testConfig{
 		audience:      true,

@@ -1185,19 +1185,7 @@ func (ts *TokenStore) tokenStoreAccessorList(ctx context.Context, req *logical.R
 	resp := &logical.Response{}
 	var entries []*logical.StorageEntry
 
-	err = func() error {
-		var storage logical.Storage = ts.accessorView(ns)
-
-		if s, ok := storage.(logical.TransactionalStorage); ok {
-			tx, err := s.BeginReadOnlyTx(ctx)
-			if err != nil {
-				return fmt.Errorf("error starting accessor read transaction: %w", err)
-			}
-			defer tx.Rollback(ctx) //nolint:errcheck
-
-			storage = tx
-		}
-
+	if err := logical.WithReadOnlyTransaction(ctx, ts.accessorView(ns), func(storage logical.Storage) error {
 		keys, err := storage.List(ctx, "")
 		if err != nil {
 			return err
@@ -1217,8 +1205,7 @@ func (ts *TokenStore) tokenStoreAccessorList(ctx context.Context, req *logical.R
 		}
 
 		return nil
-	}()
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 
@@ -1250,28 +1237,33 @@ func (ts *TokenStore) tokenStoreAccessorList(ctx context.Context, req *logical.R
 }
 
 func readAccessorEntry(ctx context.Context, storage logical.Storage, lookupID, fallbackID string) (*logical.StorageEntry, error) {
-	if fallbackID != "" {
-		if transactional, ok := storage.(logical.TransactionalStorage); ok {
-			tx, err := transactional.BeginReadOnlyTx(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("error starting accessor read transaction: %w", err)
-			}
-			defer tx.Rollback(ctx) //nolint:errcheck
+	var entry *logical.StorageEntry
 
-			storage = tx
-		}
-	}
-
-	entry, err := storage.Get(ctx, lookupID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read index using accessor: %w", err)
-	}
-
-	// Fallback for legacy SHA-1 accessors
-	if entry == nil && fallbackID != "" {
-		entry, err = storage.Get(ctx, fallbackID)
+	readFunc := func(s logical.Storage) error {
+		var err error
+		entry, err = s.Get(ctx, lookupID)
 		if err != nil {
-			return nil, fmt.Errorf("error reading legacy index: %w", err)
+			return fmt.Errorf("failed to read index using accessor: %w", err)
+		}
+
+		// Fallback for legacy SHA-1 accessors
+		if entry == nil && fallbackID != "" {
+			entry, err = s.Get(ctx, fallbackID)
+			if err != nil {
+				return fmt.Errorf("error reading legacy index: %w", err)
+			}
+		}
+
+		return nil
+	}
+
+	if fallbackID != "" {
+		if err := logical.WithReadOnlyTransaction(ctx, storage, readFunc); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := readFunc(storage); err != nil {
+			return nil, err
 		}
 	}
 

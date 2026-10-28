@@ -63,10 +63,10 @@ $ tee request_payload.json -<<EOF
 }
 EOF
 
-$ curl --header "X-Vault-Token: $OPENBAO_TOKEN" \
+$ curl --header "X-Vault-Token: $BAO_TOKEN" \
     --request POST \
     --data @request_payload.json \
-    $OPENBAO_ADDR/v1/auth/token/create
+    $BAO_ADDR/v1/auth/token/create
 ```
 
 The `bao write` command simplifies the API call.

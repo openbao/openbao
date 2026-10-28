@@ -646,7 +646,8 @@ func (ts *TokenStore) paths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: ts.handleTidy,
+					Callback:                  ts.handleTidy,
+					ForwardPerformanceStandby: true,
 				},
 			},
 

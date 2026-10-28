@@ -62,7 +62,8 @@ jobs:
           REPREPRO_SHA256: 4a55ecabb962d11aa32553606b2ff4449dad6c673e4cd0e0741cd8b992a1b1a3
         run: |
           cd "$(mktemp -d)"
-          sudo apt install -y libarchive-dev libgpgme-dev libdb-dev
+          sudo apt-get update
+          sudo apt-get install -y libarchive-dev libgpgme-dev libdb-dev
           SOURCE="reprepro-reprepro-${REPREPRO_VERSION}"
           ARCHIVE="${SOURCE}.tar.gz"
           curl -LO \
@@ -112,7 +113,7 @@ jobs:
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
       - name: Install rpm & createrepo_c
-        run: sudo apt install -y rpm createrepo-c
+        run: sudo apt-get update && sudo apt-get install -y rpm createrepo-c
 
       - name: Determine repository
         run: |

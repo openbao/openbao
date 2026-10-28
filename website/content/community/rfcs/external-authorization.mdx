@@ -80,17 +80,17 @@ type external-authz interface {
     // To be called from ACL.AllowOperation (https://github.com/openbao/openbao/blob/main/internal/vault/policy/acl.go#L344)
     // Parameter list:
     // - ctx: as passed to ACL.AllowOperation
-    // - path: ns.Path + req.Path (https://github.com/openbao/openbao/blob/main/internal/vault/policy/acl.go#L379)
-    // - entity: unique username, for example email address
-    // - operation: req.Operation (https://github.com/openbao/openbao/blob/main/internal/vault/policy/acl.go#L371)
-    // - options: optional config map for plugin specific parameters
+    // - req: logical request containing path, entityID and operation
     // Returns: true (allowed) or false (denied)
-    HasAuthorization(ctx context.Context, path string, entity string, operation string, *options) (allowed bool, err error)
+    HasAuthorization(ctx context.Context, req *logical.Request) (allowed bool, err error)
 
     // Pass list of paths to check for one operation.
-    // To be called from list filtering of OpenBao
-    // Returns: list of allowed paths, for example when creating list views on UIs.
-    FilterPaths(ctx context.Context, paths []string, entity string, operation string, *options) (paths []string, err error)
+    // To be called from filterListResponse (https://github.com/openbao/openbao/blob/main/internal/vault/request_handling_list_filtering.go#L17)
+    // Parameter list:
+    // - ctx: as passed to ACL.AllowOperation
+    // - req: logical request containing path, entityID and operation 
+    // - resp: logical response containing a list of keys to be filtered
+    FilterKeys(ctx context.Context, req *logical.Request, resp *logical.Response) error
 
     // Call plugin to update the DB of the external authorization service (optional).
     // To be called after successful changes (create, update, delete) to the OpenBao database.
@@ -109,9 +109,10 @@ The updatePath and syncSubtree methods are optional, i.e. don't need to be imple
 But some authorization services like [OpenFGA](https://openfga.dev/docs/getting-started/update-tuples) have their own database containing object relations, 
 which they use for authorization checks. This makes it important to sync the paths from OpenBao to the external authorization service.
 
-As user identities, we should pass [entities](https://openbao.org/docs/concepts/identity/) to the plugin.
+As user identity, we should pass [entityID](https://openbao.org/docs/concepts/identity/) to the plugin. The entityID is a stable identifier of the user,
+which should not be considered as personal data under [GDPR](https://gdpr.eu/eu-gdpr-personal-data/).
 
-In the ACL processing of OpenBao, we must process the "ask" capability and call the plugin method `hasAuthorization` from:
+In the ACL processing of OpenBao, we must process the "ask" capability and call the plugin method `HasAuthorization` from:
 [acl.AllowOperation(ctx, req, capCheckOnly) *ACLResults](https://github.com/openbao/openbao/blob/main/internal/vault/policy/acl.go#L344).
 We may add `entity` to the `ACL` struct to be able the pass the user identity to the plugin.
 In addition, we may add attributes like "external user id" or "primary email address" to the 
@@ -125,8 +126,8 @@ After calling the plugin, we fill the ACL results in the following way:
 
 ```
 type ACLResults struct {
-	Allowed    bool // if ask: Allowed = plugin.hasAuthorization(…, read/write/…)
-	RootPrivs  bool // if ask: RootPrivs = plugin.hasAuthorization(…, sudo)
+	Allowed    bool // if ask: Allowed = plugin.HasAuthorization(…, read/write/…)
+	RootPrivs  bool // if ask: RootPrivs = plugin.HasAuthorization(…, sudo)
 	…
 }
 ```
@@ -157,10 +158,10 @@ a central service for authorization management instead of assigning authorizatio
 
 ## Security Implications
 
-If the external authorization service is unavailable, the plugin *must* return "not authorized" to prevent exploits.
+If the external authorization service is unavailable, the plugin *must* return "not authorized" or an error to prevent exploits.
 Unique user identifiers must be created and passed to the external authorization service.
 
-## User-Facing Description
+## Prerequisites
 
 For end users and developers, nothing will change. OpenBao administrators need to deploy and configure the plugin. 
 User administrators will get more flexibility for user and authorization administration.

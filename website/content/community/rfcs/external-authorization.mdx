@@ -71,29 +71,20 @@ With the following policies we may configure the examples from above.
 
 ## Technical Description
 
-The plugin API consists of four methods only:
+The plugin API consists of three methods only:
 
 ```
 type external-authz interface {
 
     // When processing "ask" capabilities, call plugin to check authorizations for one or multiple operations.
     // To be called from ACL.AllowOperation (https://github.com/openbao/openbao/blob/main/internal/vault/policy/acl.go#L344)
+    // or from filterListResponse (https://github.com/openbao/openbao/blob/main/internal/vault/request_handling_list_filtering.go#L114)
     // Parameter list:
     // - ctx: context as passed to ACL.AllowOperation
-    // - req: logical request containing path, entityID and operation
     // - opts: additonal options
-    // Returns: true (allowed) or false (denied)
-    HasAuthorization(ctx context.Context, req *logical.Request, *opts) (allowed bool, err error)
-
-    // Pass list of paths to check for read or list operation.
-    // To be called from filterListResponse as batch request to plugin
-    // (https://github.com/openbao/openbao/blob/main/internal/vault/request_handling_list_filtering.go#L114)
-    // Parameter list:
-    // - ctx: context as passed to filterListResponse
-    // - reqs: logical requests containing paths, entityID and operations
-    // - opts: additional options
-    // Returns: list of true (path allowed) or false (path denied)
-    FilterPaths(ctx context.Context, reqs []*logical.Request, *opts) (allowed []bool, error)
+    // - req: logical requests containing path, entityID and operation
+    // Returns: slice of true (allowed) or false (denied)
+    HasAuthorization(ctx context.Context, *opts, req ...(*logical.Request)) (allowed []bool, err error)
 
     // Call plugin to update the DB of the external authorization service (optional).
     // To be called after successful changes (create, update, delete) to the OpenBao database.
@@ -119,8 +110,9 @@ type external-authz interface {
 ```
 
 The updatePath and syncSubtree methods are optional, i.e. don't need to be implemented for all external authorization services.
-But some authorization services like [OpenFGA](https://openfga.dev/docs/getting-started/update-tuples) have their own database containing object relations, 
-which they use for authorization checks. This makes it important to sync the paths from OpenBao to the external authorization service.
+But some authorization services like [OpenFGA](https://openfga.dev/docs/getting-started/update-tuples) have their own database 
+containing object relations, which they use for authorization checks. This makes it important to sync the paths from OpenBao 
+to the external authorization service.
 
 As user identity, we should pass [entityID](https://openbao.org/docs/concepts/identity/) to the plugin. The entityID is a stable identifier of the user,
 which should not be considered as personal data under [GDPR](https://gdpr.eu/eu-gdpr-personal-data/).

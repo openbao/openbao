@@ -1135,6 +1135,19 @@ func (ts *TokenStore) SaltID(ctx context.Context, id string) (string, error) {
 	return hmacStorageKeyPrefix + s.GetHMAC(id), nil
 }
 
+func isLegacyRootAccessor(ns *namespace.Namespace, id string) bool {
+	return ns.ID == namespace.RootNamespaceID && !strings.Contains(id, ".")
+}
+
+func (ts *TokenStore) SaltIDWithHMAC(ctx context.Context, id string) (string, error) {
+	s, err := ts.Salt(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return hmacStorageKeyPrefix + s.GetHMAC(id), nil
+}
+
 // rootToken is used to generate a new token with root privileges and no parent
 func (ts *TokenStore) rootToken(ctx context.Context) (*logical.TokenEntry, error) {
 	ns, err := namespace.FromContext(ctx)
@@ -1236,6 +1249,18 @@ func (ts *TokenStore) tokenStoreAccessorList(ctx context.Context, req *logical.R
 }
 
 func readAccessorEntry(ctx context.Context, storage logical.Storage, lookupID, fallbackID string) (*logical.StorageEntry, error) {
+	if fallbackID != "" {
+		if transactional, ok := storage.(logical.TransactionalStorage); ok {
+			tx, err := transactional.BeginReadOnlyTx(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("error starting accessor read transaction: %w", err)
+			}
+			defer tx.Rollback(ctx) //nolint:errcheck
+
+			storage = tx
+		}
+	}
+
 	entry, err := storage.Get(ctx, lookupID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read index using accessor: %w", err)
@@ -2440,23 +2465,7 @@ func (ts *TokenStore) lookupByAccessor(ctx context.Context, id string, salted, t
 		}
 	}
 
-	raw, err := func() (*logical.StorageEntry, error) {
-		var storage logical.Storage = ts.accessorView(ns)
-
-		if fallbackID != "" {
-			if transactional, ok := storage.(logical.TransactionalStorage); ok {
-				tx, err := transactional.BeginReadOnlyTx(ctx)
-				if err != nil {
-					return nil, fmt.Errorf("error starting accessor read transaction: %w", err)
-				}
-				defer tx.Rollback(ctx) //nolint:errcheck
-
-				storage = tx
-			}
-		}
-
-		return readAccessorEntry(ctx, storage, lookupID, fallbackID)
-	}()
+	raw, err := readAccessorEntry(ctx, ts.accessorView(ns), lookupID, fallbackID)
 	if err != nil {
 		return nil, err
 	}
@@ -2499,19 +2508,6 @@ func (ts *TokenStore) decodeAccessorEntry(ctx context.Context, entry *logical.St
 	}
 
 	return &aEntry, nil
-}
-
-func isLegacyRootAccessor(ns *namespace.Namespace, id string) bool {
-	return ns.ID == namespace.RootNamespaceID && !strings.Contains(id, ".")
-}
-
-func (ts *TokenStore) SaltIDWithHMAC(ctx context.Context, id string) (string, error) {
-	s, err := ts.Salt(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	return hmacStorageKeyPrefix + s.GetHMAC(id), nil
 }
 
 // handleTidy handles the cleaning up of leaked accessor storage entries and
@@ -2820,18 +2816,16 @@ func (ts *TokenStore) migrateAccessor(ctx context.Context, saltedAccessor string
 
 	migrated := false
 	if err := logical.WithTransaction(ctx, ts.accessorView(ns), func(s logical.Storage) error {
-		storedEntry, err := s.Get(ctx, saltedAccessor)
+		entry, err := s.Get(ctx, saltedAccessor)
 		if err != nil {
 			return fmt.Errorf("error reading legacy accessor: %w", err)
 		}
-		if storedEntry == nil {
+		if entry == nil {
 			return nil
 		}
 
-		replacementEntry := *storedEntry
-		replacementEntry.Key = newKey
-
-		if err := s.Put(ctx, &replacementEntry); err != nil {
+		entry.Key = newKey
+		if err := s.Put(ctx, entry); err != nil {
 			return fmt.Errorf("error writing migrated accessor: %w", err)
 		}
 

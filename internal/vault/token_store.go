@@ -2809,7 +2809,7 @@ func (ts *TokenStore) migrateAccessor(ctx context.Context, saltedAccessor string
 		return false, err
 	}
 
-	if ns.ID != accessorEntry.NamespaceID || strings.HasPrefix(saltedAccessor, hmacStorageKeyPrefix) {
+	if strings.HasPrefix(saltedAccessor, hmacStorageKeyPrefix) {
 		return false, nil
 	}
 
@@ -2818,13 +2818,8 @@ func (ts *TokenStore) migrateAccessor(ctx context.Context, saltedAccessor string
 		return false, fmt.Errorf("error salting accessor: %w", err)
 	}
 
-	storage, ok := ts.accessorView(ns).(logical.TransactionalStorage)
-	if !ok {
-		return false, fmt.Errorf("accessor storage does not support transactions")
-	}
-
 	migrated := false
-	err = logical.WithTransaction(ctx, storage, func(s logical.Storage) error {
+	if err := logical.WithTransaction(ctx, ts.accessorView(ns), func(s logical.Storage) error {
 		storedEntry, err := s.Get(ctx, saltedAccessor)
 		if err != nil {
 			return fmt.Errorf("error reading legacy accessor: %w", err)
@@ -2846,8 +2841,7 @@ func (ts *TokenStore) migrateAccessor(ctx context.Context, saltedAccessor string
 
 		migrated = true
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return false, err
 	}
 

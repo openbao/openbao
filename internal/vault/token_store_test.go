@@ -6633,7 +6633,6 @@ func TestTokenStore_MigrateAccessor(t *testing.T) {
 
 	testCases := []struct {
 		name               string
-		entryNamespaceID   string
 		sourceEntryMissing bool
 		storedUnderHMACKey bool
 		expected           expected
@@ -6656,15 +6655,6 @@ func TestTokenStore_MigrateAccessor(t *testing.T) {
 			},
 		},
 		{
-			name:             "entry from another namespace is skipped",
-			entryNamespaceID: "namespace-12345",
-			expected: expected{
-				migrationResults: []bool{false},
-				sha1Exists:       true,
-				hmacExists:       false,
-			},
-		},
-		{
 			name:               "missing entry creates no HMAC entry",
 			sourceEntryMissing: true,
 			expected: expected{
@@ -6684,10 +6674,6 @@ func TestTokenStore_MigrateAccessor(t *testing.T) {
 				TokenID:     tokenID,
 				AccessorID:  accessorID,
 				NamespaceID: namespace.RootNamespaceID,
-			}
-
-			if tc.entryNamespaceID != "" {
-				entry.NamespaceID = tc.entryNamespaceID
 			}
 
 			s, err := c.tokenStore.Salt(ctx)

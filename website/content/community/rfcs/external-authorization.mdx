@@ -79,28 +79,41 @@ type external-authz interface {
     // When processing "ask" capabilities, call plugin to check authorizations for one or multiple operations.
     // To be called from ACL.AllowOperation (https://github.com/openbao/openbao/blob/main/internal/vault/policy/acl.go#L344)
     // Parameter list:
-    // - ctx: as passed to ACL.AllowOperation
+    // - ctx: context as passed to ACL.AllowOperation
     // - req: logical request containing path, entityID and operation
+    // - opts: additonal options
     // Returns: true (allowed) or false (denied)
-    HasAuthorization(ctx context.Context, req *logical.Request) (allowed bool, err error)
+    HasAuthorization(ctx context.Context, req *logical.Request, *opts) (allowed bool, err error)
 
-    // Pass list of paths to check for one operation.
-    // To be called from filterListResponse (https://github.com/openbao/openbao/blob/main/internal/vault/request_handling_list_filtering.go#L17)
+    // Pass list of paths to check for read or list operation.
+    // To be called from filterListResponse as batch request to plugin
+    // (https://github.com/openbao/openbao/blob/main/internal/vault/request_handling_list_filtering.go#L114)
     // Parameter list:
-    // - ctx: as passed to ACL.AllowOperation
-    // - req: logical request containing path, entityID and operation 
-    // - resp: logical response containing a list of keys to be filtered
-    FilterKeys(ctx context.Context, req *logical.Request, resp *logical.Response) error
+    // - ctx: context as passed to filterListResponse
+    // - reqs: logical requests containing paths, entityID and operations
+    // - opts: additional options
+    // Returns: list of true (path allowed) or false (path denied)
+    FilterPaths(ctx context.Context, reqs []*logical.Request, *opts) (allowed []bool, error)
 
     // Call plugin to update the DB of the external authorization service (optional).
     // To be called after successful changes (create, update, delete) to the OpenBao database.
+    // Parameter list:
+    // - ctx: context as passed to create/update/delete
+    // - path: entry which has been changed
+    // - operation: create, update or delete
+    // - opts: additional options 
     // Returns: nil in case of success or error (default implementation: return nil).
-    UpdatePath(ctx context.Context, path string, operation string, *options) error
+    UpdatePath(ctx context.Context, path string, operation string, *opts) error
 
     // Call plugin to sync the paths of an OpenBao subtree to the DB of the external authorization service (optional).
     // To be called at initialization time of the plugin.
-    // For each path in the subtree, return nil in case of success or error (default implementation: return slice of nil).
-    SyncSubtree(ctx context.Context, parentPath string, subtree []string, *options) []error
+    // Parameter list:
+    // - ctx: context
+    // - parentPath: root path of subtree
+    // - subtree: relative paths of subtree
+    // - opts: additional options 
+    // Returns: for each path in the subtree, return nil in case of success or error (default implementation: return slice of nil).
+    SyncSubtree(ctx context.Context, parentPath string, subtree []string, *opts) []error
 
 }
 ```

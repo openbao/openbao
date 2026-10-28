@@ -247,40 +247,42 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 	}
 
 	checkToken := func() string {
-		var wrapInfo *api.SecretWrapInfo
+		var val []byte
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
-			val, err := os.ReadFile(out)
+			v, err := os.ReadFile(out)
 			require.NoError(collect, err)
-			err = os.Remove(out)
-			require.NoError(collect, err)
-			require.NotEmpty(collect, val)
-			if removeJWTAfterReading {
-				_, err = os.Stat(in)
-				require.Error(collect, err, "no error returned from stat, indicating the jwt is still present")
-				require.Truef(collect, os.IsNotExist(err), "unexpected error: %v", err)
-			} else {
-				_, err := os.Stat(in)
-				require.NoError(collect, err)
-			}
-			// First decrypt it
-			resp := new(dhutil.Envelope)
-			err = jsonutil.DecodeJSON(val, resp)
-			require.NoError(collect, err)
-			shared, err := dhutil.GenerateSharedSecret(pri, resp.Curve25519PublicKey)
-			require.NoError(collect, err)
-			aesKey, err := dhutil.DeriveSharedKey(shared, pub, resp.Curve25519PublicKey)
-			require.NoError(collect, err)
-			require.NotEmpty(collect, aesKey)
-			val, err = dhutil.DecryptAES(aesKey, resp.EncryptedPayload, resp.Nonce, []byte("foobar"))
-			require.NoErrorf(collect, err, "error: %v\nresp: %v", err, string(val))
-			// Now unwrap it
-			wrapInfo = new(api.SecretWrapInfo)
-			err = jsonutil.DecodeJSON(val, wrapInfo)
-			require.NoError(collect, err)
-			require.NotNil(collect, wrapInfo)
-			require.Truef(collect, (wrapInfo.TTL == 10), "bad wrap info: %v", wrapInfo.TTL)
-			require.NotEmpty(collect, wrapInfo.Token, "wrap token is empty")
+			require.NotEmpty(collect, v)
+			val = v
 		}, 10*time.Second, time.Second)
+		err = os.Remove(out)
+		require.NoError(t, err)
+		if removeJWTAfterReading {
+			_, err = os.Stat(in)
+			require.Error(t, err, "no error returned from stat, indicating the jwt is still present")
+			require.Truef(t, os.IsNotExist(err), "unexpected error: %v", err)
+		} else {
+			_, err = os.Stat(in)
+			require.NoError(t, err)
+		}
+		// First decrypt it
+		resp := new(dhutil.Envelope)
+		err = jsonutil.DecodeJSON(val, resp)
+		require.NoError(t, err)
+		shared, err := dhutil.GenerateSharedSecret(pri, resp.Curve25519PublicKey)
+		require.NoError(t, err)
+		aesKey, err := dhutil.DeriveSharedKey(shared, pub, resp.Curve25519PublicKey)
+		require.NoError(t, err)
+		require.NotEmpty(t, aesKey)
+		val, err = dhutil.DecryptAES(aesKey, resp.EncryptedPayload, resp.Nonce, []byte("foobar"))
+		require.NoErrorf(t, err, "error: %v\nresp: %v", err, string(val))
+
+		// Now unwrap it
+		wrapInfo := new(api.SecretWrapInfo)
+		err = jsonutil.DecodeJSON(val, wrapInfo)
+		require.NoError(t, err)
+		require.Equalf(t, 10, wrapInfo.TTL, "bad wrap info: %v", wrapInfo.TTL)
+		require.NotEmpty(t, wrapInfo.Token, "wrap token is empty")
+
 		// clone token
 		cloned.SetToken(wrapInfo.Token)
 		secret, err := cloned.Logical().Unwrap("")

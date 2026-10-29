@@ -4,15 +4,19 @@
 package standby_test
 
 import (
+	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/v2/internal/audit"
 	logicalKv "github.com/openbao/openbao/v2/internal/builtin/logical/kv"
 	logicalPki "github.com/openbao/openbao/v2/internal/builtin/logical/pki"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers"
+	coreHelpers "github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/teststorage"
 
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -150,4 +154,100 @@ func TestReadOnlyStandbysForwardingWrapping(t *testing.T) {
 			require.True(t, logical.ShouldForward(err))
 		}
 	}
+}
+
+func TestReadOnlyStandbyForwardedWriteNotAudited(t *testing.T) {
+	const (
+		timeout = 10 * time.Second
+		tick    = 100 * time.Millisecond
+	)
+	var auditMu sync.Mutex
+	auditedWrites := 0
+	forwardedErrors := make(map[string]int)
+	conf := vault.CoreConfig{
+		LogicalBackends: map[string]logical.Factory{
+			"kv": logicalKv.VersionedKVFactory,
+		},
+		AuditBackends: map[string]audit.Factory{
+			"noop": func(_ context.Context, cfg *audit.BackendConfig) (audit.Backend, error) {
+				noop, err := coreHelpers.NewNoopAudit(cfg.Config)
+				if err != nil {
+					return nil, err
+				}
+				return &readOnlyStandbyAuditBackend{
+					Backend: noop,
+					recordResponses: func(input *logical.LogInput) {
+						if input == nil || input.Request == nil {
+							return
+						}
+						if logical.ShouldForward(input.OuterErr) || logical.ShouldForward(input.Response.Error()) {
+							auditMu.Lock()
+							forwardedErrors[input.Request.Path]++
+							auditMu.Unlock()
+							return
+						}
+						if input.OuterErr != nil || input.Response.IsError() {
+							return
+						}
+						if input.Request.Path != "kv/data/foo" {
+							return
+						}
+						auditMu.Lock()
+						auditedWrites++
+						auditMu.Unlock()
+					},
+				}, nil
+			},
+		},
+	}
+	opts := vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+	}
+
+	teststorage.RaftBackendSetup(&conf, &opts)
+	cluster := vault.NewTestCluster(t, &conf, &opts)
+
+	cluster.Start()
+	t.Cleanup(cluster.Cleanup)
+
+	testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
+	require.False(t, cluster.Cores[0].Standby())
+
+	primaryClient := cluster.Cores[0].Client
+
+	require.NoError(t, primaryClient.Sys().EnableAuditWithOptions("noop_audit", &api.EnableAuditOptions{
+		Type: "noop",
+	}))
+
+	require.NoError(t, primaryClient.Sys().Mount("kv", &api.MountInput{
+		Type: "kv-v2",
+	}))
+
+	for i, core := range cluster.Cores {
+		expectedValue := fmt.Sprintf("expected value #%d", i)
+
+		t.Logf("writing expected value on node %d", i)
+		require.EventuallyWithT(t, func(collect *assert.CollectT) {
+			_, err := core.Client.KVv2("kv").Put(t.Context(), "foo", map[string]any{
+				"bar": expectedValue,
+			})
+			require.NoError(collect, err)
+		}, timeout, tick)
+	}
+
+	// Across all nodes, each write should be audited exactly once.
+	auditMu.Lock()
+	defer auditMu.Unlock()
+	require.Empty(t, forwardedErrors, "standby audited a forwarding error for a write it forwarded")
+	require.Equal(t, len(cluster.Cores), auditedWrites, "each write should be audited exactly once")
+}
+
+type readOnlyStandbyAuditBackend struct {
+	audit.Backend
+	recordResponses func(*logical.LogInput)
+}
+
+func (b *readOnlyStandbyAuditBackend) LogResponse(ctx context.Context, input *logical.LogInput) error {
+	b.recordResponses(input)
+	return b.Backend.LogResponse(ctx, input)
 }

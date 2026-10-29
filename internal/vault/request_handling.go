@@ -1101,6 +1101,15 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		resp, auth, err = c.handleRequest(ctx, req)
 	}
 
+	if c.standby.Load() {
+		if logical.ShouldForward(err) {
+			return nil, err
+		}
+		if logical.ShouldForward(resp.Error()) {
+			return nil, logical.ErrPerfStandbyPleaseForward
+		}
+	}
+
 	if err == nil && c.requestResponseCallback != nil {
 		c.requestResponseCallback(c.router.MatchingBackend(ctx, req.Path), req, resp)
 	}

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"uuid"
 )
 
 // RemovalResult represents the result of a removal operation
@@ -126,7 +127,7 @@ func WithInitialChildren(childrenIDs ...string) NodeOption {
 // NewLeafNode creates a new leaf node with options
 func NewLeafNode(opts ...NodeOption) *Node {
 	node := &Node{
-		ID:     generateUUID(), // Default ID
+		ID:     uuid.NewV4().String(),
 		IsLeaf: true,
 		Keys:   make([]string, 0),
 		Values: make([][]string, 0),
@@ -145,7 +146,7 @@ func NewLeafNode(opts ...NodeOption) *Node {
 // NewInternalNode creates a new internal node with options
 func NewInternalNode(opts ...NodeOption) *Node {
 	node := &Node{
-		ID:          generateUUID(), // Default ID
+		ID:          uuid.NewV4().String(),
 		IsLeaf:      false,
 		Keys:        make([]string, 0),
 		ChildrenIDs: make([]string, 0),

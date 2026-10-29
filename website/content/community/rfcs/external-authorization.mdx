@@ -77,8 +77,10 @@ The plugin API consists of three methods only:
 type external-authz interface {
 
     // When processing "ask" capabilities, call plugin to check authorizations for one or multiple operations.
-    // To be called from ACL.AllowOperation (https://github.com/openbao/openbao/blob/main/internal/vault/policy/acl.go#L344)
-    // or from filterListResponse (https://github.com/openbao/openbao/blob/main/internal/vault/request_handling_list_filtering.go#L114)
+    // To be called from ACL.AllowOperation
+    // https://github.com/openbao/openbao/blob/main/internal/vault/policy/acl.go#L344
+    // or from Core.filterListResponse 
+    // https://github.com/openbao/openbao/blob/main/internal/vault/request_handling_list_filtering.go#L114
     // Parameter list:
     // - ctx: context as passed to ACL.AllowOperation
     // - opts: additional options, struct AuthzOptions should contain a generic field of type map[string]string
@@ -87,7 +89,9 @@ type external-authz interface {
     HasAuthorization(ctx context.Context, opts *AuthzOptions, req ...(*logical.Request)) (allowed []bool, err error)
 
     // Call plugin to update the DB of the external authorization service (optional).
-    // To be called after successful changes (create, update, delete) to the OpenBao database.
+    // To be called after successful changes (create, update, delete) to the OpenBao database,
+    // from Core.handleRequest, after doRoutingIfApproved if routeErr is nil: 
+    // https://github.com/openbao/openbao/blob/main/internal/vault/request_handling.go#L1437
     // Plugins should implement eventual consistency when passing changes to the external authz service.
     // Parameter list:
     // - ctx: context as passed to create/update/delete

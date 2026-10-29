@@ -246,8 +246,16 @@ runs on every node.
 
 ## Downsides
 
-No significant downsides have been identified so far. Seal migration is not in
-scope for this RFC.
+- Code complexity. Supporting Auto Unseal for namespaces adds several moving
+  parts: a retry process for namespaces whose KMS is unreachable at startup,
+  running on every node; re-encryption of the stored keys on configuration
+  changes and after unseal; an endpoint exposing the state of namespace seals;
+  and the exclusion of these namespaces from the existing gRPC key sharing.
+- More KMS calls. Since every node contacts the KMS itself instead of
+  receiving root keys over gRPC, the number of KMS calls grows with the number
+  of nodes and of namespaces protected by an Auto Unseal mechanism. This can
+  matter for deep namespace trees, large clusters, or KMS providers with rate
+  limits or per-call costs.
 
 ## Security Implications
 
@@ -296,14 +304,18 @@ behavior consistent. A namespace created with Auto Unseal starts in its
 unsealed state and requires no manual unseal step; recovery key shares are
 generated and returned at creation time.
 
-Boot resilience is transparent: if the KMS configured for a namespace is
-unavailable at startup, the server comes up normally and the namespace unseals
-automatically when the KMS becomes reachable again. The
-`GET /v1/sys/namespaces/<path>/seal-status` endpoint allows operators and
+A KMS outage at startup requires no particular action from either the
+namespace operators or the server administrator: the server comes up normally
+and the namespace unseals automatically when the KMS becomes reachable again.
+The `GET /v1/sys/namespaces/<path>/seal-status` endpoint allows operators and
 monitoring systems to observe this state.
 
 Namespace creation without a seal parameter continues to work exactly as before.
 Existing tooling that creates namespaces without specifying a seal is unaffected.
+
+Seal migration is not covered by this RFC. Operators can rotate credentials
+and KMS keys within the same seal provider, but cannot switch an existing
+namespace to a different seal provider, or between Shamir and Auto Unseal.
 
 ## Unresolved Questions
 

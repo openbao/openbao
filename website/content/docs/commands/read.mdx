@@ -33,7 +33,7 @@ This is equivalent to:
 
 ```shell-session
 $ curl --request GET --header "X-Vault-Token: $BAO_TOKEN" \
-    $BAO_ADDR/v1/secret/data/customers
+    "$BAO_ADDR/v1/secret/data/customers"
 ```
 
 Since K/V secrets engine is a commonly used feature, OpenBao CLI provides the

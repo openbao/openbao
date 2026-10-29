@@ -873,13 +873,19 @@ func (c *Core) JoinRaftCluster(ctx context.Context, wg *sync.WaitGroup, leaderIn
 		return false, errors.New("node must be unsealed before joining")
 	}
 
+	for _, info := range leaderInfos {
+		if err := info.Normalize(c.logger); err != nil {
+			return false, err
+		}
+	}
+
 	// Disallow leader API address to be provided if we're using raft for HA-only.
 	// The leader API address is obtained directly through storage. This serves
 	// as a form of verification that this node is sharing the same physical
 	// storage as the leader node.
 	if isRaftHAOnly {
 		for _, info := range leaderInfos {
-			if info.LeaderAPIAddr != "" || info.AutoJoin != "" {
+			if info.LeaderAPIAddr != "" || info.AutoJoin != "" || info.AutoJoinPlugin != nil {
 				return false, errors.New("leader API address and auto-join metadata must be unset when raft is used exclusively for HA")
 			}
 		}
@@ -1094,10 +1100,6 @@ func (c *Core) JoinRaftCluster(ctx context.Context, wg *sync.WaitGroup, leaderIn
 
 // raftLeaderInfo uses go-discover to expand leaderInfo to include any auto-join results.
 func (c *Core) raftLeaderInfo(ctx context.Context, joinPlugins map[string]joinsdk.Join, leaderInfo *raft.LeaderJoinInfo) ([]*raft.LeaderJoinInfo, error) {
-	if err := leaderInfo.ValidateJoinMethods(); err != nil {
-		return nil, err
-	}
-
 	var ret []*raft.LeaderJoinInfo
 	switch {
 	case leaderInfo.LeaderAPIAddr != "":

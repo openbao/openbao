@@ -295,21 +295,32 @@ func TestRaft_JoinConfig(t *testing.T) {
 		},
 	}
 	conf, err := b.JoinConfig()
-	if err != nil {
-		t.Fatalf("error parsing config: %s", err.Error())
+	require.NoError(t, err, "error parsing config")
+	for _, info := range conf {
+		err = info.Normalize(b.logger)
+		require.NoError(t, err, "error normalizing config")
 	}
+
 	expected := []*LeaderJoinInfo{
 		{
 			AutoJoinPlugin: &AutoJoinPlugin{
 				Plugin: "discover",
-				Config: map[string]any{"provider": "aws", "args": map[string]string{"foo": "baz"}},
+				Config: map[string]any{
+					"provider": "aws",
+					"args":     map[string]string{"foo": "baz"},
+					"scheme":   "",
+					"port":     uint(0),
+				},
 			},
 			Retry: true,
 		},
 		{
 			AutoJoinPlugin: &AutoJoinPlugin{
 				Plugin: "discover",
-				Config: map[string]any{"provider": "aws", "args": map[string]any{"foo": "bar"}},
+				Config: map[string]any{
+					"provider": "aws",
+					"args":     map[string]any{"foo": "bar"},
+				},
 			},
 			Retry: true,
 		},

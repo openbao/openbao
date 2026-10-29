@@ -298,9 +298,7 @@ type LeaderJoinInfo struct {
 	TLSConfig *tls.Config `json:"-"`
 }
 
-func (info *LeaderJoinInfo) ValidateJoinMethods() error {
-	// TODO: At config loading, convert all join methods (legacy discover and
-	// static addresses) to plugins. Then, this can be removed.
+func (info *LeaderJoinInfo) Normalize(logger log.Logger) error {
 	haveJoinMethod := false
 	for _, joinMethodEnabled := range []bool{len(info.AutoJoin) != 0, len(info.LeaderAPIAddr) != 0, info.AutoJoinPlugin != nil} {
 		if haveJoinMethod && joinMethodEnabled {
@@ -308,6 +306,36 @@ func (info *LeaderJoinInfo) ValidateJoinMethods() error {
 		}
 		haveJoinMethod = haveJoinMethod || joinMethodEnabled
 	}
+
+	if info.AutoJoin != "" {
+		logger.Warn("legacy auto-join config found, please use discover plugin instead")
+		config, err := discover.Parse(info.AutoJoin)
+		if err != nil {
+			return err
+		}
+		provider := config["provider"]
+		delete(config, "provider")
+		info.AutoJoinPlugin = &AutoJoinPlugin{
+			Plugin: "discover",
+			Config: map[string]any{
+				"provider": provider,
+				"args":     map[string]string(config),
+				"scheme":   info.AutoJoinScheme,
+				"port":     info.AutoJoinPort,
+			},
+		}
+
+		scheme := info.AutoJoinScheme
+		if scheme != "" && (scheme != "http" && scheme != "https") {
+			return fmt.Errorf("invalid scheme %q; must either be http or https", info.AutoJoinScheme)
+		}
+
+		// Clear legacy settings
+		info.AutoJoin = ""
+		info.AutoJoinScheme = ""
+		info.AutoJoinPort = 0
+	}
+
 	return nil
 }
 
@@ -330,37 +358,6 @@ func (b *RaftBackend) JoinConfig() ([]*LeaderJoinInfo, error) {
 	}
 
 	for i, info := range leaderInfos {
-		if err := info.ValidateJoinMethods(); err != nil {
-			return nil, err
-		}
-
-		if info.AutoJoin != "" {
-			b.logger.Warn("legacy auto-join config found, please use discover plugin instead")
-			config, err := discover.Parse(info.AutoJoin)
-			if err != nil {
-				return nil, err
-			}
-			provider := config["provider"]
-			delete(config, "provider")
-			info.AutoJoinPlugin = &AutoJoinPlugin{
-				Plugin: "discover",
-				Config: map[string]any{
-					"provider": provider,
-					"args":     map[string]string(config),
-					"scheme":   info.AutoJoinScheme,
-					"port":     info.AutoJoinPort,
-				},
-			}
-			info.AutoJoin = ""
-			info.AutoJoinScheme = ""
-			info.AutoJoinPort = 0
-		}
-
-		scheme := info.AutoJoinPlugin.Config["scheme"]
-		if scheme != "" && (scheme != "http" && scheme != "https") {
-			return nil, fmt.Errorf("invalid scheme %q; must either be http or https", info.AutoJoinScheme)
-		}
-
 		info.Retry = true
 		info.TLSConfig, err = b.parseTLSInfo(info)
 		if err != nil {

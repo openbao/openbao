@@ -115,7 +115,7 @@ export default Controller.extend({
   isConfigurableTab: or('isCertTab', 'isConfigure'),
 
   supportsScan: computed('backendType', function () {
-    return ['kv', 'generic', 'cubbyhole'].includes(this.backendType);
+    return ['kv', 'generic'].includes(this.backendType);
   }),
 
   backendCrumb: computed('backend', function () {

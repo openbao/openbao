@@ -80,6 +80,16 @@ func aliasesTableSchema(lowerCaseName bool) *memdb.TableSchema {
 					Field: "LocalBucketKey",
 				},
 			},
+			"local_bucket_key_namespace": {
+				Name:         "local_bucket_key_namespace",
+				AllowMissing: true,
+				Indexer: &memdb.CompoundIndex{
+					Indexes: []memdb.Indexer{
+						&memdb.StringFieldIndex{Field: "LocalBucketKey"},
+						&memdb.StringFieldIndex{Field: "NamespaceID"},
+					},
+				},
+			},
 		},
 	}
 }
@@ -122,6 +132,15 @@ func entitiesTableSchema(lowerCaseName bool) *memdb.TableSchema {
 				Name: "bucket_key",
 				Indexer: &memdb.StringFieldIndex{
 					Field: "BucketKey",
+				},
+			},
+			"bucket_key_namespace": {
+				Name: "bucket_key_namespace",
+				Indexer: &memdb.CompoundIndex{
+					Indexes: []memdb.Indexer{
+						&memdb.StringFieldIndex{Field: "BucketKey"},
+						&memdb.StringFieldIndex{Field: "NamespaceID"},
+					},
 				},
 			},
 			"namespace_id": {
@@ -178,6 +197,15 @@ func groupsTableSchema(lowerCaseName bool) *memdb.TableSchema {
 				Name: "bucket_key",
 				Indexer: &memdb.StringFieldIndex{
 					Field: "BucketKey",
+				},
+			},
+			"bucket_key_namespace": {
+				Name: "bucket_key_namespace",
+				Indexer: &memdb.CompoundIndex{
+					Indexes: []memdb.Indexer{
+						&memdb.StringFieldIndex{Field: "BucketKey"},
+						&memdb.StringFieldIndex{Field: "NamespaceID"},
+					},
 				},
 			},
 			"namespace_id": {

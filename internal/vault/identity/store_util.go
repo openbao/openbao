@@ -950,16 +950,16 @@ func (i *IdentityStore) MemDBEntityByNameInTxn(ctx context.Context, txn *memdb.T
 	return entity, nil
 }
 
-func (i *IdentityStore) MemDBLocalAliasesByBucketKeyInTxn(txn *memdb.Txn, bucketKey string) ([]*identity.Alias, error) {
+func (i *IdentityStore) MemDBLocalAliasesByBucketKeyInTxn(txn *memdb.Txn, bucketKey, namespaceID string) ([]*identity.Alias, error) {
 	if txn == nil {
 		return nil, errors.New("nil txn")
 	}
 
-	if bucketKey == "" {
-		return nil, errors.New("empty bucket key")
+	if bucketKey == "" || namespaceID == "" {
+		return nil, errors.New("empty bucket key or namespace ID")
 	}
 
-	iter, err := txn.Get(entityAliasesTable, "local_bucket_key", bucketKey)
+	iter, err := txn.Get(entityAliasesTable, "local_bucket_key_namespace", bucketKey, namespaceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup aliases using local bucket entry key hash: %w", err)
 	}
@@ -975,16 +975,16 @@ func (i *IdentityStore) MemDBLocalAliasesByBucketKeyInTxn(txn *memdb.Txn, bucket
 	return aliases, nil
 }
 
-func (i *IdentityStore) MemDBEntitiesByBucketKeyInTxn(txn *memdb.Txn, bucketKey string) ([]*identity.Entity, error) {
+func (i *IdentityStore) MemDBEntitiesByBucketKeyInTxn(txn *memdb.Txn, bucketKey, namespaceID string) ([]*identity.Entity, error) {
 	if txn == nil {
 		return nil, errors.New("nil txn")
 	}
 
-	if bucketKey == "" {
-		return nil, errors.New("empty bucket key")
+	if bucketKey == "" || namespaceID == "" {
+		return nil, errors.New("empty bucket key or namespace ID")
 	}
 
-	entitiesIter, err := txn.Get(entitiesTable, "bucket_key", bucketKey)
+	entitiesIter, err := txn.Get(entitiesTable, "bucket_key_namespace", bucketKey, namespaceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup entities using bucket entry key hash: %w", err)
 	}
@@ -2088,16 +2088,16 @@ OUTER:
 	return name, nil
 }
 
-func (i *IdentityStore) MemDBGroupsByBucketKeyInTxn(txn *memdb.Txn, bucketKey string) ([]*identity.Group, error) {
+func (i *IdentityStore) MemDBGroupsByBucketKeyInTxn(txn *memdb.Txn, bucketKey, namespaceID string) ([]*identity.Group, error) {
 	if txn == nil {
 		return nil, errors.New("nil txn")
 	}
 
-	if bucketKey == "" {
-		return nil, errors.New("empty bucket key")
+	if bucketKey == "" || namespaceID == "" {
+		return nil, errors.New("empty bucket key or namespace ID")
 	}
 
-	groupsIter, err := txn.Get(groupsTable, "bucket_key", bucketKey)
+	groupsIter, err := txn.Get(groupsTable, "bucket_key_namespace", bucketKey, namespaceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup groups using bucket entry key hash: %w", err)
 	}

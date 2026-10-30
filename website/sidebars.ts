@@ -605,6 +605,7 @@ const sidebars: SidebarsConfig = {
                             "Plugins": [
                                 "api/system/external-keys/plugins/index",
                                 "api/system/external-keys/plugins/pkcs11",
+                                "api/system/external-keys/plugins/securosys",
                                 "api/system/external-keys/plugins/transit",
                             ],
                         },

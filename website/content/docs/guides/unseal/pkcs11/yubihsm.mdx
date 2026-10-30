@@ -1,0 +1,144 @@
+---
+sidebar_label: Yubico YubiHSM
+description: |-
+  This guide describes the steps to configure Auto-Unsealing for OpenBao using
+  Yubico's YubiHSM 2 via PKCS#11.
+---
+
+# YubiHSM
+
+This guide describes the Auto-Unsealing configuration using [Yubico YubiHSM](https://www.yubico.com/ch/product/yubihsm-2) by using the PKCS#11 interface.
+
+:::warning
+OpenSC 0.27 (pkcs11-tool) and yubihsm-shell 2.7.* has known incompatibility issue: SIGSEGV (Address boundary error). Downgrade OpenSC to 0.26 or use the yubiHSM-manager / yubihsm-shell for configuration.
+:::
+
+## Initial Setup
+
+This guide assumes that:
+- YubiHSM USB is connected to a host machine
+- [YubiHSM SDK is installed](https://developers.yubico.com/YubiHSM2/Releases/)
+- yubihsm-connector service is up and running and accessible through the network
+
+Example [YubiHSM Connector](https://developers.yubico.com/yubihsm-connector/) configuration
+
+```
+# /etc/yubihsm-connector.yaml
+cert: "/etc/yubihsm/connector.crt" # This TLS Cert needs to be initialzed separately
+key: "/etc/yubihsm/connector.key" # This TLS Key needs to be initialzed separately
+enable-host-whitelist: false
+listen: 0.0.0.0:12345
+serial: ""
+```
+
+Check the connector status on localhost:
+
+`https://localhost:12345/connector/status`
+
+When connected to a dedicated connector host:
+
+`https://yubihsm-host:12345/connector/status`
+
+From inside a docker container, assuming it is on the docker host:
+
+`https://host.docker.internal:12345`
+
+## Initializing the HSM Key Slot
+
+The Seal decryption key needs to exists before OpenBao storage is initialized or before a [Seal
+Migration](../../../concepts/seal.mdx#seal-migration)!
+When starting from scratch / clean YubiHSM, the default password is password. This needs to be replaced obviously. New secrets are generated via the HSM's built in pseudo-random generator.
+
+Create New HSM Admin Auth Key:
+
+```shell
+export ADMIN_PW=$(yubihsm-shell -a get-pseudo-random --count 16 -p password --authkey 1)
+yubihsm-shell -a put-authentication-key \
+  -i 0x0002 \
+  -d all \
+  -c all \
+  --delegated all \
+  -l ADMIN \
+  --authkey 1 -p password \
+  --new-password=$ADMIN_PW
+```
+
+Delete the default Auth Key
+
+```shell
+yubihsm-shell -a delete-object \
+  -i 0x0001 \
+  -t authentication-key \
+  --authkey 1 -p password
+```
+
+Generate a dedicated OpenBao Auth Key
+
+```shell
+export BAO_PW=$(yubihsm-shell -a get-pseudo-random --count 16 --authkey 2 -p $ADMIN_PW)
+yubihsm-shell -a put-authentication-key \
+  -i 0x0003 \
+  -d 1 \
+  -c decrypt-pkcs,decrypt-oaep \
+  -l "BAO-Auth" \
+  --authkey 2 -p $ADMIN_PW \
+  --new-password=$BAO_PW
+```
+
+Generate the OpenBao Unseal Key
+
+```shell
+yubihsm-shell -a generate-asymmetric-key \
+  -i 0x00ff \
+  -l bao-seal-key-rsa \
+  -d 1 \
+  -c decrypt-oaep,decrypt-pkcs \
+  -A rsa4096 \
+  --authkey 2 -p $ADMIN_PW
+```
+
+The HSM should now be ready to accept the OpenBao Connection for initialization and future decryption
+
+## OpenBao Configuration
+
+[OpenBao's PKCS#11 plugin](https://github.com/openbao/openbao-plugins) is required to be configured with the YubiHSM SDK pkcs11 library path. This lib is installed via the official SDK release linked earlier.
+When using OpenBao from an official docker image, make sure to use the UBI (openbao/openbao-ubi) version in order to easily install the official Fedora / RPM YubiHSM SDK package.
+
+The OpenBao PKCS#11 seal configuration as it should be in the openbao.hcl snippet:
+
+```hcl
+plugin "kms" "pkcs11" {
+  image       = "ghcr.io/openbao/openbao-plugin-kms-pkcs11"
+  version     = "v0.1.0"
+  binary_name = "openbao-plugin-kms-pkcs11"
+  sha256sum   = "55245882727535579e710672f0eae1bcdddc846006db857baaa6e09e33d40faf"
+}
+
+seal "pkcs11" {
+  lib = "/usr/lib64/pkcs11/yubihsm_pkcs11.so" # Installed via YubiHSM SDK
+  token_label = "YubiHSM"
+  pin = "0003<BAO-AUTH-PASSWORD>" # The auth key slot location and the OpenBao Auth Key password is one concatenated string value!
+  key_id        = "0x00ff"
+  key_label = "bao-seal-key-rsa"
+  mechanism     = "0x0009" # CKM_RSA_PKCS_OAEP
+}
+```
+
+The YubiHSM's pkcs11 library needs be configured with the URL of the HSM. This can be done via an environment variable:
+
+```shell
+export YUBIHSM_PKCS11_CONF=/openbao/yubihsm_pkcs11.conf
+```
+
+```
+# yubihsm_pkcs11.conf
+connector=https://host.docker.internal:12345
+```
+
+OpenBao can now be started, and initialized:
+
+```shell
+bao operator init
+```
+
+Subsequent restarts of OpenBao are now unsealing themselves as long as the YubiHSM is reachable.

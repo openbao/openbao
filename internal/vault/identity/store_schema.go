@@ -73,13 +73,6 @@ func aliasesTableSchema(lowerCaseName bool) *memdb.TableSchema {
 					Field: "NamespaceID",
 				},
 			},
-			"local_bucket_key": {
-				Name:         "local_bucket_key",
-				AllowMissing: true,
-				Indexer: &memdb.StringFieldIndex{
-					Field: "LocalBucketKey",
-				},
-			},
 			"local_bucket_key_namespace": {
 				Name:         "local_bucket_key_namespace",
 				AllowMissing: true,
@@ -126,12 +119,6 @@ func entitiesTableSchema(lowerCaseName bool) *memdb.TableSchema {
 				AllowMissing: true,
 				Indexer: &memdb.StringSliceFieldIndex{
 					Field: "MergedEntityIDs",
-				},
-			},
-			"bucket_key": {
-				Name: "bucket_key",
-				Indexer: &memdb.StringFieldIndex{
-					Field: "BucketKey",
 				},
 			},
 			"bucket_key_namespace": {
@@ -191,12 +178,6 @@ func groupsTableSchema(lowerCaseName bool) *memdb.TableSchema {
 				AllowMissing: true,
 				Indexer: &memdb.StringSliceFieldIndex{
 					Field: "ParentGroupIDs",
-				},
-			},
-			"bucket_key": {
-				Name: "bucket_key",
-				Indexer: &memdb.StringFieldIndex{
-					Field: "BucketKey",
 				},
 			},
 			"bucket_key_namespace": {

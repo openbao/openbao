@@ -839,7 +839,7 @@ listener "tcp" {
 	}
 	list, _ := obj.Node.(*ast.ObjectList)
 	objList := list.Filter("listener")
-	configutil.ParseListeners(config.SharedConfig, objList)
+	require.NoError(t, configutil.ParseListeners(config.SharedConfig, objList), "error parsing listeners")
 	listeners := config.Listeners
 	if len(listeners) == 0 {
 		t.Fatal("expected at least one listener in the config")
@@ -908,7 +908,7 @@ func testParseUserLockouts(t *testing.T) {
 	}
 	list, _ := obj.Node.(*ast.ObjectList)
 	objList := list.Filter("user_lockout")
-	configutil.ParseUserLockouts(config.SharedConfig, objList)
+	require.NoError(t, configutil.ParseUserLockouts(config.SharedConfig, objList), "error parsing user lockouts")
 
 	sort.Slice(config.UserLockouts[:], func(i, j int) bool {
 		return config.UserLockouts[i].Type < config.UserLockouts[j].Type

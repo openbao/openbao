@@ -1,0 +1,88 @@
+---
+title: "Announcing OpenBao v2.7!"
+description: "We are thrilled to announce the availability of OpenBao v2.7, adding PostgreSQL horizontal scalability, External HSM and KMS-Backed Keys support, and Post-Quantum Cryptography!"
+slug: release-v2-7-0
+authors:
+ - cipherboy
+tags: [release, announcement]
+image: /img/openbao-release-27x-feature.png
+---
+
+![Announcing OpenBao 2.7](/img/openbao-release-27x-feature.png)
+
+We are thrilled to announce [the availability](https://openbao.org/downloads/?version=v2.7.1) of [OpenBao v2.7](https://openbao.org/community/release-notes/2-7-0/), adding PostgreSQL horizontal scalability, External HSM and KMS-Backed Keys support, and Post-Quantum Cryptography!
+
+Despite a shorter turnaround than from v2.5.x to v2.6.x, we were excited to see many substantial features and several major security patches land within this release. Many thanks to all the contributors and security reporters!
+
+<!-- truncate -->
+
+## Key highlights of this release
+
+We saw many innovative improvements this release:
+
+- **PostgreSQL Horizontal Scalability**: Enables read scalability on OpenBao
+  instances using the PostgreSQL storage backend similar to existing
+  [Integrated Storage (Raft) support](/docs/configuration/storage/raft).
+
+- **External Keys**: Enables use of HSM and KMS-provided key material in the
+  PKI and Transit secrets engine. Using the groundwork provided by [last
+  release's](./2026-08-18-release-v2-6-0.mdx) [auto-unseal
+  plugins](/docs/configuration/seal/#plugins), OpenBao allows third-party
+  plugins to provide support for these services with a decoupled release
+  process.
+
+- **Post-Quantum Cryptography (PQC)**: Introduces the ML-DSA and ML-KEM
+  algorithms to TLS listeners (for certificates and key exchange) and the
+  Certificate Authentication method and introduces the ML-DSA algorithm to
+  both PKI and Transit. Stay tuned for more PQC updates!
+
+- **Control Groups**: Supports human-in-the-loop review flows, using a new
+  ACL policy stanza, `control_group`, which specifies second-party reviews
+  on specific paths.
+
+- **Strong Consistency Control**: Additional headers allow ensuring repeated
+  requests to a round-robin load balancer hits nodes which are always
+  up-to-date with the last request.
+
+There were many other feature improvements to our core plugins; refer to the
+[improvements section](https://openbao.org/community/release-notes/2-7-0/#improvements-1)
+of [our release notes](https://openbao.org/community/release-notes/2-7-0/#v270)
+for information on all of them!
+
+Stay tuned for more great features to come!
+
+## Breaking changes
+
+Note that this release saw several breaking changes:
+
+- The HSM distribution was deprecated and discontinued due to the
+  externalization of the PKCS#11 plugin. This plugin can be consumed on
+  any base image, though requires glibc (or a musl-glibc compat package).
+- Various vendor-specific builtin auto-unseal mechanisms (including
+  `alicloudkms`, `awskms`, `azurekeyvault`, `gcpckms`, and `ocikms`) have
+  likewise been externalized.
+- The Kerberos Authentication, LDAP Authentication, LDAP Secrets Engine, and
+  RADIUS Authentication methods were moved into `openbao-plugins` and now
+  have their initial re-releases.
+- The `file` storage backend (which was never recommended for production use
+  cases and lacks HA and transactions) has been removed.
+
+Refer to [deprecation documentation](/community/deprecation) for migrations
+and mitigations.
+
+## Looking ahead
+
+OpenBao v2.8.0 will be a slower release focused on security and stability, but
+likely will feature improvements in the authentication space.
+
+Interested in getting involved?
+
+Take a look at our [roadmap](https://github.com/openbao/openbao/issues/1974),
+[fix a bug](https://github.com/openbao/openbao/issues/?q=is%3Aissue%20state%3Aopen%20label%3Abug),
+[help with documentation](https://github.com/openbao/openbao/issues/?q=is%3Aissue%20state%3Aopen%20label%3Adocs),
+[join our community calls](https://openbao.org/community/contributing/#community-calendar),
+[publicize the release](https://www.linkedin.com/company/openbao/posts),
+or join us on the [Linux Foundation's Zulip instance](https://openbao.org/community/contributing/#chat-server)!
+
+And for anyone attending Open Source Summit EU in Prague (October 7th-9th),
+check out OpenBao at the OpenSSF booth!

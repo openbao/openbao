@@ -1,0 +1,3 @@
+```release-note:improvement
+command/kv: Add `bao kv subkeys` command to query KV v2's subkeys API.
+```

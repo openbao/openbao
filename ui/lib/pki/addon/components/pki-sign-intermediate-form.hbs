@@ -32,7 +32,7 @@
   <form {{on "submit" (perform this.save)}} data-test-sign-intermediate-form>
     <div class="box is-sideless is-fullwidth is-marginless">
       <MessageError @errorMessage={{this.errorBanner}} class="has-top-margin-s" />
-      <NamespaceReminder @mode={{"create"}} @noun="signed intermediate" />
+      <NamespaceReminder @mode="create" @noun="signed intermediate" />
       {{#each @model.formFields as |attr|}}
         <FormField
           data-test-field={{attr}}

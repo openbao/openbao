@@ -4,8 +4,6 @@
 package plugin_test
 
 import (
-	"fmt"
-	"os"
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
@@ -21,10 +19,6 @@ import (
 	"github.com/openbao/openbao/v2/internal/vault"
 	"github.com/stretchr/testify/require"
 )
-
-func TestBackend_impl(t *testing.T) {
-	var _ logical.Backend = &plugin.PluginBackend{}
-}
 
 func TestBackend(t *testing.T) {
 	pluginCmds := []string{"TestBackend_PluginMain", "TestBackend_PluginMain_Multiplexed"}
@@ -55,53 +49,23 @@ func TestBackend_Factory(t *testing.T) {
 }
 
 func TestBackend_PluginMain(t *testing.T) {
-	args := []string{}
-	if api.ReadBaoVariable(pluginutil.PluginUnwrapTokenEnv) == "" && api.ReadBaoVariable(pluginutil.PluginMetadataModeEnv) != "true" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
-	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
-	if caPEM == "" {
-		t.Fatal("CA cert not passed in")
-	}
-
-	args = append(args, fmt.Sprintf("--ca-cert=%s", caPEM))
-
-	apiClientMeta := &api.PluginAPIClientMeta{}
-	flags := apiClientMeta.FlagSet()
-	flags.Parse(args)
-	tlsConfig := apiClientMeta.GetTLSConfig()
-	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
-
 	err := logicalPlugin.Serve(&logicalPlugin.ServeOpts{
 		BackendFactoryFunc: mock.Factory,
-		TLSProviderFunc:    tlsProviderFunc,
 	})
 	require.NoError(t, err)
 }
 
 func TestBackend_PluginMain_Multiplexed(t *testing.T) {
-	args := []string{}
-	if api.ReadBaoVariable(pluginutil.PluginUnwrapTokenEnv) == "" && api.ReadBaoVariable(pluginutil.PluginMetadataModeEnv) != "true" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
-	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
-	if caPEM == "" {
-		t.Fatal("CA cert not passed in")
-	}
-
-	args = append(args, fmt.Sprintf("--ca-cert=%s", caPEM))
-
-	apiClientMeta := &api.PluginAPIClientMeta{}
-	flags := apiClientMeta.FlagSet()
-	flags.Parse(args)
-	tlsConfig := apiClientMeta.GetTLSConfig()
-	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
-
 	err := logicalPlugin.ServeMultiplex(&logicalPlugin.ServeOpts{
 		BackendFactoryFunc: mock.Factory,
-		TLSProviderFunc:    tlsProviderFunc,
 	})
 	require.NoError(t, err)
 }
@@ -126,8 +90,6 @@ func testConfig(t *testing.T, pluginCmd string) (*logical.BackendConfig, func())
 			"plugin_version": "v0.0.0+mock",
 		},
 	}
-
-	os.Setenv(pluginutil.PluginCACertPEMEnv, cluster.CACertPEMFile)
 
 	vault.TestAddTestPlugin(t, core.Core, "mock-plugin", consts.PluginTypeSecrets, "", pluginCmd, []string{}, "")
 

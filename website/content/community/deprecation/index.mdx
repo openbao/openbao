@@ -1,5 +1,6 @@
 ---
 sidebar_label: Overview
+sidebar_position: 0
 description: |-
   An announcement page to communicate feature deprecations and plans.
 ---
@@ -17,6 +18,35 @@ forum](https://github.com/orgs/openbao/discussions).
 
 Please refer to the [FAQ](faq.mdx) page for frequently asked questions
 concerning OpenBao feature deprecations.
+
+### Custom token IDs
+
+> Announced **10/2026**, Deprecated in: **v2.8.0**, Removal: **v2.9.0**
+
+The ability to create tokens with arbitrary token IDs via the token store's
+[`auth/token/create` endpoint](/docs/api/auth/token#create-token) will be
+removed. This option was only available to callers using a root token to
+authenticate.
+
+The only remaining way to assign a custom token ID will be the
+`-dev-root-token-id` flag. This flag is available in dev mode only, and root
+tokens created this way before upgrading to v2.9.0 will cease to function.
+
+### Legacy auth & secrets plugin protocols
+
+> Announced: **10/2026**, Deprecated in: N/A, Removal: **v2.8.0**
+
+External auth and secrets plugins communicate with the main OpenBao process via
+RPCs, with the underlying protocol growing several versions over time. While
+OpenBao v2.7.x supports negotiation between several protocol versions, OpenBao
+v2.8.0 will remove support for older versions and retain support only for the
+latest one.
+
+The latest protocol version was originally introduced in Vault v1.12.0. As a
+result, this change removes support for plugins built against Vault SDK versions
+lower than v1.12.0. Plugins built against any published version of OpenBao's
+SDK are unaffected, as OpenBao has so far not made any breaking changes to the
+latest protocol post-fork.
 
 ### HSM distribution
 
@@ -68,6 +98,12 @@ externalized, community-maintained versions of these plugins from
 openbao-plugins.
 
 Please begin switching to plugin versions from openbao-plugins.
+
+Also see:
+
+- [`plugin` stanza](/docs/configuration/plugins)
+- [Plugin system](/docs/plugins)
+- [Plugin guide](/docs/guides/upgrade/plugins)
 
 ### Unauthenticated generate root endpoints
 

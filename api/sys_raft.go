@@ -194,8 +194,8 @@ func (c *Sys) RaftSnapshotWithContext(ctx context.Context, snapWriter io.Writer)
 	dup := io.TeeReader(resp.Body, wPipe)
 	go func() {
 		defer func() {
-			io.Copy(io.Discard, rPipe)
-			rPipe.Close()
+			io.Copy(io.Discard, rPipe) //nolint:errcheck
+			rPipe.Close()              //nolint:errcheck
 			wg.Done()
 		}()
 
@@ -227,7 +227,7 @@ func (c *Sys) RaftSnapshotWithContext(ctx context.Context, snapWriter io.Writer)
 	// Copy bytes from dup to snapWriter.  This will have a side effect that
 	// everything read from dup will be written to wPipe.
 	_, err = io.Copy(snapWriter, dup)
-	wPipe.Close()
+	wPipe.Close() //nolint:errcheck
 	if err != nil {
 		rPipe.CloseWithError(err)
 		return err

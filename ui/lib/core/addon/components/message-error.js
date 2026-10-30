@@ -4,8 +4,6 @@
  */
 
 import Component from '@glimmer/component';
-import layout from '../templates/components/message-error';
-import { setComponentTemplate } from '@ember/component';
 
 /**
  * @module MessageError
@@ -22,7 +20,7 @@ import { setComponentTemplate } from '@ember/component';
  * @param {string} [errorMessage=null] - An Error string to display.
  */
 
-class MessageError extends Component {
+export default class MessageError extends Component {
   get displayErrors() {
     const { errorMessage, errors, model } = this.args;
     if (errorMessage) {
@@ -49,4 +47,3 @@ class MessageError extends Component {
     return null;
   }
 }
-export default setComponentTemplate(layout, MessageError);

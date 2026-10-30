@@ -126,6 +126,20 @@ When introducing a new `sys/policies/cel` type, this would mean:
 
 Importantly, CEL's use in this way would allow us to side-step templating issues (as discussed in [#1207](https://github.com/openbao/openbao/issues/1207)) and potentially allow us to handle complex typed metadata. The latter would allow us to preserve the claims of the original JWT and do claim-based authorization.
 
+### Constraints
+
+CEL supports many [Program Options](https://pkg.go.dev/github.com/google/cel-go/cel#ProgramOption)
+for constraining evaluation:
+
+ - `cel.CostLimit(...)`, to limit the computational complexity of the program; and
+ - Users should call `cel.Program.ContextEval(...)` to ensure bounded runtime.
+
+As applied to the many places that take CELPrograms now, alongside `variables`
+and `expression`, the program should take `cost_limit` `(uint64)` and
+`timeout` `(time.Duration)` to allow CEL program authors limits.
+
+This should also be a global and mount tunable on the above parameter values.
+
 ## Rationale and Alternatives
 
 Ultimately there's a design trade-off between complexity and ease-of use that has to occur. This admittedly falls on the side of more complexity because it is an advanced feature. For common improvement requests, we can continue to implement changes and improvements in the role and ACL policy sections. However, advanced use cases for OpenBao need to be enabled without falling back to custom upstream (or worse, internal) changes.

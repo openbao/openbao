@@ -30,14 +30,12 @@ const (
 
 // logicalVersionMap is a map of version to test plugin
 var logicalVersionMap = map[string]string{
-	"v4":             "TestBackend_PluginMain_V4_Logical",
 	"v5":             "TestBackend_PluginMainLogical",
 	"v5_multiplexed": "TestBackend_PluginMain_Multiplexed_Logical",
 }
 
 // credentialVersionMap is a map of version to test plugin
 var credentialVersionMap = map[string]string{
-	"v4":             "TestBackend_PluginMain_V4_Credentials",
 	"v5":             "TestBackend_PluginMainCredentials",
 	"v5_multiplexed": "TestBackend_PluginMain_Multiplexed_Credentials",
 }
@@ -52,9 +50,6 @@ func TestSystemBackend_Plugin_secret(t *testing.T) {
 		},
 		{
 			pluginVersion: "v5",
-		},
-		{
-			pluginVersion: "v4",
 		},
 	}
 
@@ -107,9 +102,6 @@ func TestSystemBackend_Plugin_auth(t *testing.T) {
 		{
 			pluginVersion: "v5",
 		},
-		{
-			pluginVersion: "v4",
-		},
 	}
 
 	for _, tc := range testCases {
@@ -160,9 +152,6 @@ func TestSystemBackend_Plugin_MissingBinary(t *testing.T) {
 		},
 		{
 			pluginVersion: "v5",
-		},
-		{
-			pluginVersion: "v4",
 		},
 	}
 
@@ -217,9 +206,6 @@ func TestSystemBackend_Plugin_MismatchType(t *testing.T) {
 		},
 		{
 			pluginVersion: "v5",
-		},
-		{
-			pluginVersion: "v4",
 		},
 	}
 
@@ -277,9 +263,6 @@ func testPlugin_CatalogRemoved(t *testing.T, btype logical.BackendType, testMoun
 		},
 		{
 			pluginVersion: "v5",
-		},
-		{
-			pluginVersion: "v4",
 		},
 	}
 
@@ -355,9 +338,6 @@ func TestSystemBackend_Plugin_autoReload(t *testing.T) {
 		{
 			pluginVersion: "v5",
 		},
-		{
-			pluginVersion: "v4",
-		},
 	}
 
 	for _, tc := range testCases {
@@ -410,9 +390,6 @@ func TestSystemBackend_Plugin_SealUnseal(t *testing.T) {
 		},
 		{
 			pluginVersion: "v5",
-		},
-		{
-			pluginVersion: "v4",
 		},
 	}
 
@@ -497,9 +474,6 @@ func testSystemBackend_PluginReload(t *testing.T, reqData map[string]any, backen
 		},
 		{
 			pluginVersion: "v5",
-		},
-		{
-			pluginVersion: "v4",
 		},
 	}
 
@@ -661,199 +635,53 @@ func testSystemBackend_SingleCluster_Env(t *testing.T, env []string) *vault.Test
 	return cluster
 }
 
-func TestBackend_PluginMain_V4_Logical(t *testing.T) {
-	args := []string{}
-	// don't run as a standalone unit test
-	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
-		return
-	}
-
-	// don't run as a V5 plugin
-	if api.ReadBaoVariable(pluginutil.PluginAutoMTLSEnv) == "true" {
-		return
-	}
-
-	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
-	if caPEM == "" {
-		t.Fatal("CA cert not passed in")
-	}
-	args = append(args, fmt.Sprintf("--ca-cert=%s", caPEM))
-
-	apiClientMeta := &api.PluginAPIClientMeta{}
-	flags := apiClientMeta.FlagSet()
-	flags.Parse(args)
-
-	// V4 does not support AutoMTLS so we set a TLSConfig via TLSProviderFunc
-	tlsConfig := apiClientMeta.GetTLSConfig()
-	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
-
-	factoryFunc := mock.FactoryType(logical.TypeLogical)
-
-	err := lplugin.Serve(&lplugin.ServeOpts{
-		BackendFactoryFunc: factoryFunc,
-		TLSProviderFunc:    tlsProviderFunc,
-	})
-	require.NoError(t, err)
-}
-
 func TestBackend_PluginMain_Multiplexed_Logical(t *testing.T) {
-	args := []string{}
 	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
-
-	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
-	if caPEM == "" {
-		t.Fatal("CA cert not passed in")
-	}
-	args = append(args, fmt.Sprintf("--ca-cert=%s", caPEM))
-
-	apiClientMeta := &api.PluginAPIClientMeta{}
-	flags := apiClientMeta.FlagSet()
-	flags.Parse(args)
-
-	factoryFunc := mock.FactoryType(logical.TypeLogical)
-
-	err := lplugin.ServeMultiplex(&lplugin.ServeOpts{
-		BackendFactoryFunc: factoryFunc,
-	})
-	require.NoError(t, err)
+	require.NoError(t, lplugin.ServeMultiplex(&lplugin.ServeOpts{
+		BackendFactoryFunc: mock.FactoryType(logical.TypeLogical),
+	}))
 }
 
 func TestBackend_PluginMainLogical(t *testing.T) {
-	args := []string{}
 	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
-
-	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
-	if caPEM == "" {
-		t.Fatal("CA cert not passed in")
-	}
-	args = append(args, fmt.Sprintf("--ca-cert=%s", caPEM))
-
-	apiClientMeta := &api.PluginAPIClientMeta{}
-	flags := apiClientMeta.FlagSet()
-	flags.Parse(args)
-
-	factoryFunc := mock.FactoryType(logical.TypeLogical)
-
-	err := lplugin.Serve(&lplugin.ServeOpts{
-		BackendFactoryFunc: factoryFunc,
-	})
-	require.NoError(t, err)
-}
-
-func TestBackend_PluginMain_V4_Credentials(t *testing.T) {
-	args := []string{}
-	// don't run as a standalone unit test
-	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
-		return
-	}
-
-	// don't run as a V5 plugin
-	if api.ReadBaoVariable(pluginutil.PluginAutoMTLSEnv) == "true" {
-		return
-	}
-
-	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
-	if caPEM == "" {
-		t.Fatal("CA cert not passed in")
-	}
-	args = append(args, fmt.Sprintf("--ca-cert=%s", caPEM))
-
-	apiClientMeta := &api.PluginAPIClientMeta{}
-	flags := apiClientMeta.FlagSet()
-	flags.Parse(args)
-
-	// V4 does not support AutoMTLS so we set a TLSConfig via TLSProviderFunc
-	tlsConfig := apiClientMeta.GetTLSConfig()
-	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
-
-	factoryFunc := mock.FactoryType(logical.TypeCredential)
-
-	err := lplugin.Serve(&lplugin.ServeOpts{
-		BackendFactoryFunc: factoryFunc,
-		TLSProviderFunc:    tlsProviderFunc,
-	})
-	require.NoError(t, err)
+	require.NoError(t, lplugin.Serve(&lplugin.ServeOpts{
+		BackendFactoryFunc: mock.FactoryType(logical.TypeLogical),
+	}))
 }
 
 func TestBackend_PluginMain_Multiplexed_Credentials(t *testing.T) {
-	args := []string{}
 	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
-
-	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
-	if caPEM == "" {
-		t.Fatal("CA cert not passed in")
-	}
-	args = append(args, fmt.Sprintf("--ca-cert=%s", caPEM))
-
-	apiClientMeta := &api.PluginAPIClientMeta{}
-	flags := apiClientMeta.FlagSet()
-	flags.Parse(args)
-
-	factoryFunc := mock.FactoryType(logical.TypeCredential)
-
-	err := lplugin.ServeMultiplex(&lplugin.ServeOpts{
-		BackendFactoryFunc: factoryFunc,
-	})
-	require.NoError(t, err)
+	require.NoError(t, lplugin.ServeMultiplex(&lplugin.ServeOpts{
+		BackendFactoryFunc: mock.FactoryType(logical.TypeCredential),
+	}))
 }
 
 func TestBackend_PluginMainCredentials(t *testing.T) {
-	args := []string{}
 	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
-
-	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
-	if caPEM == "" {
-		t.Fatal("CA cert not passed in")
-	}
-	args = append(args, fmt.Sprintf("--ca-cert=%s", caPEM))
-
-	apiClientMeta := &api.PluginAPIClientMeta{}
-	flags := apiClientMeta.FlagSet()
-	flags.Parse(args)
-
-	factoryFunc := mock.FactoryType(logical.TypeCredential)
-
-	err := lplugin.Serve(&lplugin.ServeOpts{
-		BackendFactoryFunc: factoryFunc,
-	})
-	require.NoError(t, err)
+	require.NoError(t, lplugin.Serve(&lplugin.ServeOpts{
+		BackendFactoryFunc: mock.FactoryType(logical.TypeCredential),
+	}))
 }
 
 // TestBackend_PluginMainEnv is a mock plugin that simply checks for the existence of FOO env var.
 func TestBackend_PluginMainEnv(t *testing.T) {
-	args := []string{}
-	if api.ReadBaoVariable(pluginutil.PluginUnwrapTokenEnv) == "" && api.ReadBaoVariable(pluginutil.PluginMetadataModeEnv) != "true" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
-
 	// Check on actual vs expected env var
 	actual := os.Getenv(expectedEnvKey)
 	if actual != expectedEnvValue {
 		t.Fatalf("expected: %q, got: %q", expectedEnvValue, actual)
 	}
-
-	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
-	if caPEM == "" {
-		t.Fatal("CA cert not passed in")
-	}
-	args = append(args, fmt.Sprintf("--ca-cert=%s", caPEM))
-
-	apiClientMeta := &api.PluginAPIClientMeta{}
-	flags := apiClientMeta.FlagSet()
-	flags.Parse(args)
-
-	factoryFunc := mock.FactoryType(logical.TypeLogical)
-
-	err := lplugin.Serve(&lplugin.ServeOpts{
-		BackendFactoryFunc: factoryFunc,
-	})
-	require.NoError(t, err)
+	require.NoError(t, lplugin.Serve(&lplugin.ServeOpts{
+		BackendFactoryFunc: mock.FactoryType(logical.TypeLogical),
+	}))
 }

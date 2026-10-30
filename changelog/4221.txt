@@ -1,0 +1,6 @@
+```release-note:bug
+core/plugins: Ensure plugin backend reloading with `scope=global` actually performs a cluster-wide reload.
+```
+```release-note:bug
+core/plugins: Avoid immediate plugin reloads on standbys after tuning a mount's version and wait for a direct node-local or `scope=global` reload instead.
+```

@@ -6360,7 +6360,7 @@ func TestTokenStore_TokenID(t *testing.T) {
 		}
 
 		// Ensure that using a custom token ID results in a warning
-		expectedWarning := "Supplying a custom ID for the token uses the weaker SHA1 hashing instead of the more secure SHA2-256 HMAC for token obfuscation. SHA1 hashed tokens on the wire leads to less secure lookups."
+		expectedWarning := "Supplying a custom ID for the token is deprecated and uses the weaker SHA1 hashing instead of the more secure SHA2-256 HMAC for token obfuscation. SHA1 hashed tokens on the wire leads to less secure lookups. This functionality will be removed in v2.9.0."
 		if resp.Warnings[0] != expectedWarning {
 			t.Fatal("expected warning not present")
 		}

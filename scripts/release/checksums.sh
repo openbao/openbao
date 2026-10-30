@@ -28,11 +28,11 @@ case "$GITHUB_REPOSITORY" in
     openbao/openbao)
         # If on the main repository, strictly limit to main and release
         # branches.
-        IDENTITY_REGEXP="${GITHUB_WORKFLOW}@refs/heads/(main|release/.+)$"
+        IDENTITY_REGEXP="^${GITHUB_WORKFLOW}@refs/heads/(main|release/.+)$"
         ;;
     *)
         # Otherwise, allow releasing from anywhere.
-        IDENTITY_REGEXP="${GITHUB_WORKFLOW}@.*"
+        IDENTITY_REGEXP="^${GITHUB_WORKFLOW}@.*"
         ;;
 esac
 

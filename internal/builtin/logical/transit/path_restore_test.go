@@ -4,11 +4,16 @@
 package transit
 
 import (
+	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 
+	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTransit_Restore(t *testing.T) {
@@ -99,6 +104,9 @@ func TestTransit_Restore(t *testing.T) {
 
 		// RestoreName is used to restore the key to a different name
 		RestoreName string
+
+		// ModifyFunc allows modification of the backup.
+		ModifyFunc func(backupKey string) string
 	}{
 		{
 			// key does not already exist
@@ -160,10 +168,34 @@ func TestTransit_Restore(t *testing.T) {
 			Force:       boolPtr(false),
 			ExpectedErr: keyExitsError,
 		},
+		{
+			Name:        "Restore-corrupted-name",
+			ExpectedErr: errors.New("failed restored policy name validator: entry would not be accessible"),
+			ModifyFunc: func(backup string) string {
+				backupBytes, err := base64.StdEncoding.DecodeString(backup)
+				require.NoError(t, err)
+
+				var decoded keysutil.KeyData
+				err = json.Unmarshal(backupBytes, &decoded)
+				require.NoError(t, err)
+
+				decoded.Policy.Name = "something/slash"
+
+				encoded, err := json.Marshal(decoded)
+				require.NoError(t, err)
+
+				return base64.StdEncoding.EncodeToString(encoded)
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
+			backupKey := backupKey
+			if tc.ModifyFunc != nil {
+				backupKey = tc.ModifyFunc(backupKey)
+			}
+
 			var resp *logical.Response
 			var err error
 			if tc.Seed {
@@ -245,7 +277,7 @@ func TestTransit_Restore(t *testing.T) {
 			// cleanup / delete key after each run
 			keyReq.Operation = logical.DeleteOperation
 			resp, err = b.HandleRequest(t.Context(), keyReq)
-			if err != nil || (resp != nil && resp.IsError()) {
+			if tc.ExpectedErr == nil && (err != nil || (resp != nil && resp.IsError())) {
 				t.Fatalf("resp: %#v\nerr: %v", resp, err)
 			}
 

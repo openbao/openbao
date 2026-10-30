@@ -390,7 +390,7 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 
 		nsHeader := r.Header.Get(consts.NamespaceHeaderName)
 		if nsHeader != "" {
-			// Setting the namespace in the header to be included in the response
+			// Set the namespace in the header to be echo'd in the response.
 			nw.Header().Set(consts.NamespaceHeaderName, nsHeader)
 		}
 
@@ -398,7 +398,6 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 		ctx = addMaximumJsonMemoryToContext(ctx, maxRequestJsonMemory)
 		ctx = addMaximumJsonStringsToContext(ctx, maxRequestJsonStrings)
 
-		ctx = namespace.ContextWithNamespaceHeader(ctx, nsHeader)
 		r = r.WithContext(ctx)
 
 		// Set some response headers with raft node id (if applicable) and hostname, if available
@@ -819,7 +818,7 @@ func handleUIStub() http.Handler {
 	</html>
 	`
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte(stubHTML))
+		w.Write([]byte(stubHTML)) //nolint:errcheck
 	})
 }
 
@@ -986,7 +985,9 @@ func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 	maps.Copy(w.Header(), header)
 
 	w.WriteHeader(statusCode)
-	w.Write(retBytes)
+	if _, err := w.Write(retBytes); err != nil {
+		core.Logger().Error("error writing forwarded response", "error", err)
+	}
 }
 
 // request is a helper to perform a request and properly exit in the
@@ -1230,7 +1231,7 @@ func respondOk(w http.ResponseWriter, body any) {
 	} else {
 		w.WriteHeader(http.StatusOK)
 		enc := json.NewEncoder(w)
-		enc.Encode(body)
+		enc.Encode(body) //nolint:errcheck
 	}
 }
 
@@ -1265,7 +1266,7 @@ func respondOIDCPermissionDenied(w http.ResponseWriter) {
 	oidcResponse.ErrorDescription = errorDescription
 
 	enc := json.NewEncoder(w)
-	enc.Encode(oidcResponse)
+	enc.Encode(oidcResponse) //nolint:errcheck
 }
 
 func handleForwardIfStandby(core *vault.Core, handler http.Handler) http.Handler {

@@ -1,0 +1,3 @@
+```release-note:bug
+core/plugins: Fix transactions started by external plugins failing when using the PostgreSQL storage backend.
+```

@@ -657,7 +657,7 @@ func (c *Core) raftSnapshotRestoreCallback(grabLock bool, sealNode bool) func(co
 			// it's in an unknown state
 			defer func() {
 				if retErr != nil {
-					if err := c.sealInternalWithOptions(false); err != nil {
+					if err := c.sealInternalWithOptions(sealOptions{preSeal: true}); err != nil {
 						c.logger.Error("failed to seal node", "error", err)
 					}
 				}

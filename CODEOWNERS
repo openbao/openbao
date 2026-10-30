@@ -22,6 +22,7 @@
 /Makefile @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 /sdk/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 /website/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
+/ui/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 
 # Kubernetes team ownership
 /api/auth/kubernetes/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers @openbao/openbao-k8s-committers
@@ -29,8 +30,8 @@
 /internal/builtin/logical/kubernetes/ @openbao/openbao-org-maintainers @openbao/openbao-k8s-committers
 /internal/command/agentproxyshared/auth/kubernetes/ @openbao/openbao-org-maintainers @openbao/openbao-k8s-committers
 /internal/serviceregistration/kubernetes/ @openbao/openbao-org-maintainers @openbao/openbao-k8s-committers
-/ui/**/*kubernetes* @openbao/openbao-org-maintainers @openbao/openbao-k8s-committers
-/ui/**/*kubernetes*/** @openbao/openbao-org-maintainers @openbao/openbao-k8s-committers
+/ui/**/*kubernetes* @openbao/openbao-org-maintainers @openbao/openbao-core-committers @openbao/openbao-k8s-committers
+/ui/**/*kubernetes*/** @openbao/openbao-org-maintainers @openbao/openbao-core-committers @openbao/openbao-k8s-committers
 /website/content/docs/platform/k8s/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers @openbao/openbao-k8s-committers
 /website/content/partials/helm/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers @openbao/openbao-k8s-committers
 

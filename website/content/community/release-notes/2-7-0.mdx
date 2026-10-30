@@ -1,11 +1,41 @@
 ---
 sidebar_label: 2.7.x
+sidebar_position: -270
 description: Release notes for OpenBao 2.7.x
 ---
 
 # OpenBao 2.7.x release notes
 
-## 2.7.1
+## v2.7.2
+
+**Release date:** October 26, 2026
+
+### SECURITY
+
+* auth/cert: Add resolve path canonicalization to CRL paths. GHSA-736f-82w7-hj22. [[GH-4323](https://github.com/openbao/openbao/pull/4323)]
+* secrets/approle: Add resolve path canonicalization in Role ID paths. GHSA-736f-82w7-hj22. [[GH-4323](https://github.com/openbao/openbao/pull/4323)]
+* secrets/identity: Ensure `client_type=public` is denied with `client_credentials=true` in the OIDC provider. GHSA-q824-44ff-f5j5. [[GH-4323](https://github.com/openbao/openbao/pull/4323)]
+* secrets/ssh: Deny wildcards (`*`) in SSH certificate identity templating by default. Configurable via the `allow_wildcards_in_identity_templates` parameter. GHSA-h76r-48x5-36hg. [[GH-4323](https://github.com/openbao/openbao/pull/4323)]
+* secrets/transit: Ensure imported key backup does not allow clobbering arbitrary keys through path traversal. GHSA-5pmx-2p74-x478. [[GH-4323](https://github.com/openbao/openbao/pull/4323)]
+
+### IMPROVEMENTS
+
+* ui: Add fields to configure external keys in PKI. [[GH-4306](https://github.com/openbao/openbao/pull/4306)]
+
+### BUG FIXES
+
+* core: Fix rate limit exempt paths being unresponsive during post-unseal. [[GH-4293](https://github.com/openbao/openbao/pull/4293)]
+* core: Fix sudo-capable tokens failing sudo checks on their final use. [[GH-4158](https://github.com/openbao/openbao/pull/4158)]
+* core/plugins: Fix transactions started by external plugins failing when using the PostgreSQL storage backend. [[GH-4177](https://github.com/openbao/openbao/pull/4177)]
+* core/plugins: Ensure plugin backend reloading with `scope=global` actually performs a cluster-wide reload. [[GH-4221](https://github.com/openbao/openbao/pull/4221)]
+* core/plugins: Avoid immediate plugin reloads on standbys after tuning a mount's version and wait for a direct node-local or `scope=global` reload instead. [[GH-4221](https://github.com/openbao/openbao/pull/4221)]
+* core/namespaces: Fix namespace deletion failing after upgrading to v2.7.x from an earlier version. [[GH-4201](https://github.com/openbao/openbao/pull/4201)]
+* auth/oidc: Fix login in direct callback mode by including the namespace in the redirect URI. [[GH-4199](https://github.com/openbao/openbao/pull/4199)]
+* secrets/pki: Fix intermediate CSR generation for type `kms` not using the provided external key and generating an internally-stored private key instead. [[GH-4309](https://github.com/openbao/openbao/pull/4309)]
+* kms/transit: Respect the `version` parameter when exporting a public key instead of fetching the latest version's one. [[GH-4297](https://github.com/openbao/openbao/pull/4297)]
+* ui: Fix blank "key bits" dropdown when generating an ML-DSA key in PKI. [[GH-4305](https://github.com/openbao/openbao/pull/4305)]
+
+## v2.7.1
 
 **Release date:** October 1, 2026
 
@@ -30,7 +60,7 @@ description: Release notes for OpenBao 2.7.x
 * storage/postgresql: Switch to `pg_last_wal_replay_lsn()` for applied index value checks. [[GH-4118](https://github.com/openbao/openbao/pull/4118)]
 * api: Honor the error backoff interval after failed `LifetimeWatcher` renewal attempts. [[GH-4036](https://github.com/openbao/openbao/pull/4036)]
 
-## 2.7.0
+## v2.7.0
 
 **Release date:** September 23, 2026
 

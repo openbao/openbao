@@ -482,20 +482,11 @@ func TestPluginCatalog_PluginMain_Userpass(t *testing.T) {
 		return
 	}
 
-	apiClientMeta := &api.PluginAPIClientMeta{}
-	flags := apiClientMeta.FlagSet()
-	flags.Parse(os.Args[1:])
-
-	tlsConfig := apiClientMeta.GetTLSConfig()
-	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
-
-	err := backendplugin.Serve(
+	require.NoError(t, backendplugin.Serve(
 		&backendplugin.ServeOpts{
 			BackendFactoryFunc: userpass.Factory,
-			TLSProviderFunc:    tlsProviderFunc,
 		},
-	)
-	require.NoError(t, err)
+	))
 }
 
 func TestPluginCatalog_PluginMain_UserpassMultiplexed(t *testing.T) {
@@ -503,20 +494,11 @@ func TestPluginCatalog_PluginMain_UserpassMultiplexed(t *testing.T) {
 		return
 	}
 
-	apiClientMeta := &api.PluginAPIClientMeta{}
-	flags := apiClientMeta.FlagSet()
-	flags.Parse(os.Args[1:])
-
-	tlsConfig := apiClientMeta.GetTLSConfig()
-	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
-
-	err := backendplugin.ServeMultiplex(
+	require.NoError(t, backendplugin.ServeMultiplex(
 		&backendplugin.ServeOpts{
 			BackendFactoryFunc: userpass.Factory,
-			TLSProviderFunc:    tlsProviderFunc,
 		},
-	)
-	require.NoError(t, err)
+	))
 }
 
 func TestPluginCatalog_PluginMain_Postgres(t *testing.T) {

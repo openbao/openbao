@@ -18,7 +18,7 @@ ARG TARGETARCH
 COPY --chmod=555 bin/${TARGETARCH}/bao /usr/bin/bao
 
 # This is {docker.io,quay.io,ghcr.io}/openbao/openbao.
-FROM alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS default
+FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a AS default
 
 COPY LICENSE /licenses/mozilla.txt
 
@@ -59,7 +59,7 @@ CMD ["server", "-dev", "-dev-no-store-token"]
 
 
 # This is {docker.io,quay.io,ghcr.io}/openbao/openbao-ubi.
-FROM registry.access.redhat.com/ubi10-minimal:10.2@sha256:204e1531cee54562b107fb31e0b327062fc3d5d67af7cc0d2e66b2c572b9044f AS ubi
+FROM registry.access.redhat.com/ubi10-minimal:10.2@sha256:ab67cd02caf8706e34a695a1432ebe965934f6128ec352a6c3f4048b43a4fb5e AS ubi
 
 COPY LICENSE /licenses/mozilla.txt
 
@@ -112,7 +112,7 @@ CMD ["server", "-dev", "-dev-no-store-token"]
 
 
 # This is {docker.io,quay.io,ghcr.io}/openbao/openbao-distroless.
-FROM gcr.io/distroless/static:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 AS distroless
+FROM gcr.io/distroless/static:nonroot@sha256:18f4cc26c9ffa7f20a359298be7deadac5c607c8e03a02b8119f1a5fc2f82c99 AS distroless
 
 COPY LICENSE /licenses/mozilla.txt
 

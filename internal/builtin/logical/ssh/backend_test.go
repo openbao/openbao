@@ -32,6 +32,7 @@ const (
 	testIP            = "127.0.0.1"
 	testUserName      = "vaultssh"
 	testMultiUserName = "vaultssh,otherssh"
+	testGlobUserName  = "*ssh"
 	testAdminUser     = "vaultssh"
 	testCaKeyType     = "ca"
 	testOTPKeyType    = "otp"
@@ -211,12 +212,21 @@ func prepareTestContainer(t *testing.T, tag, caPublicKeyPEM string) (func(), str
 }
 
 func testSSH(user, host string, auth ssh.AuthMethod, command string) error {
-	client, err := ssh.Dial("tcp", host, &ssh.ClientConfig{
-		User:            user,
-		Auth:            []ssh.AuthMethod{auth},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         5 * time.Second,
-	})
+	var client *ssh.Client
+	var err error
+	// wait for starting test container
+	maxRetries := 10
+	for range maxRetries {
+		client, err = ssh.Dial("tcp", host, &ssh.ClientConfig{
+			User:            user,
+			Auth:            []ssh.AuthMethod{auth},
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			Timeout:         5 * time.Second,
+		})
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
 		return fmt.Errorf("unable to dial sshd to host %q: %v", host, err)
 	}
@@ -371,6 +381,7 @@ func TestBackend_AllowedUsersTemplate(t *testing.T) {
 			"ssh_username": testUserName,
 		},
 		false,
+		false,
 	)
 }
 
@@ -382,6 +393,19 @@ func TestBackend_MultipleAllowedUsersTemplate(t *testing.T) {
 			"ssh_username": testMultiUserName,
 		},
 		true,
+		false,
+	)
+}
+
+func TestBackend_GlobAllowedUsersTemplate(t *testing.T) {
+	testAllowedUsersTemplate(
+		t,
+		"{{ identity.entity.metadata.ssh_username }}",
+		testGlobUserName, map[string]string{
+			"ssh_username": testGlobUserName,
+		},
+		false,
+		true,
 	)
 }
 
@@ -392,6 +416,7 @@ func TestBackend_AllowedUsersTemplate_WithStaticPrefix(t *testing.T) {
 		"ssh-"+testUserName, map[string]string{
 			"ssh_username": testUserName,
 		},
+		false,
 		false,
 	)
 }
@@ -1922,17 +1947,18 @@ func testAllowedPrincipalsTemplate(t *testing.T, testAllowedDomainsTemplate stri
 
 func testAllowedUsersTemplate(t *testing.T, testAllowedUsersTemplate string,
 	expectedValidPrincipal string, testEntityMetadata map[string]string,
-	allowCommasInIdentityTemplates bool,
+	allowCommasInIdentityTemplates bool, allowWildcardsInIdentityTemplates bool,
 ) {
 	testAllowedPrincipalsTemplate(
 		t, testAllowedUsersTemplate,
 		expectedValidPrincipal, testEntityMetadata,
 		map[string]any{
-			"key_type":                           testCaKeyType,
-			"allow_user_certificates":            true,
-			"allowed_users":                      testAllowedUsersTemplate,
-			"allowed_users_template":             true,
-			"allow_commas_in_identity_templates": allowCommasInIdentityTemplates,
+			"key_type":                              testCaKeyType,
+			"allow_user_certificates":               true,
+			"allowed_users":                         testAllowedUsersTemplate,
+			"allowed_users_template":                true,
+			"allow_commas_in_identity_templates":    allowCommasInIdentityTemplates,
+			"allow_wildcards_in_identity_templates": allowWildcardsInIdentityTemplates,
 		},
 		map[string]any{
 			"public_key":       testCAPublicKey,

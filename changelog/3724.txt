@@ -1,0 +1,3 @@
+```release-note:bug
+ui: Query capabilities-self in the token's own namespace preventing 403 responses for cross-namespace browsing.
+```

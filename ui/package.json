@@ -202,7 +202,7 @@
     }
   },
   "engines": {
-    "node": "20"
+    "node": "26"
   },
   "ember": {
     "edition": "octane"

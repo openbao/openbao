@@ -1,0 +1,3 @@
+```release-note:improvement
+core/namespaces: Namespaces can now be converted between normal and sealable namespaces using the new `bao namespace migrate-barrier` command; the corresponding API endpoint is `/sys/namespaces/<path>/migrate-barrier`.
+```

@@ -361,7 +361,7 @@ func (n *DockerClusterNode) setupCert(ip string) error {
 
 	n.ServerCertPEMFile = filepath.Join(n.WorkDir, "cert.pem")
 	ServerCertTempFile := filepath.Join(n.WorkDir, "cert.tmp")
-	err = os.WriteFile(ServerCertTempFile, n.ServerCertPEM, 0o755)
+	err = os.WriteFile(ServerCertTempFile, n.ServerCertPEM, 0o644)
 	if err != nil {
 		return err
 	}
@@ -372,7 +372,7 @@ func (n *DockerClusterNode) setupCert(ip string) error {
 
 	n.ServerKeyPEMFile = filepath.Join(n.WorkDir, "key.pem")
 	ServerKeyTempFile := filepath.Join(n.WorkDir, "key.tmp")
-	err = os.WriteFile(ServerKeyTempFile, n.ServerKeyPEM, 0o755)
+	err = os.WriteFile(ServerKeyTempFile, n.ServerKeyPEM, 0o644)
 	if err != nil {
 		return err
 	}

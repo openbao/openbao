@@ -1,0 +1,3 @@
+```release-note:bug
+plugins/database/kafka: Fix credential revocation failing with `delete allow ACLs: EOF`. The ACL delete filter now sets the resource pattern type to ANY instead of UNKNOWN, which Kafka rejects.
+```

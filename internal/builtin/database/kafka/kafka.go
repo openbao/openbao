@@ -253,9 +253,9 @@ func (k *Kafka) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (dbplu
 
 	cleanup := func(opErr error) (dbplugin.NewUserResponse, error) {
 		// Clean up any created ACLs
-		delAllow := kadm.NewACLs().AnyResource().Allow("User:" + username).AllowHosts().Operations(kadm.OpAny)
+		delAllow := kadm.NewACLs().AnyResource().ResourcePatternType(kadm.ACLPatternAny).Allow("User:" + username).AllowHosts().Operations(kadm.OpAny)
 		_, _ = k.admin.DeleteACLs(ctx, delAllow)
-		delDeny := kadm.NewACLs().AnyResource().Deny("User:" + username).DenyHosts().Operations(kadm.OpAny)
+		delDeny := kadm.NewACLs().AnyResource().ResourcePatternType(kadm.ACLPatternAny).Deny("User:" + username).DenyHosts().Operations(kadm.OpAny)
 		_, _ = k.admin.DeleteACLs(ctx, delDeny)
 		// Clean up created SCRAM credential
 		_, _ = k.admin.AlterUserSCRAMs(ctx,
@@ -430,7 +430,7 @@ func (k *Kafka) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest) 
 	}
 
 	// 1. Delete all ACLs (Allow and Deny) for this principal across all resources/operations/hosts
-	delAllow := kadm.NewACLs().AnyResource().Allow("User:" + req.Username).AllowHosts().Operations(kadm.OpAny)
+	delAllow := kadm.NewACLs().AnyResource().ResourcePatternType(kadm.ACLPatternAny).Allow("User:" + req.Username).AllowHosts().Operations(kadm.OpAny)
 	resAllow, err := k.admin.DeleteACLs(ctx, delAllow)
 	if err != nil {
 		return dbplugin.DeleteUserResponse{}, fmt.Errorf("delete allow ACLs: %w", err)
@@ -439,7 +439,7 @@ func (k *Kafka) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest) 
 		return dbplugin.DeleteUserResponse{}, fmt.Errorf("delete allow ACL: %w", err)
 	}
 
-	delDeny := kadm.NewACLs().AnyResource().Deny("User:" + req.Username).DenyHosts().Operations(kadm.OpAny)
+	delDeny := kadm.NewACLs().AnyResource().ResourcePatternType(kadm.ACLPatternAny).Deny("User:" + req.Username).DenyHosts().Operations(kadm.OpAny)
 	resDeny, err := k.admin.DeleteACLs(ctx, delDeny)
 	if err != nil {
 		return dbplugin.DeleteUserResponse{}, fmt.Errorf("delete deny ACLs: %w", err)

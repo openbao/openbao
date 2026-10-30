@@ -20,6 +20,7 @@ import (
 
 	rabbithole "github.com/michaelklishin/rabbit-hole/v3"
 	dbplugin "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/v2/internal/helper/dbtlsutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -122,45 +123,45 @@ func TestRMQ_MakeTLSConfig(t *testing.T) {
 		require.Nil(t, tlsConfig)
 	})
 
-	t.Run("insecure alone builds an InsecureSkipVerify config", func(t *testing.T) {
-		tlsConfig, err := makeTLSConfig(&rmqConfig{Insecure: true})
+	t.Run("tls_skip_verify alone builds an InsecureSkipVerify config", func(t *testing.T) {
+		tlsConfig, err := makeTLSConfig(&rmqConfig{tls: dbtlsutil.Config{SkipVerify: true}})
 		require.NoError(t, err)
 		require.NotNil(t, tlsConfig)
 		require.True(t, tlsConfig.InsecureSkipVerify)
 	})
 
 	t.Run("valid tls_ca is parsed into RootCAs", func(t *testing.T) {
-		tlsConfig, err := makeTLSConfig(&rmqConfig{TLSCA: certPEM})
+		tlsConfig, err := makeTLSConfig(&rmqConfig{tls: dbtlsutil.Config{CA: certPEM}})
 		require.NoError(t, err)
 		require.NotNil(t, tlsConfig)
 		require.NotNil(t, tlsConfig.RootCAs)
 	})
 
 	t.Run("invalid tls_ca PEM errors", func(t *testing.T) {
-		_, err := makeTLSConfig(&rmqConfig{TLSCA: "not a pem bundle"})
+		_, err := makeTLSConfig(&rmqConfig{tls: dbtlsutil.Config{CA: "not a pem bundle"}})
 		require.Error(t, err)
 	})
 
 	t.Run("valid tls_certificate/tls_key pair is parsed", func(t *testing.T) {
-		tlsConfig, err := makeTLSConfig(&rmqConfig{TLSCertificate: certPEM, TLSKey: keyPEM})
+		tlsConfig, err := makeTLSConfig(&rmqConfig{tls: dbtlsutil.Config{Certificate: certPEM, Key: keyPEM}})
 		require.NoError(t, err)
 		require.NotNil(t, tlsConfig)
 		require.Len(t, tlsConfig.Certificates, 1)
 	})
 
 	t.Run("tls_certificate without tls_key errors", func(t *testing.T) {
-		_, err := makeTLSConfig(&rmqConfig{TLSCertificate: certPEM})
+		_, err := dbtlsutil.Decode(map[string]any{"tls_certificate": certPEM})
 		require.Error(t, err)
 	})
 
 	t.Run("tls_key without tls_certificate errors", func(t *testing.T) {
-		_, err := makeTLSConfig(&rmqConfig{TLSKey: keyPEM})
+		_, err := dbtlsutil.Decode(map[string]any{"tls_key": keyPEM})
 		require.Error(t, err)
 	})
 
 	t.Run("mismatched tls_certificate/tls_key errors", func(t *testing.T) {
 		_, otherKeyPEM := generateTestCert(t)
-		_, err := makeTLSConfig(&rmqConfig{TLSCertificate: certPEM, TLSKey: otherKeyPEM})
+		_, err := makeTLSConfig(&rmqConfig{tls: dbtlsutil.Config{Certificate: certPEM, Key: otherKeyPEM}})
 		require.Error(t, err)
 	})
 }

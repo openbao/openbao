@@ -1,3 +1,18 @@
 ```release-note:bug
 plugins/database/kafka: Fix credential revocation failing with `delete allow ACLs: EOF`. The ACL delete filter now sets the resource pattern type to ANY instead of UNKNOWN, which Kafka rejects.
 ```
+```release-note:improvement
+plugins/database: The Druid, Elasticsearch, etcd, HANA, Ignite, Kafka, Milvus, MSSQL, Neo4j, Oracle, Qdrant, RabbitMQ, Solr and Weaviate plugins now share one TLS implementation and accept the same options: `tls_ca`, `tls_certificate`, `tls_key`, `tls_server_name`, `tls_skip_verify` and `use_tls`. The previous names `ca_cert`, `client_cert`, `client_key` and `insecure` are still accepted as aliases.
+```
+```release-note:bug
+plugins/database: The Druid, Ignite, Kafka, Milvus, Qdrant, RabbitMQ, Solr and Weaviate plugins now honor `tls_server_name`. It was previously ignored.
+```
+```release-note:change
+plugins/database: When `tls_ca` is set, the etcd, HANA, MSSQL, Neo4j and Oracle plugins now trust only that CA instead of adding it to the system's trusted CAs, matching the other plugins.
+```
+```release-note:change
+plugins/database: `ca_path` and `tls_ca_path` are deprecated in favor of `tls_ca`.
+```
+```release-note:improvement
+ui: Database connection forms for the sigilr plugins show the same TLS fields (`tls_ca`, `tls_certificate`, `tls_key`, `tls_server_name`, `tls_skip_verify`, and `use_tls` where it applies).
+```

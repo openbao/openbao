@@ -31,7 +31,7 @@ Keys (HS256-signed JSON Web Tokens) and stateful token revocation via the
 | `url` | yes | `http(s)://host:port` |
 | `api_key` | yes | Admin API key used for JWT signing and verification |
 | `validation_collection` | no | Collection used for stateful token validation (default: `openbao_users`) |
-| `ca_cert` / `ca_path` / `client_cert` / `client_key` / `insecure` | no | TLS plumbing |
+| `tls_ca` / `tls_certificate` / `tls_key` / `tls_server_name` / `tls_skip_verify` | no | Inline TLS settings (`internal/helper/dbtlsutil`). `ca_cert`, `client_cert`, `client_key` and `insecure` are accepted as aliases. |
 
 ## Tests
 

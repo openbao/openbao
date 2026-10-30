@@ -39,7 +39,7 @@ cluster with no user-created caches.
 | `url` | yes* | Thin client target; only host and port are used (e.g. `tcp://ignite:10800`). Accepted for compatibility with configs written for the REST-based plugin. |
 | `host` / `port` | no | Explicit override of what `url` provides; port defaults to 10800 |
 | `username` / `password` | yes | Root credentials (sent during the binary handshake) |
-| `ca_cert` / `ca_path` / `client_cert` / `client_key` / `insecure` | no | TLS plumbing |
+| `tls_ca` / `tls_certificate` / `tls_key` / `tls_server_name` / `tls_skip_verify` / `use_tls` | no | Inline TLS settings (`internal/helper/dbtlsutil`). `ca_cert`, `client_cert`, `client_key` and `insecure` are accepted as aliases. |
 | `username_template` | no | Override default template |
 | `spoke_name` | yes (remote) | Spoke that executes the requests |
 

@@ -9,6 +9,7 @@ import (
 
 	dbplugin "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
+	"github.com/openbao/openbao/v2/internal/helper/dbtlsutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -117,10 +118,10 @@ func TestIgnite_Acceptance(t *testing.T) {
 		"password": pass,
 	}
 	if v := os.Getenv("IGNITE_CA_CERT"); v != "" {
-		cfg["ca_cert"] = v
+		cfg["tls_ca"] = v
 	}
 	if v := os.Getenv("IGNITE_INSECURE"); v != "" {
-		cfg["insecure"] = true
+		cfg["tls_skip_verify"] = true
 	}
 
 	db := newIgnite()
@@ -166,7 +167,7 @@ func TestIgnite_BuildTLSConfig(t *testing.T) {
 	})
 
 	t.Run("insecure explicitly enables TLS with InsecureSkipVerify", func(t *testing.T) {
-		cfg := &igniteConfig{Host: "ignite.example.com", Port: 10800, Insecure: true}
+		cfg := &igniteConfig{Host: "ignite.example.com", Port: 10800, tls: dbtlsutil.Config{SkipVerify: true}}
 		tlsCfg, err := buildTLSConfig(cfg)
 		require.NoError(t, err)
 		require.NotNil(t, tlsCfg)
@@ -174,29 +175,27 @@ func TestIgnite_BuildTLSConfig(t *testing.T) {
 		require.Equal(t, "ignite.example.com", tlsCfg.ServerName)
 	})
 
-	t.Run("mutual TLS requires both client_cert and client_key", func(t *testing.T) {
-		cfg := &igniteConfig{Host: "ignite.example.com", ClientCert: "some-cert"}
-		_, err := buildTLSConfig(cfg)
+	t.Run("mutual TLS requires both tls_certificate and tls_key", func(t *testing.T) {
+		_, err := dbtlsutil.Decode(map[string]any{"tls_certificate": "some-cert"})
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "both client_cert and client_key are required")
+		require.Contains(t, err.Error(), "both tls_certificate and tls_key are required")
 
-		cfg = &igniteConfig{Host: "ignite.example.com", ClientKey: "some-key"}
-		_, err = buildTLSConfig(cfg)
+		_, err = dbtlsutil.Decode(map[string]any{"tls_key": "some-key"})
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "both client_cert and client_key are required")
+		require.Contains(t, err.Error(), "both tls_certificate and tls_key are required")
 	})
 
-	t.Run("invalid ca_cert pem returns error", func(t *testing.T) {
-		cfg := &igniteConfig{Host: "ignite.example.com", CACert: "not-a-valid-pem"}
+	t.Run("invalid tls_ca pem returns error", func(t *testing.T) {
+		cfg := &igniteConfig{Host: "ignite.example.com", tls: dbtlsutil.Config{CA: "not-a-valid-pem"}}
 		_, err := buildTLSConfig(cfg)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to parse ca_cert PEM")
+		require.Contains(t, err.Error(), "failed to parse tls_ca PEM")
 	})
 
-	t.Run("non-existent ca_path returns error", func(t *testing.T) {
-		cfg := &igniteConfig{Host: "ignite.example.com", CAPath: "/nonexistent/ca.pem"}
+	t.Run("non-existent tls_ca_path returns error", func(t *testing.T) {
+		cfg := &igniteConfig{Host: "ignite.example.com", tls: dbtlsutil.Config{CAPath: "/nonexistent/ca.pem"}}
 		_, err := buildTLSConfig(cfg)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "read ca_path")
+		require.Contains(t, err.Error(), "read tls_ca_path")
 	})
 }

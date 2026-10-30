@@ -37,10 +37,7 @@ $ bao read database/creds/reader
 | `plugin_name` | yes | `elasticsearch-database-plugin` or `remote-elasticsearch-plugin` |
 | `url` | yes | Full URL with scheme + port |
 | `username` / `password` | yes | Root credentials |
-| `ca_cert` / `ca_path` | no | Custom CA bundle PEM (string or file path) |
-| `client_cert` / `client_key` | no | mTLS client identity PEM |
-| `tls_server_name` | no | Override the TLS server name used for SNI and certificate verification |
-| `insecure` | no | Skip TLS verify (dev only) |
+| `tls_ca` / `tls_certificate` / `tls_key` / `tls_server_name` / `tls_skip_verify` | no | Inline TLS settings (`internal/helper/dbtlsutil`). `ca_cert`, `client_cert`, `client_key` and `insecure` are accepted as aliases. |
 | `use_old_xpack` | no | Use ES 6 `/_xpack/security/` path |
 | `username_template` | no | Override the dynamic-username template |
 | `spoke_name` | yes (remote) | Spoke that will execute the requests |

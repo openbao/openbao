@@ -22,7 +22,7 @@ Built-in and remote variants are both registered.
 | `username` / `password` | one of | Root credentials |
 | `token` | one of | API key / token (e.g. Zilliz Cloud) |
 | `db_name` | no | Milvus database name |
-| `ca_cert` / `ca_path` / `client_cert` / `client_key` / `insecure` | no | TLS plumbing |
+| `tls_ca` / `tls_certificate` / `tls_key` / `tls_server_name` / `tls_skip_verify` / `use_tls` | no | Inline TLS settings (`internal/helper/dbtlsutil`). `ca_cert`, `client_cert`, `client_key` and `insecure` are accepted as aliases. |
 | `username_template` | no | Override default template |
 | `spoke_name` | yes (remote) | Spoke that executes the requests |
 

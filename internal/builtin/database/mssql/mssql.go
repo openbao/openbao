@@ -22,7 +22,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/dbtxn"
 	"github.com/openbao/openbao/sdk/v2/helper/template"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/openbao/openbao/v2/internal/builtin/database/dbtls"
+	"github.com/openbao/openbao/v2/internal/helper/dbtlsutil"
 )
 
 const (
@@ -88,7 +88,7 @@ func (m *MSSQL) getConnection(ctx context.Context) (*sql.DB, error) {
 }
 
 func (m *MSSQL) Initialize(ctx context.Context, req dbplugin.InitializeRequest) (dbplugin.InitializeResponse, error) {
-	tlsSettings, err := dbtls.Decode(req.Config)
+	tlsSettings, err := dbtlsutil.Decode(req.Config)
 	if err != nil {
 		return dbplugin.InitializeResponse{}, fmt.Errorf("invalid TLS configuration: %w", err)
 	}
@@ -104,7 +104,7 @@ func (m *MSSQL) Initialize(ctx context.Context, req dbplugin.InitializeRequest) 
 			}
 			config.Encryption = msdsn.EncryptionRequired
 			config.TLSConfig = tlsConfig
-			config.TrustServerCertificate = tlsSettings.Insecure
+			config.TrustServerCertificate = tlsSettings.SkipVerify
 			config.HostInCertificateProvided = tlsSettings.ServerName != ""
 			return sql.OpenDB(mssql.NewConnectorConfig(config)), nil
 		}

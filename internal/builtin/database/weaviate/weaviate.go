@@ -21,15 +21,12 @@ package weaviate
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -39,6 +36,7 @@ import (
 	dbplugin "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/v2/helper/template"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/helper/dbtlsutil"
 )
 
 const (
@@ -61,11 +59,7 @@ type weaviateConfig struct {
 	URL    string `mapstructure:"url"`
 	APIKey string `mapstructure:"api_key"`
 
-	CACert     string `mapstructure:"ca_cert"`
-	CAPath     string `mapstructure:"ca_path"`
-	ClientCert string `mapstructure:"client_cert"`
-	ClientKey  string `mapstructure:"client_key"`
-	Insecure   bool   `mapstructure:"insecure"`
+	tls dbtlsutil.Config
 }
 
 var (
@@ -115,6 +109,11 @@ func (w *Weaviate) Initialize(ctx context.Context, req dbplugin.InitializeReques
 	if err := mapstructure.WeakDecode(req.Config, cfg); err != nil {
 		return dbplugin.InitializeResponse{}, err
 	}
+	tlsSettings, err := dbtlsutil.Decode(req.Config)
+	if err != nil {
+		return dbplugin.InitializeResponse{}, err
+	}
+	cfg.tls = tlsSettings
 	if cfg.URL == "" {
 		return dbplugin.InitializeResponse{}, errors.New("url is required")
 	}
@@ -507,34 +506,9 @@ func formatWeaviateError(status string, body []byte) error {
 }
 
 func newHTTPClient(cfg *weaviateConfig) (*http.Client, error) {
-	tlsCfg := &tls.Config{
-		MinVersion:         tls.VersionTLS12,
-		InsecureSkipVerify: cfg.Insecure,
-	}
-	if cfg.CACert != "" || cfg.CAPath != "" {
-		pool := x509.NewCertPool()
-		if cfg.CACert != "" {
-			if !pool.AppendCertsFromPEM([]byte(cfg.CACert)) {
-				return nil, errors.New("failed to parse ca_cert PEM")
-			}
-		}
-		if cfg.CAPath != "" {
-			pem, err := os.ReadFile(cfg.CAPath)
-			if err != nil {
-				return nil, fmt.Errorf("read ca_path: %w", err)
-			}
-			if !pool.AppendCertsFromPEM(pem) {
-				return nil, errors.New("failed to parse ca_path PEM")
-			}
-		}
-		tlsCfg.RootCAs = pool
-	}
-	if cfg.ClientCert != "" && cfg.ClientKey != "" {
-		cert, err := tls.X509KeyPair([]byte(cfg.ClientCert), []byte(cfg.ClientKey))
-		if err != nil {
-			return nil, fmt.Errorf("client cert/key: %w", err)
-		}
-		tlsCfg.Certificates = []tls.Certificate{cert}
+	tlsCfg, err := cfg.tls.Build("")
+	if err != nil {
+		return nil, err
 	}
 
 	tr := http.DefaultTransport.(*http.Transport).Clone()

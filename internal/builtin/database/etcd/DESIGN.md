@@ -22,7 +22,7 @@ Also exposed remotely as `remote-etcd-plugin`.
 | `endpoints` | yes | Comma-separated list of etcd client URLs, e.g. `https://etcd1:2379,https://etcd2:2379` |
 | `username` / `password` | yes if auth is enabled | Root credentials used to authenticate the client |
 | `dial_timeout` | no | Go duration string; defaults to `5s` |
-| `tls_ca` / `tls_certificate` / `tls_key` / `tls_server_name` / `insecure` / `use_tls` | no | Common inline TLS fields (`internal/builtin/database/dbtls`) |
+| `tls_ca` / `tls_certificate` / `tls_key` / `tls_server_name` / `tls_skip_verify` / `use_tls` | no | Inline TLS settings (`internal/helper/dbtlsutil`). `ca_cert`, `client_cert`, `client_key` and `insecure` are accepted as aliases. |
 | `username_template` | no | Override default template |
 | `spoke_name` | yes (remote) | Spoke that executes the requests |
 

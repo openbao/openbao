@@ -9,12 +9,9 @@ package kafka
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 
@@ -24,6 +21,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
 	"github.com/openbao/openbao/sdk/v2/helper/template"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/helper/dbtlsutil"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kerr"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -67,12 +65,7 @@ type kafkaConfig struct {
 	Username  string `mapstructure:"username"`
 	Password  string `mapstructure:"password"`
 
-	TLSCA     string `mapstructure:"tls_ca"`
-	TLSCAPath string `mapstructure:"tls_ca_path"`
-	TLSCert   string `mapstructure:"tls_certificate"`
-	TLSKey    string `mapstructure:"tls_key"`
-	Insecure  bool   `mapstructure:"insecure"`
-	UseTLS    bool   `mapstructure:"use_tls"`
+	tls dbtlsutil.Config
 }
 
 type kafkaACL struct {
@@ -137,6 +130,11 @@ func (k *Kafka) Initialize(ctx context.Context, req dbplugin.InitializeRequest) 
 	if err := mapstructure.WeakDecode(req.Config, cfg); err != nil {
 		return dbplugin.InitializeResponse{}, err
 	}
+	tlsSettings, err := dbtlsutil.Decode(req.Config)
+	if err != nil {
+		return dbplugin.InitializeResponse{}, err
+	}
+	cfg.tls = tlsSettings
 	cfg.Brokers = sanitizeBrokers(cfg.Brokers)
 	if len(cfg.Brokers) == 0 {
 		return dbplugin.InitializeResponse{}, errors.New("brokers is required")
@@ -154,8 +152,8 @@ func (k *Kafka) Initialize(ctx context.Context, req dbplugin.InitializeRequest) 
 		kgo.SeedBrokers(cfg.Brokers...),
 		kgo.SASL(mech),
 	}
-	if cfg.UseTLS || cfg.TLSCA != "" || cfg.TLSCAPath != "" || cfg.TLSCert != "" {
-		tlsCfg, err := buildTLS(cfg)
+	if cfg.tls.Configured() {
+		tlsCfg, err := cfg.tls.Build("")
 		if err != nil {
 			return dbplugin.InitializeResponse{}, err
 		}
@@ -544,39 +542,6 @@ func kadmScramMechanism(name string) (kadm.ScramMechanism, error) {
 	default:
 		return 0, fmt.Errorf("unsupported mechanism %q", name)
 	}
-}
-
-func buildTLS(cfg *kafkaConfig) (*tls.Config, error) {
-	tlsCfg := &tls.Config{
-		MinVersion:         tls.VersionTLS12,
-		InsecureSkipVerify: cfg.Insecure,
-	}
-	if cfg.TLSCA != "" || cfg.TLSCAPath != "" {
-		pool := x509.NewCertPool()
-		if cfg.TLSCA != "" {
-			if !pool.AppendCertsFromPEM([]byte(cfg.TLSCA)) {
-				return nil, errors.New("failed to parse tls_ca PEM")
-			}
-		}
-		if cfg.TLSCAPath != "" {
-			pem, err := os.ReadFile(cfg.TLSCAPath)
-			if err != nil {
-				return nil, fmt.Errorf("read tls_ca_path: %w", err)
-			}
-			if !pool.AppendCertsFromPEM(pem) {
-				return nil, errors.New("failed to parse tls_ca_path PEM")
-			}
-		}
-		tlsCfg.RootCAs = pool
-	}
-	if cfg.TLSCert != "" && cfg.TLSKey != "" {
-		cert, err := tls.X509KeyPair([]byte(cfg.TLSCert), []byte(cfg.TLSKey))
-		if err != nil {
-			return nil, fmt.Errorf("client cert/key: %w", err)
-		}
-		tlsCfg.Certificates = []tls.Certificate{cert}
-	}
-	return tlsCfg, nil
 }
 
 func parseACLOperation(op string) (kadm.ACLOperation, error) {

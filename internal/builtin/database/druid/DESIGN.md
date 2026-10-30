@@ -24,7 +24,7 @@ and `remote-druid-plugin`).
 | `username` / `password` | yes | Root credentials |
 | `authenticator` | no | Default `MyBasicMetadataAuthenticator` |
 | `authorizer` | no | Default `MyBasicMetadataAuthorizer` |
-| `ca_cert` / `ca_path` / `client_cert` / `client_key` / `insecure` | no | TLS plumbing |
+| `tls_ca` / `tls_certificate` / `tls_key` / `tls_server_name` / `tls_skip_verify` | no | Inline TLS settings (`internal/helper/dbtlsutil`). `ca_cert`, `client_cert`, `client_key` and `insecure` are accepted as aliases. |
 | `username_template` | no | Override default template |
 | `spoke_name` | yes (remote) | Spoke that executes the requests |
 

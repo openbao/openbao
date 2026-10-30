@@ -11,12 +11,10 @@ package ignite
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"net"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,6 +27,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
 	"github.com/openbao/openbao/sdk/v2/helper/template"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/helper/dbtlsutil"
 )
 
 const (
@@ -68,11 +67,7 @@ type igniteConfig struct {
 	Username string `mapstructure:"username"`
 	Password string `mapstructure:"password"`
 
-	CACert     string `mapstructure:"ca_cert"`
-	CAPath     string `mapstructure:"ca_path"`
-	ClientCert string `mapstructure:"client_cert"`
-	ClientKey  string `mapstructure:"client_key"`
-	Insecure   bool   `mapstructure:"insecure"`
+	tls dbtlsutil.Config
 }
 
 var (
@@ -116,6 +111,11 @@ func (i *Ignite) Initialize(ctx context.Context, req dbplugin.InitializeRequest)
 	if err := mapstructure.WeakDecode(req.Config, cfg); err != nil {
 		return dbplugin.InitializeResponse{}, err
 	}
+	tlsSettings, err := dbtlsutil.Decode(req.Config)
+	if err != nil {
+		return dbplugin.InitializeResponse{}, err
+	}
+	cfg.tls = tlsSettings
 	if err := normalizeTarget(cfg); err != nil {
 		return dbplugin.InitializeResponse{}, err
 	}
@@ -288,55 +288,14 @@ func normalizeTarget(cfg *igniteConfig) error {
 }
 
 func (cfg *igniteConfig) tlsConfigured() bool {
-	if cfg == nil {
-		return false
-	}
-	return cfg.CACert != "" || cfg.CAPath != "" || cfg.ClientCert != "" || cfg.ClientKey != "" || cfg.Insecure
+	return cfg != nil && cfg.tls.Configured()
 }
 
 func buildTLSConfig(cfg *igniteConfig) (*tls.Config, error) {
 	if cfg == nil || !cfg.tlsConfigured() {
 		return nil, nil
 	}
-
-	tlsCfg := &tls.Config{
-		MinVersion:         tls.VersionTLS12,
-		InsecureSkipVerify: cfg.Insecure, //nolint:gosec // explicit operator opt-in
-		ServerName:         cfg.Host,
-	}
-
-	if cfg.CACert != "" || cfg.CAPath != "" {
-		pool := x509.NewCertPool()
-		if cfg.CACert != "" {
-			if !pool.AppendCertsFromPEM([]byte(cfg.CACert)) {
-				return nil, errors.New("failed to parse ca_cert PEM")
-			}
-		}
-		if cfg.CAPath != "" {
-			pem, err := os.ReadFile(cfg.CAPath)
-			if err != nil {
-				return nil, fmt.Errorf("read ca_path: %w", err)
-			}
-			if !pool.AppendCertsFromPEM(pem) {
-				return nil, errors.New("failed to parse ca_path PEM")
-			}
-		}
-		tlsCfg.RootCAs = pool
-	}
-
-	if (cfg.ClientCert == "") != (cfg.ClientKey == "") {
-		return nil, errors.New("both client_cert and client_key are required for mutual TLS")
-	}
-
-	if cfg.ClientCert != "" && cfg.ClientKey != "" {
-		cert, err := tls.X509KeyPair([]byte(cfg.ClientCert), []byte(cfg.ClientKey))
-		if err != nil {
-			return nil, fmt.Errorf("client cert/key: %w", err)
-		}
-		tlsCfg.Certificates = []tls.Certificate{cert}
-	}
-
-	return tlsCfg, nil
+	return cfg.tls.Build(cfg.Host)
 }
 
 // withClient opens a thin client connection, runs fn, and closes it.

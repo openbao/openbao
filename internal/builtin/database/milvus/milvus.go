@@ -7,12 +7,9 @@ package milvus
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 
@@ -25,6 +22,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
 	"github.com/openbao/openbao/sdk/v2/helper/template"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/helper/dbtlsutil"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -57,11 +55,7 @@ type milvusConfig struct {
 	Token    string `mapstructure:"token"`
 	DBName   string `mapstructure:"db_name"`
 
-	CACert     string `mapstructure:"ca_cert"`
-	CAPath     string `mapstructure:"ca_path"`
-	ClientCert string `mapstructure:"client_cert"`
-	ClientKey  string `mapstructure:"client_key"`
-	Insecure   bool   `mapstructure:"insecure"`
+	tls dbtlsutil.Config
 }
 
 // milvusStatement represents a structured creation statement containing
@@ -231,6 +225,11 @@ func (m *Milvus) Initialize(ctx context.Context, req dbplugin.InitializeRequest)
 	if err := mapstructure.WeakDecode(req.Config, cfg); err != nil {
 		return dbplugin.InitializeResponse{}, err
 	}
+	tlsSettings, err := dbtlsutil.Decode(req.Config)
+	if err != nil {
+		return dbplugin.InitializeResponse{}, err
+	}
+	cfg.tls = tlsSettings
 	if cfg.URL == "" {
 		return dbplugin.InitializeResponse{}, errors.New("url is required")
 	}
@@ -288,42 +287,13 @@ func newMilvusClientConfig(cfg *milvusConfig) (*milvusclient.Config, error) {
 		DBName:   cfg.DBName,
 	}
 
-	if cfg.CACert == "" && cfg.CAPath == "" && cfg.ClientCert == "" && cfg.ClientKey == "" && !cfg.Insecure {
+	if !cfg.tls.Configured() {
 		return clientConfig, nil
 	}
 
-	if (cfg.ClientCert == "") != (cfg.ClientKey == "") {
-		return nil, errors.New("client_cert and client_key must be provided together")
-	}
-
-	tlsConfig := &tls.Config{
-		MinVersion:         tls.VersionTLS12,
-		InsecureSkipVerify: cfg.Insecure,
-	}
-
-	if cfg.CACert != "" || cfg.CAPath != "" {
-		pool := x509.NewCertPool()
-		if cfg.CACert != "" && !pool.AppendCertsFromPEM([]byte(cfg.CACert)) {
-			return nil, errors.New("failed to parse ca_cert PEM")
-		}
-		if cfg.CAPath != "" {
-			caPEM, err := os.ReadFile(cfg.CAPath)
-			if err != nil {
-				return nil, fmt.Errorf("read ca_path: %w", err)
-			}
-			if !pool.AppendCertsFromPEM(caPEM) {
-				return nil, errors.New("failed to parse ca_path PEM")
-			}
-		}
-		tlsConfig.RootCAs = pool
-	}
-
-	if cfg.ClientCert != "" {
-		certificate, err := tls.X509KeyPair([]byte(cfg.ClientCert), []byte(cfg.ClientKey))
-		if err != nil {
-			return nil, fmt.Errorf("client cert/key: %w", err)
-		}
-		tlsConfig.Certificates = []tls.Certificate{certificate}
+	tlsConfig, err := cfg.tls.Build("")
+	if err != nil {
+		return nil, err
 	}
 
 	clientConfig.EnableTLSAuth = true

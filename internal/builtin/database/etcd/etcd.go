@@ -23,7 +23,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
 	"github.com/openbao/openbao/sdk/v2/helper/template"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/openbao/openbao/v2/internal/builtin/database/dbtls"
+	"github.com/openbao/openbao/v2/internal/helper/dbtlsutil"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -211,7 +211,7 @@ func (e *Etcd) Initialize(ctx context.Context, req dbplugin.InitializeRequest) (
 		dialTimeout = d
 	}
 
-	tlsSettings, err := dbtls.Decode(req.Config)
+	tlsSettings, err := dbtlsutil.Decode(req.Config)
 	if err != nil {
 		return dbplugin.InitializeResponse{}, fmt.Errorf("invalid TLS configuration: %w", err)
 	}

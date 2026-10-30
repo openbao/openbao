@@ -37,7 +37,7 @@ $ bao write database/roles/producer \
 | `brokers` | yes | Bootstrap brokers |
 | `username` / `password` | yes | Root credentials |
 | `mechanism` | no | `SCRAM-SHA-256` (default) or `SCRAM-SHA-512` |
-| `use_tls` / `tls_ca` / `tls_ca_path` / `tls_certificate` / `tls_key` / `insecure` | no | TLS plumbing |
+| `tls_ca` / `tls_certificate` / `tls_key` / `tls_server_name` / `tls_skip_verify` / `use_tls` | no | Inline TLS settings (`internal/helper/dbtlsutil`). `ca_cert`, `client_cert`, `client_key` and `insecure` are accepted as aliases. |
 | `username_template` | no | Override default template |
 | `spoke_name` | yes (remote) | Spoke that executes the requests |
 

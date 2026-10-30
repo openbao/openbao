@@ -81,21 +81,6 @@ export default Model.extend({
   }),
 
   // optional
-  ca_cert: attr('string', {
-    label: 'CA certificate',
-    subText: `The path to a PEM-encoded CA cert file to use to verify the Elasticsearch server's identity.`,
-  }),
-  ca_path: attr('string', {
-    label: 'CA path',
-    subText: `The path to a directory of PEM-encoded CA cert files to use to verify the Elasticsearch server's identity.`,
-  }),
-  client_cert: attr('string', {
-    label: 'Client certificate',
-    subText: 'The path to the certificate for the Elasticsearch client to present for communication.',
-  }),
-  client_key: attr('string', {
-    subText: 'The path to the key for the Elasticsearch client to use for communication.',
-  }),
   hosts: attr('string', {}),
   host: attr('string', {}),
   port: attr('string', {}),
@@ -123,10 +108,6 @@ export default Model.extend({
   max_connection_lifetime: attr('string', {
     defaultValue: '0s',
   }),
-  insecure: attr('boolean', {
-    label: 'Disable SSL verification',
-    defaultValue: false,
-  }),
   tls: attr('string', {
     label: 'TLS Certificate Key',
     helpText:
@@ -135,9 +116,28 @@ export default Model.extend({
   }),
   tls_ca: attr('string', {
     label: 'TLS CA',
-    helpText:
-      'x509 CA file for validating the certificate presented by the MongoDB server. Must be PEM encoded.',
+    helpText: 'PEM-encoded CA certificate bundle used to verify the server certificate.',
     editType: 'file',
+  }),
+  tls_certificate: attr('string', {
+    label: 'TLS certificate',
+    helpText: 'PEM-encoded client certificate for mutual TLS. Must be set together with the TLS key.',
+    editType: 'file',
+  }),
+  tls_key: attr('string', {
+    label: 'TLS key',
+    helpText: 'PEM-encoded private key for the TLS certificate.',
+    editType: 'file',
+  }),
+  tls_skip_verify: attr('boolean', {
+    label: 'Skip TLS verification',
+    subText: 'Skips verification of the server certificate. Intended for development only.',
+    defaultValue: false,
+  }),
+  use_tls: attr('boolean', {
+    label: 'Use TLS',
+    subText: 'Connect with TLS even when no other TLS option is set.',
+    defaultValue: false,
   }),
   tls_server_name: attr('string', {
     label: 'TLS server name',

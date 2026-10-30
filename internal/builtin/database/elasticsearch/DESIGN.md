@@ -31,10 +31,7 @@ SQL). It carries its own config + `http.Client` with TLS plumbing.
 | --- | --- | --- |
 | `url` | yes | `https://es:9200` |
 | `username` / `password` | yes | Root credentials (typically `elastic`) |
-| `ca_cert` / `ca_path` | no | Custom CA: PEM contents or path |
-| `client_cert` / `client_key` | no | mTLS client identity (PEM) |
-| `tls_server_name` | no | Override the TLS server name used for SNI and certificate verification |
-| `insecure` | no | Skip TLS verification — dev only |
+| `tls_ca` / `tls_certificate` / `tls_key` / `tls_server_name` / `tls_skip_verify` | no | Inline TLS settings (`internal/helper/dbtlsutil`). `ca_cert`, `client_cert`, `client_key` and `insecure` are accepted as aliases. |
 | `use_old_xpack` | no | Use ES 6's `/_xpack/security/` instead of `/_security/` |
 | `username_template` | no | Override the dynamic-username template |
 
@@ -89,7 +86,7 @@ the fake-server unit test.
 | `elasticsearch_roles` empty | "elasticsearch_roles is required in creation_statements" |
 | Non-JSON statement | "creation_statements must be a JSON role doc" |
 | HTTP 4xx/5xx | Surface ES response body in the error |
-| TLS verify failure | `ca_cert` / `ca_path` parse errors surface during Initialize |
+| TLS verify failure | `tls_ca` / `tls_ca_path` parse errors surface during Initialize |
 
 ## Namespace support
 

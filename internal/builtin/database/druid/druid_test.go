@@ -228,7 +228,7 @@ func TestDruid_MTLSValidation(t *testing.T) {
 		VerifyConnection: false,
 	})
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "both client_cert and client_key must be provided together")
+	require.Contains(t, err.Error(), "both tls_certificate and tls_key are required for mutual TLS")
 
 	db2 := newDruid()
 	_, err2 := db2.Initialize(context.Background(), dbplugin.InitializeRequest{
@@ -241,7 +241,7 @@ func TestDruid_MTLSValidation(t *testing.T) {
 		VerifyConnection: false,
 	})
 	require.Error(t, err2)
-	require.Contains(t, err2.Error(), "both client_cert and client_key must be provided together")
+	require.Contains(t, err2.Error(), "both tls_certificate and tls_key are required for mutual TLS")
 }
 
 func TestDruid_Acceptance(t *testing.T) {

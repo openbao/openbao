@@ -35,7 +35,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/dbtxn"
 	"github.com/openbao/openbao/sdk/v2/helper/template"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/openbao/openbao/v2/internal/builtin/database/dbtls"
+	"github.com/openbao/openbao/v2/internal/helper/dbtlsutil"
 	go_ora "github.com/sijms/go-ora/v2"
 )
 
@@ -84,7 +84,7 @@ func (o *Oracle) secretValues() map[string]string {
 }
 
 func (o *Oracle) Initialize(ctx context.Context, req dbplugin.InitializeRequest) (dbplugin.InitializeResponse, error) {
-	tlsSettings, err := dbtls.Decode(req.Config)
+	tlsSettings, err := dbtlsutil.Decode(req.Config)
 	if err != nil {
 		return dbplugin.InitializeResponse{}, fmt.Errorf("invalid TLS configuration: %w", err)
 	}
@@ -100,7 +100,7 @@ func (o *Oracle) Initialize(ctx context.Context, req dbplugin.InitializeRequest)
 			}
 			query := parsed.Query()
 			query.Set("SSL", "enabled")
-			query.Set("SSL VERIFY", fmt.Sprintf("%t", !tlsSettings.Insecure))
+			query.Set("SSL VERIFY", fmt.Sprintf("%t", !tlsSettings.SkipVerify))
 			parsed.RawQuery = query.Encode()
 
 			connector := go_ora.NewConnector(parsed.String()).(*go_ora.OracleConnector)

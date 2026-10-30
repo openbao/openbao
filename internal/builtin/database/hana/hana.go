@@ -22,7 +22,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/dbtxn"
 	"github.com/openbao/openbao/sdk/v2/helper/template"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/openbao/openbao/v2/internal/builtin/database/dbtls"
+	"github.com/openbao/openbao/v2/internal/helper/dbtlsutil"
 )
 
 const (
@@ -70,7 +70,7 @@ func (h *HANA) secretValues() map[string]string {
 }
 
 func (h *HANA) Initialize(ctx context.Context, req dbplugin.InitializeRequest) (dbplugin.InitializeResponse, error) {
-	tlsSettings, err := dbtls.Decode(req.Config)
+	tlsSettings, err := dbtlsutil.Decode(req.Config)
 	if err != nil {
 		return dbplugin.InitializeResponse{}, fmt.Errorf("invalid TLS configuration: %w", err)
 	}

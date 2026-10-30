@@ -29,7 +29,7 @@ via Weaviate's User Management and RBAC REST APIs:
 | --- | --- | --- |
 | `url` | yes | `http(s)://host:8080` |
 | `api_key` | yes | Admin API key for Weaviate RBAC API calls |
-| `ca_cert` / `ca_path` / `client_cert` / `client_key` / `insecure` | no | TLS plumbing |
+| `tls_ca` / `tls_certificate` / `tls_key` / `tls_server_name` / `tls_skip_verify` | no | Inline TLS settings (`internal/helper/dbtlsutil`). `ca_cert`, `client_cert`, `client_key` and `insecure` are accepted as aliases. |
 
 ## Tests
 

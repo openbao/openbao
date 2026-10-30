@@ -16,7 +16,6 @@ package rabbitmq
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,6 +31,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
 	"github.com/openbao/openbao/sdk/v2/helper/template"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/helper/dbtlsutil"
 )
 
 const (
@@ -61,10 +61,7 @@ type rmqConfig struct {
 	VerifyConnection bool   `mapstructure:"verify_connection"`
 
 	// TLS fields are config-level, not part of creation_statements.
-	TLSCA          string `mapstructure:"tls_ca"`
-	TLSCertificate string `mapstructure:"tls_certificate"`
-	TLSKey         string `mapstructure:"tls_key"`
-	Insecure       bool   `mapstructure:"insecure"`
+	tls dbtlsutil.Config
 }
 
 // rmqStatement is the role document an operator puts in
@@ -132,6 +129,11 @@ func (r *RabbitMQ) Initialize(ctx context.Context, req dbplugin.InitializeReques
 	if err := mapstructure.WeakDecode(req.Config, cfg); err != nil {
 		return dbplugin.InitializeResponse{}, err
 	}
+	tlsSettings, err := dbtlsutil.Decode(req.Config)
+	if err != nil {
+		return dbplugin.InitializeResponse{}, err
+	}
+	cfg.tls = tlsSettings
 	if cfg.ConnectionURI == "" {
 		return dbplugin.InitializeResponse{}, errors.New("connection_uri is required")
 	}
@@ -308,36 +310,11 @@ func parseTags(s string) rabbithole.UserTags {
 }
 
 // makeTLSConfig builds a *tls.Config from the config's TLS fields. It
-// returns (nil, nil) when none of tls_ca/tls_certificate/tls_key/insecure
-// are set, so callers fall back to the Go default TLS behavior.
+// returns (nil, nil) when no TLS field is set, so callers fall back to the
+// Go default TLS behavior.
 func makeTLSConfig(cfg *rmqConfig) (*tls.Config, error) {
-	if cfg.TLSCA == "" && cfg.TLSCertificate == "" && cfg.TLSKey == "" && !cfg.Insecure {
+	if !cfg.tls.Configured() {
 		return nil, nil
 	}
-
-	tlsConfig := &tls.Config{
-		MinVersion:         tls.VersionTLS12,
-		InsecureSkipVerify: cfg.Insecure, //nolint:gosec // operator opt-in via "insecure"
-	}
-
-	if cfg.TLSCA != "" {
-		pool := x509.NewCertPool()
-		if !pool.AppendCertsFromPEM([]byte(cfg.TLSCA)) {
-			return nil, errors.New("failed to parse tls_ca PEM")
-		}
-		tlsConfig.RootCAs = pool
-	}
-
-	if cfg.TLSCertificate != "" || cfg.TLSKey != "" {
-		if cfg.TLSCertificate == "" || cfg.TLSKey == "" {
-			return nil, errors.New("both tls_certificate and tls_key are required to use mutual TLS")
-		}
-		cert, err := tls.X509KeyPair([]byte(cfg.TLSCertificate), []byte(cfg.TLSKey))
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse tls_certificate/tls_key: %w", err)
-		}
-		tlsConfig.Certificates = []tls.Certificate{cert}
-	}
-
-	return tlsConfig, nil
+	return cfg.tls.Build("")
 }

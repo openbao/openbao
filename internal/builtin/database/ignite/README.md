@@ -40,9 +40,7 @@ $ bao write database/roles/reader \
 | `url` | yes* | Thin client target; only host/port are used (e.g. `tcp://ignite:10800`) |
 | `host` / `port` | no | Explicit override of `url`; port defaults to 10800 |
 | `username` / `password` | yes | Root credentials |
-| `ca_cert` / `ca_path` | no | Custom CA PEM (string or path) |
-| `client_cert` / `client_key` | no | mTLS PEM client identity |
-| `insecure` | no | Skip TLS verify (dev only) |
+| `tls_ca` / `tls_certificate` / `tls_key` / `tls_server_name` / `tls_skip_verify` / `use_tls` | no | Inline TLS settings (`internal/helper/dbtlsutil`). `ca_cert`, `client_cert`, `client_key` and `insecure` are accepted as aliases. |
 | `username_template` | no | Override default template |
 | `spoke_name` | yes (remote) | Spoke that executes the requests |
 

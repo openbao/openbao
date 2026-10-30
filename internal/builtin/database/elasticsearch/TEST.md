@@ -42,7 +42,7 @@ $ bao write database/config/es \
     plugin_name=elasticsearch-database-plugin \
     url=http://localhost:9200 \
     username=elastic password=elastic \
-    insecure=true \
+    tls_skip_verify=true \
     allowed_roles='reader'
 
 $ bao write database/roles/reader \
@@ -73,5 +73,5 @@ $ bao write -force database/rotate-root/es
 | HTTP 503 from cluster | Error propagates with response body |
 | `use_old_xpack=true` | Plugin targets `/_xpack/security/user/<name>` |
 | Delete on non-existent user | 404 is treated as success |
-| Bad TLS chain (no ca_cert) | Init fails with TLS verify error |
+| Bad TLS chain (no tls_ca) | Init fails with TLS verify error |
 | URL hostname differs from certificate SAN | Set `tls_server_name` to the certificate's DNS name; verification succeeds |

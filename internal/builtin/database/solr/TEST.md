@@ -70,4 +70,4 @@ $ bao write -force database/rotate-root/solr
 | Non-JSON `creation_statements` | "creation_statements must be a JSON role doc" |
 | `set-user-role` returns 5xx | Plugin posts `delete-user` and returns the error |
 | `url` missing `/solr` path | Ping returns the upstream 404 body |
-| Insecure-only HTTPS endpoint | `insecure=true` for dev only |
+| Insecure-only HTTPS endpoint | `tls_skip_verify=true` for dev only |

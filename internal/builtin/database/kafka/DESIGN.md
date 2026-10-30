@@ -26,10 +26,7 @@ client and supports both the SCRAM AdminClient flow and TLS dial config.
 | `brokers` | yes | Bootstrap brokers (comma list or string slice) |
 | `username` / `password` | yes | Root credentials |
 | `mechanism` | no | `SCRAM-SHA-256` (default) or `SCRAM-SHA-512` |
-| `use_tls` | no | Enable TLS dial |
-| `tls_ca` / `tls_ca_path` | no | CA PEM (string or file) |
-| `tls_certificate` / `tls_key` | no | mTLS client identity |
-| `insecure` | no | Skip TLS verify (dev only) |
+| `tls_ca` / `tls_certificate` / `tls_key` / `tls_server_name` / `tls_skip_verify` / `use_tls` | no | Inline TLS settings (`internal/helper/dbtlsutil`). `ca_cert`, `client_cert`, `client_key` and `insecure` are accepted as aliases. |
 | `username_template` | no | Override default template |
 | `spoke_name` | yes (remote) | Spoke that executes the requests |
 

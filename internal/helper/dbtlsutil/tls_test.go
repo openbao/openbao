@@ -1,7 +1,7 @@
 // Copyright (c) OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
-package dbtls
+package dbtlsutil
 
 import (
 	"testing"

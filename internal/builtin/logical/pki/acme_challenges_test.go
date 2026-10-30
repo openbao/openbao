@@ -207,6 +207,40 @@ func TestAcmeValidateHTTP01Challenge(t *testing.T) {
 	}
 }
 
+func TestAcmeChallengeIPRangePolicy(t *testing.T) {
+	t.Parallel()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("my-token.my-thumbprint"))
+	}))
+	defer ts.Close()
+	host := ts.URL[7:] // httptest binds to 127.0.0.1
+
+	cases := []struct {
+		name    string
+		config  acmeConfigEntry
+		isValid bool
+	}{
+		{"no-policy", acmeConfigEntry{}, true},
+		{"excluded", acmeConfigEntry{ChallengeExcludedIPRanges: []string{"127.0.0.0/8"}}, false},
+		{"permitted-match", acmeConfigEntry{ChallengePermittedIPRanges: []string{"127.0.0.0/8"}}, true},
+		{"permitted-mismatch", acmeConfigEntry{ChallengePermittedIPRanges: []string{"10.0.0.0/8"}}, false},
+		{"excluded-overrides-permitted", acmeConfigEntry{
+			ChallengePermittedIPRanges: []string{"127.0.0.0/8"},
+			ChallengeExcludedIPRanges:  []string{"127.0.0.1/32"},
+		}, false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			isValid, err := ValidateHTTP01Challenge(host, "my-token", "my-thumbprint", &tc.config)
+			if isValid != tc.isValid {
+				t.Fatalf("got ret=%v (err=%v), expected ret=%v", isValid, err, tc.isValid)
+			}
+		})
+	}
+}
+
 func TestAcmeValidateDNS01Challenge(t *testing.T) {
 	t.Parallel()
 

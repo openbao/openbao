@@ -374,30 +374,33 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 				return nil, errors.New("seal config must contain exactly one seal stanza")
 			}
 			kms := kmses[0]
-			if kms.Type != "shamir" {
-				return nil, errors.New("namespaces currently only support shamir seals")
-			}
-
 			sealConfig = &SealConfig{
 				Type: kms.Type,
 			}
 
-			if val, ok := kms.Config["shares"]; ok {
-				shares, err := parseutil.ParseInt(val)
-				if err != nil {
-					return nil, errors.New("value of shares parameter must be integer")
+			if kms.Type == "shamir" || kms.Type == "" {
+				// Shamir-specific fields: shares and threshold from the config map.
+				if val, ok := kms.Config["shares"]; ok {
+					shares, err := parseutil.ParseInt(val)
+					if err != nil {
+						return nil, errors.New("value of shares parameter must be integer")
+					}
+					sealConfig.SecretShares = int(shares)
 				}
-				sealConfig.SecretShares = int(shares)
-			}
-			if val, ok := kms.Config["threshold"]; ok {
-				threshold, err := parseutil.ParseInt(val)
-				if err != nil {
-					return nil, errors.New("value of shares parameter must be integer")
+				if val, ok := kms.Config["threshold"]; ok {
+					threshold, err := parseutil.ParseInt(val)
+					if err != nil {
+						return nil, errors.New("value of threshold parameter must be integer")
+					}
+					sealConfig.SecretThreshold = int(threshold)
 				}
-				sealConfig.SecretThreshold = int(threshold)
-			}
-			if pgpkeys, ok := data.GetOk("pgp_keys"); ok {
-				sealConfig.PGPKeys = pgpkeys.([]string)
+				if pgpkeys, ok := data.GetOk("pgp_keys"); ok {
+					sealConfig.PGPKeys = pgpkeys.([]string)
+				}
+			} else {
+				// Auto-seal: the entire config map is provider-specific.
+				// Shares and threshold are not applicable.
+				sealConfig.KMSConfig = kms.Config
 			}
 
 			if err := sealConfig.Validate(); err != nil {

@@ -232,7 +232,6 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 		return nil, "", err
 	}
 
-	var wg sync.WaitGroup
 	consumeLogs := false
 	var logStdout, logStderr io.Writer
 	if d.RunOptions.LogStdout != nil && d.RunOptions.LogStderr != nil {
@@ -245,18 +244,7 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 		logStderr = &LogConsumerWriter{d.RunOptions.LogConsumer}
 	}
 
-	// The waitgroup wg is used here to support some stuff in NewDockerCluster.
-	// We can't generate the PKI cert for the https listener until we know the
-	// container's address, meaning we must first start the container, then
-	// generate the cert, then copy it into the container, then signal Vault
-	// to reload its config/certs.  However, if we SIGHUP Vault before Vault
-	// has installed its signal handler, that will kill Vault, since the default
-	// behaviour for HUP is termination.  So the PostStart that NewDockerCluster
-	// passes in (which does all that PKI cert stuff) waits to see output from
-	// Vault on stdout/stderr before it sends the signal, and we don't want to
-	// run the PostStart until we've hooked into the docker logs.
 	if consumeLogs {
-		wg.Add(1)
 		go func() {
 			// We must run inside a goroutine because we're using Follow:true,
 			// and StdCopy will block until the log stream is closed.
@@ -267,7 +255,6 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 				Details:    true,
 				Follow:     true,
 			})
-			wg.Done()
 			if err != nil {
 				d.RunOptions.LogConsumer(fmt.Sprintf("error reading container logs: %v", err))
 			} else {
@@ -278,7 +265,6 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 			}
 		}()
 	}
-	wg.Wait()
 
 	if d.RunOptions.PostStart != nil {
 		if err := d.RunOptions.PostStart(result.Container.ID, result.RealIP); err != nil {

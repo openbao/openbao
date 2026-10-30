@@ -1,0 +1,13 @@
+diff --git a/lib/utils/compatibility.js b/lib/utils/compatibility.js
+index 112a6dcce4c55048d1351c53285574ae23994eb5..8eebee811defb1745409985b11358ec1b1ce1c2d 100644
+--- a/lib/utils/compatibility.js
++++ b/lib/utils/compatibility.js
+@@ -119,7 +119,7 @@ function merge(source, target) {
+   for (var key in source) {
+     var value = source[key];
+ 
+-    if (typeof value === 'object' && !util.isRegExp(value))
++    if (typeof value === 'object' && Object.prototype.toString.call(value) !== '[object RegExp]')
+       target[key] = merge(value, target[key] || {});
+     else
+       target[key] = key in target ? target[key] : value;

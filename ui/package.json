@@ -196,6 +196,9 @@
       "xmlhttprequest-ssl": "^1.6.2",
       "cheerio": "1.0.0-rc.12",
       "get-intrinsic": "1.2.7"
+    },
+    "patchedDependencies": {
+      "clean-css@3.4.28": "patches/clean-css@3.4.28.patch"
     }
   },
   "engines": {

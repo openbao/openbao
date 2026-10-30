@@ -22,6 +22,11 @@ overrides:
   cheerio: 1.0.0-rc.12
   get-intrinsic: 1.2.7
 
+patchedDependencies:
+  clean-css@3.4.28:
+    hash: c297f11bc5b8c7559e806f655153735b5f8d60929de6f0ccff322703cc2f946c
+    path: patches/clean-css@3.4.28.patch
+
 importers:
 
   .:
@@ -11654,10 +11659,10 @@ snapshots:
   clean-css-promise@0.1.1:
     dependencies:
       array-to-error: 1.1.1
-      clean-css: 3.4.28
+      clean-css: 3.4.28(patch_hash=c297f11bc5b8c7559e806f655153735b5f8d60929de6f0ccff322703cc2f946c)
       pinkie-promise: 2.0.1
 
-  clean-css@3.4.28:
+  clean-css@3.4.28(patch_hash=c297f11bc5b8c7559e806f655153735b5f8d60929de6f0ccff322703cc2f946c):
     dependencies:
       commander: 2.8.1
       source-map: 0.4.4

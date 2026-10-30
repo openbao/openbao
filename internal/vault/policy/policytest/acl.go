@@ -10,23 +10,22 @@ import (
 )
 
 func TestLayeredACL(t *testing.T, acl *policy.ACL, ns *namespace.Namespace) {
-	// Type of operation is not important here as we only care about checking
-	// sudo/root
+	// Type of operation is not important here as we only care about checking sudo.
 	ctx := namespace.ContextWithNamespace(context.Background(), ns)
 	request := new(logical.Request)
 	request.Operation = logical.ReadOperation
 	request.Path = "sys/mount/foo"
 
 	authResults := acl.AllowOperation(ctx, request, false)
-	if authResults.RootPrivs {
-		t.Fatal("unexpected root")
+	if authResults.IsSudo {
+		t.Fatal("unexpected sudo")
 	}
 
 	type tcase struct {
-		op        logical.Operation
-		path      string
-		allowed   bool
-		rootPrivs bool
+		op      logical.Operation
+		path    string
+		allowed bool
+		isSudo  bool
 	}
 	tcases := []tcase{
 		{logical.ReadOperation, "root", false, false},
@@ -71,10 +70,10 @@ func TestLayeredACL(t *testing.T, acl *policy.ACL, ns *namespace.Namespace) {
 
 		authResults := acl.AllowOperation(ctx, request, false)
 		if authResults.Allowed != tc.allowed {
-			t.Fatalf("bad: case %#v: %v, %v", tc, authResults.Allowed, authResults.RootPrivs)
+			t.Fatalf("bad: case %#v: %v, %v", tc, authResults.Allowed, authResults.Allowed)
 		}
-		if authResults.RootPrivs != tc.rootPrivs {
-			t.Fatalf("bad: case %#v: %v, %v", tc, authResults.Allowed, authResults.RootPrivs)
+		if authResults.IsSudo != tc.isSudo {
+			t.Fatalf("bad: case %#v: %v, %v", tc, authResults.IsSudo, authResults.IsSudo)
 		}
 	}
 }

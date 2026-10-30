@@ -881,6 +881,75 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	}
 }
 
+// Ensure invalidating one namespace's bucket keeps
+// another namespace's groups and policies
+func TestIdentityStore_InvalidateGroupBucketNamespaceIsolation(t *testing.T) {
+	c := TestCoreWithConfig(t, &CoreConfig{
+		Seal:            nil,
+		EnableUI:        false,
+		EnableRaw:       false,
+		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
+		AuditBackends: map[string]audit.Factory{
+			"file": auditFile.Factory,
+		},
+		UnsafeCrossNamespaceIdentity: true,
+	})
+	c, _, _ = testCoreUnsealed(t, c)
+
+	is := c.identityStore
+	rootCtx := namespace.RootContext(t.Context())
+	ns1, ns2 := setupNamespaces(t, c, rootCtx)
+	ns1Ctx := namespace.ContextWithNamespace(t.Context(), ns1)
+	ns2Ctx := namespace.ContextWithNamespace(t.Context(), ns2)
+
+	entity := &identity.Entity{
+		ID:          "policy-entity.testns1",
+		Name:        "policy-entity",
+		NamespaceID: ns1.ID,
+		BucketKey:   is.EntityPacker(ns1Ctx).BucketKey("policy-entity.testns1"),
+	}
+	bucketKey := is.GroupPacker(ns1Ctx).BucketKey("shared-policy-bucket")
+	ns1Group := &identity.Group{
+		ID:              "policy-group-ns1.testns1",
+		Name:            "policy-group-ns1",
+		NamespaceID:     ns1.ID,
+		MemberEntityIDs: []string{entity.ID},
+		BucketKey:       bucketKey,
+		Type:            "internal",
+	}
+	ns2Group := &identity.Group{
+		ID:              "policy-group-ns2.testns2",
+		Name:            "policy-group-ns2",
+		NamespaceID:     ns2.ID,
+		MemberEntityIDs: []string{entity.ID},
+		Policies:        []string{"policy-from-ns2"},
+		BucketKey:       bucketKey,
+		Type:            "internal",
+	}
+
+	txn := is.Txn(ns1Ctx, true)
+	require.NoError(t, is.UpsertEntityInTxn(ns1Ctx, txn, entity, nil, false))
+	require.NoError(t, is.UpsertGroupInTxn(ns1Ctx, txn, ns1Group, false))
+	require.NoError(t, is.UpsertGroupInTxn(ns2Ctx, txn, ns2Group, false))
+	txn.Commit()
+
+	is.Invalidate(ns1Ctx, bucketKey)
+
+	group, err := is.MemDBGroupByID(ns1Ctx, ns1Group.ID, false)
+	require.NoError(t, err)
+	require.Nil(t, group)
+
+	group, err = is.MemDBGroupByID(ns2Ctx, ns2Group.ID, false)
+	require.NoError(t, err)
+	require.NotNil(t, group)
+
+	policies, err := is.GroupPoliciesByEntityID(ns1Ctx, entity.ID)
+	require.NoError(t, err)
+	require.Equal(t, map[string][]string{
+		ns2.ID: {"policy-from-ns2"},
+	}, policies)
+}
+
 func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 	// Register the userpass auth method
 	err := be.AddTestCredentialBackend("userpass", credUserpass.Factory)

@@ -881,6 +881,8 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	}
 }
 
+// Ensure invalidating one namespace's bucket keeps
+// another namespace's groups and policies
 func TestIdentityStore_InvalidateGroupBucketNamespaceIsolation(t *testing.T) {
 	c := TestCoreWithConfig(t, &CoreConfig{
 		Seal:            nil,

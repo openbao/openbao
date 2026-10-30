@@ -849,6 +849,8 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 		return
 	}
 
+	// identifies which namespace triggered the update
+	// so only that namespace’s cached data is affected
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		i.logger.Error("error retrieving namespace", "error", err)

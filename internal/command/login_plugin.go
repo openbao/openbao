@@ -1,6 +1,7 @@
 package command
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 
@@ -11,12 +12,13 @@ type execLoginHandler struct {
 	path string
 }
 
-// Auth(*api.Client, map[string]string, bool) (*api.Secret, error)
-// Help() string
 func (h *execLoginHandler) Auth(client *api.Client, config map[string]string, nonInteractive bool) (*api.Secret, error) {
-	cmd := exec.Command(h.path + " help")
+	cmd := exec.Command(h.path, "login")
+	cmd.Stderr = os.Stderr
 	cmd.Env = append(os.Environ(),
 		"BAO_CLI_PLUGIN=1",
+		"BAO_ADDR="+client.Address(),
+		"BAO_NAMESPACE="+client.Namespace(),
 	)
 	if nonInteractive {
 		cmd.Env = append(cmd.Env, "BAO_CLI_AUTH_NON_INTERACTIVE=1")
@@ -28,10 +30,12 @@ func (h *execLoginHandler) Auth(client *api.Client, config map[string]string, no
 	if err != nil {
 		return nil, err
 	}
+	return api.ParseSecret(bytes.NewReader(output))
 }
 
 func (h *execLoginHandler) Help() string {
-	cmd := exec.Command(h.path + " help")
+	cmd := exec.Command(h.path, "help")
+	cmd.Stderr = os.Stderr
 	cmd.Env = append(os.Environ(),
 		"BAO_CLI_PLUGIN=1",
 	)

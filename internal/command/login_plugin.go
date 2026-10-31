@@ -15,6 +15,7 @@ type execLoginHandler struct {
 func (h *execLoginHandler) Auth(client *api.Client, config map[string]string, nonInteractive bool) (*api.Secret, error) {
 	cmd := exec.Command(h.path, "login")
 	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
 	cmd.Env = append(os.Environ(),
 		"BAO_CLI_PLUGIN=1",
 		"BAO_ADDR="+client.Address(),

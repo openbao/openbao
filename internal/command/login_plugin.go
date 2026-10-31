@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/openbao/openbao/api/v2"
 )
@@ -13,10 +14,18 @@ type execLoginHandler struct {
 }
 
 func (h *execLoginHandler) Auth(client *api.Client, config map[string]string, nonInteractive bool) (*api.Secret, error) {
+	cleanEnv := make([]string, 0)
+	for _, v := range os.Environ() {
+		if strings.HasPrefix(v, api.EnvVaultToken) || strings.HasPrefix(v, "VAULT_TOKEN") {
+			continue
+		}
+		cleanEnv = append(cleanEnv, v)
+	}
+
 	cmd := exec.Command(h.path, "login")
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
-	cmd.Env = append(os.Environ(),
+	cmd.Env = append(cleanEnv,
 		"BAO_CLI_PLUGIN=1",
 		"BAO_ADDR="+client.Address(),
 		"BAO_NAMESPACE="+client.Namespace(),

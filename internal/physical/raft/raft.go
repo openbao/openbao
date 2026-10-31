@@ -7,6 +7,7 @@ package raft
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -38,6 +39,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/metricsutil"
 	"github.com/openbao/openbao/v2/internal/helper/tlsdebug"
 	"github.com/openbao/openbao/v2/internal/physical/raft/snapshot"
@@ -238,6 +240,49 @@ type AutoJoinPlugin struct {
 	Config map[string]any `json:"config"`
 }
 
+type autoJoinPluginDecode struct {
+	Plugin string          `json:"plugin"`
+	Config json.RawMessage `json:"config"`
+}
+
+func (p *AutoJoinPlugin) UnmarshalJSON(b []byte) error {
+	var v autoJoinPluginDecode
+	if err := configutil.DecodeJSONSingleton(b, &v); err != nil {
+		return err
+	}
+
+	config := make(map[string]any)
+	if len(v.Config) != 0 {
+		if err := configutil.DecodeJSONSingleton(v.Config, &config); err != nil {
+			return err
+		}
+	}
+
+	for k, v := range config {
+		// HCLv1 decodes objects as arrays (of objects). This is fixed in HCLv2,
+		// so allow only primitives and lists of primitives for now, keeping
+		// things forward-compatible for migration.
+		switch v := v.(type) {
+		case map[string]any:
+			return fmt.Errorf("objects are not allowed in auto-join plugin config (key: %s)", k)
+		case []any:
+			for idx, item := range v {
+				if _, ok := item.(map[string]any); ok {
+					return fmt.Errorf("objects are not allowed in auto-join plugin config (key: %s, index: %d)", k, idx)
+				}
+				if _, ok := item.([]any); ok {
+					return fmt.Errorf("nested lists are not allowed in auto-join plugin config (key: %s, index: %d)", k, idx)
+				}
+			}
+		default: // no-op
+		}
+	}
+
+	p.Plugin = v.Plugin
+	p.Config = config
+	return nil
+}
+
 // LeaderJoinInfo contains information required by a node to join itself as a
 // follower to an existing raft cluster
 type LeaderJoinInfo struct {
@@ -315,11 +360,16 @@ func (info *LeaderJoinInfo) Normalize(logger log.Logger) error {
 		}
 		provider := config["provider"]
 		delete(config, "provider")
+		args := make([]any, 0, len(config))
+		for k, v := range config {
+			// No need to quote `v`, because we split in `discover.go`
+			args = append(args, fmt.Sprintf("%s=%s", k, v))
+		}
 		info.AutoJoinPlugin = &AutoJoinPlugin{
 			Plugin: "discover",
 			Config: map[string]any{
 				"provider": provider,
-				"args":     map[string]string(config),
+				"args":     args,
 				"scheme":   info.AutoJoinScheme,
 				"port":     info.AutoJoinPort,
 			},

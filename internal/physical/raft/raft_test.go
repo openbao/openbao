@@ -288,7 +288,7 @@ func TestRaft_JoinConfig(t *testing.T) {
 					"plugin": "discover",
 					"config": {
 						"provider": "aws",
-						"args": {"foo": "bar"}
+						"args": ["foo=bar"]
 					}
 				}}
 			]`,
@@ -307,7 +307,7 @@ func TestRaft_JoinConfig(t *testing.T) {
 				Plugin: "discover",
 				Config: map[string]any{
 					"provider": "aws",
-					"args":     map[string]string{"foo": "baz"},
+					"args":     []any{"foo=baz"},
 					"scheme":   "",
 					"port":     uint(0),
 				},
@@ -319,7 +319,7 @@ func TestRaft_JoinConfig(t *testing.T) {
 				Plugin: "discover",
 				Config: map[string]any{
 					"provider": "aws",
-					"args":     map[string]any{"foo": "bar"},
+					"args":     []any{"foo=bar"},
 				},
 			},
 			Retry: true,

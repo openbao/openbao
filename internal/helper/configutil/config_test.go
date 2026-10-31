@@ -153,3 +153,27 @@ func TestSharedConfig_Sanitized_LogFields(t *testing.T) {
 		})
 	}
 }
+
+type testObj struct {
+	Foo int `json:"foo"`
+}
+
+func TestDecodeJSONSingleton(t *testing.T) {
+	expected := 5
+	var i int
+	for _, data := range []string{"5", "[5]", "null"} {
+		require.NoError(t, DecodeJSONSingleton([]byte(data), &i))
+		require.Equal(t, expected, i)
+	}
+
+	expectedObj := testObj{Foo: 4}
+	var obj testObj
+	for _, data := range []string{"{\"foo\": 4}", "[{\"foo\": 4}]", "null"} {
+		require.NoError(t, DecodeJSONSingleton([]byte(data), &obj))
+		require.Equal(t, expectedObj, obj)
+	}
+
+	for _, data := range []string{"{\"foo\": \"bar\"}", "[{\"foo\": 4}, {\"foo\": 5}]", "[[{\"foo\": 4}]]"} {
+		require.Error(t, DecodeJSONSingleton([]byte(data), &obj))
+	}
+}

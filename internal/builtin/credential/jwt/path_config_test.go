@@ -11,6 +11,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"encoding/pem"
 	"io"
 	"math/big"
@@ -39,6 +40,7 @@ func TestConfig_JWT_Read(t *testing.T) {
 		"oidc_client_id":                "",
 		"oidc_response_mode":            "",
 		"oidc_response_types":           []string{},
+		"oidc_discovery_document":       "",
 		"override_allowed_server_names": []string{},
 		"default_role":                  "",
 		"jwt_validation_pubkeys":        []string{testJWTPubKey},
@@ -205,6 +207,7 @@ func TestConfig_JWKS_Update(t *testing.T) {
 		"oidc_client_id":                "",
 		"oidc_response_mode":            "form_post",
 		"oidc_response_types":           []string{},
+		"oidc_discovery_document":       "",
 		"override_allowed_server_names": []string{},
 		"default_role":                  "",
 		"jwt_validation_pubkeys":        []string{},
@@ -448,6 +451,216 @@ func TestConfig_OIDC_Write(t *testing.T) {
 		if !resp.IsError() {
 			t.Fatalf("test '%s', expected error", test.id)
 		}
+	}
+}
+
+// testDiscoveryDocument returns a discovery document with endpoints under
+// base. change edits the document before it is encoded.
+func testDiscoveryDocument(t *testing.T, issuer, base string, change func(map[string]any)) string {
+	t.Helper()
+
+	doc := map[string]any{
+		"issuer":                        issuer,
+		"authorization_endpoint":        base + "/auth",
+		"token_endpoint":                base + "/token",
+		"jwks_uri":                      base + "/certs",
+		"userinfo_endpoint":             base + "/userinfo",
+		"device_authorization_endpoint": base + "/device",
+	}
+	if change != nil {
+		change(doc)
+	}
+
+	b, err := json.Marshal(doc)
+	require.NoError(t, err)
+	return string(b)
+}
+
+func TestConfig_OIDC_DiscoveryDocument(t *testing.T) {
+	s := newOIDCProvider(t)
+	defer s.server.Close()
+
+	cert, err := s.getTLSCert()
+	require.NoError(t, err)
+
+	config := func(change func(map[string]any)) map[string]any {
+		return map[string]any{
+			"oidc_discovery_url":      s.server.URL,
+			"oidc_discovery_ca_pem":   cert,
+			"oidc_client_id":          "abc",
+			"oidc_client_secret":      "def",
+			"oidc_discovery_document": testDiscoveryDocument(t, s.server.URL, s.server.URL, change),
+		}
+	}
+
+	t.Run("round trip", func(t *testing.T) {
+		b, storage := getBackend(t)
+
+		resp, err := b.HandleRequest(t.Context(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data:      config(nil),
+		})
+		require.NoError(t, err)
+		require.False(t, resp != nil && resp.IsError(), "resp: %#v", resp)
+
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      configPath,
+			Storage:   storage,
+		})
+		require.NoError(t, err)
+		for k, v := range config(nil) {
+			if k == "oidc_client_secret" {
+				continue
+			}
+			require.Equal(t, v, resp.Data[k], k)
+		}
+	})
+
+	t.Run("skips discovery", func(t *testing.T) {
+		b, storage := getBackend(t)
+		s.getRequests()
+
+		// The issuer host doesn't resolve, so any discovery attempt fails.
+		data := config(func(d map[string]any) { d["issuer"] = "https://issuer.invalid" })
+		data["oidc_discovery_url"] = "https://issuer.invalid"
+
+		resp, err := b.HandleRequest(t.Context(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data:      data,
+		})
+		require.NoError(t, err)
+		require.False(t, resp != nil && resp.IsError(), "resp: %#v", resp)
+
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
+			Operation: logical.CreateOperation,
+			Path:      "role/test",
+			Storage:   storage,
+			Data: map[string]any{
+				"user_claim":            "email",
+				"allowed_redirect_uris": []string{"https://example.com"},
+			},
+		})
+		require.NoError(t, err)
+		require.False(t, resp != nil && resp.IsError(), "resp: %#v", resp)
+
+		resp, err = b.HandleRequest(t.Context(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "oidc/auth_url",
+			Storage:   storage,
+			Data: map[string]any{
+				"role":         "test",
+				"redirect_uri": "https://example.com",
+			},
+		})
+		require.NoError(t, err)
+		require.False(t, resp != nil && resp.IsError(), "resp: %#v", resp)
+		require.True(t, strings.HasPrefix(resp.Data["auth_url"].(string), s.server.URL+"/auth?"), resp.Data["auth_url"])
+
+		for _, r := range s.getRequests() {
+			require.NotEqual(t, "/.well-known/openid-configuration", r.URL.Path)
+		}
+	})
+
+	t.Run("unreachable JWKS URL", func(t *testing.T) {
+		b, storage := getBackend(t)
+
+		data := config(func(d map[string]any) { d["jwks_uri"] = s.server.URL + "/certs_missing" })
+
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data:      data,
+		}
+		resp, err := b.HandleRequest(t.Context(), req)
+		require.NoError(t, err)
+		require.True(t, resp.IsError())
+		require.True(t, strings.HasPrefix(resp.Error().Error(), "error checking jwks_uri: "), resp.Error())
+
+		data["skip_jwks_validation"] = true
+		resp, err = b.HandleRequest(t.Context(), req)
+		require.NoError(t, err)
+		require.False(t, resp.IsError())
+		require.Equal(t, []string{"error checking jwks_uri"}, resp.Warnings)
+	})
+
+	tests := map[string]struct {
+		doc    func(map[string]any)
+		config func(map[string]any)
+		err    string
+	}{
+		"missing discovery URL": {
+			config: func(d map[string]any) {
+				delete(d, "oidc_discovery_url")
+				d["jwt_validation_pubkeys"] = []string{testJWTPubKey}
+			},
+			err: "'oidc_discovery_url' must be set when 'oidc_discovery_document' is set",
+		},
+		"invalid JSON": {
+			config: func(d map[string]any) { d["oidc_discovery_document"] = "{" },
+			err:    "error parsing 'oidc_discovery_document': unexpected end of JSON input",
+		},
+		"issuer mismatch": {
+			doc: func(d map[string]any) { d["issuer"] = "https://other.example.com" },
+			err: `'oidc_discovery_document' issuer "https://other.example.com" does not match 'oidc_discovery_url'`,
+		},
+		"missing token endpoint": {
+			doc: func(d map[string]any) { delete(d, "token_endpoint") },
+			err: "'oidc_discovery_document' must contain 'token_endpoint'",
+		},
+		"missing userinfo endpoint": {
+			doc: func(d map[string]any) { delete(d, "userinfo_endpoint") },
+			err: "'oidc_discovery_document' must contain 'userinfo_endpoint'",
+		},
+		"relative URL": {
+			doc: func(d map[string]any) { d["jwks_uri"] = "/certs" },
+			err: "'oidc_discovery_document' 'jwks_uri' must be an absolute http or https URL",
+		},
+		"non-HTTP scheme": {
+			doc: func(d map[string]any) { d["device_authorization_endpoint"] = "ftp://keycloak.example.com/device" },
+			err: "'oidc_discovery_document' 'device_authorization_endpoint' must be an absolute http or https URL",
+		},
+		"invalid issuer": {
+			doc: func(d map[string]any) { d["issuer"] = "keycloak.example.com/realms/test" },
+			config: func(d map[string]any) {
+				d["oidc_discovery_url"] = "keycloak.example.com/realms/test"
+				d["skip_jwks_validation"] = true
+			},
+			err: "error creating OIDC provider: error creating provider: NewConfig: invalid provider config: Config.Validate: issuer keycloak.example.com/realms/test schema is not http or https: invalid issuer",
+		},
+		"invalid CA": {
+			config: func(d map[string]any) {
+				d["oidc_discovery_ca_pem"] = "not a certificate"
+				d["skip_jwks_validation"] = true
+			},
+			err: "error creating OIDC provider: error creating provider: NewConfig: invalid provider config: Config.Validate: invalid CA certificate",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			b, storage := getBackend(t)
+
+			data := config(tc.doc)
+			if tc.config != nil {
+				tc.config(data)
+			}
+
+			resp, err := b.HandleRequest(t.Context(), &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      configPath,
+				Storage:   storage,
+				Data:      data,
+			})
+			require.NoError(t, err)
+			require.True(t, resp.IsError())
+			require.EqualError(t, resp.Error(), tc.err)
+		})
 	}
 }
 

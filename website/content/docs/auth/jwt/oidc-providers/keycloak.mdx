@@ -60,6 +60,45 @@ bao write auth/oidc/config \
 
 ```
 
+### 2.2 Keycloak not reachable at its public URL
+
+OIDC discovery requires OpenBao to reach Keycloak at the issuer URL. If it
+can't, for example because Keycloak runs in the same cluster behind a gateway
+that rejects internal traffic, provide the discovery document yourself.
+OpenBao then skips discovery and uses the endpoints in the document.
+
+Users' browsers are redirected to `authorization_endpoint`, so it uses the
+public URL. OpenBao calls the other endpoints, so they can use the internal
+service address. `device_authorization_endpoint` is only needed for the device
+flow. Save the document as `keycloak-discovery.json`.
+
+```json
+{
+  "issuer": "https://<KEYCLOAK_URL>/realms/<REALM-NAME>",
+  "authorization_endpoint": "https://<KEYCLOAK_URL>/realms/<REALM-NAME>/protocol/openid-connect/auth",
+  "token_endpoint": "http://<KEYCLOAK_SERVICE>/realms/<REALM-NAME>/protocol/openid-connect/token",
+  "jwks_uri": "http://<KEYCLOAK_SERVICE>/realms/<REALM-NAME>/protocol/openid-connect/certs",
+  "userinfo_endpoint": "http://<KEYCLOAK_SERVICE>/realms/<REALM-NAME>/protocol/openid-connect/userinfo",
+  "device_authorization_endpoint": "http://<KEYCLOAK_SERVICE>/realms/<REALM-NAME>/protocol/openid-connect/auth/device"
+}
+```
+
+`issuer` must equal `oidc_discovery_url`. Keycloak's `hostname` option must be
+set to the public URL. Otherwise tokens issued through the internal endpoints
+carry the internal URL as `iss`, and OpenBao rejects them.
+
+JWT roles on this mount don't check `iss` against `oidc_discovery_url`. Set
+`bound_issuer` to the public realm URL if you use them.
+
+```bash
+bao write auth/oidc/config \
+  oidc_client_id="bao-client" \
+  oidc_client_secret="<CLIENT_SECRET>" \
+  default_role="admin-sso" \
+  oidc_discovery_url="https://<KEYCLOAK_URL>/realms/<REALM-NAME>" \
+  oidc_discovery_document=@keycloak-discovery.json
+```
+
 ## 3. The Role Configuration
 
 The role maps authenticated Keycloak users to OpenBao policies.

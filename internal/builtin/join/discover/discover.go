@@ -34,10 +34,10 @@ type Discover struct {
 }
 
 type discoverConfig struct {
-	Provider string            `mapstructure:"provider"`
-	Args     map[string]string `mapstructure:"args"`
-	Port     uint16            `mapstructure:"port"`
-	Scheme   string            `mapstructure:"scheme"`
+	Provider string   `mapstructure:"provider"`
+	Args     []string `mapstructure:"args"`
+	Port     uint16   `mapstructure:"port"`
+	Scheme   string   `mapstructure:"scheme"`
 }
 
 func (d *Discover) Candidates(ctx context.Context, config map[string]any) ([]joinplugin.Addr, error) {
@@ -56,13 +56,20 @@ func (d *Discover) Candidates(ctx context.Context, config map[string]any) ([]joi
 		cfg.Scheme = "https"
 	}
 
-	discover := make([]string, 0, len(cfg.Args)+1)
-	discover = append(discover, cfg.Provider)
-	for k, v := range cfg.Args {
-		discover = append(discover, fmt.Sprintf("%s=%s", k, v))
+	args := make(discover.Config, len(cfg.Args)+1)
+	args["provider"] = cfg.Provider
+	for _, arg := range cfg.Args {
+		k, v, found := strings.Cut(arg, "=")
+		if !found {
+			return nil, fmt.Errorf("expected '=' in argument: %s", arg)
+		}
+		if _, found := args[k]; found {
+			return nil, fmt.Errorf("duplicate argument: %s", k)
+		}
+		args[k] = v
 	}
 
-	discoveries, err := d.disco.Addrs(strings.Join(discover, " "), d.logger.StandardLogger(nil))
+	discoveries, err := d.disco.Addrs(args.String(), d.logger.StandardLogger(nil))
 	if err != nil {
 		return nil, err
 	}

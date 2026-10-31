@@ -1,0 +1,263 @@
+// Dark theme overrides
+@mixin dark-theme {
+  // Search inputs not covered by .input (power-select search, bare search fields)
+  .ember-power-select-search-input,
+  input[type='search'] {
+    background-color: #1b1b1d;
+    color: #e3e3e3;
+    border-color: rgba(255, 255, 255, 0.15);
+
+    &::placeholder {
+      color: #a0a3ab;
+    }
+  }
+
+  // HDS tokens
+  //  Sidebar
+  --token-side-nav-color-surface-primary: #242526;
+  --token-side-nav-color-foreground-primary: #e3e3e3;
+  --token-side-nav-color-foreground-strong: #ffffff;
+
+  //  Text, links, surfaces for HDS components
+  --token-color-foreground-strong: #ffffff;
+  --token-color-foreground-primary: #e3e3e3;
+  --token-color-foreground-faint: #a0a3ab;
+  --token-color-foreground-action: #79c0ab;
+  --token-color-foreground-action-hover: #64b69e;
+  --token-color-foreground-action-active: #59b197;
+  --token-color-surface-primary: #1b1b1d;
+  --token-color-surface-faint: #242526;
+  --token-color-surface-strong: #2e2f31;
+  --token-color-border-primary: rgba(255, 255, 255, 0.12);
+
+  // Recolor CSS classes directly
+  // Page title
+  .title,
+  .title > a {
+    color: #e3e3e3;
+  }
+
+  .toolbar {
+    background-color: #2e2f31;
+    border-color: rgba(255, 255, 255, 0.12);
+    &::after {
+      background: linear-gradient(to right, #2e2f31, rgba(46, 47, 49, 0));
+    }
+  }
+
+  .toolbar-link {
+    color: #e3e3e3;
+
+    &:hover:not(.disabled) {
+      background-color: #3a3b3d;
+      color: #79c0ab;
+    }
+  }
+
+  // Text inputs, textareas, select triggers
+  .input,
+  .textarea,
+  .ember-power-select-trigger {
+    background-color: #1b1b1d;
+    color: #e3e3e3;
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  // Toggle track (off state)
+  .toggle[type='checkbox'] + label::before {
+    background: #3a3b3d;
+  }
+
+  // Cards and list rows
+  .box {
+    background-color: #242526;
+    color: #e3e3e3;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+  }
+
+  .empty-state {
+    background: #242526;
+    color: #a0a3ab;
+    box-shadow: 0 -2px 0 -1px rgba(255, 255, 255, 0.12);
+  }
+
+  .empty-state-title {
+    color: #e3e3e3;
+  }
+
+  // Invert built-in diagrams so that they are visible against a dark background
+  img[src*='/images/'] {
+    filter: invert(0.9) hue-rotate(180deg);
+  }
+
+  // Text helper classes
+  .has-text-black {
+    color: #e3e3e3 !important;
+  }
+
+  .has-text-grey,
+  .has-text-grey-dark {
+    color: #a0a3ab !important;
+  }
+
+  // "Namespace" label on the login form
+  .toolbar-namespace-picker .is-label {
+    color: #a0a3ab;
+  }
+
+  // Form labels
+  .is-label {
+    color: #e3e3e3;
+  }
+
+  // "..." menu trigger
+  .popup-menu-trigger {
+    color: #e3e3e3;
+  }
+
+  // Display name heading in the user menu
+  .popup-menu-content .menu-label {
+    color: #ffffff;
+  }
+
+  // Dropdown menus
+  .popup-menu-content,
+  div > .ember-power-select-options {
+    background-color: #242526;
+    border-color: rgba(255, 255, 255, 0.12);
+
+    button.link,
+    a,
+    .ember-power-select-option {
+      background-color: #242526;
+      color: #e3e3e3;
+
+      &:hover {
+        background-color: #2e2f31;
+        color: #ffffff;
+      }
+    }
+  }
+
+  // Plain select dropdowns
+  .select select {
+    background-color: #242526;
+    color: #e3e3e3;
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: none;
+
+    &:focus,
+    &:focus-visible,
+    &:active,
+    &.is-active {
+      border-color: #1563ff;
+    }
+  }
+
+  // Base64 encode/decode toggle
+  .b64-toggle {
+    background-color: #242526;
+    color: #e3e3e3;
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 3px 1px rgba(0, 0, 0, 0.4);
+
+    &:hover {
+      background-color: #2e2f31;
+    }
+
+    &:focus:not(:active) {
+      box-shadow: 0 0 0 0.125em rgba(21, 99, 255, 0.25);
+    }
+
+    &.is-input {
+      box-shadow: none;
+    }
+  }
+
+  .select::after {
+    filter: invert(1);
+  }
+
+  .ember-power-select-option[aria-current='true'] {
+    background-color: #2e2f31;
+    color: #ffffff;
+  }
+
+  // Box variations
+  .box.is-sideless {
+    background-color: transparent;
+    box-shadow:
+      0 2px 0 -1px rgba(255, 255, 255, 0.12),
+      0 -2px 0 -1px rgba(255, 255, 255, 0.12);
+  }
+
+  .box.is-bottomless {
+    background-color: transparent;
+    box-shadow: 0 -1px 0 0 rgba(255, 255, 255, 0.12);
+  }
+
+  .box.is-shadowless {
+    background-color: transparent;
+  }
+
+  // Modals
+  .modal-background {
+    background: #0f0f10;
+  }
+
+  .modal-card {
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .modal-card-head {
+    background-color: #2e2f31;
+    border-bottom-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .is-highlight {
+    .modal-card-head {
+      background: #3a3220;
+      border-color: #6b5a1e;
+    }
+
+    .modal-card-title {
+      color: #f2d36b;
+    }
+  }
+
+  .modal-card-body,
+  .modal-card-custom,
+  .modal-card-foot {
+    background-color: #242526;
+    color: #e3e3e3;
+  }
+
+  .modal-card-foot-outlined {
+    background: #2e2f31;
+    border-top-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .modal-card .copy-text {
+    background-color: #1b1b1d;
+  }
+
+  // Bold text and table headers
+  strong,
+  table th {
+    color: #ffffff;
+  }
+}
+
+:root[data-theme='dark'] {
+  @include dark-theme;
+  background-color: #1b1b1d;
+}
+
+:root[data-theme='dark'] body {
+  color: var(--token-color-foreground-primary);
+}
+
+// Links
+:where(:root[data-theme='dark']) a:hover {
+  color: #e3e3e3;
+}

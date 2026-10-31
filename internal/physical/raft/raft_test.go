@@ -278,6 +278,56 @@ func TestRaft_ParseNonVoter(t *testing.T) {
 	}
 }
 
+func TestRaft_JoinConfig(t *testing.T) {
+	b := RaftBackend{
+		logger: hclog.NewNullLogger(),
+		conf: map[string]string{
+			"retry_join": `[
+				{"auto_join": "provider=aws foo=baz"},
+				{"auto_join_plugin": {
+					"plugin": "discover",
+					"config": {
+						"provider": "aws",
+						"args": ["foo=bar"]
+					}
+				}}
+			]`,
+		},
+	}
+	conf, err := b.JoinConfig()
+	require.NoError(t, err, "error parsing config")
+	for _, info := range conf {
+		err = info.Normalize(b.logger)
+		require.NoError(t, err, "error normalizing config")
+	}
+
+	expected := []*LeaderJoinInfo{
+		{
+			AutoJoinPlugin: &AutoJoinPlugin{
+				Plugin: "discover",
+				Config: map[string]any{
+					"provider": "aws",
+					"args":     []any{"foo=baz"},
+					"scheme":   "",
+					"port":     uint(0),
+				},
+			},
+			Retry: true,
+		},
+		{
+			AutoJoinPlugin: &AutoJoinPlugin{
+				Plugin: "discover",
+				Config: map[string]any{
+					"provider": "aws",
+					"args":     []any{"foo=bar"},
+				},
+			},
+			Retry: true,
+		},
+	}
+	require.EqualValues(t, expected, conf)
+}
+
 func TestRaft_Backend_LargeKey(t *testing.T) {
 	t.Parallel()
 	b := GetRaft(t, true, true)

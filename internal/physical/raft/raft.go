@@ -7,6 +7,7 @@ package raft
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -21,6 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hashicorp/go-discover"
 	log "github.com/hashicorp/go-hclog"
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-raftchunking"
@@ -37,6 +39,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/metricsutil"
 	"github.com/openbao/openbao/v2/internal/helper/tlsdebug"
 	"github.com/openbao/openbao/v2/internal/physical/raft/snapshot"
@@ -232,12 +235,60 @@ func (r *RaftBackend) HookInvalidate(hook physical.InvalidateFunc) {
 	r.fsm.hookInvalidate(hook)
 }
 
+type AutoJoinPlugin struct {
+	Plugin string         `json:"plugin"`
+	Config map[string]any `json:"config"`
+}
+
+type autoJoinPluginDecode struct {
+	Plugin string          `json:"plugin"`
+	Config json.RawMessage `json:"config"`
+}
+
+func (p *AutoJoinPlugin) UnmarshalJSON(b []byte) error {
+	var v autoJoinPluginDecode
+	if err := configutil.DecodeJSONSingleton(b, &v); err != nil {
+		return err
+	}
+
+	config := make(map[string]any)
+	if len(v.Config) != 0 {
+		if err := configutil.DecodeJSONSingleton(v.Config, &config); err != nil {
+			return err
+		}
+	}
+
+	for k, v := range config {
+		// HCLv1 decodes objects as arrays (of objects). This is fixed in HCLv2,
+		// so allow only primitives and lists of primitives for now, keeping
+		// things forward-compatible for migration.
+		switch v := v.(type) {
+		case map[string]any:
+			return fmt.Errorf("objects are not allowed in auto-join plugin config (key: %s)", k)
+		case []any:
+			for idx, item := range v {
+				if _, ok := item.(map[string]any); ok {
+					return fmt.Errorf("objects are not allowed in auto-join plugin config (key: %s, index: %d)", k, idx)
+				}
+				if _, ok := item.([]any); ok {
+					return fmt.Errorf("nested lists are not allowed in auto-join plugin config (key: %s, index: %d)", k, idx)
+				}
+			}
+		default: // no-op
+		}
+	}
+
+	p.Plugin = v.Plugin
+	p.Config = config
+	return nil
+}
+
 // LeaderJoinInfo contains information required by a node to join itself as a
 // follower to an existing raft cluster
 type LeaderJoinInfo struct {
-	// AutoJoin defines any cloud auto-join metadata. If supplied, Vault will
-	// attempt to automatically discover peers in addition to what can be provided
-	// via 'leader_api_addr'.
+	// AutoJoin defines any cloud auto-join metadata. If supplied, OpenBao will
+	// attempt to automatically discover peers in addition to what can be
+	// provided via 'leader_api_addr'.
 	AutoJoin string `json:"auto_join"`
 
 	// AutoJoinScheme defines the optional URI protocol scheme for addresses
@@ -247,6 +298,11 @@ type LeaderJoinInfo struct {
 	// AutoJoinPort defines the optional port used for addressed discovered via
 	// auto-join.
 	AutoJoinPort uint `json:"auto_join_port"`
+
+	// AutoJoinPlugin specifies the name and configuration of an existing join
+	// plugin. If supplied, OpenBao will attempt to automatically discover peers
+	// in addition to what can be provided via 'leader_api_addr'.
+	AutoJoinPlugin *AutoJoinPlugin `json:"auto_join_plugin"`
 
 	// LeaderAPIAddr is the address of the leader node to connect to
 	LeaderAPIAddr string `json:"leader_api_addr"`
@@ -287,6 +343,52 @@ type LeaderJoinInfo struct {
 	TLSConfig *tls.Config `json:"-"`
 }
 
+func (info *LeaderJoinInfo) Normalize(logger log.Logger) error {
+	haveJoinMethod := false
+	for _, joinMethodEnabled := range []bool{len(info.AutoJoin) != 0, len(info.LeaderAPIAddr) != 0, info.AutoJoinPlugin != nil} {
+		if haveJoinMethod && joinMethodEnabled {
+			return errors.New("only one of leader_api_addr, auto_join, and auto_join_script may be enabled")
+		}
+		haveJoinMethod = haveJoinMethod || joinMethodEnabled
+	}
+
+	if info.AutoJoin != "" {
+		logger.Warn("legacy auto-join config found, please use discover plugin instead")
+		config, err := discover.Parse(info.AutoJoin)
+		if err != nil {
+			return err
+		}
+		provider := config["provider"]
+		delete(config, "provider")
+		args := make([]any, 0, len(config))
+		for k, v := range config {
+			// No need to quote `v`, because we split in `discover.go`
+			args = append(args, fmt.Sprintf("%s=%s", k, v))
+		}
+		info.AutoJoinPlugin = &AutoJoinPlugin{
+			Plugin: "discover",
+			Config: map[string]any{
+				"provider": provider,
+				"args":     args,
+				"scheme":   info.AutoJoinScheme,
+				"port":     info.AutoJoinPort,
+			},
+		}
+
+		scheme := info.AutoJoinScheme
+		if scheme != "" && (scheme != "http" && scheme != "https") {
+			return fmt.Errorf("invalid scheme %q; must either be http or https", info.AutoJoinScheme)
+		}
+
+		// Clear legacy settings
+		info.AutoJoin = ""
+		info.AutoJoinScheme = ""
+		info.AutoJoinPort = 0
+	}
+
+	return nil
+}
+
 // JoinConfig returns a list of information about possible leader nodes that
 // this node can join as a follower
 func (b *RaftBackend) JoinConfig() ([]*LeaderJoinInfo, error) {
@@ -306,14 +408,6 @@ func (b *RaftBackend) JoinConfig() ([]*LeaderJoinInfo, error) {
 	}
 
 	for i, info := range leaderInfos {
-		if len(info.AutoJoin) != 0 && len(info.LeaderAPIAddr) != 0 {
-			return nil, errors.New("cannot provide both a leader_api_addr and auto_join")
-		}
-
-		if info.AutoJoinScheme != "" && (info.AutoJoinScheme != "http" && info.AutoJoinScheme != "https") {
-			return nil, fmt.Errorf("invalid scheme %q; must either be http or https", info.AutoJoinScheme)
-		}
-
 		info.Retry = true
 		info.TLSConfig, err = b.parseTLSInfo(info)
 		if err != nil {

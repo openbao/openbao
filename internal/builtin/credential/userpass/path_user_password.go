@@ -17,7 +17,7 @@ import (
 
 func pathUserPassword(b *backend) *framework.Path {
 	return &framework.Path{
-		Pattern: "users/" + framework.GenericNameRegex("username") + "/password$",
+		Pattern: "users/" + usernamePathRegex() + "/password$",
 
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixUserpass,
@@ -66,7 +66,10 @@ func (b *backend) pathUserPasswordUpdate(ctx context.Context, req *logical.Reque
 	}
 	defer txRollback()
 
-	username := d.Get("username").(string)
+	username, err := getUsername(d)
+	if err != nil {
+		return nil, err
+	}
 	userEntry, err := b.user(ctx, req.Storage, username)
 	if err != nil {
 		return nil, err

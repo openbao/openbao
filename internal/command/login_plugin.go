@@ -27,6 +27,12 @@ func (h *execLoginHandler) Auth(client *api.Client, config map[string]string, no
 	if v, ok := config["mount"]; ok {
 		cmd.Env = append(cmd.Env, "BAO_CLI_AUTH_MOUNT="+v)
 	}
+	if v, ok := config["username"]; ok {
+		cmd.Env = append(cmd.Env, "BAO_CLI_AUTH_USERNAME="+v)
+	}
+	if v, ok := config["password"]; ok {
+		cmd.Env = append(cmd.Env, "BAO_CLI_AUTH_PASSWORD="+v)
+	}
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, err

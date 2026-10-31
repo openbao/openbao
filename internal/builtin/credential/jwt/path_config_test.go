@@ -11,6 +11,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"encoding/pem"
 	"io"
 	"math/big"
@@ -39,11 +40,7 @@ func TestConfig_JWT_Read(t *testing.T) {
 		"oidc_client_id":                "",
 		"oidc_response_mode":            "",
 		"oidc_response_types":           []string{},
-		"oidc_authorization_url":        "",
-		"oidc_token_url":                "",
-		"oidc_jwks_url":                 "",
-		"oidc_userinfo_url":             "",
-		"oidc_device_auth_url":          "",
+		"oidc_discovery_document":       "",
 		"override_allowed_server_names": []string{},
 		"default_role":                  "",
 		"jwt_validation_pubkeys":        []string{testJWTPubKey},
@@ -210,11 +207,7 @@ func TestConfig_JWKS_Update(t *testing.T) {
 		"oidc_client_id":                "",
 		"oidc_response_mode":            "form_post",
 		"oidc_response_types":           []string{},
-		"oidc_authorization_url":        "",
-		"oidc_token_url":                "",
-		"oidc_jwks_url":                 "",
-		"oidc_userinfo_url":             "",
-		"oidc_device_auth_url":          "",
+		"oidc_discovery_document":       "",
 		"override_allowed_server_names": []string{},
 		"default_role":                  "",
 		"jwt_validation_pubkeys":        []string{},
@@ -461,24 +454,42 @@ func TestConfig_OIDC_Write(t *testing.T) {
 	}
 }
 
-func TestConfig_OIDC_StaticEndpoints(t *testing.T) {
+// testDiscoveryDocument returns a discovery document with endpoints under
+// base. change edits the document before it is encoded.
+func testDiscoveryDocument(t *testing.T, issuer, base string, change func(map[string]any)) string {
+	t.Helper()
+
+	doc := map[string]any{
+		"issuer":                        issuer,
+		"authorization_endpoint":        base + "/auth",
+		"token_endpoint":                base + "/token",
+		"jwks_uri":                      base + "/certs",
+		"userinfo_endpoint":             base + "/userinfo",
+		"device_authorization_endpoint": base + "/device",
+	}
+	if change != nil {
+		change(doc)
+	}
+
+	b, err := json.Marshal(doc)
+	require.NoError(t, err)
+	return string(b)
+}
+
+func TestConfig_OIDC_DiscoveryDocument(t *testing.T) {
 	s := newOIDCProvider(t)
 	defer s.server.Close()
 
 	cert, err := s.getTLSCert()
 	require.NoError(t, err)
 
-	static := func() map[string]any {
+	config := func(change func(map[string]any)) map[string]any {
 		return map[string]any{
-			"oidc_discovery_url":     s.server.URL,
-			"oidc_discovery_ca_pem":  cert,
-			"oidc_client_id":         "abc",
-			"oidc_client_secret":     "def",
-			"oidc_authorization_url": s.server.URL + "/auth",
-			"oidc_token_url":         s.server.URL + "/token",
-			"oidc_jwks_url":          s.server.URL + "/certs",
-			"oidc_userinfo_url":      s.server.URL + "/userinfo",
-			"oidc_device_auth_url":   s.server.URL + "/device",
+			"oidc_discovery_url":      s.server.URL,
+			"oidc_discovery_ca_pem":   cert,
+			"oidc_client_id":          "abc",
+			"oidc_client_secret":      "def",
+			"oidc_discovery_document": testDiscoveryDocument(t, s.server.URL, s.server.URL, change),
 		}
 	}
 
@@ -489,7 +500,7 @@ func TestConfig_OIDC_StaticEndpoints(t *testing.T) {
 			Operation: logical.UpdateOperation,
 			Path:      configPath,
 			Storage:   storage,
-			Data:      static(),
+			Data:      config(nil),
 		})
 		require.NoError(t, err)
 		require.False(t, resp != nil && resp.IsError(), "resp: %#v", resp)
@@ -500,7 +511,7 @@ func TestConfig_OIDC_StaticEndpoints(t *testing.T) {
 			Storage:   storage,
 		})
 		require.NoError(t, err)
-		for k, v := range static() {
+		for k, v := range config(nil) {
 			if k == "oidc_client_secret" {
 				continue
 			}
@@ -513,7 +524,7 @@ func TestConfig_OIDC_StaticEndpoints(t *testing.T) {
 		s.getRequests()
 
 		// The issuer host doesn't resolve, so any discovery attempt fails.
-		data := static()
+		data := config(func(d map[string]any) { d["issuer"] = "https://issuer.invalid" })
 		data["oidc_discovery_url"] = "https://issuer.invalid"
 
 		resp, err := b.HandleRequest(t.Context(), &logical.Request{
@@ -558,8 +569,7 @@ func TestConfig_OIDC_StaticEndpoints(t *testing.T) {
 	t.Run("unreachable JWKS URL", func(t *testing.T) {
 		b, storage := getBackend(t)
 
-		data := static()
-		data["oidc_jwks_url"] = s.server.URL + "/certs_missing"
+		data := config(func(d map[string]any) { d["jwks_uri"] = s.server.URL + "/certs_missing" })
 
 		req := &logical.Request{
 			Operation: logical.UpdateOperation,
@@ -570,68 +580,65 @@ func TestConfig_OIDC_StaticEndpoints(t *testing.T) {
 		resp, err := b.HandleRequest(t.Context(), req)
 		require.NoError(t, err)
 		require.True(t, resp.IsError())
-		require.True(t, strings.HasPrefix(resp.Error().Error(), "error checking oidc_jwks_url: "), resp.Error())
+		require.True(t, strings.HasPrefix(resp.Error().Error(), "error checking jwks_uri: "), resp.Error())
 
 		data["skip_jwks_validation"] = true
 		resp, err = b.HandleRequest(t.Context(), req)
 		require.NoError(t, err)
 		require.False(t, resp.IsError())
-		require.Equal(t, []string{"error checking oidc_jwks_url"}, resp.Warnings)
+		require.Equal(t, []string{"error checking jwks_uri"}, resp.Warnings)
 	})
 
 	tests := map[string]struct {
-		change func(map[string]any)
+		doc    func(map[string]any)
+		config func(map[string]any)
 		err    string
 	}{
 		"missing discovery URL": {
-			change: func(d map[string]any) {
+			config: func(d map[string]any) {
 				delete(d, "oidc_discovery_url")
 				d["jwt_validation_pubkeys"] = []string{testJWTPubKey}
 			},
-			err: "'oidc_discovery_url' must be set when static OIDC endpoints are configured",
+			err: "'oidc_discovery_url' must be set when 'oidc_discovery_document' is set",
 		},
-		"missing token URL": {
-			change: func(d map[string]any) { delete(d, "oidc_token_url") },
-			err:    "'oidc_authorization_url', 'oidc_token_url', 'oidc_jwks_url' and 'oidc_userinfo_url' must be set together",
+		"invalid JSON": {
+			config: func(d map[string]any) { d["oidc_discovery_document"] = "{" },
+			err:    "error parsing 'oidc_discovery_document': unexpected end of JSON input",
 		},
-		"missing authorization URL": {
-			change: func(d map[string]any) { delete(d, "oidc_authorization_url") },
-			err:    "'oidc_authorization_url', 'oidc_token_url', 'oidc_jwks_url' and 'oidc_userinfo_url' must be set together",
+		"issuer mismatch": {
+			doc: func(d map[string]any) { d["issuer"] = "https://other.example.com" },
+			err: `'oidc_discovery_document' issuer "https://other.example.com" does not match 'oidc_discovery_url'`,
 		},
-		"missing userinfo URL": {
-			change: func(d map[string]any) { delete(d, "oidc_userinfo_url") },
-			err:    "'oidc_authorization_url', 'oidc_token_url', 'oidc_jwks_url' and 'oidc_userinfo_url' must be set together",
+		"missing token endpoint": {
+			doc: func(d map[string]any) { delete(d, "token_endpoint") },
+			err: "'oidc_discovery_document' must contain 'token_endpoint'",
 		},
-		"optional URL only": {
-			change: func(d map[string]any) {
-				delete(d, "oidc_authorization_url")
-				delete(d, "oidc_token_url")
-				delete(d, "oidc_jwks_url")
-				delete(d, "oidc_userinfo_url")
-			},
-			err: "'oidc_authorization_url', 'oidc_token_url', 'oidc_jwks_url' and 'oidc_userinfo_url' must be set together",
+		"missing userinfo endpoint": {
+			doc: func(d map[string]any) { delete(d, "userinfo_endpoint") },
+			err: "'oidc_discovery_document' must contain 'userinfo_endpoint'",
 		},
 		"relative URL": {
-			change: func(d map[string]any) { d["oidc_jwks_url"] = "/certs" },
-			err:    "'oidc_jwks_url' must be an absolute http or https URL",
+			doc: func(d map[string]any) { d["jwks_uri"] = "/certs" },
+			err: "'oidc_discovery_document' 'jwks_uri' must be an absolute http or https URL",
+		},
+		"non-HTTP scheme": {
+			doc: func(d map[string]any) { d["device_authorization_endpoint"] = "ftp://keycloak.example.com/device" },
+			err: "'oidc_discovery_document' 'device_authorization_endpoint' must be an absolute http or https URL",
 		},
 		"invalid issuer": {
-			change: func(d map[string]any) {
+			doc: func(d map[string]any) { d["issuer"] = "keycloak.example.com/realms/test" },
+			config: func(d map[string]any) {
 				d["oidc_discovery_url"] = "keycloak.example.com/realms/test"
 				d["skip_jwks_validation"] = true
 			},
 			err: "error creating OIDC provider: error creating provider: NewConfig: invalid provider config: Config.Validate: issuer keycloak.example.com/realms/test schema is not http or https: invalid issuer",
 		},
 		"invalid CA": {
-			change: func(d map[string]any) {
+			config: func(d map[string]any) {
 				d["oidc_discovery_ca_pem"] = "not a certificate"
 				d["skip_jwks_validation"] = true
 			},
 			err: "error creating OIDC provider: error creating provider: NewConfig: invalid provider config: Config.Validate: invalid CA certificate",
-		},
-		"non-HTTP scheme": {
-			change: func(d map[string]any) { d["oidc_token_url"] = "ftp://keycloak.example.com/token" },
-			err:    "'oidc_token_url' must be an absolute http or https URL",
 		},
 	}
 
@@ -639,8 +646,10 @@ func TestConfig_OIDC_StaticEndpoints(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			b, storage := getBackend(t)
 
-			data := static()
-			tc.change(data)
+			data := config(tc.doc)
+			if tc.config != nil {
+				tc.config(data)
+			}
 
 			resp, err := b.HandleRequest(t.Context(), &logical.Request{
 				Operation: logical.UpdateOperation,

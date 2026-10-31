@@ -158,8 +158,8 @@ func (b *jwtAuthBackend) jwtValidator(config *jwtConfig) (*jwt.Validator, error)
 	case StaticKeys:
 		keySet, err = jwt.NewStaticKeySet(config.ParsedJWTPubKeys)
 	case OIDCDiscovery, OIDCFlow:
-		if config.staticEndpoints() {
-			keySet, err = jwt.NewJSONWebKeySet(b.providerCtx, config.OIDCJWKSURL, config.OIDCDiscoveryCAPEM)
+		if config.hasDiscoveryDocument() {
+			keySet, err = jwt.NewJSONWebKeySet(b.providerCtx, config.discoveryDoc.JWKSURL, config.OIDCDiscoveryCAPEM)
 		} else {
 			keySet, err = jwt.NewOIDCDiscoveryKeySet(b.providerCtx, config.OIDCDiscoveryURL, config.OIDCDiscoveryCAPEM)
 		}

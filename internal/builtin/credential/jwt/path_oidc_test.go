@@ -1714,7 +1714,7 @@ func getTestJWKS(t *testing.T, pubKey string) []byte {
 	return data
 }
 
-func TestOIDC_StaticEndpoints_Device(t *testing.T) {
+func TestOIDC_DiscoveryDocument_Device(t *testing.T) {
 	setup := func(t *testing.T, deviceURL bool) (logical.Backend, logical.Storage, *oidcProvider) {
 		b, storage := getBackend(t)
 		s := newOIDCProvider(t)
@@ -1727,19 +1727,18 @@ func TestOIDC_StaticEndpoints_Device(t *testing.T) {
 		cert, err := s.getTLSCert()
 		require.NoError(t, err)
 
+		doc := testDiscoveryDocument(t, s.server.URL, s.server.URL, func(d map[string]any) {
+			if !deviceURL {
+				delete(d, "device_authorization_endpoint")
+			}
+		})
 		data := map[string]any{
-			"oidc_discovery_url":     s.server.URL,
-			"oidc_discovery_ca_pem":  cert,
-			"oidc_client_id":         s.clientID,
-			"oidc_client_secret":     s.clientSecret,
-			"oidc_authorization_url": s.server.URL + "/auth",
-			"oidc_token_url":         s.server.URL + "/token",
-			"oidc_jwks_url":          s.server.URL + "/certs",
-			"oidc_userinfo_url":      s.server.URL + "/userinfo",
-			"jwt_supported_algs":     []string{"ES256"},
-		}
-		if deviceURL {
-			data["oidc_device_auth_url"] = s.server.URL + "/device"
+			"oidc_discovery_url":      s.server.URL,
+			"oidc_discovery_ca_pem":   cert,
+			"oidc_client_id":          s.clientID,
+			"oidc_client_secret":      s.clientSecret,
+			"oidc_discovery_document": doc,
+			"jwt_supported_algs":      []string{"ES256"},
 		}
 
 		resp, err := b.HandleRequest(t.Context(), &logical.Request{

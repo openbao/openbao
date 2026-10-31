@@ -74,25 +74,9 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 				Type:        framework.TypeCommaStringSlice,
 				Description: "The response types to request. Allowed values are 'code' and 'id_token'. Defaults to 'code'.",
 			},
-			"oidc_authorization_url": {
+			"oidc_discovery_document": {
 				Type:        framework.TypeString,
-				Description: `The provider's authorization endpoint. Setting this, "oidc_token_url", "oidc_jwks_url" and "oidc_userinfo_url" skips OIDC discovery. "oidc_discovery_url" is then used only as the issuer that OIDC roles check ID tokens against. JWT roles check the issuer only through "bound_issuer".`,
-			},
-			"oidc_token_url": {
-				Type:        framework.TypeString,
-				Description: `The provider's token endpoint. Required when "oidc_authorization_url" is set.`,
-			},
-			"oidc_jwks_url": {
-				Type:        framework.TypeString,
-				Description: `The provider's JWKS endpoint. Required when "oidc_authorization_url" is set.`,
-			},
-			"oidc_userinfo_url": {
-				Type:        framework.TypeString,
-				Description: `The provider's userinfo endpoint. Required when "oidc_authorization_url" is set.`,
-			},
-			"oidc_device_auth_url": {
-				Type:        framework.TypeString,
-				Description: `The provider's device authorization endpoint. Optional, only used with "oidc_authorization_url".`,
+				Description: `OIDC discovery document as JSON. When set, it is used instead of fetching the document from "oidc_discovery_url". Its "issuer" must equal "oidc_discovery_url", and it must contain "authorization_endpoint", "token_endpoint", "jwks_uri" and "userinfo_endpoint". JWT roles check the issuer only through "bound_issuer".`,
 			},
 			"jwks_url": {
 				Type:        framework.TypeString,
@@ -196,6 +180,10 @@ func (b *jwtAuthBackend) config(ctx context.Context, s logical.Storage) (*jwtCon
 		config.ParsedJWTPubKeys = append(config.ParsedJWTPubKeys, key)
 	}
 
+	if err := config.parseDiscoveryDocument(); err != nil {
+		return nil, err
+	}
+
 	b.cachedConfig = config
 
 	return config, nil
@@ -251,8 +239,8 @@ func (b *jwtAuthBackend) configDeviceAuthURL(ctx context.Context, s logical.Stor
 	b.l.Lock()
 	defer b.l.Unlock()
 
-	if config.staticEndpoints() {
-		if config.OIDCDeviceAuthURL == "" {
+	if config.hasDiscoveryDocument() {
+		if config.discoveryDoc.DeviceAuthURL == "" {
 			return errors.New("no device auth endpoint url configured")
 		}
 		return nil
@@ -321,11 +309,7 @@ func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reques
 			"oidc_client_id":                config.OIDCClientID,
 			"oidc_response_mode":            config.OIDCResponseMode,
 			"oidc_response_types":           config.OIDCResponseTypes,
-			"oidc_authorization_url":        config.OIDCAuthorizationURL,
-			"oidc_token_url":                config.OIDCTokenURL,
-			"oidc_jwks_url":                 config.OIDCJWKSURL,
-			"oidc_userinfo_url":             config.OIDCUserInfoURL,
-			"oidc_device_auth_url":          config.OIDCDeviceAuthURL,
+			"oidc_discovery_document":       config.OIDCDiscoveryDocument,
 			"default_role":                  config.DefaultRole,
 			"jwt_validation_pubkeys":        config.JWTValidationPubKeys,
 			"jwt_supported_algs":            config.JWTSupportedAlgs,
@@ -358,11 +342,7 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		OIDCClientSecret:           d.Get("oidc_client_secret").(string),
 		OIDCResponseMode:           d.Get("oidc_response_mode").(string),
 		OIDCResponseTypes:          d.Get("oidc_response_types").([]string),
-		OIDCAuthorizationURL:       d.Get("oidc_authorization_url").(string),
-		OIDCTokenURL:               d.Get("oidc_token_url").(string),
-		OIDCJWKSURL:                d.Get("oidc_jwks_url").(string),
-		OIDCUserInfoURL:            d.Get("oidc_userinfo_url").(string),
-		OIDCDeviceAuthURL:          d.Get("oidc_device_auth_url").(string),
+		OIDCDiscoveryDocument:      d.Get("oidc_discovery_document").(string),
 		JWKSURL:                    d.Get("jwks_url").(string),
 		JWKSCAPEM:                  d.Get("jwks_ca_pem").(string),
 		DefaultRole:                d.Get("default_role").(string),
@@ -413,7 +393,7 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		methodCount++
 	}
 
-	if err := config.validateStaticEndpoints(); err != nil {
+	if err := config.parseDiscoveryDocument(); err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}
 
@@ -431,9 +411,10 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 			return logical.ErrorResponse("'oidc_discovery_url' contains '.well-known' component"), nil
 		}
 
-		if config.staticEndpoints() {
-			// Building the provider makes no network calls in static mode, so
-			// its errors are config errors that skip_jwks_validation can't waive.
+		if config.hasDiscoveryDocument() {
+			// Building the provider from a discovery document makes no network
+			// calls, so its errors are config errors that skip_jwks_validation
+			// can't waive.
 			if config.OIDCClientID != "" {
 				provider, err := b.createProvider(config)
 				if err != nil {
@@ -442,12 +423,12 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 				provider.Done()
 			}
 
-			if err := checkJWKSURL(ctx, config.OIDCJWKSURL, config.OIDCDiscoveryCAPEM); err != nil {
+			if err := checkJWKSURL(ctx, config.discoveryDoc.JWKSURL, config.OIDCDiscoveryCAPEM); err != nil {
 				if !skipJwksValidation {
-					b.Logger().Error("error checking oidc_jwks_url", "error", err)
-					return logical.ErrorResponse("error checking oidc_jwks_url: %s", err.Error()), nil
+					b.Logger().Error("error checking jwks_uri", "error", err)
+					return logical.ErrorResponse("error checking jwks_uri: %s", err.Error()), nil
 				}
-				resp.AddWarning("error checking oidc_jwks_url")
+				resp.AddWarning("error checking jwks_uri")
 			}
 			break
 		}
@@ -592,12 +573,12 @@ func (b *jwtAuthBackend) createProvider(config *jwtConfig) (*oidc.Provider, erro
 	}
 
 	opts := []oidc.Option{oidc.WithProviderCA(config.OIDCDiscoveryCAPEM)}
-	if config.staticEndpoints() {
+	if config.hasDiscoveryDocument() {
 		opts = append(opts, oidc.WithProviderConfig(&oidc.ProviderConfig{
-			AuthURL:     config.OIDCAuthorizationURL,
-			TokenURL:    config.OIDCTokenURL,
-			JWKSURL:     config.OIDCJWKSURL,
-			UserInfoURL: config.OIDCUserInfoURL,
+			AuthURL:     config.discoveryDoc.AuthURL,
+			TokenURL:    config.discoveryDoc.TokenURL,
+			JWKSURL:     config.discoveryDoc.JWKSURL,
+			UserInfoURL: config.discoveryDoc.UserInfoURL,
 		}))
 	}
 
@@ -721,27 +702,35 @@ type jwtConfig struct {
 	OverrideAllowedServerNames []string       `json:"override_allowed_server_names"`
 	NamespaceInState           bool           `json:"namespace_in_state"`
 
-	// OIDCAuthorizationURL and the fields below configure provider endpoints
-	// directly. When they are set, OIDC discovery is skipped.
-	OIDCAuthorizationURL string `json:"oidc_authorization_url"`
-	OIDCTokenURL         string `json:"oidc_token_url"`
-	OIDCJWKSURL          string `json:"oidc_jwks_url"`
-	OIDCUserInfoURL      string `json:"oidc_userinfo_url"`
-	OIDCDeviceAuthURL    string `json:"oidc_device_auth_url"`
+	// OIDCDiscoveryDocument replaces the document fetched from
+	// OIDCDiscoveryURL.
+	OIDCDiscoveryDocument string `json:"oidc_discovery_document"`
 
 	ParsedJWTPubKeys []crypto.PublicKey `json:"-"`
+	discoveryDoc     *discoveryDocument
 	// configDeviceAuthURL discovers these from OIDCDiscoveryURL. They stay
-	// empty when static endpoints are configured.
+	// empty when a discovery document is configured.
 	deviceAuthURL  string
 	deviceTokenURL string
 }
 
-// deviceEndpoints returns the device authorization and token URLs. Static
-// endpoints come from the stored config, so a reset() between the device
-// authorization and the poll doesn't lose them.
+// discoveryDocument holds the endpoints OpenBao uses from an OIDC discovery
+// document.
+type discoveryDocument struct {
+	Issuer        string `json:"issuer"`
+	AuthURL       string `json:"authorization_endpoint"`
+	TokenURL      string `json:"token_endpoint"`
+	JWKSURL       string `json:"jwks_uri"`
+	UserInfoURL   string `json:"userinfo_endpoint"`
+	DeviceAuthURL string `json:"device_authorization_endpoint"`
+}
+
+// deviceEndpoints returns the device authorization and token URLs. A
+// configured discovery document is parsed on every config load, so a reset()
+// between the device authorization and the poll doesn't lose them.
 func (c *jwtConfig) deviceEndpoints() (authURL, tokenURL string) {
-	if c.staticEndpoints() {
-		return c.OIDCDeviceAuthURL, c.OIDCTokenURL
+	if c.hasDiscoveryDocument() {
+		return c.discoveryDoc.DeviceAuthURL, c.discoveryDoc.TokenURL
 	}
 	return c.deviceAuthURL, c.deviceTokenURL
 }
@@ -774,42 +763,56 @@ func (c jwtConfig) authType() int {
 	return unconfigured
 }
 
-// staticEndpoints reports whether provider endpoints are configured directly
-// instead of discovered.
-func (c jwtConfig) staticEndpoints() bool {
-	return c.OIDCAuthorizationURL != ""
+// hasDiscoveryDocument reports whether a configured discovery document
+// replaces OIDC discovery.
+func (c jwtConfig) hasDiscoveryDocument() bool {
+	return c.discoveryDoc != nil
 }
 
-func (c jwtConfig) validateStaticEndpoints() error {
-	endpoints := []struct{ field, value string }{
-		{"oidc_authorization_url", c.OIDCAuthorizationURL},
-		{"oidc_token_url", c.OIDCTokenURL},
-		{"oidc_jwks_url", c.OIDCJWKSURL},
-		{"oidc_userinfo_url", c.OIDCUserInfoURL},
-		{"oidc_device_auth_url", c.OIDCDeviceAuthURL},
+// parseDiscoveryDocument validates OIDCDiscoveryDocument and sets
+// discoveryDoc from it.
+func (c *jwtConfig) parseDiscoveryDocument() error {
+	if c.OIDCDiscoveryDocument == "" {
+		return nil
+	}
+	if c.OIDCDiscoveryURL == "" {
+		return errors.New("'oidc_discovery_url' must be set when 'oidc_discovery_document' is set")
 	}
 
-	set := false
+	var doc discoveryDocument
+	if err := json.Unmarshal([]byte(c.OIDCDiscoveryDocument), &doc); err != nil {
+		return fmt.Errorf("error parsing 'oidc_discovery_document': %w", err)
+	}
+
+	// go-oidc applies the same exact match to a fetched document.
+	if doc.Issuer != c.OIDCDiscoveryURL {
+		return fmt.Errorf("'oidc_discovery_document' issuer %q does not match 'oidc_discovery_url'", doc.Issuer)
+	}
+
+	endpoints := []struct {
+		field, value string
+		required     bool
+	}{
+		{"authorization_endpoint", doc.AuthURL, true},
+		{"token_endpoint", doc.TokenURL, true},
+		{"jwks_uri", doc.JWKSURL, true},
+		{"userinfo_endpoint", doc.UserInfoURL, true},
+		{"device_authorization_endpoint", doc.DeviceAuthURL, false},
+	}
 	for _, e := range endpoints {
 		if e.value == "" {
+			if e.required {
+				return fmt.Errorf("'oidc_discovery_document' must contain '%s'", e.field)
+			}
 			continue
 		}
-		set = true
 		u, err := url.Parse(e.value)
 		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-			return fmt.Errorf("'%s' must be an absolute http or https URL", e.field)
+			return fmt.Errorf("'oidc_discovery_document' '%s' must be an absolute http or https URL", e.field)
 		}
 	}
 
-	switch {
-	case !set:
-		return nil
-	case c.OIDCDiscoveryURL == "":
-		return errors.New("'oidc_discovery_url' must be set when static OIDC endpoints are configured")
-	case c.OIDCAuthorizationURL == "" || c.OIDCTokenURL == "" || c.OIDCJWKSURL == "" || c.OIDCUserInfoURL == "":
-		return errors.New("'oidc_authorization_url', 'oidc_token_url', 'oidc_jwks_url' and 'oidc_userinfo_url' must be set together")
-	}
-
+	c.discoveryDoc = &doc
 	return nil
 }
 

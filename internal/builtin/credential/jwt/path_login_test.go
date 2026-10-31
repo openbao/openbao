@@ -1465,7 +1465,7 @@ func TestLogin_JWKS_Concurrent(t *testing.T) {
 	}
 }
 
-func TestLogin_StaticEndpoints(t *testing.T) {
+func TestLogin_DiscoveryDocument(t *testing.T) {
 	b, storage := getBackend(t)
 	s := newOIDCProvider(t)
 	defer s.server.Close()
@@ -1479,14 +1479,11 @@ func TestLogin_StaticEndpoints(t *testing.T) {
 		Path:      configPath,
 		Storage:   storage,
 		Data: map[string]any{
-			"oidc_discovery_url":     "https://issuer.invalid",
-			"oidc_discovery_ca_pem":  cert,
-			"oidc_authorization_url": s.server.URL + "/auth",
-			"oidc_token_url":         s.server.URL + "/token",
-			"oidc_jwks_url":          s.server.URL + "/certs",
-			"oidc_userinfo_url":      s.server.URL + "/userinfo",
-			"bound_issuer":           "https://issuer.invalid",
-			"jwt_supported_algs":     []string{"ES256"},
+			"oidc_discovery_url":      "https://issuer.invalid",
+			"oidc_discovery_ca_pem":   cert,
+			"oidc_discovery_document": testDiscoveryDocument(t, "https://issuer.invalid", s.server.URL, nil),
+			"bound_issuer":            "https://issuer.invalid",
+			"jwt_supported_algs":      []string{"ES256"},
 		},
 	})
 	require.NoError(t, err)

@@ -354,6 +354,11 @@ func (info *LeaderJoinInfo) Normalize(logger log.Logger) error {
 
 	if info.AutoJoin != "" {
 		logger.Warn("legacy auto-join config found, please use discover plugin instead")
+		scheme := info.AutoJoinScheme
+		if scheme != "" && (scheme != "http" && scheme != "https") {
+			return fmt.Errorf("invalid scheme %q; must either be http or https", info.AutoJoinScheme)
+		}
+
 		config, err := discover.Parse(info.AutoJoin)
 		if err != nil {
 			return err
@@ -365,19 +370,17 @@ func (info *LeaderJoinInfo) Normalize(logger log.Logger) error {
 			// No need to quote `v`, because we split in `discover.go`
 			args = append(args, fmt.Sprintf("%s=%s", k, v))
 		}
+
 		info.AutoJoinPlugin = &AutoJoinPlugin{
 			Plugin: "discover",
-			Config: map[string]any{
-				"provider": provider,
-				"args":     args,
-				"scheme":   info.AutoJoinScheme,
-				"port":     info.AutoJoinPort,
-			},
+			Config: map[string]any{"provider": provider, "args": args},
 		}
 
-		scheme := info.AutoJoinScheme
-		if scheme != "" && (scheme != "http" && scheme != "https") {
-			return fmt.Errorf("invalid scheme %q; must either be http or https", info.AutoJoinScheme)
+		if info.AutoJoinScheme != "" {
+			info.AutoJoinPlugin.Config["schemea"] = info.AutoJoinScheme
+		}
+		if info.AutoJoinPort != 0 {
+			info.AutoJoinPlugin.Config["port"] = info.AutoJoinPort
 		}
 
 		// Clear legacy settings

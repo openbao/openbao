@@ -5,6 +5,7 @@ package command
 
 import (
 	"fmt"
+	"os/exec"
 	"strings"
 
 	"github.com/hashicorp/cli"
@@ -70,6 +71,20 @@ func (c *AuthHelpCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
+func lookupLoginHandlers(handlers map[string]LoginHandler, name string) (LoginHandler, error) {
+	authHandler, ok := handlers[name]
+	if ok {
+		return authHandler, nil
+	}
+
+	path, err := exec.LookPath("openbao-plugin-auth-" + name)
+	if err == nil {
+		return &execLoginHandler{path: path}, nil
+	}
+
+	return nil, err
+}
+
 func (c *AuthHelpCommand) Run(args []string) int {
 	f := c.Flags()
 
@@ -97,8 +112,12 @@ func (c *AuthHelpCommand) Run(args []string) int {
 	// Start with the assumption that we have an auth type, not a path.
 	authType := strings.TrimSpace(args[0])
 
-	authHandler, ok := c.Handlers[authType]
-	if !ok {
+	authHandler, err := lookupLoginHandlers(c.Handlers, authType)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error looking up login handler: %s", err))
+		return 2
+	}
+	if authHandler == nil {
 		// There was no auth type by that name, see if it's a mount
 		auths, err := client.Sys().ListAuth()
 		if err != nil {
@@ -115,8 +134,12 @@ func (c *AuthHelpCommand) Run(args []string) int {
 			return 1
 		}
 
-		authHandler, ok = c.Handlers[auth.Type]
-		if !ok {
+		authHandler, err = lookupLoginHandlers(c.Handlers, auth.Type)
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Error looking up login handler: %s", err))
+			return 2
+		}
+		if authHandler == nil {
 			c.UI.Warn(wrapAtLength(fmt.Sprintf(
 				"No method-specific CLI handler available for auth method %q",
 				authType,

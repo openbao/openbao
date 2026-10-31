@@ -281,16 +281,24 @@ func TestRaft_ParseNonVoter(t *testing.T) {
 func TestRaft_JoinConfig(t *testing.T) {
 	b := RaftBackend{
 		logger: hclog.NewNullLogger(),
+		// Test both HCLv1-wrapped and unwrapped objects
 		conf: map[string]string{
 			"retry_join": `[
-				{"auto_join": "provider=aws foo=baz"},
+				{"auto_join": "provider=aws foo=bar"},
 				{"auto_join_plugin": {
 					"plugin": "discover",
 					"config": {
 						"provider": "aws",
 						"args": ["foo=bar"]
 					}
-				}}
+				}},
+				{"auto_join_plugin": [{
+					"plugin": "discover",
+					"config": [{
+						"provider": "aws",
+						"args": ["foo=bar"]
+					}]
+				}]}
 			]`,
 		},
 	}
@@ -301,30 +309,17 @@ func TestRaft_JoinConfig(t *testing.T) {
 		require.NoError(t, err, "error normalizing config")
 	}
 
-	expected := []*LeaderJoinInfo{
-		{
-			AutoJoinPlugin: &AutoJoinPlugin{
-				Plugin: "discover",
-				Config: map[string]any{
-					"provider": "aws",
-					"args":     []any{"foo=baz"},
-					"scheme":   "",
-					"port":     uint(0),
-				},
+	info := &LeaderJoinInfo{
+		AutoJoinPlugin: &AutoJoinPlugin{
+			Plugin: "discover",
+			Config: map[string]any{
+				"provider": "aws",
+				"args":     []any{"foo=bar"},
 			},
-			Retry: true,
 		},
-		{
-			AutoJoinPlugin: &AutoJoinPlugin{
-				Plugin: "discover",
-				Config: map[string]any{
-					"provider": "aws",
-					"args":     []any{"foo=bar"},
-				},
-			},
-			Retry: true,
-		},
+		Retry: true,
 	}
+	expected := []*LeaderJoinInfo{info, info, info}
 	require.EqualValues(t, expected, conf)
 }
 

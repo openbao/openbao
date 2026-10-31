@@ -1,0 +1,3 @@
+```release-note:bug
+core: Fix standby forward errors in audit logs
+```

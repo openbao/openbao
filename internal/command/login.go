@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/openbao/openbao/api/v2"
@@ -183,19 +182,19 @@ func (c *LoginCommand) Run(args []string) int {
 	}
 
 	// Get the handler function
-	authHandler, ok := c.Handlers[authMethod]
-	if !ok {
-		path, err := exec.LookPath("openbao-plugin-auth-" + authMethod)
-		if err != nil {
-			c.UI.Error(wrapAtLength(fmt.Sprintf(
-				"Unknown auth method: %s. Use \"bao auth list\" to see the "+
-					"complete list of auth methods. Additionally, some "+
-					"auth methods are only available via the HTTP API.",
-				authMethod,
-			)))
-			return 1
-		}
-		authHandler = &execLoginHandler{path: path}
+	authHandler, err := lookupLoginHandlers(c.Handlers, authMethod)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error looking up login handler: %s", err))
+		return 2
+	}
+	if authHandler == nil {
+		c.UI.Error(wrapAtLength(fmt.Sprintf(
+			"Unknown auth method: %s. Use \"bao auth list\" to see the "+
+				"complete list of auth methods. Additionally, some "+
+				"auth methods are only available via the HTTP API.",
+			authMethod,
+		)))
+		return 1
 	}
 
 	// Pull our fake stdin if needed

@@ -211,7 +211,7 @@ func TestAcmeChallengeIPRangePolicy(t *testing.T) {
 	t.Parallel()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("my-token.my-thumbprint"))
+		_, _ = w.Write([]byte("my-token.my-thumbprint"))
 	}))
 	defer ts.Close()
 	host := ts.URL[7:] // httptest binds to 127.0.0.1

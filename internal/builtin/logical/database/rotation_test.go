@@ -1032,9 +1032,10 @@ func TestRollsPasswordForwardsUsingWAL(t *testing.T) {
 func TestStoredWALsCorrectlyProcessed(t *testing.T) {
 	const walNewPassword = "new-password-from-wal"
 	for _, tc := range []struct {
-		name         string
-		shouldRotate bool
-		wal          *setCredentialsWAL
+		name              string
+		shouldRotate      bool
+		wal               *setCredentialsWAL
+		sinceLastRotation time.Duration
 	}{
 		{
 			"WAL is kept and used for roll forward",
@@ -1045,6 +1046,7 @@ func TestStoredWALsCorrectlyProcessed(t *testing.T) {
 				NewPassword:       walNewPassword,
 				LastVaultRotation: time.Now().Add(time.Hour),
 			},
+			24 * time.Hour,
 		},
 		{
 			"zero-time WAL is discarded on load",
@@ -1055,6 +1057,7 @@ func TestStoredWALsCorrectlyProcessed(t *testing.T) {
 				NewPassword:       walNewPassword,
 				LastVaultRotation: time.Time{},
 			},
+			time.Minute,
 		},
 		{
 			"empty-password WAL is kept but a new password is generated",
@@ -1065,6 +1068,7 @@ func TestStoredWALsCorrectlyProcessed(t *testing.T) {
 				NewPassword:       "",
 				LastVaultRotation: time.Now().Add(time.Hour),
 			},
+			24 * time.Hour,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1082,6 +1086,21 @@ func TestStoredWALsCorrectlyProcessed(t *testing.T) {
 			configureDBMount(t, config.StorageView)
 			createRole(t, b, config.StorageView, mockDB, "hashicorp")
 			role, err := b.StaticRole(ctx, config.StorageView, "hashicorp")
+			require.NoError(t, err)
+			// force last rotation `sinceLastRotation` in the past and
+			// next rotation according to `createRole` `rotation_period` of 24 hours
+			role.StaticAccount.LastVaultRotation = time.Now().Add(-tc.sinceLastRotation)
+			role.StaticAccount.NextVaultRotation = time.Now().Add(-tc.sinceLastRotation + 24*time.Hour)
+			input := &setStaticAccountInput{
+				RoleName: "hashicorp",
+				Role:     role,
+			}
+			mockDB.On("UpdateUser", mock.Anything, mock.Anything).
+				Return(v5.UpdateUserResponse{}, nil).
+				Once()
+			_, err = b.setStaticAccount(ctx, storage, input)
+			require.NoError(t, err)
+			role, err = b.StaticRole(ctx, config.StorageView, "hashicorp")
 			require.NoError(t, err)
 			initialPassword := role.StaticAccount.Password
 

@@ -13,6 +13,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/queue"
+	"github.com/openbao/openbao/v2/internal/helper/scheduling"
 	"github.com/openbao/openbao/v2/internal/helper/versions"
 )
 
@@ -241,7 +242,20 @@ func (b *databaseBackend) pathRotateRoleCredentialsUpdate() framework.OperationF
 				item.Value = resp.WALID
 			}
 		} else {
-			item.Priority = resp.RotationTime.Add(role.StaticAccount.RotationPeriod).Unix()
+			// Create a scheduler to schedule the next rotation.
+			sched, err := scheduling.NewDefaultScheduler(role.StaticAccount)
+			if err != nil {
+				b.logger.Error("unable to schedule next credential rotation in rotate-role", "error", err)
+
+				return nil, err
+			}
+
+			// Tell the scheduler that the last rotation has happened
+			next := sched.Occurrence()
+
+			// Update priority and push updated Item to the queue
+			item.Priority = next.Unix()
+
 			// Clear any stored WAL ID as we must have successfully deleted our WAL to get here.
 			item.Value = ""
 		}

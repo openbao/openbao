@@ -268,7 +268,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 				"username": dbUser,
 			},
 			path: "plugin-role-test",
-			err:  errors.New("rotation_period is required to create static accounts"),
+			err:  errors.New("one of rotation_period or rotation_schedule is required to create static accounts"),
 		},
 		"disallowed role config": {
 			account: map[string]any{

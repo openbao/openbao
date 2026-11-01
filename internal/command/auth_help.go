@@ -4,6 +4,7 @@
 package command
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -71,14 +72,22 @@ func (c *AuthHelpCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
+var ErrUnknownAuthMethod = errors.New("unknown auth method")
+
+// lookupLoginHandlers attempts to find the fitting LoginHandler for the passed in name.
+// It first checks the handlers map, then attempts to locate a binary matching `openbao-plugin-auth-[name]` in $PATH
+//
+// ErrUnknownAuthMethod is returned when no login handler was found
 func lookupLoginHandlers(handlers map[string]LoginHandler, name string) (LoginHandler, error) {
-	authHandler, ok := handlers[name]
-	if ok {
+	if authHandler, ok := handlers[name]; ok {
 		return authHandler, nil
 	}
 
 	path, err := exec.LookPath("openbao-plugin-auth-" + name)
 	if err == nil {
+		if errors.Is(err, exec.ErrNotFound) {
+			return nil, ErrUnknownAuthMethod
+		}
 		return &execLoginHandler{path: path}, nil
 	}
 
@@ -113,11 +122,11 @@ func (c *AuthHelpCommand) Run(args []string) int {
 	authType := strings.TrimSpace(args[0])
 
 	authHandler, err := lookupLoginHandlers(c.Handlers, authType)
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrUnknownAuthMethod) {
 		c.UI.Error(fmt.Sprintf("Error looking up login handler: %s", err))
 		return 2
 	}
-	if authHandler == nil {
+	if errors.Is(err, ErrUnknownAuthMethod) {
 		// There was no auth type by that name, see if it's a mount
 		auths, err := client.Sys().ListAuth()
 		if err != nil {
@@ -135,15 +144,15 @@ func (c *AuthHelpCommand) Run(args []string) int {
 		}
 
 		authHandler, err = lookupLoginHandlers(c.Handlers, auth.Type)
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("Error looking up login handler: %s", err))
-			return 2
-		}
-		if authHandler == nil {
+		if errors.Is(err, ErrUnknownAuthMethod) {
 			c.UI.Warn(wrapAtLength(fmt.Sprintf(
 				"No method-specific CLI handler available for auth method %q",
 				authType,
 			)))
+			return 2
+		}
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Error looking up login handler: %s", err))
 			return 2
 		}
 	}

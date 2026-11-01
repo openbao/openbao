@@ -183,11 +183,7 @@ func (c *LoginCommand) Run(args []string) int {
 
 	// Get the handler function
 	authHandler, err := lookupLoginHandlers(c.Handlers, authMethod)
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error looking up login handler: %s", err))
-		return 2
-	}
-	if authHandler == nil {
+	if errors.Is(err, ErrUnknownAuthMethod) {
 		c.UI.Error(wrapAtLength(fmt.Sprintf(
 			"Unknown auth method: %s. Use \"bao auth list\" to see the "+
 				"complete list of auth methods. Additionally, some "+
@@ -195,6 +191,10 @@ func (c *LoginCommand) Run(args []string) int {
 			authMethod,
 		)))
 		return 1
+	}
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error looking up login handler: %s", err))
+		return 2
 	}
 
 	// Pull our fake stdin if needed

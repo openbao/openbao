@@ -1,0 +1,3 @@
+```release-note:bug
+lease: Fix revocation of leases in a child namespace.
+```

@@ -323,7 +323,7 @@ func (b *SystemBackend) handleWorkflowsList(scan bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		parent := ""
 		if _, present := data.Schema["path"]; present {
-			parent = data.Get("parent").(string)
+			parent = data.Get("path").(string)
 		}
 
 		after := data.Get("after").(string)

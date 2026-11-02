@@ -304,6 +304,17 @@ func (c *Core) mountInternalWithLock(ctx context.Context, entry *routing.MountEn
 
 	c.setCoreBackend(entry, backend, view)
 
+	// Reserve our mount in the router before committing it to storage. This
+	// ensures that it is conflict-free, and we do not end up in a situation
+	// where we've persisted the mount but subsequent router mounting fails due
+	// to conflicts.
+	mount, cancel, err := c.router.Reserve(backend, entry.Path, entry, view)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	// Update the mount table.
 	newTable := c.mounts.ShallowClone()
 	newTable.Entries = append(newTable.Entries, entry)
 	if updateStorage {
@@ -318,9 +329,7 @@ func (c *Core) mountInternalWithLock(ctx context.Context, entry *routing.MountEn
 	}
 	c.mounts = newTable
 
-	if err := c.router.Mount(backend, entry.Path, entry, view); err != nil {
-		return err
-	}
+	mount()
 
 	// Mark as writable again and ensure Initialize can write to the view if
 	// necessary.

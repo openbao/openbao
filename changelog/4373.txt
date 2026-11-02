@@ -1,3 +1,3 @@
 ```release-note:bug
-lease: Fix revocation of leases in a child namespace.
+core/leases: Ensure revocation of leases in child namespaces when their parent-namespace attributed token is revoked.
 ```

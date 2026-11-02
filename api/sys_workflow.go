@@ -161,11 +161,10 @@ func (c *Sys) CallWorkflow(ctx context.Context, path string, unauthed bool, data
 }
 
 type WorkflowInfo struct {
-	Path           string   `json:"path" mapstructure:"path"`
-	Description    string   `json:"description" mapstructure:"description"`
-	Inputs         []string `json:"inputs" mapstructure:"inputs"`
-	OutputHeaders  []string `json:"output_headers" mapstructure:"output_headers"`
-	OutputDataKeys []string `json:"output_data_keys" mapstructure:"output_data_keys"`
+	Path          string   `json:"path" mapstructure:"path"`
+	Description   string   `json:"description" mapstructure:"description"`
+	Inputs        []string `json:"inputs" mapstructure:"inputs"`
+	OutputHeaders []string `json:"output_headers" mapstructure:"output_headers"`
 }
 
 func (c *Sys) DescribeWorkflow(ctx context.Context, path string, unauthed bool) (*WorkflowInfo, error) {

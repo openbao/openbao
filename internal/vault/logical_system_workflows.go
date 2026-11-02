@@ -72,10 +72,6 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 			Type:        framework.TypeStringSlice,
 			Description: "Names of headers declared in the workflow's output headers block.",
 		},
-		"output_data_keys": {
-			Type:        framework.TypeStringSlice,
-			Description: "Names of keys declared in the workflow's output data block.",
-		},
 	}
 
 	paths := []*framework.Path{
@@ -340,14 +336,6 @@ func createWorkflowExecutionReadResponse(we *WorkflowEntry, ctx context.Context)
 			headerNames = append(headerNames, name)
 		}
 		workflowData["output_headers"] = headerNames
-
-		if m, ok := outputs.Data.(map[string]any); ok {
-			dataKeys := make([]string, 0, len(m))
-			for k := range m {
-				dataKeys = append(dataKeys, k)
-			}
-			workflowData["output_data_keys"] = dataKeys
-		}
 	}
 
 	return workflowData, nil

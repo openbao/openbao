@@ -108,11 +108,10 @@ func (c *WorkflowInfoCommand) Run(args []string) int {
 	}
 
 	data := map[string]any{
-		"path":             info.Path,
-		"description":      info.Description,
-		"inputs":           info.Inputs,
-		"output_headers":   info.OutputHeaders,
-		"output_data_keys": info.OutputDataKeys,
+		"path":           info.Path,
+		"description":    info.Description,
+		"inputs":         info.Inputs,
+		"output_headers": info.OutputHeaders,
 	}
 	if c.flagField != "" {
 		return PrintRawField(c.UI, data, c.flagField)

@@ -610,17 +610,24 @@ func (b *databaseBackend) initQueue(ctx context.Context, conf *logical.BackendCo
 		b.populateQueue(ctx, conf.StorageView)
 
 		// Launch ticker
-		queueTickerInterval := defaultQueueTickSeconds * time.Second
-		if strVal, ok := conf.Config[queueTickIntervalKey]; ok {
-			newVal, err := strconv.Atoi(strVal)
-			if err == nil {
-				queueTickerInterval = time.Duration(newVal) * time.Second
-			} else {
-				b.Logger().Error("bad value for %q option: %q", queueTickIntervalKey, strVal)
-			}
-		}
-		go b.runTicker(ctx, queueTickerInterval, conf.StorageView)
+		go b.runTicker(ctx, b.queueTickInterval, conf.StorageView)
 	}
+}
+
+// queueTickInterval returns the interval at which the queue is checked for
+// items needing rotation, as set by queueTickIntervalKey in the backend
+// config, or the default one.
+func queueTickInterval(conf *logical.BackendConfig) time.Duration {
+	if strVal, ok := conf.Config[queueTickIntervalKey]; ok {
+		newVal, err := strconv.Atoi(strVal)
+		if err == nil {
+			return time.Duration(newVal) * time.Second
+		}
+		if conf.Logger != nil {
+			conf.Logger.Error("bad value for option", "option", queueTickIntervalKey, "value", strVal)
+		}
+	}
+	return defaultQueueTickSeconds * time.Second
 }
 
 // loadStaticWALs reads WAL entries and returns a map of roles and their

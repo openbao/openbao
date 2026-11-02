@@ -1511,6 +1511,16 @@ func TestStaticRole_RotationSchedule_Validation(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "schedule occurring more often than queue tick",
+			data:    map[string]any{"rotation_schedule": "*/4 * * * * *"},
+			wantErr: true,
+		},
+		{
+			name:    "period shorter than queue tick",
+			data:    map[string]any{"rotation_period": "4s"},
+			wantErr: true,
+		},
+		{
 			name:    "schedule window below minimum",
 			data:    map[string]any{"rotation_schedule": "0 0 * * SAT", "rotation_window": "30m"},
 			wantErr: true,

@@ -68,25 +68,15 @@ func TestSetWithCronExp(t *testing.T) {
 		{name: "with seconds", expr: "30 0 * * * *", wantExpr: "30 0 * * * *"},
 		{name: "descriptor", expr: "@daily", wantExpr: "@daily"},
 		{name: "every", expr: "@every 1h", wantExpr: "@every 1h"},
-		{name: "every minimum period", expr: "@every 5s", wantExpr: "@every 5s"},
-		{name: "every too short", expr: "@every 4s", wantErr: true},
-		{name: "seconds at minimum period", expr: "*/5 * * * * *", wantExpr: "*/5 * * * * *"},
-		{name: "every second", expr: "* * * * * *", wantErr: true},
-		{name: "seconds step too short", expr: "*/4 * * * * *", wantErr: true},
-		{name: "seconds too close, rare occurrences", expr: "0,3 0 0 29 2 *", wantErr: true},
-		{name: "seconds too close across minutes", expr: "0,57 * * * * *", wantErr: true},
-		{name: "seconds far enough across minutes", expr: "0,55 * * * * *", wantExpr: "0,55 * * * * *"},
-		{name: "seconds too close, no consecutive minutes", expr: "0,57 */2 * * * *", wantExpr: "0,57 */2 * * * *"},
-		{name: "seconds too close across hours", expr: "0,57 59,0 * * * *", wantErr: true},
-		{name: "seconds too close, no consecutive hours", expr: "0,57 59,0 */2 * * *", wantExpr: "0,57 59,0 */2 * * *"},
+		{name: "every second", expr: "* * * * * *", wantExpr: "* * * * * *"},
+		{name: "every too short", expr: "@every 500ms", wantErr: true},
 		{name: "cron time zone", expr: "CRON_TZ=Asia/Tokyo 30 04 * * *", wantExpr: "CRON_TZ=Asia/Tokyo 30 04 * * *"},
 		{name: "time zone", expr: "TZ=UTC 0 0 * * *", wantExpr: "TZ=UTC 0 0 * * *"},
 		{name: "time zone descriptor", expr: "CRON_TZ=Europe/Paris @daily", wantExpr: "CRON_TZ=Europe/Paris @daily"},
 		{name: "unknown time zone", expr: "CRON_TZ=Nowhere/Land 0 0 * * *", wantErr: true},
 		{name: "time zone only", expr: "CRON_TZ=UTC", wantErr: true},
 		{name: "with window", expr: "0 0 * * *", window: 2 * time.Hour, wantExpr: "0 0 * * *"},
-		{name: "minimum window", expr: "0 0 * * *", window: MinWindow, wantExpr: "0 0 * * *"},
-		{name: "window too small", expr: "0 * * * *", window: 10 * time.Minute, wantErr: true},
+		{name: "short window", expr: "0 * * * *", window: 10 * time.Minute, wantExpr: "0 * * * *"},
 		{name: "negative window", expr: "0 * * * *", window: -time.Second, wantErr: true},
 		{name: "garbage", expr: "not a cron", wantErr: true},
 		{name: "empty", expr: "", wantErr: true},
@@ -109,6 +99,34 @@ func TestSetWithCronExp(t *testing.T) {
 			require.True(t, d.GetLast().IsZero())
 		})
 	}
+}
+
+func TestMinInterval(t *testing.T) {
+	tests := []struct {
+		name string
+		expr string
+		want time.Duration
+	}{
+		{name: "every", expr: "@every 5s", want: 5 * time.Second},
+		{name: "every second", expr: "* * * * * *", want: time.Second},
+		{name: "seconds step", expr: "*/4 * * * * *", want: 4 * time.Second},
+		{name: "seconds close, rare occurrences", expr: "0,3 0 0 29 2 *", want: 3 * time.Second},
+		{name: "seconds close across minutes", expr: "0,57 * * * * *", want: 3 * time.Second},
+		{name: "seconds far across minutes", expr: "0,55 * * * * *", want: 5 * time.Second},
+		{name: "seconds close, no consecutive minutes", expr: "0,57 */2 * * * *", want: 57 * time.Second},
+		{name: "seconds close across hours", expr: "0,57 59,0 * * * *", want: 3 * time.Second},
+		{name: "seconds close, no consecutive hours", expr: "0,57 59,0 */2 * * *", want: 57 * time.Second},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := newTestScheduler(t)
+			require.NoError(t, d.setWithCronExp(tt.expr, 0))
+			require.Equal(t, tt.want, d.MinInterval())
+		})
+	}
+
+	require.Zero(t, newTestScheduler(t).MinInterval())
 }
 
 func TestNewDefaultScheduler_Preconfigured(t *testing.T) {
@@ -180,24 +198,17 @@ func TestNewDefaultScheduler_Preconfigured(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "cron expression occurring too often",
-			stored: testSchedulable{
-				cronExpr: "* * * * * *",
-			},
-			wantErr: true,
-		},
-		{
 			name: "period too short",
 			stored: testSchedulable{
-				period: time.Second,
+				period: 500 * time.Millisecond,
 			},
 			wantErr: true,
 		},
 		{
-			name: "period window too small",
+			name: "period negative window",
 			stored: testSchedulable{
 				period: 2 * time.Hour,
-				window: time.Minute,
+				window: -time.Minute,
 			},
 			wantErr: true,
 		},
@@ -279,7 +290,7 @@ func TestSetWithCronExp_ErrorKeepsPreviousSchedule(t *testing.T) {
 	sched, next := d.sched, d.GetNext()
 
 	require.Error(t, d.setWithCronExp("not a cron", 0))
-	require.Error(t, d.setWithCronExp("0 * * * *", time.Minute))
+	require.Error(t, d.setWithCronExp("0 * * * *", -time.Minute))
 
 	require.Equal(t, "0 0 * * *", d.GetCronExpr())
 	require.Equal(t, 2*time.Hour, d.GetWindow())
@@ -296,12 +307,12 @@ func TestSetPeriodic(t *testing.T) {
 		wantExpr string
 	}{
 		{name: "with window", period: 2 * time.Hour, window: time.Hour, wantExpr: "@every 2h0m0s"},
-		{name: "minimum", period: MinPeriod, wantExpr: "@every 5s"},
+		{name: "one second", period: time.Second, wantExpr: "@every 1s"},
 		{name: "rounded", period: 90*time.Second + 400*time.Millisecond, wantExpr: "@every 1m30s"},
-		{name: "too short", period: 4 * time.Second, wantErr: true},
+		{name: "too short", period: 500 * time.Millisecond, wantErr: true},
 		{name: "zero", period: 0, wantErr: true},
 		{name: "negative", period: -time.Hour, wantErr: true},
-		{name: "window too small", period: time.Hour, window: 30 * time.Minute, wantErr: true},
+		{name: "short window", period: time.Hour, window: 30 * time.Minute, wantExpr: "@every 1h0m0s"},
 		{name: "window equals period", period: 2 * time.Hour, window: 2 * time.Hour, wantErr: true},
 		{name: "window longer than period", period: 2 * time.Hour, window: 3 * time.Hour, wantErr: true},
 		{name: "negative window", period: time.Hour, window: -time.Second, wantErr: true},
@@ -424,18 +435,18 @@ func TestIsDue_Window(t *testing.T) {
 
 func TestIsDue_IterationCap(t *testing.T) {
 	d := newTestScheduler(t)
-	require.NoError(t, d.setWithCronExp("*/5 * * * * *", MinWindow))
+	require.NoError(t, d.setWithCronExp("0 0 */2 * * *", time.Hour))
 	fixClock(d, at(12, 30))
 
 	// A recent next occurrence is within its window.
 	d.SetNext(at(12, 0))
 	require.True(t, d.IsDue())
 
-	// Walking ten days of occurrences every MinPeriod exceeds the cap: not
+	// Walking 30 years of occurrences every 2 hours exceeds the cap: not
 	// due, and next catches back up with now.
-	d.SetNext(at(12, 0).Add(-240 * time.Hour))
+	d.SetNext(at(12, 0).Add(-30 * 24 * 365 * time.Hour))
 	require.False(t, d.IsDue())
-	require.Equal(t, at(12, 30).Add(MinPeriod), d.GetNext())
+	require.Equal(t, at(14, 00), d.GetNext())
 }
 
 func TestIsDue(t *testing.T) {

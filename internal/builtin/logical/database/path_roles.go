@@ -645,11 +645,11 @@ func (b *databaseBackend) pathStaticRoleCreateUpdate(ctx context.Context, req *l
 	}
 	if periodOk {
 		rotationPeriodSeconds := rotationPeriodSecondsRaw.(int)
-		if rotationPeriodSeconds < defaultQueueTickSeconds {
+		if time.Duration(rotationPeriodSeconds)*time.Second < b.queueTickInterval {
 			// If rotation frequency is specified, and this is an update, the value
-			// must be at least that of the queue tick interval (5 seconds at
-			// time of writing), otherwise we wont be able to rotate in time
-			return logical.ErrorResponse("rotation_period must be %d seconds or more", defaultQueueTickSeconds), nil
+			// must be at least that of the queue tick interval (5 seconds by
+			// default), otherwise we wont be able to rotate in time
+			return logical.ErrorResponse("rotation_period must be %d seconds or more", int(b.queueTickInterval/time.Second)), nil
 		}
 		role.StaticAccount.RotationPeriod = time.Duration(rotationPeriodSeconds) * time.Second
 		role.StaticAccount.RotationSchedule = ""
@@ -663,14 +663,35 @@ func (b *databaseBackend) pathStaticRoleCreateUpdate(ctx context.Context, req *l
 		role.StaticAccount.RotationPeriod = 0
 	}
 
+	// Create a scheduler for this role
+	sched, err := scheduling.NewDefaultScheduler(role.StaticAccount)
+	if err != nil {
+		return nil, err
+	}
+
+	if role.StaticAccount.RotationPeriod == 0 && sched.MinInterval() < b.queueTickInterval {
+		return logical.ErrorResponse("credential rotation interval must be at least %d seconds", int(b.queueTickInterval/time.Second)), nil
+	}
+
 	if rotationWindowSecondsRaw, ok := data.GetOk("rotation_window"); ok {
 		role.StaticAccount.RotationWindow = time.Duration(rotationWindowSecondsRaw.(int)) * time.Second
-		if role.StaticAccount.RotationWindow != 0 &&
-			role.StaticAccount.RotationWindow < time.Duration(minimumRotationWindowSeconds)*time.Second {
-			return logical.ErrorResponse("rotation_window must be %d seconds or more", minimumRotationWindowSeconds), nil
+		if role.StaticAccount.RotationWindow != 0 {
+			if role.StaticAccount.RotationWindow < time.Duration(minimumRotationWindowSeconds)*time.Second {
+				return logical.ErrorResponse("rotation_window must be %d seconds or more", minimumRotationWindowSeconds), nil
+			}
 		}
 	} else if createRole {
 		role.StaticAccount.RotationWindow = 0
+	}
+
+	// filter-out rotation_window incompatible with rotation_period or MinInterval(rotation_schedule)
+	if role.StaticAccount.RotationWindow != 0 {
+		if role.StaticAccount.RotationPeriod != 0 && role.StaticAccount.RotationWindow >= role.StaticAccount.RotationPeriod {
+			return logical.ErrorResponse("rotation_window must be smaller than rotation_period"), nil
+		}
+		if role.StaticAccount.RotationPeriod == 0 && role.StaticAccount.RotationWindow >= sched.MinInterval() {
+			return logical.ErrorResponse("rotation_window must be smaller than minimal rotation_schedule interval"), nil
+		}
 	}
 
 	if rotationStmtsRaw, ok := data.GetOk("rotation_statements"); ok {
@@ -694,12 +715,6 @@ func (b *databaseBackend) pathStaticRoleCreateUpdate(ctx context.Context, req *l
 	}
 	if err := role.setCredentialConfig(credentialConfig); err != nil {
 		return logical.ErrorResponse("credential_config validation failed: %s", err), nil
-	}
-
-	// Create a scheduler for this role
-	sched, err := scheduling.NewDefaultScheduler(role.StaticAccount)
-	if err != nil {
-		return nil, err
 	}
 
 	// Only call setStaticAccount if we're creating the role for the

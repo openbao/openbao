@@ -14,13 +14,6 @@ import (
 	"github.com/gdgvda/cron"
 )
 
-// MinPeriod is the shortest period for a periodic schedule, and the shortest
-// time accepted between two occurrences of a cron schedule.
-const MinPeriod = 5 * time.Second
-
-// MinWindow is the shortest non window accepted.
-const MinWindow = 3600 * time.Second
-
 // maxWindowIterations bounds the number of occurrences to walks through when
 // computing if an occurence is due, i.e. still in a window after `next` occurrence.
 const maxWindowIterations = 100_000
@@ -91,11 +84,17 @@ func (d *DefaultScheduler) parseCronExpr(cronExpr string) error {
 	if err != nil {
 		return fmt.Errorf("invalid cron expression %q: %w", cronExpr, err)
 	}
-	if interval := cronSched.MinInterval(); interval < MinPeriod {
-		return fmt.Errorf("invalid cron expression %q: occurrences %s apart are closer than the minimum of %s", cronExpr, interval, MinPeriod)
-	}
 	d.sched = cronSched
 	return nil
+}
+
+// MinInterval returns the shortest time that can separate two consecutive
+// occurrences, or zero if no schedule has been set.
+func (d *DefaultScheduler) MinInterval() time.Duration {
+	if d.sched == nil {
+		return 0
+	}
+	return d.sched.MinInterval()
 }
 
 func NewDefaultScheduler(schedulable Schedulable) (*DefaultScheduler, error) {
@@ -145,9 +144,6 @@ func (d *DefaultScheduler) setWithCronExp(cronExpr string, window time.Duration)
 		if window < 0 {
 			return fmt.Errorf("negative window: %s", window)
 		}
-		if window > 0 && window < MinWindow {
-			return fmt.Errorf("window too small: %s < %s", window, MinWindow)
-		}
 	}
 
 	if d.sched == nil || newSchedule {
@@ -167,13 +163,10 @@ func (d *DefaultScheduler) setWithCronExp(cronExpr string, window time.Duration)
 
 // setPeriodic checks period and window validity and handover to setWithCronExp.
 func (d *DefaultScheduler) setPeriodic(period time.Duration, window time.Duration) error {
-	if period < MinPeriod {
-		return fmt.Errorf("period %s is shorter than the minimum of %s", period, MinPeriod)
+	if period < time.Second {
+		return fmt.Errorf("period %s is shorter than one second", period)
 	}
 	period = period.Round(time.Second)
-	if window >= period {
-		return fmt.Errorf("window %s must be shorter than period %s", window, period)
-	}
 	d.SetPeriod(period)
 	d.periodic = true
 

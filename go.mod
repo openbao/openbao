@@ -23,7 +23,7 @@ replace github.com/openbao/openbao/sdk/v2 => ./sdk
 
 replace github.com/boltdb/bolt => ./internal/helper/stubbolt
 
-replace github.com/gdgvda/cron v0.7.0 => github.com/etisserant/cron v0.7.1-0.20261102092258-87d64aa883b8
+replace github.com/gdgvda/cron v0.7.0 => github.com/etisserant/cron v0.7.1-0.20261102163633-186c5b23dee6
 
 require (
 	cel.dev/cel-go v0.32.0

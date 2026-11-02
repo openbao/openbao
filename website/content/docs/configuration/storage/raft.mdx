@@ -106,6 +106,19 @@ backend cannot be declared.
    from performing a truncation at once. The default snapshot interval is
    120 seconds and the minimum value is 5ms.
 
+- `max_append_entries` `(integer: 64)` - This configures the maximum number of
+  append entries that are send in one RPC call. Tuning this may increase the
+  throughput of logs from the leader to the followers. It's important to strike a balance
+  between efficiency and avoiding waste if the follower is going to reject a call
+  because of inconsistent logs. The maximum allowed value is 1024.
+
+- `max_rpcs_in_flight` `(integer: 2)` - This configures the amount of overlapping
+  requests in preperation and sending. Performance testing has shown that in practice
+  increasing the maximum RPCs in flight combines badly with the batching of requests.
+  In setups with low latency between nodes increasing this number could lead to a large
+  negative impact on commit latency when throughput is high, whilst having very little
+	benefit on latency or throughput in any other case.
+
 - `retry_join` `(list: [])` <a name="retry_join"></a> - A set of connection details for another node in the
   cluster, which is used to help nodes locate a leader in order to join a cluster.
   There can be one or more [`retry_join`](#retry_join-stanza) stanzas.

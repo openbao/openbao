@@ -315,6 +315,12 @@ can be achieved without `sudo` via `sys/mounts/auth/[auth-path]/tune`._
 - `allowed_response_headers` `(array: [])` - List of headers to allow,
   allowing a plugin to include them in the response.
 
+- `use_hmac_sha256` `(bool)` - Enables HMAC-SHA256 hashing of client tokens
+  before forwarding requests to backends. New mounts use HMAC-SHA256 by default.
+  Existing mounts can be switched to HMAC-SHA256 or continue using SHA-1 until upgraded.
+  Once enabled, HMAC-SHA256 cannot be disabled.
+  This parameter does not apply to the `token/` mount.
+
 - `token_type` `(string: "")` – Specifies the type of tokens that should be
   returned by the mount. The following values are available:
 

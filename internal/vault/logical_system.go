@@ -1847,7 +1847,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 
 	if rawVal, ok := data.GetOk("use_hmac_sha256"); ok {
 		enabled := rawVal.(bool)
-		if mountEntry.Config.UseHMACSHA256 && !enabled {
+		if !enabled {
 			return logical.ErrorResponse("use_hmac_sha256 cannot be disabled once enabled"), logical.ErrInvalidRequest
 		}
 

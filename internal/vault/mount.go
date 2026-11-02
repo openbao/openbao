@@ -241,7 +241,7 @@ func (c *Core) mountInternalWithLock(ctx context.Context, entry *routing.MountEn
 
 	// Verify there are no conflicting mounts in the router
 	if match := c.router.MountConflict(ctx, entry.Path); match != "" {
-		return logical.CodedError(409, "existing mount at %s", match)
+		return logical.CodedError(409, "path in use at %s", match)
 	}
 
 	// Generate a new UUID and view

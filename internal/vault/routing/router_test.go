@@ -44,7 +44,7 @@ func TestRouter_Mount(t *testing.T) {
 	require.NoError(t, err)
 
 	err = r.Mount(n, "prod/aws/", &MountEntry{UUID: meUUID, NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
-	if !strings.Contains(err.Error(), "cannot mount under existing mount") {
+	if !strings.Contains(err.Error(), "path in use") {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -112,12 +112,7 @@ func TestRouter_Mount(t *testing.T) {
 		t.Fatal("bad: prod/aws/")
 	}
 
-	// No error is shown here because MountConflict is checked before Mount
-	err = r.Mount(n, "prod/", subMountEntry, view)
-	require.NoError(t, err)
-	if r.MountConflict(namespace.RootContext(t.Context()), "prod/test") == "" {
-		t.Fatal("bad: prod/test/")
-	}
+	require.Error(t, r.Mount(n, "prod/", subMountEntry, view))
 }
 
 func TestRouter_MountCredential(t *testing.T) {
@@ -144,7 +139,7 @@ func TestRouter_MountCredential(t *testing.T) {
 	require.NoError(t, err)
 
 	err = r.Mount(n, "auth/aws/", &MountEntry{UUID: meUUID, NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
-	if !strings.Contains(err.Error(), "cannot mount under existing mount") {
+	if !strings.Contains(err.Error(), "path in use") {
 		t.Fatalf("err: %v", err)
 	}
 

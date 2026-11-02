@@ -108,7 +108,7 @@ func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *rout
 
 	// Check for conflicts according to the router
 	if conflict := c.router.MountConflict(ctx, routing.CredentialRoutePrefix+entry.Path); conflict != "" {
-		return logical.CodedError(409, "existing mount at %s", conflict)
+		return logical.CodedError(409, "path in use at %s", conflict)
 	}
 
 	// Generate a new UUID and view

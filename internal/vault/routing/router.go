@@ -184,13 +184,12 @@ func (r *Router) Mount(backend logical.Backend, prefix string, mountEntry *Mount
 	r.l.Lock()
 	defer r.l.Unlock()
 
+	if existing := r.mountConflict(mountEntry.Namespace, prefix); existing != "" {
+		return fmt.Errorf("path in use at %q", existing)
+	}
+
 	// prepend namespace
 	prefix = mountEntry.Namespace.Path + prefix
-
-	// Check if this is a nested mount
-	if existing, _, ok := r.root.LongestPrefix(prefix); ok && existing != "" {
-		return fmt.Errorf("cannot mount under existing mount %q", existing)
-	}
 
 	// Build the paths
 	paths := new(logical.Paths)
@@ -413,17 +412,16 @@ func (r *Router) MatchingMountByAccessor(mountAccessor string) *MountEntry {
 
 // MatchingMount returns the mount prefix that would be used for a path
 func (r *Router) MatchingMount(ctx context.Context, path string) string {
-	r.l.RLock()
-	mount := r.matchingMountInternal(ctx, path)
-	r.l.RUnlock()
-	return mount
-}
-
-func (r *Router) matchingMountInternal(ctx context.Context, path string) string {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return ""
 	}
+	r.l.RLock()
+	defer r.l.RUnlock()
+	return r.matchingMountInternal(ns, path)
+}
+
+func (r *Router) matchingMountInternal(ns *namespace.Namespace, path string) string {
 	path = ns.Path + path
 
 	mount, _, ok := r.root.LongestPrefix(path)
@@ -433,19 +431,8 @@ func (r *Router) matchingMountInternal(ctx context.Context, path string) string 
 	return mount
 }
 
-func (r *Router) MatchingPrefixInternal(ctx context.Context, path string) string {
-	r.l.RLock()
-	defer r.l.RUnlock()
-
-	return r.matchingPrefixInternalLocked(ctx, path)
-}
-
-// matchingPrefixInternalLocked returns a mount prefix that a path may be a part of
-func (r *Router) matchingPrefixInternalLocked(ctx context.Context, path string) string {
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return ""
-	}
+// matchingPrefixInternal returns a mount prefix that a path may be a part of
+func (r *Router) matchingPrefixInternal(ns *namespace.Namespace, path string) string {
 	path = ns.Path + path
 
 	var existing string
@@ -457,11 +444,7 @@ func (r *Router) matchingPrefixInternalLocked(ctx context.Context, path string) 
 }
 
 // matchingNamespaceInternal returns a namespace prefix that a path may be a part of
-func (r *Router) matchingNamespaceInternal(ctx context.Context, path string) string {
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return ""
-	}
+func (r *Router) matchingNamespaceInternal(ns *namespace.Namespace, path string) string {
 	// Ensure comparisons are done against absolute paths within the
 	// current namespace context, consistent with other matching helpers.
 	// Without this, a mount path that matches the current namespace name
@@ -478,15 +461,25 @@ func (r *Router) matchingNamespaceInternal(ctx context.Context, path string) str
 
 // MountConflict determines if there are potential path conflicts
 func (r *Router) MountConflict(ctx context.Context, path string) string {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return ""
+	}
+
 	r.l.RLock()
 	defer r.l.RUnlock()
-	if exactMatch := r.matchingMountInternal(ctx, path); exactMatch != "" {
+
+	return r.mountConflict(ns, path)
+}
+
+func (r *Router) mountConflict(ns *namespace.Namespace, path string) string {
+	if exactMatch := r.matchingMountInternal(ns, path); exactMatch != "" {
 		return exactMatch
 	}
-	if prefixMatch := r.matchingPrefixInternalLocked(ctx, path); prefixMatch != "" {
+	if prefixMatch := r.matchingPrefixInternal(ns, path); prefixMatch != "" {
 		return prefixMatch
 	}
-	if nsMatch := r.matchingNamespaceInternal(ctx, path); nsMatch != "" {
+	if nsMatch := r.matchingNamespaceInternal(ns, path); nsMatch != "" {
 		return nsMatch
 	}
 	return ""

@@ -271,19 +271,10 @@ func TestRouter_Remount(t *testing.T) {
 
 func TestRouter_NamespaceNameMount_NoConflict(t *testing.T) {
 	r := NewRouter(nil)
-	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewView(barr, "logical/")
 
-	// Create a test namespace "team1/"
+	// Create a test namespace "team1/" and add it to the router.
 	nsTeam := &namespace.Namespace{ID: "team1", Path: "team1/"}
-
-	// Mount a sys/ backend for the namespace to simulate the namespace sentinel
-	meUUID, err := uuid.GenerateUUID()
-	require.NoError(t, err)
-	n := &backend.Noop{}
-	// Router.Mount will prepend the namespace path; pass a namespace-relative prefix
-	err = r.Mount(n, "sys/", &MountEntry{UUID: meUUID, Accessor: "sysaccessor", NamespaceID: nsTeam.ID, Namespace: nsTeam}, view)
-	require.NoError(t, err)
+	require.NoError(t, r.MountNamespace(nsTeam))
 
 	// When operating inside namespace "team1", mounting a backend at path
 	// equal to the namespace name ("team1/") should not be treated as a
@@ -296,10 +287,7 @@ func TestRouter_NamespaceNameMount_NoConflict(t *testing.T) {
 	// However, if there is a child namespace (e.g., team1/child/), mounting
 	// at that child name should be reported as a conflict.
 	child := &namespace.Namespace{ID: "child", Path: "team1/child/"}
-	meUUID2, err := uuid.GenerateUUID()
-	require.NoError(t, err)
-	err = r.Mount(n, "sys/", &MountEntry{UUID: meUUID2, Accessor: "syschild", NamespaceID: child.ID, Namespace: child}, view)
-	require.NoError(t, err)
+	require.NoError(t, r.MountNamespace(child))
 	if conflict := r.MountConflict(ctxTeam, "child/"); conflict == "" {
 		t.Fatal("expected conflict for child namespace mount path")
 	}

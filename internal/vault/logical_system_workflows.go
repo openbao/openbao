@@ -338,6 +338,9 @@ func (b *SystemBackend) handleWorkflowsList(scan bool) framework.OperationFunc {
 		keyInfo := make(map[string]any, len(workflows))
 		for _, entry := range workflows {
 			keys = append(keys, entry.Path)
+			if strings.HasSuffix(entry.Path, "/") {
+				continue
+			}
 			keyInfo[entry.Path] = createWorkflowDataResponse(entry)
 		}
 

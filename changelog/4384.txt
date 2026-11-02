@@ -1,0 +1,3 @@
+```release-note:bug
+sys/rotate: Fix namespace unseal/recovery share backups being written to the same storage entry.
+```

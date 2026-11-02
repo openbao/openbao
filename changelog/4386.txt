@@ -1,0 +1,3 @@
+```release-note:bug
+sys/workflow: Fix LIST and SCAN logic when listing workflows with a prefix.
+```

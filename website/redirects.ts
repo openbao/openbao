@@ -3,18 +3,17 @@ export const redirects = [
         from: "/api-docs/system/rotate-config",
         to: "/docs/api/system/rotate/keyring-config",
     },
-    // Add unversioned variants of these redirects once 2.7.0 is cut.
     {
-        from: "/docs/next/upgrading/",
-        to: "/docs/next/guides/upgrade/",
+        from: "/docs/upgrading/",
+        to: "/docs/guides/upgrade/",
     },
     {
-        from: "/docs/next/upgrading/ha-upgrade",
-        to: "/docs/next/guides/upgrade/ha",
+        from: "/docs/upgrading/ha-upgrade",
+        to: "/docs/guides/upgrade/ha",
     },
     {
-        from: "/docs/next/upgrading/plugins-upgrade",
-        to: "/docs/next/guides/upgrade/plugins",
+        from: "/docs/upgrading/plugins-upgrade",
+        to: "/docs/guides/upgrade/plugins",
     },
 ];
 

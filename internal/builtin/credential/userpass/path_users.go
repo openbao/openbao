@@ -229,7 +229,7 @@ func (b *backend) pathUserRead(ctx context.Context, req *logical.Request, d *fra
 	if err != nil {
 		return nil, err
 	}
-	
+
 	user, err := b.user(ctx, req.Storage, username)
 	if err != nil {
 		return nil, err

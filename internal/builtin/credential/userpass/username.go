@@ -1,17 +1,18 @@
 package userpass
 
 import (
-	"regexp"
-	"strings"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 )
 
-var validUsername = regexp.MustCompile("^" + framework.GenericNameRegex("username") + "$")
+// Allow usernames to contain alphanumeric characters, -, ., and @
+var validUsername = regexp.MustCompile("^" + framework.GenericNameWithAtRegex("username") + "$")
 
-// During routing, anything except "/" is acceptable in a username. 
+// During routing, anything except "/" is acceptable in a username.
 func usernamePathRegex() string {
 	return `(?P<username>[^/]+)`
 }

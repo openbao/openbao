@@ -888,10 +888,10 @@ func (b *RaftBackend) applyConfigSettings(config *raft.Config) error {
 			return err
 		}
 		if maxAppendEntries < 1 {
-			return fmt.Errorf("max_append_entries can't be less then one")
+			return fmt.Errorf("max_append_entries can't be less than one")
 		}
 		if maxAppendEntries > 1024 {
-			return fmt.Errorf("max_append_entries is too large")
+			return fmt.Errorf("max_append_entries can't be more than 1024")
 		}
 	}
 	config.MaxAppendEntries = maxAppendEntries

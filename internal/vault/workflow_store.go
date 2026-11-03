@@ -255,6 +255,8 @@ func (ws *WorkflowStore) List(ctx context.Context, prefix string, recursive bool
 		prefix += "/"
 	}
 
+	after = strings.TrimPrefix(after, prefix)
+
 	view := ws.getView(ns).SubView(prefix)
 
 	defer ws.rLockWithUnlock(ctx)()

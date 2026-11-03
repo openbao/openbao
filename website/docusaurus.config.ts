@@ -6,6 +6,7 @@ import { includeMarkdown } from "@hashicorp/remark-plugins";
 import * as path from "path";
 import * as fs from "fs";
 import pluginSidebarJson from "./src/docusaurus-plugin-sidebar-json";
+import { redirects } from "./redirects";
 
 function getDocVersions() {
   if (process.env.VERSIONED_DOCS == "true") {
@@ -179,25 +180,7 @@ const config: Config = {
     [
       "@docusaurus/plugin-client-redirects",
       {
-        redirects: [
-          {
-            from: "/api-docs/system/rotate-config",
-            to: "/docs/api/system/rotate/keyring-config",
-          },
-          // Add unversioned variants of these redirects once 2.7.0 is cut.
-          {
-            from: "/docs/next/upgrading/",
-            to: "/docs/next/guides/upgrade/",
-          },
-          {
-            from: "/docs/next/upgrading/ha-upgrade",
-            to: "/docs/next/guides/upgrade/ha",
-          },
-          {
-            from: "/docs/next/upgrading/plugins-upgrade",
-            to: "/docs/next/guides/upgrade/plugins",
-          },
-        ],
+        redirects: redirects,
         createRedirects(existingPath) {
           if (existingPath.includes('/community/') && existingPath !== '/community/') {
             return [
@@ -301,7 +284,8 @@ const config: Config = {
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
-      additionalLanguages: ["hcl"],
+      // https://prismjs.com/#supported-languages
+      additionalLanguages: ["bash", "docker", "hcl"],
     },
     metadata: [
       {

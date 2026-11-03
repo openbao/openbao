@@ -120,6 +120,10 @@ func (d *autoSeal) Init(ctx context.Context) error {
 	return d.Access.Init(ctx)
 }
 
+func (d *autoSeal) MetaPrefix() string {
+	return d.metaPrefix
+}
+
 func (d *autoSeal) SetMetaPrefix(metaPrefix string) {
 	d.metaPrefix = metaPrefix
 }
@@ -143,20 +147,21 @@ func (d *autoSeal) RecoveryKeySupported() bool {
 // SetStoredKeys uses the autoSeal.Access.Encrypts method to wrap the keys.
 // The stored entry does not need to be seal wrapped in this case.
 func (d *autoSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
-	return writeStoredKeys(ctx, d.core.physical, d.metaPrefix, d.Access, keys)
+	return writeStoredKeys(ctx, d, d.core.physical, keys)
 }
 
 // GetStoredKeys retrieves the key shares by unwrapping the encrypted key
 // using the autoseal.
 func (d *autoSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
-	return readStoredKeys(ctx, d.core.physical, d.metaPrefix, d.Access)
+	return readStoredKeys(ctx, d, d.core.physical)
 }
 
 func (d *autoSeal) upgradeStoredKeys(ctx context.Context) error {
-	pe, err := d.core.physical.Get(ctx, StoredBarrierKeysPath)
+	pe, err := d.core.physical.Get(ctx, storedBarrierKeysPath)
 	if err != nil {
-		return fmt.Errorf("failed to fetch stored keys: %w", err)
+		return fmt.Errorf("failed to fetch legacy stored keys: %w", err)
 	}
+
 	if pe == nil {
 		return errors.New("no stored keys found")
 	}
@@ -234,7 +239,7 @@ func (d *autoSeal) Config(ctx context.Context) (*SealConfig, error) {
 
 	// If the seal configuration is missing, we are not initialized
 	if valueBytes == nil {
-		d.logger.Info("seal configuration missing, not initialized")
+		d.logger.Info("seal configuration missing, not initialized", "seal_type", sealType)
 		return nil, nil
 	}
 
@@ -342,12 +347,12 @@ func (d *autoSeal) SetRecoveryKey(ctx context.Context, key []byte) error {
 		return fmt.Errorf("failed to marshal value for storage: %w", err)
 	}
 
-	be := &physical.Entry{
+	pe := &physical.Entry{
 		Key:   d.metaPrefix + recoveryKeyPath,
 		Value: value,
 	}
 
-	if err := d.core.physical.Put(ctx, be); err != nil {
+	if err := d.core.physical.Put(ctx, pe); err != nil {
 		d.logger.Error("failed to write recovery key", "error", err)
 		return fmt.Errorf("failed to write recovery key: %w", err)
 	}

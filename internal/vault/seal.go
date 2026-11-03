@@ -22,28 +22,42 @@ import (
 )
 
 const (
-	// barrierSealConfigPath stores primary Shamir configuration or
-	// legacy auto-unseal provider metadata with placeholder 1-of-1
-	// share parameters. For the root namespace, this record is readable
-	// while sealed.
-	barrierSealConfigPath = "core/seal-config"
+	// sealsConfigPath is the path used to store named seals configurations.
+	sealsConfigPath = "core/seals/"
 
-	// recoverySealConfigPath is the path to the recovery key seal configuration.
-	// This is stored in plaintext so that we can perform auto-unseal.
+	// deprecatedBarrierSealConfigPath is the deprecated path that stores
+	// primary Shamir configuration or legacy auto-unseal provider metadata
+	// with placeholder 1-of-1 share parameters. For the root namespace,
+	// this record is readable while sealed.
+	deprecatedBarrierSealConfigPath = "core/seal-config"
+
+	// recoverySealConfigPath is the path to the recovery key seal
+	// configuration. This entry is stored through parent's namespace barrier
+	// (plaintext for root namespace) so that we can perform auto-unseal.
 	recoverySealConfigPath = "core/recovery-config"
 
-	// recoveryKeyPath is the path to the recovery key
+	// recoveryKeyPath is the path to the recovery key entry.
 	recoveryKeyPath = "core/recovery-key"
 
-	// StoredBarrierKeysPath stores barrier root keys wrapped by the
-	// configured seal, including Shamir and auto-unseal mechanisms.
-	StoredBarrierKeysPath = "core/hsm/barrier-unseal-keys"
+	// storedBarrierKeysPath is the path that stores barrier root keys
+	// wrapped by the configured seal, including Shamir and auto-unseal
+	// mechanisms.
+	storedBarrierKeysPath = "core/hsm/barrier-unseal-keys"
 )
+
+func sealConfigPath(name string) string {
+	return fmt.Sprintf("%s%s/config", sealsConfigPath, strings.TrimSuffix(name, "/"))
+}
+
+func encryptedRootPath(name string) string {
+	return fmt.Sprintf("%s%s/encrypted-root", sealsConfigPath, strings.TrimSuffix(name, "/"))
+}
 
 type Seal interface {
 	SetCore(*Core)
 	Name() string
 	Init(context.Context) error
+	MetaPrefix() string
 	SetMetaPrefix(string)
 	Finalize(context.Context) error
 	SetStoredKeys(context.Context, [][]byte) error
@@ -114,6 +128,10 @@ func (d *defaultSeal) Init(ctx context.Context) error {
 	return nil
 }
 
+func (d *defaultSeal) MetaPrefix() string {
+	return d.metaPrefix
+}
+
 func (d *defaultSeal) SetMetaPrefix(metaPrefix string) {
 	d.metaPrefix = metaPrefix
 }
@@ -131,11 +149,11 @@ func (d *defaultSeal) RecoveryKeySupported() bool {
 }
 
 func (d *defaultSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
-	return writeStoredKeys(ctx, d.core.physical, d.metaPrefix, d.access, keys)
+	return writeStoredKeys(ctx, d, d.core.physical, keys)
 }
 
 func (d *defaultSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
-	return readStoredKeys(ctx, d.core.physical, d.metaPrefix, d.access)
+	return readStoredKeys(ctx, d, d.core.physical)
 }
 
 func (d *defaultSeal) Config(ctx context.Context) (*SealConfig, error) {
@@ -149,7 +167,7 @@ func (d *defaultSeal) Config(ctx context.Context) (*SealConfig, error) {
 	}
 
 	// Fetch the seal configuration
-	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+barrierSealConfigPath)
+	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+sealConfigPath(d.Name()))
 	if err != nil {
 		d.core.logger.Error("failed to read seal configuration", "error", err)
 		return nil, fmt.Errorf("failed to check seal configuration: %w", err)
@@ -157,8 +175,15 @@ func (d *defaultSeal) Config(ctx context.Context) (*SealConfig, error) {
 
 	// If the seal configuration is missing, we are not initialized
 	if valueBytes == nil {
-		d.core.logger.Info("seal configuration missing, not initialized")
-		return nil, nil
+		valueBytes, err = d.configAccess.Get(ctx, d.metaPrefix+deprecatedBarrierSealConfigPath)
+		if err != nil {
+			d.core.logger.Error("failed to read legacy seal configuration", "error", err)
+			return nil, fmt.Errorf("failed to read legacy seal configuration: %w", err)
+		}
+		if valueBytes == nil {
+			d.core.logger.Info("seal configuration missing, not initialized")
+			return nil, nil
+		}
 	}
 
 	var conf SealConfig
@@ -232,7 +257,7 @@ func (d *defaultSeal) SetConfig(ctx context.Context, config *SealConfig) error {
 		return fmt.Errorf("failed to encode seal configuration: %w", err)
 	}
 
-	if err := d.configAccess.Put(ctx, d.metaPrefix+barrierSealConfigPath, buf); err != nil {
+	if err := d.configAccess.Put(ctx, d.metaPrefix+sealConfigPath(d.Name()), buf); err != nil {
 		d.core.logger.Error("failed to write seal configuration", "error", err)
 		return fmt.Errorf("failed to write seal configuration: %w", err)
 	}
@@ -302,7 +327,7 @@ func (e *ErrDecrypt) Is(target error) bool {
 	return ok || errors.Is(e.Err, target)
 }
 
-func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor seal.Access, keys [][]byte) error {
+func writeStoredKeys(ctx context.Context, seal Seal, storage physical.Backend, keys [][]byte) error {
 	if keys == nil {
 		return errors.New("keys were nil")
 	}
@@ -316,7 +341,7 @@ func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix s
 	}
 
 	// Encrypt and marshal the keys
-	blobInfo, err := encryptor.Encrypt(ctx, buf, nil)
+	blobInfo, err := seal.GetAccess().Encrypt(ctx, buf, nil)
 	if err != nil {
 		return &ErrEncrypt{Err: fmt.Errorf("failed to encrypt keys for storage: %w", err)}
 	}
@@ -326,9 +351,8 @@ func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix s
 		return fmt.Errorf("failed to marshal value for storage: %w", err)
 	}
 
-	// Store the seal configuration.
 	pe := &physical.Entry{
-		Key:   metaPrefix + StoredBarrierKeysPath, // TODO(SEALHA): will we need to store more than one set of keys?
+		Key:   seal.MetaPrefix() + encryptedRootPath(seal.Name()),
 		Value: value,
 	}
 
@@ -339,10 +363,17 @@ func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix s
 	return nil
 }
 
-func readStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor seal.Access) ([][]byte, error) {
-	pe, err := storage.Get(ctx, metaPrefix+StoredBarrierKeysPath)
+func readStoredKeys(ctx context.Context, seal Seal, storage physical.Backend) ([][]byte, error) {
+	pe, err := storage.Get(ctx, seal.MetaPrefix()+encryptedRootPath(seal.Name()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch stored keys: %w", err)
+	}
+
+	if pe == nil {
+		pe, err = storage.Get(ctx, seal.MetaPrefix()+storedBarrierKeysPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch legacy stored keys: %w", err)
+		}
 	}
 
 	// This is not strictly an error; we may not have any stored keys, for
@@ -356,7 +387,7 @@ func readStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix st
 		return nil, fmt.Errorf("failed to proto decode stored keys: %w", err)
 	}
 
-	pt, err := encryptor.Decrypt(ctx, blobInfo, nil)
+	pt, err := seal.GetAccess().Decrypt(ctx, blobInfo, nil)
 	if err != nil {
 		if strings.Contains(err.Error(), "message authentication failed") {
 			return nil, &ErrInvalidKey{Reason: fmt.Sprintf("failed to decrypt keys from storage: %v", err)}

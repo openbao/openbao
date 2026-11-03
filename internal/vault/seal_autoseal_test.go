@@ -164,7 +164,7 @@ func TestAutoSeal_UpgradeKeys(t *testing.T) {
 		changeKey("primanti")
 		require.NoError(t, autoSeal.UpgradeKeys(ctx))
 
-		keysBlob := pBackend.entries[StoredBarrierKeysPath]
+		keysBlob := pBackend.entries[encryptedRootPath(autoSeal.Name())]
 		require.Equal(t, 2, len(keysBlob))
 
 		blobInfo := &wrapping.BlobInfo{}

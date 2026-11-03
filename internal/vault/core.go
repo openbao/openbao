@@ -2544,7 +2544,7 @@ func (c *Core) AuditedHeadersConfig() *AuditedHeadersConfig {
 }
 
 func (c *Core) PhysicalSealConfigs(ctx context.Context) (*SealConfig, *SealConfig, error) {
-	pe, err := c.physical.Get(ctx, barrierSealConfigPath)
+	pe, err := c.physical.Get(ctx, deprecatedBarrierSealConfigPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to fetch barrier seal configuration at migration check time: %w", err)
 	}

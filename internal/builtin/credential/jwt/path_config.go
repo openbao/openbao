@@ -240,7 +240,7 @@ func (b *jwtAuthBackend) configDeviceAuthURL(ctx context.Context, s logical.Stor
 	defer b.l.Unlock()
 
 	if config.hasDiscoveryDocument() {
-		if config.discoveryDoc.DeviceAuthURL == "" {
+		if config.discoveryDeviceAuthURL == "" {
 			return errors.New("no device auth endpoint url configured")
 		}
 		return nil
@@ -426,7 +426,7 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 				provider.Done()
 			}
 
-			if err := checkJWKSURL(ctx, config.discoveryDoc.JWKSURL, config.OIDCDiscoveryCAPEM); err != nil {
+			if err := checkJWKSURL(ctx, config.providerConfig.JWKSURL, config.OIDCDiscoveryCAPEM); err != nil {
 				if !skipJwksValidation {
 					b.Logger().Error("error checking jwks_uri", "error", err)
 					return logical.ErrorResponse("error checking jwks_uri: %s", err.Error()), nil
@@ -577,12 +577,7 @@ func (b *jwtAuthBackend) createProvider(config *jwtConfig) (*oidc.Provider, erro
 
 	opts := []oidc.Option{oidc.WithProviderCA(config.OIDCDiscoveryCAPEM)}
 	if config.hasDiscoveryDocument() {
-		opts = append(opts, oidc.WithProviderConfig(&oidc.ProviderConfig{
-			AuthURL:     config.discoveryDoc.AuthURL,
-			TokenURL:    config.discoveryDoc.TokenURL,
-			JWKSURL:     config.discoveryDoc.JWKSURL,
-			UserInfoURL: config.discoveryDoc.UserInfoURL,
-		}))
+		opts = append(opts, oidc.WithProviderConfig(config.providerConfig))
 	}
 
 	c, err := oidc.NewConfig(config.OIDCDiscoveryURL, config.OIDCClientID,
@@ -710,22 +705,13 @@ type jwtConfig struct {
 	OIDCDiscoveryDocument map[string]any `json:"oidc_discovery_document"`
 
 	ParsedJWTPubKeys []crypto.PublicKey `json:"-"`
-	discoveryDoc     *discoveryDocument
+	// parseDiscoveryDocument sets these from OIDCDiscoveryDocument.
+	providerConfig         *oidc.ProviderConfig
+	discoveryDeviceAuthURL string
 	// configDeviceAuthURL discovers these from OIDCDiscoveryURL. They stay
 	// empty when a discovery document is configured.
 	deviceAuthURL  string
 	deviceTokenURL string
-}
-
-// discoveryDocument holds the endpoints OpenBao uses from an OIDC discovery
-// document.
-type discoveryDocument struct {
-	Issuer        string `json:"issuer"`
-	AuthURL       string `json:"authorization_endpoint"`
-	TokenURL      string `json:"token_endpoint"`
-	JWKSURL       string `json:"jwks_uri"`
-	UserInfoURL   string `json:"userinfo_endpoint"`
-	DeviceAuthURL string `json:"device_authorization_endpoint"`
 }
 
 // deviceEndpoints returns the device authorization and token URLs. A
@@ -733,7 +719,7 @@ type discoveryDocument struct {
 // between the device authorization and the poll doesn't lose them.
 func (c *jwtConfig) deviceEndpoints() (authURL, tokenURL string) {
 	if c.hasDiscoveryDocument() {
-		return c.discoveryDoc.DeviceAuthURL, c.discoveryDoc.TokenURL
+		return c.discoveryDeviceAuthURL, c.providerConfig.TokenURL
 	}
 	return c.deviceAuthURL, c.deviceTokenURL
 }
@@ -769,11 +755,11 @@ func (c jwtConfig) authType() int {
 // hasDiscoveryDocument reports whether a configured discovery document
 // replaces OIDC discovery.
 func (c jwtConfig) hasDiscoveryDocument() bool {
-	return c.discoveryDoc != nil
+	return c.providerConfig != nil
 }
 
 // parseDiscoveryDocument validates OIDCDiscoveryDocument and sets
-// discoveryDoc from it.
+// providerConfig and discoveryDeviceAuthURL from it.
 func (c *jwtConfig) parseDiscoveryDocument() error {
 	if len(c.OIDCDiscoveryDocument) == 0 {
 		return nil
@@ -782,45 +768,45 @@ func (c *jwtConfig) parseDiscoveryDocument() error {
 		return errors.New("'oidc_discovery_url' must be set when 'oidc_discovery_document' is set")
 	}
 
-	// A JSON round trip decodes the map through discoveryDocument's tags.
-	raw, err := json.Marshal(c.OIDCDiscoveryDocument)
-	if err != nil {
-		return fmt.Errorf("error parsing 'oidc_discovery_document': %w", err)
-	}
-	var doc discoveryDocument
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		return fmt.Errorf("error parsing 'oidc_discovery_document': %w", err)
-	}
-
 	// go-oidc applies the same exact match to a fetched document.
-	if doc.Issuer != c.OIDCDiscoveryURL {
-		return fmt.Errorf("'oidc_discovery_document' issuer %q does not match 'oidc_discovery_url'", doc.Issuer)
+	issuer, _ := c.OIDCDiscoveryDocument["issuer"].(string)
+	if issuer != c.OIDCDiscoveryURL {
+		return fmt.Errorf("'oidc_discovery_document' issuer %q does not match 'oidc_discovery_url'", issuer)
 	}
 
+	pc := &oidc.ProviderConfig{}
+	var deviceAuthURL string
 	endpoints := []struct {
-		field, value string
-		required     bool
+		field    string
+		dst      *string
+		required bool
 	}{
-		{"authorization_endpoint", doc.AuthURL, true},
-		{"token_endpoint", doc.TokenURL, true},
-		{"jwks_uri", doc.JWKSURL, true},
-		{"userinfo_endpoint", doc.UserInfoURL, true},
-		{"device_authorization_endpoint", doc.DeviceAuthURL, false},
+		{"authorization_endpoint", &pc.AuthURL, true},
+		{"token_endpoint", &pc.TokenURL, true},
+		{"jwks_uri", &pc.JWKSURL, true},
+		{"userinfo_endpoint", &pc.UserInfoURL, true},
+		{"device_authorization_endpoint", &deviceAuthURL, false},
 	}
 	for _, e := range endpoints {
-		if e.value == "" {
-			if e.required {
-				return fmt.Errorf("'oidc_discovery_document' must contain '%s'", e.field)
-			}
+		raw, present := c.OIDCDiscoveryDocument[e.field]
+		value, isString := raw.(string)
+		switch {
+		case present && !isString:
+			return fmt.Errorf("'oidc_discovery_document' '%s' must be a string", e.field)
+		case value == "" && e.required:
+			return fmt.Errorf("'oidc_discovery_document' must contain '%s'", e.field)
+		case value == "":
 			continue
 		}
-		u, err := url.Parse(e.value)
+		u, err := url.Parse(value)
 		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 			return fmt.Errorf("'oidc_discovery_document' '%s' must be an absolute http or https URL", e.field)
 		}
+		*e.dst = value
 	}
 
-	c.discoveryDoc = &doc
+	c.providerConfig = pc
+	c.discoveryDeviceAuthURL = deviceAuthURL
 	return nil
 }
 

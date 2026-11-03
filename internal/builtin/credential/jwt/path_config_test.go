@@ -597,7 +597,7 @@ func TestConfig_OIDC_DiscoveryDocument(t *testing.T) {
 		},
 		"non-string endpoint": {
 			doc: func(d map[string]any) { d["token_endpoint"] = 1 },
-			err: "error parsing 'oidc_discovery_document': json: cannot unmarshal number into Go struct field discoveryDocument.token_endpoint of type string",
+			err: "'oidc_discovery_document' 'token_endpoint' must be a string",
 		},
 		"issuer mismatch": {
 			doc: func(d map[string]any) { d["issuer"] = "https://other.example.com" },

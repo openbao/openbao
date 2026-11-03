@@ -1166,7 +1166,12 @@ func (m *ExpirationManager) RevokeByToken(ctx context.Context, te *logical.Token
 
 	// Revoke all the keys by marking them expired
 	for _, leaseID := range existing {
-		err := m.lazyRevokeInternal(ctx, leaseID)
+		leaseNS, err := m.getNamespaceFromLeaseID(tokenCtx, leaseID)
+		if err != nil {
+			return fmt.Errorf("failed to get namespace from lease id: %w", err)
+		}
+		leaseCtx := namespace.ContextWithNamespace(ctx, leaseNS)
+		err = m.lazyRevokeInternal(leaseCtx, leaseID)
 		if err != nil {
 			return err
 		}

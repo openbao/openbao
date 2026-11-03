@@ -1,9 +1,9 @@
 ```release-note:improvement
-core/router: Add `use_hmac_sha256` mount configuration option to switch existing mounts to HMAC-SHA256 for client token hashing.
+core/mounts: Add `use_hmac_sha256` mount configuration option to switch existing mounts to HMAC-SHA256 for client token hashing.
 ```
 
 ```release-note:change
-core/router: Use HMAC-SHA256 by default for client token hashing on secrets and auth mounts.
+core/mounts: Use HMAC-SHA256 by default for client token hashing on secrets and auth mounts.
 ```
 
 ```release-note:deprecation

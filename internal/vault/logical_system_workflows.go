@@ -348,6 +348,43 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 
 	if b.Core.allowUnauthedWorkflows {
 		paths = append(paths, &framework.Path{
+			Pattern: "workflows/unauthed-execute/?$",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "workflows-unauthed-execute",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"after": {
+					Type:        framework.TypeString,
+					Description: "Optional entry to begin listing after; not required to exist.",
+				},
+				"limit": {
+					Type:        framework.TypeInt,
+					Description: "Optional number of entries to return; defaults to all entries.",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.handleWorkflowsExecuteList(false, true /* we are unauthed */),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK", Fields: workflowExecuteListSchema}},
+					},
+					Summary: "List workflows.",
+				},
+				logical.ScanOperation: &framework.PathOperation{
+					Callback: b.handleWorkflowsExecuteList(true, true /* we are unauthed */),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK", Fields: workflowExecuteListSchema}},
+					},
+					Summary: "Scan (recursively list) workflows.",
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["unauthed-exec-workflows"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["unauthed-exec-workflows"][1]),
+		}, &framework.Path{
 			Pattern: "workflows/unauthed-execute/(?P<path>.+)",
 
 			DisplayAttrs: &framework.DisplayAttributes{

@@ -67,17 +67,29 @@ The following parameters are set per-key:
   uses the specified PKCS#11 mechanism, specified either by name, or by decimal
   or hexadecimal (prefixed by `0x`) string. Currently supported mechanisms are:
 
-  - Names: `CKM_ECDSA`, Hexadecimal: `0x1041`
   - Names: `CKM_AES_GCM`, Hexadecimal: `0x1087`
+  - Names: `CKM_ML_DSA`: Hexadecimal: `0x001D`
+  - Names: `CKM_EDDSA`, Hexadecimal: `0x1057`
+  - Names: `CKM_ECDSA`, Hexadecimal: `0x1041`
   - Names: `CKM_RSA_PKCS_PSS`, Hexadecimal: `0x000D`
   - Names: `CKM_RSA_PKCS_OAEP`, Hexadecimal: `0x0009`
+
+  :::tip
 
   All mechanism names are case-insensitive, treat `-` and `_` as equal and
   may optionally be prefixed with `CKM_`. That is, `CKM_AES_GCM` may also be
   expressed as `aes-gcm`.
 
-  Support for algorithms defined by PKCS#11 v3.0+ only (e.g., `CKM_ML_DSA`,
-  `CKM_EDDSA`) is currently lacking, but is planned.
+  :::
+
+  :::info
+
+  The Go standard library does not support Ed448, which limits the usefulness
+  of `CKM_EDDSA` if not using Ed25519. In particular, public key operations
+  (verify, export) do not work and thus render usage for e.g., X.509
+  certificates infeasible.
+
+  :::
 
 - `rsa_oaep_hash` `(string: "sha256")` - Specify the hash function to use for
   RSA-OAEP. Available are `sha1`, `sha224`, `sha256`, `sha384`, and `sha512`.

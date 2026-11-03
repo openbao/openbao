@@ -31,8 +31,9 @@ var protectedPaths = []string{
 // These paths use the "upper" barrier, which is the direct physical layer
 // for the root namespace.
 var specialPaths = []string{
-	barrierSealConfigPath,
-	recoverySealConfigPath,
+	sealsConfigPath,
+	deprecatedBarrierSealConfigPath,
+	deprecatedRecoverySealConfigPath,
 	coreBarrierUnsealKeysBackupPath,
 	coreRecoveryUnsealKeysBackupPath,
 }
@@ -71,7 +72,12 @@ func (b *RawBackend) storageByPath(ctx context.Context, path string) (StorageAcc
 		}
 	}
 
-	specialPath := slices.Contains(specialPaths, rest)
+	specialPath := slices.ContainsFunc(specialPaths, func(path string) bool {
+		if strings.HasSuffix(path, "/") && strings.HasPrefix(rest, path) {
+			return true
+		}
+		return path == rest
+	})
 
 	// Fast-path root or deleted namespaces; we do not need a lookup into the
 	// seal manager.

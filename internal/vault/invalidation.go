@@ -278,15 +278,16 @@ func isTransactionalMountPath(key string) bool {
 }
 
 func isCoreKeyPath(key string) bool {
-	return key == barrierSealConfigPath ||
-		key == barrier.KeyringPath ||
+	return key == barrier.KeyringPath ||
 		key == barrier.LegacyRootKeyPath ||
-		key == recoverySealConfigPath ||
-		key == recoveryKeyPath ||
 		key == barrier.RootKeyPath ||
 		key == barrier.ShamirKekPath ||
-		key == StoredBarrierKeysPath ||
-		key == raftTLSStoragePath
+		key == raftTLSStoragePath ||
+		key == deprecatedBarrierSealConfigPath ||
+		key == deprecatedRecoverySealConfigPath ||
+		key == deprecatedRecoveryKeyPath ||
+		key == deprecatedStoredBarrierKeysPath ||
+		strings.HasPrefix(key, sealsConfigPath)
 }
 
 func isMissedMountKey(key string) bool {

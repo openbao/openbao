@@ -63,10 +63,11 @@ var knownNamespaceCoreEntriesToCleanup = []string{
 	barrier.KeyringPath,
 	barrier.RootKeyPath,
 	barrier.ShamirKekPath,
-	barrierSealConfigPath,
-	recoverySealConfigPath,
-	recoveryKeyPath,
-	StoredBarrierKeysPath,
+	deprecatedBarrierSealConfigPath,
+	deprecatedRecoverySealConfigPath,
+	deprecatedRecoveryKeyPath,
+	deprecatedStoredBarrierKeysPath,
+	sealsConfigPath,
 }
 
 // NamespaceStore is used to provide durable storage of namespace. It is
@@ -240,14 +241,38 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 		// namespace. In that case, we can stop recursing this branch as the
 		// namespace isn't unsealed yet, as we would not be able to read any
 		// children.
-		if sealConfigEntry, err := childView.Get(ctx, barrierSealConfigPath); err != nil {
-			return false, fmt.Errorf("failed to read seal config entry for namespace %s: %w", namespace.ID, err)
-		} else if sealConfigEntry != nil {
-			var sealConfig SealConfig
-			if err := sealConfigEntry.DecodeJSON(&sealConfig); err != nil {
-				return false, fmt.Errorf("failed to decode seal config entry for namespace %s: %w", namespace.ID, err)
+		sealsConfigs, err := childView.List(ctx, sealsConfigPath)
+		if err != nil {
+			return false, fmt.Errorf("failed to list seal configs for namespace %s: %w", namespace.ID, err)
+		}
+
+		for _, entryPath := range sealsConfigs {
+			sealConfigEntry, err := childView.Get(ctx, sealConfigPath(entryPath))
+			if err != nil {
+				return false, fmt.Errorf("failed to read seal config entry [%s] for namespace %s: %w", entryPath, namespace.ID, err)
 			}
-			return true, ns.core.sealManager.SetSeal(ctx, &sealConfig, &namespace, false)
+
+			if sealConfigEntry != nil {
+				var sealConfig SealConfig
+				if err := sealConfigEntry.DecodeJSON(&sealConfig); err != nil {
+					return false, fmt.Errorf("failed to decode seal config entry for namespace %s: %w", namespace.ID, err)
+				}
+				// TODO:
+				return true, ns.core.sealManager.SetSeal(ctx, &sealConfig, &namespace, false)
+			}
+		}
+
+		if len(sealsConfigs) == 0 {
+			// Read legacy seal config location.
+			if sealConfigEntry, err := childView.Get(ctx, deprecatedBarrierSealConfigPath); err != nil {
+				return false, fmt.Errorf("failed to read legacy seal config entry for namespace %s: %w", namespace.ID, err)
+			} else if sealConfigEntry != nil {
+				var sealConfig SealConfig
+				if err := sealConfigEntry.DecodeJSON(&sealConfig); err != nil {
+					return false, fmt.Errorf("failed to decode legacy seal config entry for namespace %s: %w", namespace.ID, err)
+				}
+				return true, ns.core.sealManager.SetSeal(ctx, &sealConfig, &namespace, false)
+			}
 		}
 
 		if err := ns.loadNamespacesRecursive(ctx, barrier, childView, callback); err != nil {
@@ -335,15 +360,42 @@ func (ns *NamespaceStore) Invalidate(ctx context.Context, parentUUID, childUUID 
 	ns.namespacesByUUID[child.UUID] = &child
 	ns.namespacesByAccessor[child.ID] = &child
 
-	if entry, err := NamespaceScopedView(b, &child).Get(ctx, barrierSealConfigPath); err != nil {
+	childView := NamespaceScopedView(b, &child)
+	sealsConfigs, err := childView.List(ctx, sealsConfigPath)
+	if err != nil {
 		return nil, false, err
-	} else if entry != nil {
-		var config SealConfig
-		if err := entry.DecodeJSON(&config); err != nil {
+	}
+
+	for _, entryPath := range sealsConfigs {
+		entry, err := childView.Get(ctx, sealConfigPath(entryPath))
+		if err != nil {
 			return nil, false, err
 		}
-		if err := ns.core.sealManager.SetSeal(ctx, &config, &child, false); err != nil {
+
+		if entry != nil {
+			var config SealConfig
+			if err := entry.DecodeJSON(&config); err != nil {
+				return nil, false, err
+			}
+			// TODO:
+			if err := ns.core.sealManager.SetSeal(ctx, &config, &child, false); err != nil {
+				return nil, false, err
+			}
+		}
+	}
+
+	if len(sealsConfigs) == 0 {
+		// Read legacy seal config location.
+		if entry, err := childView.Get(ctx, deprecatedBarrierSealConfigPath); err != nil {
 			return nil, false, err
+		} else if entry != nil {
+			var config SealConfig
+			if err := entry.DecodeJSON(&config); err != nil {
+				return nil, false, err
+			}
+			if err := ns.core.sealManager.SetSeal(ctx, &config, &child, false); err != nil {
+				return nil, false, err
+			}
 		}
 	}
 
@@ -1478,7 +1530,12 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, entry *
 
 			// List of paths we know we are clearing with this final scan.
 			// Limit the warn log to entries stored under "core/" prefix.
-			if !slices.Contains(knownNamespaceCoreEntriesToCleanup, path) && strings.HasPrefix(path, "core/") {
+			if strings.HasPrefix(path, "core/") && !slices.ContainsFunc(knownNamespaceCoreEntriesToCleanup, func(p string) bool {
+				if strings.HasSuffix(p, "/") && strings.HasPrefix(path, p) {
+					return true
+				}
+				return p == path
+			}) {
 				ns.logger.Warn("bug: removing entry remaining in namespace storage after all mounts were removed", "namespace", entry.Path, "path", path)
 			}
 

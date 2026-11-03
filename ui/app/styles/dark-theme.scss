@@ -64,7 +64,7 @@
   }
 
   // Toggle track (off state)
-  .toggle[type='checkbox'] + label::before {
+  .toggle[type='checkbox']:not(:checked) + label::before {
     background: #3a3b3d;
   }
 

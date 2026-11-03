@@ -1847,7 +1847,14 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 
 	if rawVal, ok := data.GetOk("use_hmac_sha256"); ok {
 		enabled := rawVal.(bool)
-		if !enabled {
+
+		if enabled && (mountEntry.Type == routing.MountTypeToken || mountEntry.Type == routing.MountTypeNSToken) {
+			return logical.ErrorResponse(
+				"use_hmac_sha256 cannot be set for token or ns_token auth mounts",
+			), logical.ErrInvalidRequest
+		}
+
+		if mountEntry.Config.UseHMACSHA256 && !enabled {
 			return logical.ErrorResponse("use_hmac_sha256 cannot be disabled once enabled"), logical.ErrInvalidRequest
 		}
 

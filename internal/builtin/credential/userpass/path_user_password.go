@@ -68,7 +68,7 @@ func (b *backend) pathUserPasswordUpdate(ctx context.Context, req *logical.Reque
 
 	username, err := getUsername(d)
 	if err != nil {
-		return nil, err
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 	userEntry, err := b.user(ctx, req.Storage, username)
 	if err != nil {

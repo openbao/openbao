@@ -32,6 +32,10 @@ The only remaining way to assign a custom token ID will be the
 `-dev-root-token-id` flag. This flag is available in dev mode only, and root
 tokens created this way before upgrading to v2.9.0 will cease to function.
 
+Cubbyhole support for older tokens, where storage identifiers are derived 
+using SHA-1, will also be removed in version 2.9.0. Cubbyhole access for 
+current tokens is unaffected.
+
 ### Legacy auth & secrets plugin protocols
 
 > Announced: **10/2026**, Deprecated in: N/A, Removal: **v2.8.0**

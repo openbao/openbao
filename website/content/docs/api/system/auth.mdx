@@ -136,9 +136,6 @@ For example, enable the "foo" auth method will make it accessible at
   - `allowed_response_headers` `(array: [])` - List of headers to allow,
     allowing a plugin to include them in the response.
 
-  - `use_hmac_sha256` `(bool: true)` – Enables HMAC-SHA256 hashing of client
-    tokens. `false` is rejected.
-
   - `plugin_version` `(string: "")` – Specifies the semantic version of the plugin
     to use, e.g. "v1.0.0". If unspecified, the server will select any matching
     unversioned plugin that may have been registered, the latest versioned plugin

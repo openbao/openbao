@@ -2544,9 +2544,20 @@ func (c *Core) AuditedHeadersConfig() *AuditedHeadersConfig {
 }
 
 func (c *Core) PhysicalSealConfigs(ctx context.Context) (*SealConfig, *SealConfig, error) {
-	pe, err := c.physical.Get(ctx, barrierSealConfigPath)
+	pe, err := c.physical.Get(ctx, sealConfigPath(c.seal.Name()))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to fetch barrier seal configuration at migration check time: %w", err)
+	}
+
+	if pe == nil {
+		pe, err = c.physical.Get(ctx, deprecatedBarrierSealConfigPath)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to fetch legacy barrier seal configuration at migration check time: %w", err)
+		}
+
+		if pe == nil {
+			return nil, nil, nil
+		}
 	}
 
 	var barrierConf *SealConfig
@@ -2568,9 +2579,16 @@ func (c *Core) PhysicalSealConfigs(ctx context.Context) (*SealConfig, *SealConfi
 		}
 	}
 
-	pe, err = c.physical.Get(ctx, recoverySealConfigPath)
+	pe, err = c.physical.Get(ctx, recoverySealConfigPath(c.seal.Name()))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to fetch recovery seal configuration at migration check time: %w", err)
+	}
+
+	if pe == nil {
+		pe, err = c.physical.Get(ctx, deprecatedRecoverySealConfigPath)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to fetch legacy recovery seal configuration at migration check time: %w", err)
+		}
 	}
 
 	var recoveryConf *SealConfig
@@ -2682,8 +2700,11 @@ func (c *Core) migrateSealConfig(ctx context.Context) error {
 	}
 
 	if !c.seal.RecoveryKeySupported() {
-		if err := c.physical.Delete(ctx, recoverySealConfigPath); err != nil {
+		if err := c.physical.Delete(ctx, recoverySealConfigPath(c.seal.Name())); err != nil {
 			return fmt.Errorf("failed to delete old recovery seal configuration during migration: %w", err)
+		}
+		if err := c.physical.Delete(ctx, deprecatedRecoverySealConfigPath); err != nil {
+			return fmt.Errorf("failed to delete old legacy recovery seal configuration during migration: %w", err)
 		}
 	} else {
 		return c.writeLegacyBarrierConfigOnAutoUnseal(ctx)

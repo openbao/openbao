@@ -363,10 +363,10 @@ This endpoint tunes configuration parameters for a given mount point.
 - `allowed_response_headers` `(array: [])` - List of headers to allow,
   allowing a plugin to include them in the response.
 
-- `use_hmac_sha256` `(bool)` - Enables HMAC-SHA256 hashing of client tokens
-  before forwarding requests to backends. New mounts use HMAC-SHA256 by default.
-  Existing mounts can be switched to HMAC-SHA256 or continue using SHA-1 until upgraded.
-  Once enabled, HMAC-SHA256 cannot be disabled.
+- `use_hmac_sha256` `(bool)` - Salt the client token passed to backends via
+  HMAC-SHA256 instead of SHA-1. New mounts use HMAC-SHA256 by default.
+  Existing mounts can be switched to HMAC-SHA256 or continue using SHA-1 until
+  upgraded. Once enabled, HMAC-SHA256 cannot be disabled.
   This parameter does not apply to the `sys/`, `identity/`, or `cubbyhole/` mounts.
 
 - `plugin_version` `(string: "")` – Specifies the semantic version of the plugin

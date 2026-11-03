@@ -2074,7 +2074,7 @@ func (c *Core) reloadMount(ctx context.Context, key string) error {
 		desiredMountEntry = nil
 	}
 
-	return c.reloadMountInternalWithLock(ctx, table, uuid, desiredMountEntry)
+	return c.reloadMountInternal(ctx, table, uuid, desiredMountEntry)
 }
 
 func (c *Core) reloadMountInternal(ctx context.Context, table, uuid string, desiredMountEntry *routing.MountEntry) error {

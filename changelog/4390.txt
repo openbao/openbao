@@ -1,0 +1,3 @@
+```release-note:bug
+core/mounts: Ensure mount invalidations triggered by namespace creation on the active node do not race on standby nodes and cause double-mount errors.
+```

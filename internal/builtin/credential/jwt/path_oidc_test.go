@@ -1835,7 +1835,7 @@ func TestOIDC_DiscoveryDocument_Device(t *testing.T) {
 		b, storage, s := setup(t, false)
 
 		_, err := authURL(b, storage)
-		require.EqualError(t, err, "no device auth endpoint url configured")
+		require.EqualError(t, err, "no device auth endpoint url discovered")
 
 		for _, r := range s.getRequests() {
 			require.NotEqual(t, "/.well-known/openid-configuration", r.URL.Path)

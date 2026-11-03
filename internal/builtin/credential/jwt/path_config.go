@@ -239,15 +239,8 @@ func (b *jwtAuthBackend) configDeviceAuthURL(ctx context.Context, s logical.Stor
 	b.l.Lock()
 	defer b.l.Unlock()
 
-	if config.hasDiscoveryDocument() {
-		if config.discoveryDeviceAuthURL == "" {
-			return errors.New("no device auth endpoint url configured")
-		}
-		return nil
-	}
-
-	if config.deviceAuthURL != "" {
-		if config.deviceAuthURL == "N/A" {
+	if config.OIDCDeviceAuthURL != "" {
+		if config.OIDCDeviceAuthURL == "N/A" {
 			return errors.New("no device auth endpoint url discovered")
 		}
 		return nil
@@ -269,12 +262,12 @@ func (b *jwtAuthBackend) configDeviceAuthURL(ctx context.Context, s logical.Stor
 	}
 	err = json.Unmarshal(body, &daj)
 	if err != nil || daj.DeviceAuthURL == "" {
-		b.cachedConfig.deviceAuthURL = "N/A"
+		b.cachedConfig.OIDCDeviceAuthURL = "N/A"
 		return errors.New("no device auth endpoint url discovered")
 	}
 
-	b.cachedConfig.deviceAuthURL = daj.DeviceAuthURL
-	b.cachedConfig.deviceTokenURL = daj.TokenURL
+	b.cachedConfig.OIDCDeviceAuthURL = daj.DeviceAuthURL
+	b.cachedConfig.OIDCTokenURL = daj.TokenURL
 	return nil
 }
 
@@ -705,23 +698,10 @@ type jwtConfig struct {
 	OIDCDiscoveryDocument map[string]any `json:"oidc_discovery_document"`
 
 	ParsedJWTPubKeys []crypto.PublicKey `json:"-"`
-	// parseDiscoveryDocument sets these from OIDCDiscoveryDocument.
-	providerConfig         *oidc.ProviderConfig
-	discoveryDeviceAuthURL string
-	// configDeviceAuthURL discovers these from OIDCDiscoveryURL. They stay
-	// empty when a discovery document is configured.
-	deviceAuthURL  string
-	deviceTokenURL string
-}
-
-// deviceEndpoints returns the device authorization and token URLs. A
-// configured discovery document is parsed on every config load, so a reset()
-// between the device authorization and the poll doesn't lose them.
-func (c *jwtConfig) deviceEndpoints() (authURL, tokenURL string) {
-	if c.hasDiscoveryDocument() {
-		return c.discoveryDeviceAuthURL, c.providerConfig.TokenURL
-	}
-	return c.deviceAuthURL, c.deviceTokenURL
+	providerConfig   *oidc.ProviderConfig
+	// These are looked up from OIDCDiscoveryURL when needed
+	OIDCDeviceAuthURL string `json:"-"`
+	OIDCTokenURL      string `json:"-"`
 }
 
 const (
@@ -759,7 +739,8 @@ func (c jwtConfig) hasDiscoveryDocument() bool {
 }
 
 // parseDiscoveryDocument validates OIDCDiscoveryDocument and sets
-// providerConfig and discoveryDeviceAuthURL from it.
+// providerConfig and the device endpoints from it. It runs on every config
+// load, so a reset() between device authorization and poll doesn't lose them.
 func (c *jwtConfig) parseDiscoveryDocument() error {
 	if len(c.OIDCDiscoveryDocument) == 0 {
 		return nil
@@ -806,7 +787,13 @@ func (c *jwtConfig) parseDiscoveryDocument() error {
 	}
 
 	c.providerConfig = pc
-	c.discoveryDeviceAuthURL = deviceAuthURL
+	c.OIDCTokenURL = pc.TokenURL
+	c.OIDCDeviceAuthURL = deviceAuthURL
+	if deviceAuthURL == "" {
+		// configDeviceAuthURL reads "N/A" as no device endpoint, so it doesn't
+		// fall back to discovery.
+		c.OIDCDeviceAuthURL = "N/A"
+	}
 	return nil
 }
 

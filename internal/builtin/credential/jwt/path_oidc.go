@@ -589,8 +589,7 @@ func (b *jwtAuthBackend) pathPoll(ctx context.Context, req *logical.Request, d *
 			"device_code":   {oidcReq.deviceCode},
 			"grant_type":    {"urn:ietf:params:oauth:grant-type:device_code"},
 		}
-		_, tokenURL := config.deviceEndpoints()
-		body, err := contactIssuer(caCtx, tokenURL, &values, true)
+		body, err := contactIssuer(caCtx, config.OIDCTokenURL, &values, true)
 		if err != nil {
 			return nil, fmt.Errorf("error polling for device authorization: %w", err)
 		}
@@ -729,8 +728,7 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 			"client_secret": {config.OIDCClientSecret},
 			"scope":         {strings.Join(scopes, " ")},
 		}
-		deviceAuthURL, _ := config.deviceEndpoints()
-		body, err := contactIssuer(caCtx, deviceAuthURL, &values, false)
+		body, err := contactIssuer(caCtx, config.OIDCDeviceAuthURL, &values, false)
 		if err != nil {
 			return nil, fmt.Errorf("error authorizing device: %w", err)
 		}

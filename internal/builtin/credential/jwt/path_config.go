@@ -75,8 +75,8 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 				Description: "The response types to request. Allowed values are 'code' and 'id_token'. Defaults to 'code'.",
 			},
 			"oidc_discovery_document": {
-				Type:        framework.TypeString,
-				Description: `OIDC discovery document as JSON. When set, it is used instead of fetching the document from "oidc_discovery_url". Its "issuer" must equal "oidc_discovery_url", and it must contain "authorization_endpoint", "token_endpoint", "jwks_uri" and "userinfo_endpoint". JWT roles check the issuer only through "bound_issuer".`,
+				Type:        framework.TypeMap,
+				Description: `OIDC discovery document. When set, it is used instead of fetching the document from "oidc_discovery_url". Its "issuer" must equal "oidc_discovery_url", and it must contain "authorization_endpoint", "token_endpoint", "jwks_uri" and "userinfo_endpoint". JWT roles check the issuer only through "bound_issuer".`,
 			},
 			"jwks_url": {
 				Type:        framework.TypeString,
@@ -342,7 +342,6 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		OIDCClientSecret:           d.Get("oidc_client_secret").(string),
 		OIDCResponseMode:           d.Get("oidc_response_mode").(string),
 		OIDCResponseTypes:          d.Get("oidc_response_types").([]string),
-		OIDCDiscoveryDocument:      d.Get("oidc_discovery_document").(string),
 		JWKSURL:                    d.Get("jwks_url").(string),
 		JWKSCAPEM:                  d.Get("jwks_ca_pem").(string),
 		DefaultRole:                d.Get("default_role").(string),
@@ -351,6 +350,10 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		BoundIssuer:                d.Get("bound_issuer").(string),
 		ProviderConfig:             d.Get("provider_config").(map[string]any),
 		OverrideAllowedServerNames: d.Get("override_allowed_server_names").([]string),
+	}
+
+	if doc, ok := d.GetOk("oidc_discovery_document"); ok {
+		config.OIDCDiscoveryDocument = doc.(map[string]any)
 	}
 
 	skipJwksValidation := d.Get("skip_jwks_validation").(bool)
@@ -704,7 +707,7 @@ type jwtConfig struct {
 
 	// OIDCDiscoveryDocument replaces the document fetched from
 	// OIDCDiscoveryURL.
-	OIDCDiscoveryDocument string `json:"oidc_discovery_document"`
+	OIDCDiscoveryDocument map[string]any `json:"oidc_discovery_document"`
 
 	ParsedJWTPubKeys []crypto.PublicKey `json:"-"`
 	discoveryDoc     *discoveryDocument
@@ -772,15 +775,20 @@ func (c jwtConfig) hasDiscoveryDocument() bool {
 // parseDiscoveryDocument validates OIDCDiscoveryDocument and sets
 // discoveryDoc from it.
 func (c *jwtConfig) parseDiscoveryDocument() error {
-	if c.OIDCDiscoveryDocument == "" {
+	if len(c.OIDCDiscoveryDocument) == 0 {
 		return nil
 	}
 	if c.OIDCDiscoveryURL == "" {
 		return errors.New("'oidc_discovery_url' must be set when 'oidc_discovery_document' is set")
 	}
 
+	// A JSON round trip decodes the map through discoveryDocument's tags.
+	raw, err := json.Marshal(c.OIDCDiscoveryDocument)
+	if err != nil {
+		return fmt.Errorf("error parsing 'oidc_discovery_document': %w", err)
+	}
 	var doc discoveryDocument
-	if err := json.Unmarshal([]byte(c.OIDCDiscoveryDocument), &doc); err != nil {
+	if err := json.Unmarshal(raw, &doc); err != nil {
 		return fmt.Errorf("error parsing 'oidc_discovery_document': %w", err)
 	}
 

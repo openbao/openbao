@@ -1481,7 +1481,7 @@ func TestLogin_DiscoveryDocument(t *testing.T) {
 		Data: map[string]any{
 			"oidc_discovery_url":      "https://issuer.invalid",
 			"oidc_discovery_ca_pem":   cert,
-			"oidc_discovery_document": testDiscoveryDocument(t, "https://issuer.invalid", s.server.URL, nil),
+			"oidc_discovery_document": testDiscoveryDocument("https://issuer.invalid", s.server.URL, nil),
 			"bound_issuer":            "https://issuer.invalid",
 			"jwt_supported_algs":      []string{"ES256"},
 		},

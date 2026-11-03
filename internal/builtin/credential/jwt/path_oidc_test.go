@@ -1727,7 +1727,7 @@ func TestOIDC_DiscoveryDocument_Device(t *testing.T) {
 		cert, err := s.getTLSCert()
 		require.NoError(t, err)
 
-		doc := testDiscoveryDocument(t, s.server.URL, s.server.URL, func(d map[string]any) {
+		doc := testDiscoveryDocument(s.server.URL, s.server.URL, func(d map[string]any) {
 			if !deviceURL {
 				delete(d, "device_authorization_endpoint")
 			}

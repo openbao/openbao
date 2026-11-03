@@ -11,7 +11,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/json"
 	"encoding/pem"
 	"io"
 	"math/big"
@@ -40,7 +39,7 @@ func TestConfig_JWT_Read(t *testing.T) {
 		"oidc_client_id":                "",
 		"oidc_response_mode":            "",
 		"oidc_response_types":           []string{},
-		"oidc_discovery_document":       "",
+		"oidc_discovery_document":       map[string]any(nil),
 		"override_allowed_server_names": []string{},
 		"default_role":                  "",
 		"jwt_validation_pubkeys":        []string{testJWTPubKey},
@@ -207,7 +206,7 @@ func TestConfig_JWKS_Update(t *testing.T) {
 		"oidc_client_id":                "",
 		"oidc_response_mode":            "form_post",
 		"oidc_response_types":           []string{},
-		"oidc_discovery_document":       "",
+		"oidc_discovery_document":       map[string]any(nil),
 		"override_allowed_server_names": []string{},
 		"default_role":                  "",
 		"jwt_validation_pubkeys":        []string{},
@@ -455,10 +454,8 @@ func TestConfig_OIDC_Write(t *testing.T) {
 }
 
 // testDiscoveryDocument returns a discovery document with endpoints under
-// base. change edits the document before it is encoded.
-func testDiscoveryDocument(t *testing.T, issuer, base string, change func(map[string]any)) string {
-	t.Helper()
-
+// base. change edits the document before it is returned.
+func testDiscoveryDocument(issuer, base string, change func(map[string]any)) map[string]any {
 	doc := map[string]any{
 		"issuer":                        issuer,
 		"authorization_endpoint":        base + "/auth",
@@ -470,10 +467,7 @@ func testDiscoveryDocument(t *testing.T, issuer, base string, change func(map[st
 	if change != nil {
 		change(doc)
 	}
-
-	b, err := json.Marshal(doc)
-	require.NoError(t, err)
-	return string(b)
+	return doc
 }
 
 func TestConfig_OIDC_DiscoveryDocument(t *testing.T) {
@@ -489,7 +483,7 @@ func TestConfig_OIDC_DiscoveryDocument(t *testing.T) {
 			"oidc_discovery_ca_pem":   cert,
 			"oidc_client_id":          "abc",
 			"oidc_client_secret":      "def",
-			"oidc_discovery_document": testDiscoveryDocument(t, s.server.URL, s.server.URL, change),
+			"oidc_discovery_document": testDiscoveryDocument(s.server.URL, s.server.URL, change),
 		}
 	}
 
@@ -601,9 +595,9 @@ func TestConfig_OIDC_DiscoveryDocument(t *testing.T) {
 			},
 			err: "'oidc_discovery_url' must be set when 'oidc_discovery_document' is set",
 		},
-		"invalid JSON": {
-			config: func(d map[string]any) { d["oidc_discovery_document"] = "{" },
-			err:    "error parsing 'oidc_discovery_document': unexpected end of JSON input",
+		"non-string endpoint": {
+			doc: func(d map[string]any) { d["token_endpoint"] = 1 },
+			err: "error parsing 'oidc_discovery_document': json: cannot unmarshal number into Go struct field discoveryDocument.token_endpoint of type string",
 		},
 		"issuer mismatch": {
 			doc: func(d map[string]any) { d["issuer"] = "https://other.example.com" },

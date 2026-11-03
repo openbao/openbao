@@ -914,11 +914,12 @@ func (c *Core) validateLoginMFAInternal(ctx context.Context, methodID string, en
 			groups := append(directGroups, inheritedGroups...)
 
 			_, finalUsername, err = identitytpl.PopulateString(identitytpl.PopulateStringInput{
-				Mode:        identitytpl.ACLTemplating,
-				String:      mConfig.UsernameFormat,
-				Entity:      identity.ToSDKEntity(entity),
-				Groups:      identity.ToSDKGroups(groups),
-				NamespaceID: entity.NamespaceID,
+				Mode:                 identitytpl.ACLTemplating,
+				String:               mConfig.UsernameFormat,
+				Entity:               identity.ToSDKEntity(entity),
+				Groups:               identity.ToSDKGroups(groups),
+				NamespaceID:          entity.NamespaceID,
+				BlockedSubstitutions: []string{}, // it is the job of the MFA methods to do proper escaping/encoding of the username
 			})
 			if err != nil {
 				return err

@@ -10,6 +10,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -239,12 +240,35 @@ func (b *backend) pathKeysList(ctx context.Context, req *logical.Request, data *
 		limit = -1
 	}
 
-	entries, err := req.Storage.ListPage(ctx, "policy/", after, limit)
-	if err != nil {
-		return nil, err
-	}
+	for {
+		// We're looking to only list keys immediately below "policy/*", but
+		// Transit's storage layout unfortunately includes internal entries
+		// nested within subdirectories, specifically "policy/import/", which
+		// holds the wrapping key. This shows up in ListPage as "import/", but
+		// shouldn't be included in this endpoint's output.
+		entries, err := req.Storage.ListPage(ctx, "policy/", after, limit)
+		if err != nil {
+			return nil, err
+		}
 
-	return logical.ListResponse(entries), nil
+		if len(entries) == 0 {
+			return logical.ListResponse(entries), nil
+		}
+
+		// Advance past the storage page before filtering directory entries.
+		after = entries[len(entries)-1]
+
+		entries = slices.DeleteFunc(entries, func(s string) bool {
+			return strings.HasSuffix(s, "/")
+		})
+
+		// If filtering out subdirectories removed all results (e.g., due to a
+		// small limit parameter), re-list at the next page such that we don't
+		// unintendedly signal an end of the list.
+		if len(entries) > 0 {
+			return logical.ListResponse(entries), nil
+		}
+	}
 }
 
 func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {

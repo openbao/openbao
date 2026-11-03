@@ -85,7 +85,7 @@
     &:focus,
     &:hover,
     &:focus:not(:active) {
-      color: $blue;
+      color: $interactive;
       border: 0;
       box-shadow: none;
     }

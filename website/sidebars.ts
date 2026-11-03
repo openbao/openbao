@@ -140,6 +140,7 @@ const sidebars: SidebarsConfig = {
                         "configuration/seal/ocikms",
                         "configuration/seal/ovhcloud",
                         "configuration/seal/pkcs11",
+                        "configuration/seal/securosys",
                         "configuration/seal/static",
                         "configuration/seal/tcloudpublic",
                         "configuration/seal/transit",

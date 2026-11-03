@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -13,7 +14,7 @@ import (
 )
 
 func (b *SystemBackend) workflowPaths() []*framework.Path {
-	workflowListSchema := map[string]*framework.FieldSchema{
+	workflowManageListSchema := map[string]*framework.FieldSchema{
 		"keys": {
 			Type:        framework.TypeStringSlice,
 			Description: "List of workflow paths.",
@@ -52,6 +53,35 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 		},
 	}
 
+	workflowExecuteListSchema := map[string]*framework.FieldSchema{
+		"keys": {
+			Type:        framework.TypeStringSlice,
+			Description: "List of workflow paths.",
+		},
+	}
+
+	workflowExecutionReadSchema := map[string]*framework.FieldSchema{
+		"path": {
+			Type:        framework.TypeString,
+			Required:    true,
+			Description: "Path of the workflow.",
+		},
+		"description": {
+			Type:        framework.TypeString,
+			Required:    true,
+			Description: "Workflow description.",
+		},
+		"allow_unauthenticated": {
+			Type:        framework.TypeBool,
+			Required:    true,
+			Description: "Whether this workflow can be accessed unauthenticated.",
+		},
+		"inputs": {
+			Type:        framework.TypeStringSlice,
+			Description: "Declared input fields, as \"name <type>\".",
+		},
+	}
+
 	paths := []*framework.Path{
 		{
 			Pattern: "workflows/manage/?$",
@@ -73,16 +103,16 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handleWorkflowsList(false),
+					Callback: b.handleWorkflowsManageList(false),
 					Responses: map[int][]framework.Response{
-						http.StatusOK: {{Description: "OK", Fields: workflowListSchema}},
+						http.StatusOK: {{Description: "OK", Fields: workflowManageListSchema}},
 					},
 					Summary: "List workflows.",
 				},
 				logical.ScanOperation: &framework.PathOperation{
-					Callback: b.handleWorkflowsList(true),
+					Callback: b.handleWorkflowsManageList(true),
 					Responses: map[int][]framework.Response{
-						http.StatusOK: {{Description: "OK", Fields: workflowListSchema}},
+						http.StatusOK: {{Description: "OK", Fields: workflowManageListSchema}},
 					},
 					Summary: "Scan (recursively list) workflows.",
 				},
@@ -141,7 +171,7 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 					Callback: b.handleWorkflowsResolvePath("workflows/manage/"),
 				},
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleWorkflowsRead(),
+					Callback: b.handleWorkflowsManageRead(),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{Description: "OK", Fields: workflowSchema}},
 					},
@@ -162,16 +192,16 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 					Summary: "Delete a workflow.",
 				},
 				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handleWorkflowsList(false),
+					Callback: b.handleWorkflowsManageList(false),
 					Responses: map[int][]framework.Response{
-						http.StatusOK: {{Description: "OK", Fields: workflowListSchema}},
+						http.StatusOK: {{Description: "OK", Fields: workflowManageListSchema}},
 					},
 					Summary: "List workflows.",
 				},
 				logical.ScanOperation: &framework.PathOperation{
-					Callback: b.handleWorkflowsList(true),
+					Callback: b.handleWorkflowsManageList(true),
 					Responses: map[int][]framework.Response{
-						http.StatusOK: {{Description: "OK", Fields: workflowListSchema}},
+						http.StatusOK: {{Description: "OK", Fields: workflowManageListSchema}},
 					},
 					Summary: "Scan (recursively list) workflows.",
 				},
@@ -179,6 +209,45 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 
 			HelpSynopsis:    strings.TrimSpace(sysHelp["workflows"][0]),
 			HelpDescription: strings.TrimSpace(sysHelp["workflows"][1]),
+		},
+
+		{
+			Pattern: "workflows/execute/?$",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "workflows-execute",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"after": {
+					Type:        framework.TypeString,
+					Description: "Optional entry to begin listing after; not required to exist.",
+				},
+				"limit": {
+					Type:        framework.TypeInt,
+					Description: "Optional number of entries to return; defaults to all entries.",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.handleWorkflowsExecuteList(false, false /* we are authed */),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK", Fields: workflowExecuteListSchema}},
+					},
+					Summary: "List workflows.",
+				},
+				logical.ScanOperation: &framework.PathOperation{
+					Callback: b.handleWorkflowsExecuteList(true, false /* we are authed */),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK", Fields: workflowExecuteListSchema}},
+					},
+					Summary: "Scan (recursively list) workflows.",
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["list-exec-workflows"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["list-exec-workflows"][1]),
 		},
 
 		{
@@ -194,12 +263,27 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 					Required:    true,
 					Description: "Path of the workflow.",
 				},
+				"after": {
+					Type:        framework.TypeString,
+					Description: "Optional entry to begin listing after; not required to exist.",
+				},
+				"limit": {
+					Type:        framework.TypeInt,
+					Description: "Optional number of entries to return; defaults to all entries.",
+				},
 			},
 			TakesArbitraryInput: true,
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ResolvePathOperation: &framework.PathOperation{
 					Callback: b.handleWorkflowsResolvePath("workflows/execute/"),
+				},
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.handleWorkflowsExecuteRead(false /* we are authenticated */),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK", Fields: workflowExecutionReadSchema}},
+					},
+					Summary: "Retrieve information relevant to the execution of the given workflow.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleWorkflowsExecute(false /* we are authenticated */, false /* we are doing a real execution */),
@@ -208,10 +292,24 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 					},
 					Summary: "Execute the given workflow.",
 				},
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.handleWorkflowsExecuteList(false, false /* we are authed */),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK", Fields: workflowExecuteListSchema}},
+					},
+					Summary: "List workflows.",
+				},
+				logical.ScanOperation: &framework.PathOperation{
+					Callback: b.handleWorkflowsExecuteList(true, false /* we are authed */),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK", Fields: workflowExecuteListSchema}},
+					},
+					Summary: "Scan (recursively list) workflows.",
+				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["exec-workflows"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["exec-workflows"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["execute-workflows"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["execute-workflows"][1]),
 		},
 
 		{
@@ -243,8 +341,8 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["exec-workflows"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["exec-workflows"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["trace-workflows"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["trace-workflows"][1]),
 		},
 	}
 
@@ -262,12 +360,27 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 					Required:    true,
 					Description: "Path of the workflow.",
 				},
+				"after": {
+					Type:        framework.TypeString,
+					Description: "Optional entry to begin listing after; not required to exist.",
+				},
+				"limit": {
+					Type:        framework.TypeInt,
+					Description: "Optional number of entries to return; defaults to all entries.",
+				},
 			},
 			TakesArbitraryInput: true,
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ResolvePathOperation: &framework.PathOperation{
 					Callback: b.handleWorkflowsResolvePath("workflows/unauthed-execute/"),
+				},
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.handleWorkflowsExecuteRead(true /* we are unauthenticated */),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK", Fields: workflowExecutionReadSchema}},
+					},
+					Summary: "Retrieve information relevant to the execution of the given workflow.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleWorkflowsExecute(true /* we are unauthenticated */, false /* we are not performing a trace */),
@@ -276,14 +389,49 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 					},
 					Summary: "Execute the given workflow without authentication.",
 				},
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.handleWorkflowsExecuteList(false, true /* we are unauthed */),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK", Fields: workflowExecuteListSchema}},
+					},
+					Summary: "List workflows.",
+				},
+				logical.ScanOperation: &framework.PathOperation{
+					Callback: b.handleWorkflowsExecuteList(true, true /* we are unauthed */),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK", Fields: workflowExecuteListSchema}},
+					},
+					Summary: "Scan (recursively list) workflows.",
+				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["exec-workflows"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["exec-workflows"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["unauthed-exec-workflows"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["unauthed-exec-workflows"][1]),
 		})
 	}
 
 	return paths
+}
+
+func createWorkflowExecuteReadResponse(we *WorkflowEntry, ctx context.Context) (map[string]any, error) {
+	inputs, _, _, err := we.Parse(ctx)
+	if err != nil {
+		return nil, err
+	}
+	workflowData := map[string]any{
+		"path":                  we.Path,
+		"description":           we.Description,
+		"allow_unauthenticated": we.AllowUnauthenticated,
+	}
+	if inputs != nil {
+		inputInfos := make([]string, len(inputs.Fields))
+		for i, input := range inputs.Fields {
+			inputInfo := fmt.Sprintf("%s <%s>", input.Name, input.Type.String())
+			inputInfos[i] = inputInfo
+		}
+		workflowData["inputs"] = inputInfos
+	}
+	return workflowData, nil
 }
 
 func createWorkflowListResponse(we *WorkflowEntry) map[string]any {
@@ -317,13 +465,13 @@ func (b *SystemBackend) handleWorkflowsResolvePath(prefix string) framework.Oper
 	}
 }
 
-// handleWorkflowsList handles "/sys/workflows/manage/*" endpoints to list the
-// workflows.
-func (b *SystemBackend) handleWorkflowsList(scan bool) framework.OperationFunc {
+// handleWorkflowsManageList handles "/sys/workflows/manage/*" endpoints to list the
+// workflows. This includes privileged information like the version, cas required and the workflow itself.
+func (b *SystemBackend) handleWorkflowsManageList(scan bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		parent := ""
 		if _, present := data.Schema["path"]; present {
-			parent = data.Get("parent").(string)
+			parent = data.Get("path").(string)
 		}
 
 		after := data.Get("after").(string)
@@ -345,9 +493,9 @@ func (b *SystemBackend) handleWorkflowsList(scan bool) framework.OperationFunc {
 	}
 }
 
-// handleWorkflowsRead handles the "/sys/workflows/manage/<path>" endpoints to read a
-// workflow.
-func (b *SystemBackend) handleWorkflowsRead() framework.OperationFunc {
+// handleWorkflowsManageRead handles the "/sys/workflows/manage/<path>" endpoints to read a
+// workflow. This includes privileged information like the version, cas required and the workflow itself.
+func (b *SystemBackend) handleWorkflowsManageRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)
 
@@ -402,7 +550,7 @@ func (b *SystemBackend) handleWorkflowsUpdate() framework.OperationFunc {
 	}
 }
 
-// handleWorkflowsDelete handles the "/sys/workflow/<path>" endpoint to delete a workflow.
+// handleWorkflowsDelete handles the "/sys/workflows/<path>" endpoint to delete a workflow.
 func (b *SystemBackend) handleWorkflowsDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)
@@ -412,8 +560,60 @@ func (b *SystemBackend) handleWorkflowsDelete() framework.OperationFunc {
 	}
 }
 
-// handleWorkflowsExecute handles the "/sys/workflow/execute/<path>" and
-// "/sys/workflow/unauthed-execute/<path>" endpoints to execute workflows.
+// handleWorkflowsExecuteRead handles the "/sys/workflows/execute/<path>" and "/sys/workflows/unauthed-execute/<path>" endpoints
+// to read execution relevant information. This information includes the path, description, allow unauthenticated and the inputs.
+func (b *SystemBackend) handleWorkflowsExecuteRead(unauthed bool) framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path := data.Get("path").(string)
+		pe, err := b.Core.workflowStore.Get(ctx, path)
+		if err != nil {
+			return handleError(err)
+		}
+		if unauthed && (pe == nil || !pe.AllowUnauthenticated) {
+			return nil, logical.ErrPermissionDenied
+		}
+		if pe == nil {
+			return nil, nil
+		}
+		workflowData, err := createWorkflowExecuteReadResponse(pe, ctx)
+		if err != nil {
+			return handleError(err)
+		}
+		return &logical.Response{Data: workflowData}, nil
+	}
+}
+
+// handleWorkflowsExecuteList handles the LIST operation for the "/sys/workflows/execute" and "/sys/workflows/unauthed-execute/"
+// endpoint to list the workflow. This outputs only the keys (paths) from the workflows.
+func (b *SystemBackend) handleWorkflowsExecuteList(scan bool, unauthed bool) framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		parent := ""
+		if _, present := data.Schema["path"]; present {
+			parent = data.Get("path").(string)
+		}
+
+		after := data.Get("after").(string)
+		limit := data.Get("limit").(int)
+
+		workflows, err := b.Core.workflowStore.List(ctx, parent, scan, after, limit)
+		if err != nil {
+			return nil, err
+		}
+
+		keys := make([]string, 0, len(workflows))
+		for _, entry := range workflows {
+			if unauthed && !entry.AllowUnauthenticated {
+				continue
+			}
+			keys = append(keys, entry.Path)
+		}
+
+		return logical.ListResponse(keys), nil
+	}
+}
+
+// handleWorkflowsExecute handles the "/sys/workflows/execute/<path>" and
+// "/sys/workflows/unauthed-execute/<path>" endpoints to execute workflows.
 func (b *SystemBackend) handleWorkflowsExecute(unauthed bool, trace bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)

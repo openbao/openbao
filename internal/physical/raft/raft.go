@@ -878,7 +878,23 @@ func (b *RaftBackend) applyConfigSettings(config *raft.Config) error {
 	}
 
 	config.NoSnapshotRestoreOnStart = true
-	config.MaxAppendEntries = 64
+
+	maxAppendEntriesRaw, ok := b.conf["max_append_entries"]
+	maxAppendEntries := 64
+	if ok {
+		var err error
+		maxAppendEntries, err = strconv.Atoi(maxAppendEntriesRaw)
+		if err != nil {
+			return err
+		}
+		if maxAppendEntries < 1 {
+			return fmt.Errorf("max_append_entries can't be less than one")
+		}
+		if maxAppendEntries > 1024 {
+			return fmt.Errorf("max_append_entries can't be more than 1024")
+		}
+	}
+	config.MaxAppendEntries = maxAppendEntries
 
 	// Setting BatchApplyCh allows the raft library to enqueue up to
 	// MaxAppendEntries into each raft apply rather than relying on the
@@ -998,12 +1014,25 @@ func (b *RaftBackend) SetupCluster(ctx context.Context, opts SetupOpts) error {
 		if err != nil {
 			return err
 		}
+		maxRPCsInFlightRaw, ok := b.conf["max_rpcs_in_flight"]
+		maxRPCsInFlight := raft.DefaultMaxRPCsInFlight
+		if ok {
+			var err error
+			maxRPCsInFlight, err = strconv.Atoi(maxRPCsInFlightRaw)
+			if err != nil {
+				return err
+			}
+			if maxRPCsInFlight < 0 {
+				return fmt.Errorf("max_rpcs_in_flight can't be negative")
+			}
+		}
 		transConfig := &raft.NetworkTransportConfig{
 			Stream:                streamLayer,
 			MaxPool:               3,
 			Timeout:               10 * time.Second,
 			ServerAddressProvider: b.serverAddressProvider,
 			Logger:                b.logger.Named("raft-net"),
+			MaxRPCsInFlight:       maxRPCsInFlight,
 		}
 		transport := raft.NewNetworkTransportWithConfig(transConfig)
 

@@ -8,31 +8,51 @@ description: |-
 
 ## Summary
 
-With auth methods being implemented via plugins, the OpenBao CLI has been lacking the ability to use these auth methods to log in.
+With auth methods being implemented via plugins,
+the OpenBao CLI has been lacking the ability to use these auth methods to log in.
 
 This RFC aims to define the methodology and protocols needed to allow authentication via separate plugin binaries.
 
 ## Problem Statement
 
-The CLI's login command supports the built-in authentication methods. With existing auth methods, like LDAP, getting moved into separate plugins, the CLI has yet to support these external login methods. This has led users to work around these issues, when they should be supported by the CLI. To allow for OpenBao to keep these auths outside of its binary and prevent confusion, the CLI should support plugins for the login functionality.
+The CLI's login command supports the built-in authentication methods.
+With existing auth methods, like LDAP, getting moved into separate plugins,
+the CLI has yet to support these external login methods.
+This has led users to work around these issues, when they should be supported by the CLI.
+To allow for OpenBao to keep these auths outside of its binary and prevent confusion,
+the CLI should support plugins for the login functionality.
 
 ## User-Facing Description
 
-When using plugins that provide non-built-in authentication methods, the same binary can be placed inside of your `$PATH` to allow for `bao login` to use said auth. In addition, you could place scripts or other binaries using the determined naming scheme inside of `$PATH` to support your needs.
+When using plugins that provide non-built-in authentication methods,
+the same binary can be placed inside of your `$PATH` to allow for `bao login` to use said auth.
+In addition, you could place scripts or other binaries using the determined naming scheme inside of `$PATH` to support your needs.
 
-As an example, when the LDAP plugin is installed in the OpenBao server, you can drop that same plugin binary inside of your `$PATH` and use `bao login -method=LDAP` to login via LDAP.
+As an example, when the LDAP plugin is installed in the OpenBao server,
+you can drop that same plugin binary inside of your `$PATH` and use `bao login -method=LDAP` to login via LDAP.
 
 ## Technical Description
 
-To support auth plugins inside of the OpenBao CLI, the login command is adjusted to look up the fitting plugin binary when no built-in handler exists. The plugins are also adjusted to handle the execution by the CLI.
+To support auth plugins inside of the OpenBao CLI, the login command is adjusted to look up the fitting plugin binary when no built-in handler exists.
+The plugins are also adjusted to handle the execution by the CLI.
 
-When `bao login` is run and no built-in handler matches the method, the binaries in `$PATH` are searched based on the naming scheme `openbao-plugin-auth-[method]`. The plugin is then executed with a stripped version of the environment, appended with environment variables that pass information into the plugin.
+When `bao login` is run and no built-in handler matches the method,
+the binaries in `$PATH` are searched based on the naming scheme `openbao-plugin-auth-[method]`.
+The plugin is then executed with a stripped version of the environment,
+appended with environment variables that pass information into the plugin.
 
-When the plugin binary is executed, an indicator signals that it is operating in "CLI mode". This is preferably an environment variable (like `BAO_CLI_PLUGIN`), which allows plugins to maintain existing behaviour for flags. The intention of the execution is defined via subcommands: `login` and `help` are enough for this use case.
+When the plugin binary is executed, an indicator signals that it is operating in "CLI mode".
+This is preferably an environment variable (like `BAO_CLI_PLUGIN`),
+which allows plugins to maintain existing behaviour for flags.
+The intention of the execution is defined via subcommands:
+`login` and `help` are enough for this use case.
 
-Settings for the plugin can additionally be passed in via their respective environment variables. This includes the mount, username and password. All auth-specific environment variables are prefixed by `BAO_CLI_AUTH` to distinguish their purpose.
+Settings for the plugin can additionally be passed in via their respective environment variables.
+This includes the mount, username and password.
+All auth-specific environment variables are prefixed by `BAO_CLI_AUTH` to distinguish their purpose.
 
-After authentication has taken place, the resulting secret response is encoded as JSON and returned to the CLI via stdout.
+After authentication has taken place,
+the resulting secret response is encoded as JSON and returned to the CLI via stdout.
 
 ### Flow (using LDAP plugin)
 
@@ -53,26 +73,37 @@ This flow attempts to keep most existing code as is and require the least amount
 
 ### The Return Protocol
 
-Any non-zero exit code is considered a failure. Any errors should be output to stderr, which is wired back into the CLI. The user sees that error message in addition to the error output of `cmd.Output()`.
+Any non-zero exit code is considered a failure.
+Any errors should be output to stderr, which is wired back into the CLI.
+The user sees that error message in addition to the error output of `cmd.Output()`.
 
 The content of a successful auth is output to stdout encoded as JSON.
 
-Invalid or malformed JSON produces the same message and exit code as built-in auth methods. Empty JSON is treated as a empty response by the credential provider.
+Invalid or malformed JSON produces the same message and exit code as built-in auth methods.
+Empty JSON is treated as a empty response by the credential provider.
 
-The returned JSON should be parsable by `api.ParseSecret` and as such conform to the `api.Secret` struct. At a minimum this means `Auth.ClientToken` (`auth.client_token` in JSON format) is set.
+The returned JSON should be parsable by `api.ParseSecret` and as such conform to the `api.Secret` struct.
+At a minimum this means `Auth.ClientToken` (`auth.client_token` in JSON format) is set.
 
 ## Rationale and Alternatives
 
-The rationale behind this RFC is to standardize interaction between the CLI and auth plugins. This prevents complexity for users when said plugins are used on the server-side without a clear way to log-in.
+The rationale behind this RFC is to standardize interaction between the CLI and auth plugins.
+This prevents complexity for users when said plugins are used on the server-side without a clear way to log-in.
 
-Using the existing logic of server-side plugins by starting a server via the go-plugin framework and communicating with it via gRPC was considered as an alternative. While this would require the least amount of changes, it brings more overhead and limitations with go-plugin.
+Using the existing logic of server-side plugins by starting a server via the go-plugin framework and communicating with it via gRPC was considered as an alternative.
+While this would require the least amount of changes,
+it brings more overhead and limitations with go-plugin.
 
 ## Security Implications
 
 There are two main security concerns with the planned implementation:
 
-1. As we just match the pattern of `openbao-plugin-auth-[method]` against `$PATH`, the user could accidentally execute arbitrary code, when a binary with the same name is placed in a higher priority position.
-2. Users pass in passwords through the environment variables or arguments of `bao login`. This could lead to logging in the history or when `export`ing the environment variables, bleed them into other processes.
+1. As we just match the pattern of `openbao-plugin-auth-[method]` against `$PATH`,
+   the user could accidentally execute arbitrary code,
+   when a binary with the same name is placed in a higher priority position.
+2. Users pass in passwords through the environment variables or arguments of `bao login`.
+   This could lead to logging in the history or when `export`ing the environment variables,
+   bleed them into other processes.
 
 ## Unresolved Questions
 

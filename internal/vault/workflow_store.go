@@ -254,6 +254,12 @@ func (ws *WorkflowStore) List(ctx context.Context, prefix string, recursive bool
 	}
 
 	prefix = ws.sanitizePath(prefix)
+	if prefix != "" {
+		prefix += "/"
+	}
+
+	after = strings.TrimPrefix(after, prefix)
+
 	view := ws.getView(ns).SubView(prefix)
 
 	defer ws.rLockWithUnlock(ctx)()
@@ -274,7 +280,13 @@ func (ws *WorkflowStore) List(ctx context.Context, prefix string, recursive bool
 	var results []*WorkflowEntry
 	for index, key := range keys {
 		path := path.Join(prefix, key)
-		entry, err := ws.getLocked(ctx, key)
+
+		if strings.HasSuffix(key, "/") {
+			results = append(results, &WorkflowEntry{Path: path + "/"})
+			continue
+		}
+
+		entry, err := ws.getLocked(ctx, path)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch workflow (%d/%v) in list: %w", index, path, err)
 		}

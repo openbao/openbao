@@ -1,0 +1,80 @@
+---
+description: >-
+  The Securosys plugin for OpenBao's External Keys offloads cryptographic
+  operations to Securosys HSMs.
+---
+
+# Securosys
+
+The Securosys plugin offloads cryptographic operations to Securosys HSMs.
+The plugin connects to the [TSB REST API](https://docs.securosys.com/tsb/overview/),
+through which it accesses the HSM.
+
+## Requirements
+
+This plugin is not built into OpenBao and must be installed separately. It is
+available in [openbao-plugins](https://github.com/openbao/openbao-plugins).
+
+## Parameters
+
+### Config parameters
+
+The following parameters are set per-config:
+
+- `rest_api` `(string: <required>)` - URL to the TSB.
+
+- `auth` `(string: <required>)` - The type of authentication method.
+  One of: `NONE`, `TOKEN`, `CERT`.
+
+- `bearer_token` `(string: <optional>)` - The JWT to authenticate to the TSB with.
+  Required if `auth=TOKEN`.
+
+- `cert_pem` `(string: <optional>)` - Client certificate to present to the server for an mTLS connection to the TSB. Format: PEM.
+  Must correspond to the private key in `key_pem`.
+  On the CLI, you can [populate this from a local file](../../../../commands/index.mdx#files) with `cert_pem=@/path/to/client.crt`.
+  Required if `auth=CERT`.
+
+- `key_pem` `(string: <optional>)` - Private key for an mTLS connection to the TSB. Format: PEM.
+  On the CLI, you can [populate this from a local file](../../../../commands/index.mdx#files) with `key_pem=@/path/to/client.key`.
+  Required if `auth=CERT`.
+
+- `api_keys` `(string: <optional>)` - A set of
+  [API keys](https://docs.securosys.com/tsb/Installation/post-installation/authentication/api-keys)
+  to authenticate against the TSB.
+  If set, will be passed as HTTP headers.
+  Can be combined with any value of `auth`.
+  Example:
+
+  ```txt
+  api_keys="{\"key_management_token\":[\"tsb-x-token_key_management\"],\"key_operation_token\":[\"tsb-x-token_key_operation\"],\"service_token\":[\"tsb-x-token_service\"]}"
+  ```
+
+- `application_key_pair` `(string: <optional>)` - Public-private key pair with
+  which to sign request metadata, as required by some REST API endpoints if configured on the TSB.
+  If set, the signature created by this private key is passed in the
+  `requestSignature` field of request bodies.
+  Can be combined with any value of `auth`.
+  Example:
+
+  ```txt
+  application_key_pair="{\"private_key\":\"MIIEvgIBADANBg...\",\"public_key\":\"MIIBIjANBgkqh...\"}"
+  ```
+
+- `check_every` `(integer: <optional>)` - Interval in seconds to poll the TSB
+  to ask whether an asynchronous SKA key operation has completed.
+  Default: 5 seconds.
+
+- `approval_timeout` `(integer: <optional>)` - Interval in seconds before aborting an asynchronous SKA key operation.
+  Default: 600 seconds.
+
+### Key parameters
+
+The following parameters are set per-key:
+
+- `name` `(string: <required>)` - The label of the key to use.
+
+- `password` `(string: <optional>)` - The password that protects the key, if any.
+
+- `cipher_algorithm` `(string: <optional>)` - The algorithm to use for encryption/decryption with this key.
+  This is passed through to the `cipherAlgorithm` parameter of the TSB.
+  See the [TSB API docs](https://docs.securosys.com/tsb/apispec/synchronous-decrypt/) for a list of supported values.

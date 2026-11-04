@@ -1,0 +1,145 @@
+---
+sidebar_label: Securosys Primus HSM
+description: |-
+  The Securosys seal configures OpenBao to use a Securosys Primus HSM as the
+  auto-unseal mechanism, accessed through the TSB REST API.
+---
+
+# `securosys` seal
+
+:::info
+
+This seal is available as an external KMS provider plugin in the
+[openbao-plugins](https://github.com/openbao/openbao-plugins) plugin
+collection. For more information on Auto Unseal plugins, see the [overview
+section](./index.mdx#plugins).
+
+:::
+
+The Securosys seal configures OpenBao to use a Securosys Primus HSM or CloudHSM as the auto-unseal mechanism.
+Unlike the vendor-neutral [PKCS#11 seal](pkcs11.mdx) (which also works with Securosys HSMs),
+the Securosys seal uses the [TSB REST API](https://docs.securosys.com/tsb/overview/) to access the HSM.
+Advantages of the REST API include:
+
+- No need to install a PKCS#11 module inside your OpenBao container.
+- Allows you to use an [SKA key](https://docs.securosys.com/ska/overview/) to seal your vault.
+
+## `securosys` example
+
+This example shows configuring a Securosys seal through the OpenBao configuration
+file by providing all the required values:
+
+```hcl
+# JWT
+seal "securosys" {
+  key_label        = "bao-root-key"
+  tsb_api_endpoint = "https://sbx-rest-api.cloudshsm.com/"
+  auth             = "TOKEN"
+  bearer_token     = "secret_jwt_value"
+}
+
+# mTLS
+seal "securosys" {
+  key_label        = "bao-root-key"
+  tsb_api_endpoint = "https://sbx-rest-api.cloudshsm.com/"
+  auth             = "CERT"
+
+  cert_pem = <<EOF
+-----BEGIN CERTIFICATE-----
+MIIC5DCCAcygAwIBAgIBADANBgkqhkiG9w0BAQ...
+-----END CERTIFICATE-----
+EOF
+
+  key_pem = <<EOF
+-----BEGIN PRIVATE KEY-----
+MIIG/gIBADANBgkqhkiG9w0BAQEFAASCBugwgg...
+-----END PRIVATE KEY-----
+EOF
+}
+```
+
+## `securosys` parameters
+
+These parameters apply to the `seal` stanza in the OpenBao configuration file:
+
+- `key_label` `(string: <required>)`: The label of the key used to unseal your vault.
+  This key must already exist on your HSM partition; it is not automatically created.
+
+  The following key types/algorithms are supported:
+
+  - AES-GCM
+  - RSA-OAEP-SHA-256
+  - ML-KEM-512, ML-KEM-768, ML-KEM-1024
+
+- `key_password` `(string: <optional>)` - The password that protects the key, if any.
+
+- `tsb_api_endpoint` `(string: <required>)`: URL to the TSB.
+
+- `auth` `(string: <required>)` - The type of authentication method.
+  One of: `NONE`, `TOKEN`, `CERT`.
+
+- `bearer_token` `(string: <optional>)` - The JWT to authenticate to the TSB with.
+  Required if `auth=TOKEN`.
+
+- `cert_pem` `(string: <optional>)` - Client certificate to present to the server for an mTLS connection to the TSB. Format: PEM.
+  Must correspond to the private key in `key_pem`.
+  Required if `auth=CERT`.
+
+- `key_pem` `(string: <optional>)` - Private key for an mTLS connection to the TSB. Format: PEM.
+  Required if `auth=CERT`.
+
+- `api_keys` `(string: <optional>)` - A set of
+  [API keys](https://docs.securosys.com/tsb/Installation/post-installation/authentication/api-keys)
+  to authenticate against the TSB.
+  If set, will be passed as HTTP headers.
+  Can be combined with any value of `auth`.
+  Example:
+
+  ```hcl
+  api_keys=<<EOF
+  {
+    "key_management_token": ["my_secret_token"],
+    "key_operation_token": ["my_secret_token],
+    "approver_token": ["my_secret_token],
+    "service_token": ["my_secret_token],
+    "approver_key_management_token": ["my_secret_token"]
+  }
+  EOF
+  ```
+
+- `application_key_pair` `(string: <optional>)` - Public-private key pair with
+  which to sign request metadata, as required by some REST API endpoints if configured on the TSB.
+  If set, the signature created by this private key is passed in the
+  `requestSignature` field of request bodies.
+  Can be combined with any value of `auth`.
+  Example:
+
+  ```hcl
+  application_key_pair=<<EOF
+  {
+    "private_key": "MIIEvgIBADANBg...",
+    "public_key":"MIIBIjANBgkqh..."
+  }
+  EOF
+  ```
+
+- `check_every` `(integer: <optional>)` - Interval in seconds to poll the TSB
+  to ask whether an asynchronous SKA key operation has completed.
+  Default: 5 seconds.
+
+- `approval_timeout` `(integer: <optional>)` - Interval in seconds before aborting an asynchronous SKA key operation.
+  Default: 600 seconds.
+
+## Health check
+
+When using an SKA key, you should disable OpenBao's [health check](index.mdx#health-checks):
+
+```hcl
+seal "securosys" {
+  # ...
+  health_check_enabled = false
+}
+```
+
+Otherwise, the periodic health check will trigger an SKA key usage authorization request
+to all approvers every time that it runs.

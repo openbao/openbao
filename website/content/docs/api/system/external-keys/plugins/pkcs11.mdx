@@ -11,7 +11,7 @@ loading vendor-specific shared libraries.
 
 ## Requirements
 
-This plugin is not built into OpenBao and must be installed externally. It is
+This plugin is not built into OpenBao and must be installed separately. It is
 available in [openbao-plugins](https://github.com/openbao/openbao-plugins). A
 minimum plugin version of v0.2.0 is required; prior versions only provided Auto
 Unseal functionality.
@@ -28,6 +28,8 @@ The file paths of any PKCS#11 shared libraries to use must additionally be
 registered as [library aliases](#library-aliasing).
 
 ## Parameters
+
+### Config parameters
 
 The following parameters are set per-config:
 
@@ -55,6 +57,8 @@ The following parameters are set per-config:
   encryption via public keys (e.g., RSA-OAEP) via PKCS#11 instead of exporting
   the public key and encrypting in software. This defaults to `false` because
   some HSMs implement RSA-based decryption but not encryption.
+
+### Key parameters
 
 The following parameters are set per-key:
 

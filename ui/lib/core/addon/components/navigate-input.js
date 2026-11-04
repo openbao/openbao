@@ -203,7 +203,7 @@ export default class NavigateInput extends Component {
         this.args.scanActive
           ? this.args.scanRoute + (baseKey ? '' : '-root')
           : routeFor('list-root', mode, this.args.urls),
-        baseKey,
+        baseKey || null,
       ].compact(),
       {
         queryParams: {

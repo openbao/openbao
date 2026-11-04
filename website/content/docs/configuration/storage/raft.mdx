@@ -113,7 +113,7 @@ backend cannot be declared.
   because of inconsistent logs. The maximum allowed value is 1024.
 
 - `max_rpcs_in_flight` `(integer: 2)` - This configures the amount of overlapping
-  requests in preperation and sending. Performance testing has shown that in practice
+  requests in preparation and sending. Performance testing has shown that in practice
   increasing the maximum RPCs in flight combines badly with the batching of requests.
   In setups with low latency between nodes increasing this number could lead to a large
   negative impact on commit latency when throughput is high, whilst having very little

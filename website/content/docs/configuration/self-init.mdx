@@ -26,7 +26,7 @@ unauthenticated rotation and audit device creation) still apply.
 
 :::
 
-# `initialize` stanza
+## `initialize` stanza
 
 The `initialize` stanza specifies various configurations for OpenBao to
 initialize itself once, on initial startup. To repeat the operation, remove
@@ -89,16 +89,6 @@ initialize "audit" {
 </TabItem>
 </Tabs>
 
-:::info
-
-Use of this feature requires using an [auto-unseal](seal/index.mdx)
-mechanism. No recovery keys are generated; instead, use the [authenticated
-recovery key rotation](../api/system/rotate/index.mdx) endpoints.
-
-The root token is not returned to the caller and is revoked after use.
-
-:::
-
 Multiple `initialize` stanzas may exist and are executed in the order they
 are specified in the configuration file(s). Multiple `request` blocks may
 exist inside a single `initialize` stanza and are executed in the order they
@@ -125,3 +115,29 @@ The `initialize` stanza can only contain one or more `request` stanzas. Each
 ## Profiles
 
 For more information on profiles, see the [concepts page](../concepts/profiles.mdx).
+
+## Limitations
+
+Use of this feature requires using an [auto-unseal](seal/index.mdx) mechanism.
+Self-initialization does not work with a Shamir seal.
+
+The root token is not returned to the caller and is revoked after use.
+Instead, to be able to manage your OpenBao instance post-initialization,
+you should create an initial [auth method](../auth/index.mdx) with a high-privilege policy
+during self-initialization, as shown in [this example][blog].
+Later, you can authenticate via the API or CLI and perform further configuration,
+including creating lower-privilege policies.
+
+No recovery keys are generated. Later, use the [authenticated
+recovery key rotation](../api/system/rotate/index.mdx) endpoints or
+[`bao operator rotate-keys`](../commands/operator/rotate-keys.mdx) to generate a set of recovery keys.
+
+```shell-session
+$ bao operator rotate-keys -init -key-shares=5 -key-threshold=3 -target=recovery
+```
+
+## Example
+
+For a larger example, please see [this blog post][blog].
+
+[blog]: /blog/features-declarative-configuration/#self-initialization

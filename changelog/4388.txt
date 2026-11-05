@@ -5,7 +5,3 @@ core/mounts: Add `use_hmac_sha256` mount configuration option to switch existing
 ```release-note:change
 core/mounts: Use HMAC-SHA256 by default for client token hashing on secrets and auth mounts.
 ```
-
-```release-note:deprecation
-secrets/cubbyhole: Deprecate SHA-1-based storage identifiers for legacy tokens, with removal planned for v2.9.0.
-```

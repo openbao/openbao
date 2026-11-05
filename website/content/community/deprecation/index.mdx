@@ -28,13 +28,12 @@ The ability to create tokens with arbitrary token IDs via the token store's
 removed. This option was only available to callers using a root token to
 authenticate.
 
+Existing tokens with arbitrary IDs will no longer be supported for
+authentification starting with v2.9.0.
+
 The only remaining way to assign a custom token ID will be the
 `-dev-root-token-id` flag. This flag is available in dev mode only, and root
 tokens created this way before upgrading to v2.9.0 will cease to function.
-
-Cubbyhole support for legacy tokens, for which storage identifiers are derived
-using SHA-1, will also be removed in v2.9.0. Cubbyhole access for tokens in
-the modern format is unaffected.
 
 ### Legacy auth & secrets plugin protocols
 

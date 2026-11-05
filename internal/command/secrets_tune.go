@@ -34,6 +34,7 @@ type SecretsTuneCommand struct {
 	flagOptions                   map[string]string
 	flagVersion                   int
 	flagPluginVersion             string
+	flagUseHMACSHA256             bool
 }
 
 func (c *SecretsTuneCommand) Synopsis() string {
@@ -150,6 +151,13 @@ func (c *SecretsTuneCommand) Flags() *FlagSets {
 			`Can also be set to "latest" to automatically pick the latest available plugin version on reload.`,
 	})
 
+	f.BoolVar(&BoolVar{
+		Name:    flagNameUseHMACSHA256,
+		Target:  &c.flagUseHMACSHA256,
+		Default: false,
+		Usage:   "Enable salting of client tokens using HMAC-SHA256 before passing them to backends.",
+	})
+
 	return set
 }
 
@@ -229,6 +237,10 @@ func (c *SecretsTuneCommand) Run(args []string) int {
 
 		if fl.Name == flagNamePluginVersion {
 			mountConfigInput.PluginVersion = c.flagPluginVersion
+		}
+
+		if fl.Name == flagNameUseHMACSHA256 {
+			mountConfigInput.UseHMACSHA256 = &c.flagUseHMACSHA256
 		}
 	})
 

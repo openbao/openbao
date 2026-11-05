@@ -39,6 +39,7 @@ type AuthTuneCommand struct {
 	flagUserLockoutDuration             time.Duration
 	flagUserLockoutCounterResetDuration time.Duration
 	flagUserLockoutDisable              bool
+	flagUseHMACSHA256                   bool
 }
 
 func (c *AuthTuneCommand) Synopsis() string {
@@ -196,6 +197,13 @@ func (c *AuthTuneCommand) Flags() *FlagSets {
 			`Can also be set to "latest" to automatically pick the latest available plugin version on reload.`,
 	})
 
+	f.BoolVar(&BoolVar{
+		Name:    flagNameUseHMACSHA256,
+		Target:  &c.flagUseHMACSHA256,
+		Default: false,
+		Usage:   "Enable salting of client tokens using HMAC-SHA256 before passing them to backends.",
+	})
+
 	return set
 }
 
@@ -273,6 +281,10 @@ func (c *AuthTuneCommand) Run(args []string) int {
 		if fl.Name == flagNameTokenType {
 			mountConfigInput.TokenType = c.flagTokenType
 		}
+		if fl.Name == flagNameUseHMACSHA256 {
+			mountConfigInput.UseHMACSHA256 = &c.flagUseHMACSHA256
+		}
+
 		switch fl.Name {
 		case flagNameUserLockoutThreshold, flagNameUserLockoutDuration, flagNameUserLockoutCounterResetDuration, flagNameUserLockoutDisable:
 			if mountConfigInput.UserLockoutConfig == nil {

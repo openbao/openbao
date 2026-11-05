@@ -201,7 +201,7 @@ func (c *AuthTuneCommand) Flags() *FlagSets {
 		Name:    flagNameUseHMACSHA256,
 		Target:  &c.flagUseHMACSHA256,
 		Default: false,
-		Usage:   "Enable salting of client tokens using HMAC-SHA256 before passing them to backends.",
+		Usage:   "Enable salting of client tokens using HMAC-SHA256 instead of SHA-1 before passing them to backends.",
 	})
 
 	return set

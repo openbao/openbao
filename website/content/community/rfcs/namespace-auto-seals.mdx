@@ -246,6 +246,16 @@ runs on every node.
 
 ## Downsides
 
+- Dependency on hardened plugins. This is the most significant drawback of
+  the proposal. The security of namespace Auto Unseal depends on plugins that
+  honor the `WithDisableEnvironment` option, as described in
+  [Security Implications](#security-implications). Updated plugins from the
+  OpenBao project must be released before per-namespace Auto Unseal is
+  released. KMS plugins maintained by third parties must be
+  updated by their authors, and operators must upgrade their plugins, which
+  cannot be guaranteed to happen before they upgrade OpenBao itself. Until a
+  plugin declares support for the option, it cannot be used for namespace
+  seals.
 - Code complexity. Supporting Auto Unseal for namespaces adds several moving
   parts: a retry process for namespaces whose KMS is unreachable at startup,
   running on every node; re-encryption of the stored keys on configuration
@@ -289,13 +299,25 @@ inaccessible. Data is only lost if the KMS key protecting the barrier key is
 itself deleted, which no configuration change can prevent or repair.
 
 Auto Unseal plugins are assumed to be trustworthy, as they are for the global
-Auto Unseal. In a namespace context, a plugin must not exchange configuration
-through any shared location on the server, such as files on disk or
-environment variables, where it could be picked up from or exposed to other
-namespaces or the server operator. The KMS plugins used for namespace Auto
-Unseal have been hardened accordingly: their configuration is supplied only
-through the API and is never stored or exposed elsewhere. OpenBao always
-enables this restricted mode when configuring a namespace seal.
+Auto Unseal. In a namespace context, however, a plugin must not exchange
+configuration through any shared location on the server, such as files on
+disk or environment variables, where it could be picked up from or exposed to
+other namespaces or the server operator. OpenBao always configures namespace
+seals with the `WithDisableEnvironment` option, which instructs the plugin to
+use only the configuration supplied through the API.
+
+Existing plugins may not honor this option. Plugins are therefore required to
+declare in their metadata that they support it, through a new
+`HonorsDisableEnvironment` field. This field does not exist yet and is
+introduced as part of this proposal. It defaults to `false`: a plugin is only
+considered to honor the option if it explicitly reports `true`, so plugins
+that are unaware of the field are rejected by default. OpenBao refuses to use
+a plugin for a namespace seal unless `HonorsDisableEnvironment` is `true`.
+
+The declaration does not prove that a plugin actually behaves as declared;
+plugins remain trusted, as stated above. It does, however, ensure that only
+plugins explicitly built for use in a namespace context are accepted, and that
+an outdated plugin is rejected instead of being used in an unsafe way.
 
 ## User/Developer Experience
 

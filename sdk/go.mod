@@ -48,7 +48,7 @@ require (
 	github.com/openbao/openbao/api/v2 v2.7.0
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/stretchr/testify v1.12.1
-	github.com/tink-crypto/tink-go/v2 v2.8.0
+	github.com/tink-crypto/tink-go/v2 v2.9.0
 	golang.org/x/crypto v0.58.0
 	golang.org/x/net v0.61.0
 	golang.org/x/text v0.43.0

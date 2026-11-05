@@ -367,7 +367,6 @@ This endpoint tunes configuration parameters for a given mount point.
   HMAC-SHA256 instead of SHA-1. New mounts use HMAC-SHA256 by default.
   Existing mounts can be switched to HMAC-SHA256 or continue using SHA-1 until
   upgraded. Once enabled, HMAC-SHA256 cannot be disabled.
-  This parameter does not apply to the `sys/`, `identity/`, or `cubbyhole/` mounts.
 
 - `plugin_version` `(string: "")` – Specifies the semantic version of the plugin
   to use, e.g. "v1.0.0". Changes will not take effect until the mount is reloaded.

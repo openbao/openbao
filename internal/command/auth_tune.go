@@ -281,6 +281,7 @@ func (c *AuthTuneCommand) Run(args []string) int {
 		if fl.Name == flagNameTokenType {
 			mountConfigInput.TokenType = c.flagTokenType
 		}
+
 		if fl.Name == flagNameUseHMACSHA256 {
 			mountConfigInput.UseHMACSHA256 = &c.flagUseHMACSHA256
 		}

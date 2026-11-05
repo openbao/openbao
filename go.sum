@@ -212,8 +212,8 @@ github.com/docker/go-units v0.5.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDD
 github.com/duosecurity/duo_api_golang v0.3.0 h1:addmixrtUzagTEp2PttJdzFg2LRSINppx3PynYltO9E=
 github.com/duosecurity/duo_api_golang v0.3.0/go.mod h1:hJ6IPTuCAvWv+i9ubnPZB3VpVRuj/+SAblWFcI0mjEU=
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
-github.com/ebitengine/purego v0.11.1 h1:2zpWRSQNVKN4eKsKO9eM1ILDgWfYMY9GwqRmK6XeQ/0=
-github.com/ebitengine/purego v0.11.1/go.mod h1:DCHPP08djqhNSoTfImcnHYQRZmd0qhakvrozqaEYhGQ=
+github.com/ebitengine/purego v0.11.2 h1:WWiTx8rD8zYdOwSj8O/NiNbsOvSAgJMTlyV1XlbUSeU=
+github.com/ebitengine/purego v0.11.2/go.mod h1:DCHPP08djqhNSoTfImcnHYQRZmd0qhakvrozqaEYhGQ=
 github.com/emicklei/go-restful/v3 v3.13.0 h1:C4Bl2xDndpU6nJ4bc1jXd+uTmYPVUwkD6bFY/oTyCes=
 github.com/emicklei/go-restful/v3 v3.13.0/go.mod h1:6n3XBCmQQb25CM2LCACGz8ukIrRry+4bhvbpWn3mrbc=
 github.com/envoyproxy/go-control-plane v0.14.0 h1:hbG2kr4RuFj222B6+7T83thSPqLjwBIfQawTkC++2HA=
@@ -734,8 +734,8 @@ github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 h1:nn5Wsu0esKSJiIVhscUt
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=
 github.com/sethvargo/go-limiter v1.2.0 h1:XKL1vsaQ2zztVJrnZSzpRWCq/aLQqMllJ/3D/0bt/cw=
 github.com/sethvargo/go-limiter v1.2.0/go.mod h1:RC+qY2R7PAK81mBCrZEJlUlKnXSIqqQ8B7G44UgZ/1E=
-github.com/shirou/gopsutil/v4 v4.26.9 h1:CaBo/hBFqvlJoLvAQEKdHdf5GD97/MN2ACfyv63+2Ig=
-github.com/shirou/gopsutil/v4 v4.26.9/go.mod h1:nKH+8wX2zxr/mDbsR+AAy6Qd2z4ZOQ7wfQaEp+yrYmg=
+github.com/shirou/gopsutil/v4 v4.26.10 h1:MJN6euesJx53MVEjscYeyRSRcrdIcy3sz5k9nosjldg=
+github.com/shirou/gopsutil/v4 v4.26.10/go.mod h1:XpkIrcUMQhwte/dGxu57KtnMMFsbKelI7PP23zweKBk=
 github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24/go.mod h1:M+9NzErvs504Cn4c5DxATwIqPbtswREoFCre64PpcG4=
 github.com/shopspring/decimal v1.2.0/go.mod h1:DKyhrW/HYNuLGql+MJL6WCR6knT2jwCFRcu2hWCYk4o=
 github.com/shopspring/decimal v1.3.1 h1:2Usl1nmF/WZucqkFZhnfFYxxxu8LG21F6nPQBE5gKV8=

@@ -27,21 +27,27 @@ import (
 )
 
 const (
-	// barrierSealConfigPath is the path used to store our seal configuration.
-	// This value is stored in plaintext, since we must be able to read it even
-	// with the Vault sealed. This is required so that we know how many secret
-	// parts must be used to reconstruct the unseal key.
-	barrierSealConfigPath = "core/seal-config"
+	// sealsConfigPath is the path used to store named seals configurations.
+	sealsConfigPath = "core/seals/"
 
-	// recoverySealConfigPath is the path to the recovery key seal configuration.
-	// This is stored in plaintext so that we can perform auto-unseal.
-	recoverySealConfigPath = "core/recovery-config"
+	// deprecatedBarrierSealConfigPath is the path used to store seal
+	// configuration. This entry is stored through parent's namespace barrier
+	// (plaintext for root namespace), since we must be able to read it even
+	// with the OpenBao sealed. This is required so that we know how many
+	// secret parts must be used to reconstruct the unseal key.
+	deprecatedBarrierSealConfigPath = "core/seal-config"
 
-	// recoveryKeyPath is the path to the recovery key
-	recoveryKeyPath = "core/recovery-key"
+	// deprecatedRecoverySealConfigPath is the path to the recovery key seal
+	// configuration. This entry is stored through parent's namespace barrier
+	// (plaintext for root namespace) so that we can perform auto-unseal.
+	deprecatedRecoverySealConfigPath = "core/recovery-config"
 
-	// StoredBarrierKeysPath is the path used for storing HSM-encrypted unseal keys
-	StoredBarrierKeysPath = "core/hsm/barrier-unseal-keys"
+	// deprecatedRecoveryKeyPath is the path to the recovery key entry.
+	deprecatedRecoveryKeyPath = "core/recovery-key"
+
+	// deprecatedStoredBarrierKeysPath is the path used for storing
+	// HSM (external third party-encrypted) unseal keys.
+	deprecatedStoredBarrierKeysPath = "core/hsm/barrier-unseal-keys"
 )
 
 const (
@@ -49,9 +55,27 @@ const (
 	RecoveryTypeShamir      = "shamir"
 )
 
+func sealConfigPath(name string) string {
+	return fmt.Sprintf("%s%s/config", sealsConfigPath, strings.TrimSuffix(name, "/"))
+}
+
+func recoverySealConfigPath(name string) string {
+	return fmt.Sprintf("%s%s/recovery-config", sealsConfigPath, strings.TrimSuffix(name, "/"))
+}
+
+func recoveryKeyPath(name string) string {
+	return fmt.Sprintf("%s%s/recovery-key", sealsConfigPath, strings.TrimSuffix(name, "/"))
+}
+
+func encryptedRootPath(name string) string {
+	return fmt.Sprintf("%s%s/encrypted-root", sealsConfigPath, strings.TrimSuffix(name, "/"))
+}
+
 type Seal interface {
 	SetCore(*Core)
+	Name() string
 	Init(context.Context) error
+	MetaPrefix() string
 	SetMetaPrefix(string)
 	Finalize(context.Context) error
 	SetStoredKeys(context.Context, [][]byte) error
@@ -75,6 +99,7 @@ type Seal interface {
 
 type defaultSeal struct {
 	core       *Core
+	name       string
 	access     seal.Access
 	metaPrefix string
 
@@ -84,8 +109,12 @@ type defaultSeal struct {
 
 var _ Seal = (*defaultSeal)(nil)
 
+func NewShamirSeal(lowlevel seal.Access, name string) Seal {
+	return &defaultSeal{access: lowlevel, name: name}
+}
+
 func NewDefaultSeal(lowLevel seal.Access) Seal {
-	return &defaultSeal{access: lowLevel}
+	return &defaultSeal{access: lowLevel, name: "default"}
 }
 
 func (d *defaultSeal) checkCore() error {
@@ -93,6 +122,10 @@ func (d *defaultSeal) checkCore() error {
 		return errors.New("seal does not have a core set")
 	}
 	return nil
+}
+
+func (d *defaultSeal) Name() string {
+	return d.name
 }
 
 func (d *defaultSeal) GetAccess() seal.Access {
@@ -116,6 +149,10 @@ func (d *defaultSeal) Init(ctx context.Context) error {
 	return nil
 }
 
+func (d *defaultSeal) MetaPrefix() string {
+	return d.metaPrefix
+}
+
 func (d *defaultSeal) SetMetaPrefix(metaPrefix string) {
 	d.metaPrefix = metaPrefix
 }
@@ -133,11 +170,11 @@ func (d *defaultSeal) RecoveryKeySupported() bool {
 }
 
 func (d *defaultSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
-	return writeStoredKeys(ctx, d.core.physical, d.metaPrefix, d.access, keys)
+	return writeStoredKeys(ctx, d, d.core.physical, keys)
 }
 
 func (d *defaultSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
-	return readStoredKeys(ctx, d.core.physical, d.metaPrefix, d.access)
+	return readStoredKeys(ctx, d, d.core.physical)
 }
 
 func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
@@ -151,7 +188,7 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	}
 
 	// Fetch the seal configuration
-	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+barrierSealConfigPath)
+	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+sealConfigPath(d.Name()))
 	if err != nil {
 		d.core.logger.Error("failed to read seal configuration", "error", err)
 		return nil, fmt.Errorf("failed to check seal configuration: %w", err)
@@ -159,8 +196,15 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 
 	// If the seal configuration is missing, we are not initialized
 	if valueBytes == nil {
-		d.core.logger.Info("seal configuration missing, not initialized")
-		return nil, nil
+		valueBytes, err = d.configAccess.Get(ctx, d.metaPrefix+deprecatedBarrierSealConfigPath)
+		if err != nil {
+			d.core.logger.Error("failed to read legacy seal configuration", "error", err)
+			return nil, fmt.Errorf("failed to read legacy seal configuration: %w", err)
+		}
+		if valueBytes == nil {
+			d.core.logger.Info("seal configuration missing, not initialized")
+			return nil, nil
+		}
 	}
 
 	var conf SealConfig
@@ -179,6 +223,15 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	default:
 		d.core.logger.Error("barrier seal type does not match expected type", "barrier_seal_type", conf.Type, "loaded_seal_type", d.BarrierType())
 		return nil, fmt.Errorf("barrier seal type of %q does not match expected type of %q", conf.Type, d.BarrierType())
+	}
+
+	switch conf.Name {
+	case "":
+		conf.Name = d.Name()
+	case d.Name():
+	default:
+		d.core.logger.Error("barrier seal name does not match expected name", "barrier_seal_name", conf.Name, "loaded_seal_name", d.Name())
+		return nil, fmt.Errorf("barrier seal name of %q does not match expected name of %q", conf.Name, d.Name())
 	}
 
 	// Check for a valid seal configuration
@@ -204,6 +257,7 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 	}
 
 	config.Type = d.BarrierType().String()
+	config.Name = d.Name()
 
 	// If we are doing a raft unseal we do not want to persist the barrier config
 	// because storage isn't setup yet.
@@ -218,7 +272,7 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 		return fmt.Errorf("failed to encode seal configuration: %w", err)
 	}
 
-	if err := d.configAccess.Put(ctx, d.metaPrefix+barrierSealConfigPath, buf); err != nil {
+	if err := d.configAccess.Put(ctx, d.metaPrefix+sealConfigPath(d.Name()), buf); err != nil {
 		d.core.logger.Error("failed to write seal configuration", "error", err)
 		return fmt.Errorf("failed to write seal configuration: %w", err)
 	}
@@ -277,6 +331,9 @@ func (d *defaultSeal) GetShamirWrapper() (*seal.ShamirWrapper, error) {
 type SealConfig struct {
 	// The type, for sanity checking
 	Type string `json:"type" mapstructure:"type"`
+
+	// Name of the seal to differ between emergency and primary seals.
+	Name string `json:"name" mapstructure:"name"`
 
 	// SecretShares is the number of shares the secret is split into. This is
 	// the N value of Shamir.
@@ -373,6 +430,7 @@ func (s *SealConfig) ValidateRecovery() error {
 func (s *SealConfig) Clone() *SealConfig {
 	ret := &SealConfig{
 		Type:                 s.Type,
+		Name:                 s.Name,
 		SecretShares:         s.SecretShares,
 		SecretThreshold:      s.SecretThreshold,
 		Nonce:                s.Nonce,
@@ -421,7 +479,7 @@ func (e *ErrDecrypt) Is(target error) bool {
 	return ok || errors.Is(e.Err, target)
 }
 
-func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor seal.Access, keys [][]byte) error {
+func writeStoredKeys(ctx context.Context, seal Seal, storage physical.Backend, keys [][]byte) error {
 	if keys == nil {
 		return errors.New("keys were nil")
 	}
@@ -435,7 +493,7 @@ func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix s
 	}
 
 	// Encrypt and marshal the keys
-	blobInfo, err := encryptor.Encrypt(ctx, buf, nil)
+	blobInfo, err := seal.GetAccess().Encrypt(ctx, buf, nil)
 	if err != nil {
 		return &ErrEncrypt{Err: fmt.Errorf("failed to encrypt keys for storage: %w", err)}
 	}
@@ -445,9 +503,8 @@ func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix s
 		return fmt.Errorf("failed to marshal value for storage: %w", err)
 	}
 
-	// Store the seal configuration.
 	pe := &physical.Entry{
-		Key:   metaPrefix + StoredBarrierKeysPath, // TODO(SEALHA): will we need to store more than one set of keys?
+		Key:   seal.MetaPrefix() + encryptedRootPath(seal.Name()),
 		Value: value,
 	}
 
@@ -458,10 +515,17 @@ func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix s
 	return nil
 }
 
-func readStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor seal.Access) ([][]byte, error) {
-	pe, err := storage.Get(ctx, metaPrefix+StoredBarrierKeysPath)
+func readStoredKeys(ctx context.Context, seal Seal, storage physical.Backend) ([][]byte, error) {
+	pe, err := storage.Get(ctx, seal.MetaPrefix()+encryptedRootPath(seal.Name()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch stored keys: %w", err)
+	}
+
+	if pe == nil {
+		pe, err = storage.Get(ctx, seal.MetaPrefix()+deprecatedStoredBarrierKeysPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch legacy stored keys: %w", err)
+		}
 	}
 
 	// This is not strictly an error; we may not have any stored keys, for
@@ -475,7 +539,7 @@ func readStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix st
 		return nil, fmt.Errorf("failed to proto decode stored keys: %w", err)
 	}
 
-	pt, err := encryptor.Decrypt(ctx, blobInfo, nil)
+	pt, err := seal.GetAccess().Decrypt(ctx, blobInfo, nil)
 	if err != nil {
 		if strings.Contains(err.Error(), "message authentication failed") {
 			return nil, &ErrInvalidKey{Reason: fmt.Sprintf("failed to decrypt keys from storage: %v", err)}

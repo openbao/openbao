@@ -75,7 +75,7 @@ func testSelfInitCore(t *testing.T, disableSSCTokens bool) (*ServerCommand, *vau
 	t.Helper()
 
 	testSeal, _ := seal.NewTestSeal(nil)
-	autoSeal, err := vault.NewAutoSeal(testSeal)
+	autoSeal, err := vault.NewAutoSeal(testSeal, "default")
 	require.NoError(t, err)
 
 	logger := log.NewInterceptLogger(&log.LoggerOptions{Level: log.Debug})

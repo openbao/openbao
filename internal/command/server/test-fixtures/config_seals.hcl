@@ -9,6 +9,7 @@ backend "consul" {
 }
 
 seal "pkcs11" {
+  name = "new"
   purpose = "many,purposes"
   lib = "/usr/lib/libcklog2.so"
   slot = "0.0"
@@ -22,6 +23,7 @@ seal "pkcs11" {
 }
 
 seal "pkcs11" {
+  name = "old"
   purpose = "single"
   disabled = "true"
   lib = "/usr/lib/libcklog2.so"

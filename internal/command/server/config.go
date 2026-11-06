@@ -779,26 +779,18 @@ func LoadConfig(path string, allPaths []string) (cfg *Config, err error) {
 				return nil, err
 			}
 		}
-		return CheckConfig(LoadConfigDir(path))
-	}
-	return CheckConfig(LoadConfigFile(path, allPaths))
-}
-
-func CheckConfig(c *Config, e error) (*Config, error) {
-	if e != nil || c == nil {
-		return c, e
-	}
-
-	if len(c.Seals) == 2 {
-		switch {
-		case c.Seals[0].Disabled && c.Seals[1].Disabled:
-			return nil, errors.New("seals: two seals provided but both are disabled")
-		case !c.Seals[0].Disabled && !c.Seals[1].Disabled:
-			return nil, errors.New("seals: two seals provided but neither is disabled")
+		cfg, err := LoadConfigDir(path)
+		if err != nil || cfg == nil {
+			return cfg, err
 		}
+		return cfg, configutil.CheckAndResolveSeals(cfg.Seals)
 	}
 
-	return c, nil
+	cfg, err = LoadConfigFile(path, allPaths)
+	if err != nil || cfg == nil {
+		return cfg, err
+	}
+	return cfg, configutil.CheckAndResolveSeals(cfg.Seals)
 }
 
 // LoadConfigFile loads the configuration from the given file.
@@ -866,7 +858,7 @@ func LoadConfigBytes(d []byte, source string) (*Config, error) {
 		return nil, err
 	}
 
-	return CheckConfig(conf, nil)
+	return conf, configutil.CheckAndResolveSeals(conf.Seals)
 }
 
 func ParseConfig(d, source string) (*Config, error) {

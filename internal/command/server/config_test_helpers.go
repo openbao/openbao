@@ -1068,6 +1068,7 @@ func testParseSeals(t *testing.T) {
 			Seals: []*configutil.KMS{
 				{
 					Type:    "pkcs11",
+					Name:    "new",
 					Purpose: []string{"many", "purposes"},
 					Config: map[string]string{
 						"lib":                    "/usr/lib/libcklog2.so",
@@ -1087,6 +1088,7 @@ func testParseSeals(t *testing.T) {
 				},
 				{
 					Type:     "pkcs11",
+					Name:     "old",
 					Purpose:  []string{"single"},
 					Disabled: true,
 					Config: map[string]string{

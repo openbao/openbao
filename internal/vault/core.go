@@ -1451,6 +1451,15 @@ func (c *Core) GetContext() (context.Context, context.CancelFunc) {
 	return context.WithCancel(namespace.RootContext(c.activeContext.Load()))
 }
 
+func (c *Core) HasActiveContext() bool {
+	if !c.stateLock.TryRLock() {
+		return false
+	}
+	defer c.stateLock.RUnlock()
+
+	return c.activeContext.Load().Err() == nil
+}
+
 // Sealed checks if the Vault is currently sealed
 func (c *Core) Sealed() bool {
 	return c.sealed.Load()

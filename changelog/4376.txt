@@ -1,0 +1,6 @@
+```release-note:bug
+core/namespaces: Ensure mount creation cannot overlap with a sealed namespace.
+```
+```release-note:bug
+core/namespaces: Ensure mount creation cannot overlap with namespaces due to race conditions.
+```

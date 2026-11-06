@@ -35,7 +35,9 @@ var wcAdjacentNonSlashRegEx = regexp.MustCompile(`\+[^/]|[^/]\+`).MatchString
 // Router is used to do prefix based routing of a request to a logical backend
 type Router struct {
 	l                  sync.RWMutex
+	reserved           *radix.Tree
 	root               *radix.Tree
+	namespaces         *radix.Tree
 	mountUUIDCache     *radix.Tree
 	mountAccessorCache *radix.Tree
 	tokenStoreSaltFunc func(context.Context) (*salt.Salt, error)
@@ -53,9 +55,11 @@ func NewRouter(logger hclog.Logger) *Router {
 	}
 	r := &Router{
 		root:               radix.New(),
-		storagePrefix:      radix.New(),
+		reserved:           radix.New(),
+		namespaces:         radix.New(),
 		mountUUIDCache:     radix.New(),
 		mountAccessorCache: radix.New(),
+		storagePrefix:      radix.New(),
 		logger:             logger,
 	}
 	return r
@@ -97,9 +101,11 @@ func (r *Router) Reset() {
 	r.l.Lock()
 	defer r.l.Unlock()
 	r.root = radix.New()
-	r.storagePrefix = radix.New()
+	r.reserved = radix.New()
+	r.namespaces = radix.New()
 	r.mountUUIDCache = radix.New()
 	r.mountAccessorCache = radix.New()
+	r.storagePrefix = radix.New()
 }
 
 func (r *Router) GetRecords(tag string) ([]map[string]any, error) {
@@ -181,14 +187,75 @@ func (r *Router) Mount(backend logical.Backend, prefix string, mountEntry *Mount
 	r.l.Lock()
 	defer r.l.Unlock()
 
+	if existing := r.mountConflict(mountEntry.Namespace, prefix); existing != "" {
+		return fmt.Errorf("path in use at %q", existing)
+	}
+
 	// prepend namespace
 	prefix = mountEntry.Namespace.Path + prefix
 
-	// Check if this is a nested mount
-	if existing, _, ok := r.root.LongestPrefix(prefix); ok && existing != "" {
-		return fmt.Errorf("cannot mount under existing mount %q", existing)
+	re, err := newRouteEntry(backend, prefix, mountEntry, storageView)
+	if err != nil {
+		return err
 	}
 
+	r.insert(prefix, re)
+	return nil
+}
+
+// Reserve is like Mount, but allows additional steps to occur between ensuring
+// that a mount if conflict-free and preparing a RouteEntry and ultimately
+// mounting it.
+func (r *Router) Reserve(backend logical.Backend, prefix string, mountEntry *MountEntry, storageView barrier.View) (func(), func(), error) {
+	r.l.Lock()
+	defer r.l.Unlock()
+
+	if existing := r.mountConflict(mountEntry.Namespace, prefix); existing != "" {
+		return nil, nil, fmt.Errorf("path in use at %q", existing)
+	}
+
+	// prepend namespace
+	prefix = mountEntry.Namespace.Path + prefix
+
+	re, err := newRouteEntry(backend, prefix, mountEntry, storageView)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	r.reserved.Insert(prefix, nil)
+
+	var done bool
+
+	mount := func() {
+		r.l.Lock()
+		defer r.l.Unlock()
+
+		if done {
+			return
+		}
+		done = true
+
+		r.insert(prefix, re)
+		r.reserved.Delete(prefix)
+	}
+
+	cancel := func() {
+		r.l.Lock()
+		defer r.l.Unlock()
+
+		if done {
+			return
+		}
+		done = true
+
+		r.reserved.Delete(prefix)
+	}
+
+	return mount, cancel, nil
+}
+
+// newRouteEntry builds a RouteEntry.
+func newRouteEntry(backend logical.Backend, prefix string, mountEntry *MountEntry, storageView barrier.View) (*RouteEntry, error) {
 	// Build the paths
 	paths := new(logical.Paths)
 	if backend != nil {
@@ -209,27 +276,30 @@ func (r *Router) Mount(backend logical.Backend, prefix string, mountEntry *Mount
 	re.rootPaths.Store(PathsToRadix(paths.Root))
 	loginPathsEntry, err := ParseUnauthenticatedPaths(paths.Unauthenticated)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	re.loginPaths.Store(loginPathsEntry)
 
 	switch {
 	case prefix == "":
-		return fmt.Errorf("missing prefix to be used for router entry; mount_path: %q, mount_type: %q", re.MountEntry.Path, re.MountEntry.Type)
+		return nil, fmt.Errorf("missing prefix to be used for router entry; mount_path: %q, mount_type: %q", re.MountEntry.Path, re.MountEntry.Type)
 	case re.StoragePrefix == "":
-		return fmt.Errorf("missing storage view prefix; mount_path: %q, mount_type: %q", re.MountEntry.Path, re.MountEntry.Type)
+		return nil, fmt.Errorf("missing storage view prefix; mount_path: %q, mount_type: %q", re.MountEntry.Path, re.MountEntry.Type)
 	case re.MountEntry.UUID == "":
-		return fmt.Errorf("missing mount identifier; mount_path: %q, mount_type: %q", re.MountEntry.Path, re.MountEntry.Type)
+		return nil, fmt.Errorf("missing mount identifier; mount_path: %q, mount_type: %q", re.MountEntry.Path, re.MountEntry.Type)
 	case re.MountEntry.Accessor == "":
-		return fmt.Errorf("missing mount accessor; mount_path: %q, mount_type: %q", re.MountEntry.Path, re.MountEntry.Type)
+		return nil, fmt.Errorf("missing mount accessor; mount_path: %q, mount_type: %q", re.MountEntry.Path, re.MountEntry.Type)
 	}
 
+	return re, nil
+}
+
+// insert adds a RouteEntry to the Router's various indices.
+func (r *Router) insert(prefix string, re *RouteEntry) {
 	r.root.Insert(prefix, re)
 	r.storagePrefix.Insert(re.StoragePrefix, re)
 	r.mountUUIDCache.Insert(re.MountEntry.UUID, re.MountEntry)
 	r.mountAccessorCache.Insert(re.MountEntry.Accessor, re.MountEntry)
-
-	return nil
 }
 
 // Unmount is used to remove a logical backend from a given prefix
@@ -339,6 +409,49 @@ func (r *Router) Untaint(ctx context.Context, path string) error {
 	return nil
 }
 
+// MountNamespace announces a namespace to the router, ensuring it does not
+// overlap with any existing mounts or namespaces.
+func (r *Router) MountNamespace(ns *namespace.Namespace) error {
+	r.l.Lock()
+	defer r.l.Unlock()
+
+	var err error
+
+	r.root.WalkPrefix(ns.Path, func(path string, v any) bool {
+		err = fmt.Errorf("cannot mount namespace over existing mount %q", path)
+		return true
+	})
+	if err != nil {
+		return err
+	}
+
+	r.reserved.WalkPrefix(ns.Path, func(path string, v any) bool {
+		err = fmt.Errorf("cannot mount namespace over reserved mount %q", path)
+		return true
+	})
+	if err != nil {
+		return err
+	}
+
+	if _, exists := r.namespaces.Insert(ns.Path, nil); exists {
+		return fmt.Errorf("router already tracks namespace %q", ns.Path)
+	}
+
+	return nil
+}
+
+// UnmountNamespace announces that a namespace was removed.
+func (r *Router) UnmountNamespace(ns *namespace.Namespace) error {
+	r.l.Lock()
+	defer r.l.Unlock()
+
+	if _, exists := r.namespaces.Delete(ns.Path); !exists {
+		return fmt.Errorf("router does not track namespace %q", ns.Path)
+	}
+
+	return nil
+}
+
 func (r *Router) MatchingMountByUUID(mountID string) *MountEntry {
 	if mountID == "" {
 		return nil
@@ -376,17 +489,17 @@ func (r *Router) MatchingMountByAccessor(mountAccessor string) *MountEntry {
 
 // MatchingMount returns the mount prefix that would be used for a path
 func (r *Router) MatchingMount(ctx context.Context, path string) string {
-	r.l.RLock()
-	mount := r.matchingMountInternal(ctx, path)
-	r.l.RUnlock()
-	return mount
-}
-
-func (r *Router) matchingMountInternal(ctx context.Context, path string) string {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return ""
 	}
+	r.l.RLock()
+	defer r.l.RUnlock()
+	return r.matchingMountInternal(ns, path)
+}
+
+// matchingPrefixInternal returns an exact mount path match.
+func (r *Router) matchingMountInternal(ns *namespace.Namespace, path string) string {
 	path = ns.Path + path
 
 	mount, _, ok := r.root.LongestPrefix(path)
@@ -396,39 +509,40 @@ func (r *Router) matchingMountInternal(ctx context.Context, path string) string 
 	return mount
 }
 
-func (r *Router) MatchingPrefixInternal(ctx context.Context, path string) string {
-	r.l.RLock()
-	defer r.l.RUnlock()
-
-	return r.matchingPrefixInternalLocked(ctx, path)
-}
-
-// matchingPrefixInternalLocked returns a mount prefix that a path may be a part of
-func (r *Router) matchingPrefixInternalLocked(ctx context.Context, path string) string {
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return ""
-	}
+// matchingPrefixInternal returns a mount prefix that a path may be a part of.
+func (r *Router) matchingPrefixInternal(ns *namespace.Namespace, path string) string {
 	path = ns.Path + path
 
 	var existing string
-	fn := func(existingPath string, v any) bool {
-		if strings.HasPrefix(existingPath, path) {
-			existing = existingPath
-			return true
-		}
-		return false
-	}
-	r.root.WalkPrefix(path, fn)
+	r.root.WalkPrefix(path, func(existingPath string, v any) bool {
+		existing = existingPath
+		return true
+	})
 	return existing
 }
 
-// matchingNamespaceInternal returns a namespace prefix that a path may be a part of
-func (r *Router) matchingNamespaceInternal(ctx context.Context, path string) string {
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return ""
+// matchingReservationInternal returns a reserved mount prefix that a path may
+// be a part of.
+func (r *Router) matchingReservationInternal(ns *namespace.Namespace, path string) string {
+	path = ns.Path + path
+
+	mount, _, ok := r.reserved.LongestPrefix(path)
+	if ok {
+		return mount
 	}
+
+	var existing string
+	r.reserved.WalkPrefix(path, func(existingPath string, v any) bool {
+		existing = existingPath
+		return true
+	})
+
+	return existing
+}
+
+// matchingNamespaceInternal returns a namespace prefix that a path may be a
+// part of.
+func (r *Router) matchingNamespaceInternal(ns *namespace.Namespace, path string) string {
 	// Ensure comparisons are done against absolute paths within the
 	// current namespace context, consistent with other matching helpers.
 	// Without this, a mount path that matches the current namespace name
@@ -436,50 +550,38 @@ func (r *Router) matchingNamespaceInternal(ctx context.Context, path string) str
 	// incorrectly detected as conflicting with the namespace itself.
 	path = ns.Path + path
 
-	// Every namespace has a sys/ mount. We can use that as a sentinel that
-	// our given path conflicts. Walk the parent namespace of path and check
-	// if there's a common prefix between a child namespace's sys/ entry and
-	// path.
-	//
-	// This allows us to avoid calling into the namespace store, which may be
-	// locked as we're trying to mount required mounts for a new namespace.
-	var existing string
-	fn := func(existingPath string, v any) bool {
-		nsPath, ok := strings.CutSuffix(existingPath, "sys/")
-		if !ok {
-			return false
-		}
-
-		// Ignore the current namespace's own sys mount; we only want to
-		// detect conflicts with child namespace prefixes.
-		if nsPath == ns.Path {
-			return false
-		}
-
-		if strings.HasPrefix(path, nsPath) {
-			existing = nsPath
-			return true
-		}
-
-		return false
+	if existing, _, ok := r.namespaces.LongestPrefix(path); ok && len(existing) > len(ns.Path) {
+		return existing
 	}
 
-	r.root.WalkPrefix(ns.Path, fn)
-	return existing
+	return ""
 }
 
 // MountConflict determines if there are potential path conflicts
 func (r *Router) MountConflict(ctx context.Context, path string) string {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return ""
+	}
+
 	r.l.RLock()
 	defer r.l.RUnlock()
-	if exactMatch := r.matchingMountInternal(ctx, path); exactMatch != "" {
-		return exactMatch
+
+	return r.mountConflict(ns, path)
+}
+
+func (r *Router) mountConflict(ns *namespace.Namespace, path string) string {
+	if match := r.matchingMountInternal(ns, path); match != "" {
+		return match
 	}
-	if prefixMatch := r.matchingPrefixInternalLocked(ctx, path); prefixMatch != "" {
-		return prefixMatch
+	if match := r.matchingPrefixInternal(ns, path); match != "" {
+		return match
 	}
-	if nsMatch := r.matchingNamespaceInternal(ctx, path); nsMatch != "" {
-		return nsMatch
+	if match := r.matchingReservationInternal(ns, path); match != "" {
+		return match
+	}
+	if match := r.matchingNamespaceInternal(ns, path); match != "" {
+		return match
 	}
 	return ""
 }
@@ -1174,6 +1276,8 @@ func (r *Router) Invalidate(ctx context.Context, key string) bool {
 }
 
 func (r *Router) Get(path string) (*RouteEntry, bool) {
+	r.l.RLock()
+	defer r.l.RUnlock()
 	raw, ok := r.root.Get(path)
 	if !ok {
 		return nil, false

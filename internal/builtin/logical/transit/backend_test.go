@@ -292,6 +292,7 @@ func TestBackend_basic(t *testing.T) {
 	logicaltest.Test(t, logicaltest.TestCase{
 		LogicalFactory: Factory,
 		Steps: []logicaltest.TestStep{
+			testAccStepWrappingKey(t), // To verify that internal policies are excluded from listings.
 			testAccStepListPolicy(t, "test", true),
 			testAccStepWritePolicy(t, "test", false),
 			testAccStepListPolicy(t, "test", false),
@@ -893,6 +894,13 @@ func testAccStepDecryptDatakey(t *testing.T, name string,
 			}
 			return nil
 		},
+	}
+}
+
+func testAccStepWrappingKey(t *testing.T) logicaltest.TestStep {
+	return logicaltest.TestStep{
+		Operation: logical.ReadOperation,
+		Path:      "wrapping_key",
 	}
 }
 

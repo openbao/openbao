@@ -1,0 +1,3 @@
+```release-note:feature
+**Auto Join plugins**: Raft discovery is now a pluggable feature, supporting arbitrary environments via external plugins.
+```

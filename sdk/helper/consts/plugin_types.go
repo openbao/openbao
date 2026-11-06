@@ -15,6 +15,7 @@ var PluginTypes = []PluginType{
 	PluginTypeDatabase,
 	PluginTypeSecrets,
 	PluginTypeKMS,
+	PluginTypeJoin,
 }
 
 type PluginType uint32
@@ -35,6 +36,7 @@ const (
 	PluginTypeDatabase
 	PluginTypeSecrets
 	PluginTypeKMS
+	PluginTypeJoin
 )
 
 func (p PluginType) String() string {
@@ -49,6 +51,8 @@ func (p PluginType) String() string {
 		return "secret"
 	case PluginTypeKMS:
 		return "kms"
+	case PluginTypeJoin:
+		return "join"
 	default:
 		return "unsupported"
 	}
@@ -66,6 +70,8 @@ func ParsePluginType(pluginType string) (PluginType, error) {
 		return PluginTypeSecrets, nil
 	case "kms":
 		return PluginTypeKMS, nil
+	case "join":
+		return PluginTypeJoin, nil
 	default:
 		return PluginTypeUnknown, fmt.Errorf("%q is not a supported plugin type", pluginType)
 	}

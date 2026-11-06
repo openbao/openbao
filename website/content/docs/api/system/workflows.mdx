@@ -22,6 +22,10 @@ can result in high server load depending on the endpoints called. When
 expensive steps (like, signing or encryption of large documents) is desired,
 these should be broken out separately from the rest of the workflow execution.
 
+The manage endpoints expose privileged information, such as the workflow
+document itself, its version and whether CAS is required. To discover and
+inspect workflows without this access, use the GET or LIST [execute endpoints](#execute-workflows) instead.
+
 ### List workflows
 
 This endpoint lists all configured workflows. This endpoint optionally
@@ -31,6 +35,14 @@ takes a prefix to list workflows under.
 | :----- | :------------------------------ |
 | `LIST` | `/sys/workflows/manage`         |
 | `LIST` | `/sys/workflows/manage/:prefix` |
+
+#### Parameters
+
+- `after` `(string: "")` - Optional entry to begin listing after; not required
+  to exist.
+
+- `limit` `(int: <optional>)` - Optional number of entries to return; defaults
+  to all entries.
 
 #### Sample request
 
@@ -158,6 +170,88 @@ $ curl \
 Workflows can be executed by calling the relevant API endpoint. Outside of the
 name of the workflow, all remaining input fields are controlled by the workflow
 author.
+
+### List executable workflows
+
+This endpoint lists the paths of all configured workflows. Unlike the manage
+endpoint, only the paths are returned. This endpoint optionally takes a prefix
+to list workflows under.
+
+| Method | Path                                      | Requires Authentication |
+| :----- | :---------------------------------------- | :---------------------- |
+| `LIST` | `/sys/workflows/execute`                  | yes                     |
+| `LIST` | `/sys/workflows/execute/:prefix`          | yes                     |
+| `LIST` | `/sys/workflows/unauthed-execute`         | no                      |
+| `LIST` | `/sys/workflows/unauthed-execute/:prefix` | no                      |
+
+The unauthenticated endpoint only list workflows with
+`allow_unauthenticated` set; otherwise permission is denied.
+
+#### Parameters
+
+- `after` `(string: "")` - Optional entry to begin listing after; not required
+  to exist.
+
+- `limit` `(int: <optional>)` - Optional number of entries to return; defaults
+  to all entries.
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X LIST --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/workflows/execute
+```
+
+#### Sample response
+
+```json
+{
+  "keys": ["create-namespace", "reset-admin"]
+}
+```
+
+### Read workflow execution information
+
+This endpoint retrieves the information required to execute the named workflow,
+without exposing the workflow document itself.
+
+| Method | Path                                    | Requires Authentication |
+| :----- | :-------------------------------------- | :---------------------- |
+| `GET`  | `/sys/workflows/execute/:path`          | yes                     |
+| `GET`  | `/sys/workflows/unauthed-execute/:path` | no                      |
+
+The unauthenticated endpoint only succeeds for workflows with
+`allow_unauthenticated` set; otherwise permission is denied.
+
+#### Parameters
+
+- `path` `(string: <required>)` - Specifies the path of the workflow to
+  retrieve. This is specified as part of the request URL.
+
+#### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/workflows/execute/create-namespace
+```
+
+#### Sample response
+
+```json
+{
+  "path": "create-namespace",
+  "description": "create namespace",
+  "allow_unauthenticated": false,
+  "inputs": ["name <string>"]
+}
+```
+
+`inputs` lists the declared input fields as `name <type>` and is omitted if the
+workflow declares none.
+
+### Execute workflow
 
 :::warning
 Workflow traces contain the OpenBao token and additional secrets used within the workflow. 

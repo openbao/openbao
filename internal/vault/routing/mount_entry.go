@@ -131,6 +131,8 @@ func (e *MountEntry) SyncCache() {
 	} else {
 		e.SynthesizedConfigCache.Store("allowed_response_headers", e.Config.AllowedResponseHeaders)
 	}
+
+	e.SynthesizedConfigCache.Store("use_hmac_sha256", e.Config.UseHMACSHA256)
 }
 
 func (entry *MountEntry) Deserialize() map[string]any {

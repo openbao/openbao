@@ -58,6 +58,7 @@ type MountConfig struct {
 	AllowedResponseHeaders    []string              `json:"allowed_response_headers,omitempty" structs:"allowed_response_headers" mapstructure:"allowed_response_headers"`
 	TokenType                 logical.TokenType     `json:"token_type,omitempty" structs:"token_type" mapstructure:"token_type"`
 	UserLockoutConfig         *UserLockoutConfig    `json:"user_lockout_config,omitempty" mapstructure:"user_lockout_config"`
+	UseHMACSHA256             bool                  `json:"use_hmac_sha256,omitempty" structs:"use_hmac_sha256" mapstructure:"use_hmac_sha256"`
 }
 
 // APIMountConfig is an embedded struct of api.MountConfigInput
@@ -73,6 +74,7 @@ type APIMountConfig struct {
 	TokenType                 string                `json:"token_type" structs:"token_type" mapstructure:"token_type"`
 	UserLockoutConfig         *UserLockoutConfig    `json:"user_lockout_config,omitempty" mapstructure:"user_lockout_config"`
 	PluginVersion             string                `json:"plugin_version,omitempty" mapstructure:"plugin_version"`
+	UseHMACSHA256             *bool                 `json:"use_hmac_sha256,omitempty" structs:"use_hmac_sha256" mapstructure:"use_hmac_sha256"`
 }
 
 type UserLockoutConfig struct {

@@ -5,6 +5,7 @@ package routing
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"maps"
@@ -140,6 +141,10 @@ func (entry *RouteEntry) Deserialize() map[string]any {
 // SaltID is used to apply a salt and hash to an ID to make sure its not reversible
 func (re *RouteEntry) SaltID(id string) string {
 	return salt.SaltID(re.MountEntry.UUID, id, salt.SHA1Hash)
+}
+
+func (re *RouteEntry) SaltIDWithHMAC(id string) string {
+	return salt.HMACValue(re.MountEntry.UUID, id, sha256.New)
 }
 
 func (re *RouteEntry) SetRootPaths(tree *radix.Tree) {
@@ -773,7 +778,12 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 		}
 
 	default:
-		req.ClientToken = re.SaltID(req.ClientToken)
+		value, ok := re.MountEntry.SynthesizedConfigCache.Load("use_hmac_sha256")
+		if ok && value.(bool) {
+			req.ClientToken = re.SaltIDWithHMAC(req.ClientToken)
+		} else {
+			req.ClientToken = re.SaltID(req.ClientToken)
+		}
 	}
 
 	// Cache the pointer to the original connection object

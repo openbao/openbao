@@ -118,6 +118,7 @@ const sidebars: SidebarsConfig = {
                         "guides/migrations/k8s-pebbledb"
                     ]
                 },
+                "guides/containers",
             ],
             Configuration: [
                 "configuration/index",

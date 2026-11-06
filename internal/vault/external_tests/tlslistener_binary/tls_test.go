@@ -193,6 +193,7 @@ func TestTLSListener_ALPN(t *testing.T) {
 							"tls_acme_ca_directory":           "http://127.0.0.1:80/v1/pki/acme/directory",
 							"tls_acme_disable_http_challenge": true,
 							"tls_acme_domains":                []string{"openbao.dadgarcorp.com"},
+							"tls_acme_key_type":               "mldsa44",
 						},
 					},
 				},

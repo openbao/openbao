@@ -18,6 +18,7 @@ import (
 	be "github.com/openbao/openbao/v2/internal/vault/backend"
 	ident "github.com/openbao/openbao/v2/internal/vault/identity"
 	"github.com/openbao/openbao/v2/internal/vault/routing"
+	"github.com/openbao/openbao/v2/internal/version"
 	"github.com/stretchr/testify/require"
 )
 
@@ -253,6 +254,35 @@ func metricLabelsMatch(t *testing.T, actual []metrics.Label, expected map[string
 			t.Errorf("Unexpected label %v", l.Name)
 		}
 	}
+}
+
+func TestCoreMetrics_BuildInfoMetric(t *testing.T) {
+	t.Parallel()
+
+	_, _, _, inm := TestCoreUnsealedWithMetrics(t)
+
+	v := version.GetVersion()
+
+	require.Eventually(t, func() bool {
+		data := inm.Data()
+		if len(data) == 0 {
+			return false
+		}
+
+		for _, gauge := range data[0].Gauges {
+			if strings.Contains(gauge.Name, "build_info") {
+				labels := make(map[string]string)
+				for _, l := range gauge.Labels {
+					labels[l.Name] = l.Value
+				}
+
+				return gauge.Value == float32(1.0) &&
+					labels["version"] == v.VersionNumber() &&
+					labels["revision"] == v.Revision
+			}
+		}
+		return false
+	}, 3*time.Second, 50*time.Millisecond, "build_info metric was not emitted to the sink within timeout")
 }
 
 func TestCoreMetrics_EntityGauges(t *testing.T) {

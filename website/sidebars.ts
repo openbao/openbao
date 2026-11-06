@@ -139,6 +139,7 @@ const sidebars: SidebarsConfig = {
                         "configuration/seal/ocikms",
                         "configuration/seal/ovhcloud",
                         "configuration/seal/pkcs11",
+                        "configuration/seal/securosys",
                         "configuration/seal/static",
                         "configuration/seal/tcloudpublic",
                         "configuration/seal/transit",
@@ -603,6 +604,7 @@ const sidebars: SidebarsConfig = {
                             "Plugins": [
                                 "api/system/external-keys/plugins/index",
                                 "api/system/external-keys/plugins/pkcs11",
+                                "api/system/external-keys/plugins/securosys",
                                 "api/system/external-keys/plugins/transit",
                             ],
                         },

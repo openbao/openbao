@@ -142,9 +142,8 @@ func (c *Core) decodeMountEntries(ctx context.Context, entry *logical.StorageEnt
 	return mountTable.Entries, nil
 }
 
-func (c *Core) fetchAndDecodeMountTableEntry(ctx context.Context, barrier logical.Storage, prefix string, uuid string) (*routing.MountEntry, error) {
-	path := path.Join(prefix, uuid)
-	sEntry, err := barrier.Get(ctx, path)
+func (c *Core) fetchAndDecodeMountTableEntry(ctx context.Context, barrier logical.Storage, mountPath, uuid string) (*routing.MountEntry, error) {
+	sEntry, err := barrier.Get(ctx, mountPath)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +170,7 @@ func (c *Core) fetchAndDecodeMountTableEntry(ctx context.Context, barrier logica
 		return nil, err
 	}
 	if ns == nil {
-		c.logger.Error("namespace on mount entry not found", "table", prefix, "uuid", uuid, "namespace_id", entry.NamespaceID, "mount_path", entry.Path, "mount_description", entry.Description)
+		c.logger.Error("namespace on mount entry not found", "path", mountPath, "uuid", uuid, "namespace_id", entry.NamespaceID, "mount_path", entry.Path, "mount_description", entry.Description)
 		return nil, nil
 	}
 
@@ -933,51 +932,15 @@ func (c *Core) loadTransactionalMountsForNamespace(ctx context.Context, ns *name
 		return nil
 	}
 
-	view := c.NamespaceView(ns)
-	globalEntries, localEntries, err := listTransactionalMountsForNamespace(ctx, view)
-	if err != nil {
-		return fmt.Errorf("failed to list mounts for namespace: %w", err)
-	}
-
-	for index, uuid := range globalEntries {
-		entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreMountConfigPath, uuid)
-		if err != nil {
-			return fmt.Errorf("error loading mount table entry ([%v] %v/%v): %w", ns.ID, index, uuid, err)
-		}
-
-		if entry != nil {
-			c.mounts.Entries = append(c.mounts.Entries, entry)
-		}
-	}
-
-	for index, uuid := range localEntries {
-		entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreLocalMountConfigPath, uuid)
-		if err != nil {
-			return fmt.Errorf("error loading local mount table entry ([%v] %v/%v): %w", ns.ID, index, uuid, err)
-		}
-
-		if entry != nil {
-			c.mounts.Entries = append(c.mounts.Entries, entry)
+	for _, prefix := range []string{coreMountConfigPath, coreLocalMountConfigPath} {
+		if entries, err := c.collectMountEntries(ctx, ns, prefix); err != nil {
+			return err
+		} else {
+			c.mounts.Entries = append(c.mounts.Entries, entries...)
 		}
 	}
 
 	return nil
-}
-
-// listTransactionalMountsForNamespace retrieves list of mount
-// entries (global & local) using provided barrier.
-func listTransactionalMountsForNamespace(ctx context.Context, barrier logical.Storage) ([]string, []string, error) {
-	globalEntries, err := barrier.List(ctx, coreMountConfigPath+"/")
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed listing core mounts: %w", err)
-	}
-
-	localEntries, err := barrier.List(ctx, coreLocalMountConfigPath+"/")
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed listing core local mounts: %w", err)
-	}
-
-	return globalEntries, localEntries, nil
 }
 
 // loadLegacyMounts reads the legacy, single-entry combined mount table,
@@ -1092,6 +1055,28 @@ func getLegacyMountsForNamespace(ctx context.Context, barrier logical.Storage) (
 	}
 
 	return globalEntry, localEntry, nil
+}
+
+func (c *Core) collectMountEntries(ctx context.Context, ns *namespace.Namespace, prefix string) ([]*routing.MountEntry, error) {
+	view := c.NamespaceView(ns)
+	keys, err := view.List(ctx, prefix+"/")
+	if err != nil {
+		return nil, fmt.Errorf("error listing [%s] mounts: %w", prefix, err)
+	}
+
+	collectedEntries := []*routing.MountEntry{}
+	for index, uuid := range keys {
+		path := fmt.Sprintf("%s/%s", prefix, uuid)
+		entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, path, uuid)
+		if err != nil {
+			return nil, fmt.Errorf("error loading mount table entry ([%v] %v/%v): %w", ns.ID, index, uuid, err)
+		}
+
+		if entry != nil {
+			collectedEntries = append(collectedEntries, entry)
+		}
+	}
+	return collectedEntries, nil
 }
 
 // Note that this is only designed to work with singletons, as it checks by
@@ -1210,6 +1195,8 @@ func (c *Core) runMountUpdates(ctx context.Context, barrier logical.Storage, nee
 }
 
 // persistMounts is used to persist the mount table after modification.
+// Note that for a full-table save (`runMountUpdates` / mount==""),
+// barrier must be root-scoped to not overlap the namespace scope.
 func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table *routing.MountTable, local *bool, mount string) error {
 	if barrier == nil {
 		return errors.New("nil barrier encountered while persisting mount changes")
@@ -1305,14 +1292,17 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 		writeTable = func(mt *routing.MountTable, prefix string) (int, error) {
 			var size int
 			var found bool
-			currentEntries := make(map[string]struct{}, len(mt.Entries))
+			currentEntries := make(map[string]map[string]struct{}, len(mt.Entries))
 			for index, mtEntry := range mt.Entries {
 				if mount != "" && mtEntry.UUID != mount {
 					continue
 				}
 
 				found = true
-				currentEntries[mtEntry.UUID] = struct{}{}
+				if currentEntries[mtEntry.NamespaceID] == nil {
+					currentEntries[mtEntry.NamespaceID] = map[string]struct{}{}
+				}
+				currentEntries[mtEntry.NamespaceID][mtEntry.UUID] = struct{}{}
 
 				// Encode the mount table into JSON. There is little value in
 				// compressing short entries.
@@ -1329,10 +1319,16 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 					Value: encoded,
 				}
 
-				// Write to the backend.
-				if err := barrier.Put(ctx, sEntry); err != nil {
-					c.logger.Error("failed to persist mount table entry", "index", index, "uuid", mtEntry.UUID, "error", err)
-					return -1, err
+				if mount == "" {
+					if err := NamespaceScopedView(barrier, mtEntry.Namespace).Put(ctx, sEntry); err != nil {
+						c.logger.Error("failed to persist mount table entry", "index", index, "uuid", mtEntry.UUID, "error", err)
+						return -1, err
+					}
+				} else {
+					if err := barrier.Put(ctx, sEntry); err != nil {
+						c.logger.Error("failed to persist mount table entry", "index", index, "uuid", mtEntry.UUID, "error", err)
+						return -1, err
+					}
 				}
 
 				size += len(encoded)
@@ -1357,29 +1353,34 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 				if err != nil {
 					return -1, fmt.Errorf("failed to list namespaces: %w", err)
 				}
-
 				for nsIndex, ns := range allNamespaces {
+					view := NamespaceScopedView(barrier, ns)
 					// List all entries and remove any deleted ones.
-					presentEntries, err := barrier.List(ctx, prefix+"/")
+					presentEntries, err := view.List(ctx, prefix+"/")
 					if err != nil {
 						return -1, fmt.Errorf("failed to list entries in namespace %v (%v) for removal: %w", ns.ID, nsIndex, err)
 					}
 
 					for index, presentEntry := range presentEntries {
-						if _, present := currentEntries[presentEntry]; present {
+						if _, present := currentEntries[ns.ID][presentEntry]; present {
 							continue
 						}
 
-						if err := barrier.Delete(ctx, prefix+"/"+presentEntry); err != nil {
+						if err := view.Delete(ctx, prefix+"/"+presentEntry); err != nil {
 							return -1, fmt.Errorf("failed to remove deleted mount %v (%v) in namespace %v (%v): %w", presentEntry, index, ns.ID, nsIndex, err)
 						}
 					}
-				}
-			}
 
-			// Finally, delete the legacy entries, if any.
-			if err := barrier.Delete(ctx, prefix); err != nil {
-				return -1, err
+					// Remove the legacy entry.
+					if err := view.Delete(ctx, prefix); err != nil {
+						return -1, err
+					}
+				}
+			} else {
+				// Finally, delete the legacy entries, if any.
+				if err := barrier.Delete(ctx, prefix); err != nil {
+					return -1, err
+				}
 			}
 
 			return size, nil
@@ -1904,28 +1905,14 @@ func (c *Core) reloadNamespaceMounts(childCtx context.Context, uuid string, dele
 		}
 
 		barrier := c.NamespaceView(ns)
-
-		mountGlobal, mountLocal, err := listTransactionalMountsForNamespace(childCtx, barrier)
-		if err != nil {
-			return fmt.Errorf("unable to invalidate mounts for namespace %q: %w", uuid, err)
-		}
-
-		authGlobal, authLocal, err := listTransactionalCredentialsForNamespace(childCtx, barrier)
-		if err != nil {
-			return fmt.Errorf("unable to invalidate auths for namespace %q: %w", uuid, err)
-		}
-
-		for _, mount := range mountGlobal {
-			keys = append(keys, path.Join(coreMountConfigPath, mount))
-		}
-		for _, mount := range mountLocal {
-			keys = append(keys, path.Join(coreLocalMountConfigPath, mount))
-		}
-		for _, mount := range authGlobal {
-			keys = append(keys, path.Join(coreAuthConfigPath, mount))
-		}
-		for _, mount := range authLocal {
-			keys = append(keys, path.Join(coreLocalAuthConfigPath, mount))
+		for _, prefix := range []string{coreMountConfigPath, coreLocalMountConfigPath, coreAuthConfigPath, coreLocalAuthConfigPath} {
+			entries, err := barrier.List(childCtx, prefix+"/")
+			if err != nil {
+				return fmt.Errorf("failed to list [%s] mounts: %w", prefix, err)
+			}
+			for _, entry := range entries {
+				keys = append(keys, path.Join(prefix, entry))
+			}
 		}
 	}
 
@@ -2058,7 +2045,8 @@ func (c *Core) reloadMount(ctx context.Context, key string) error {
 		return err
 	}
 
-	desiredMountEntry, err := c.fetchAndDecodeMountTableEntry(ctx, c.NamespaceView(ns), prefix, uuid)
+	path := fmt.Sprintf("%s/%s", prefix, uuid)
+	desiredMountEntry, err := c.fetchAndDecodeMountTableEntry(ctx, c.NamespaceView(ns), path, uuid)
 	if err != nil {
 		if err.Error() != "unexpected empty storage entry for mount" {
 			return err

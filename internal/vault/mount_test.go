@@ -7,12 +7,14 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/v2/internal/physical/inmem"
 	be "github.com/openbao/openbao/v2/internal/vault/backend"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
 	"github.com/openbao/openbao/v2/internal/vault/routing"
@@ -1511,4 +1513,219 @@ func TestMount_Delta(t *testing.T) {
 	assert.Equal(t, additions[0].Accessor, "d")
 	assert.Equal(t, additions[1].Accessor, "g")
 	assert.Equal(t, deletions[0].Accessor, "c")
+}
+
+// TestMount_RunMountUpdates_NamespaceScoping forces a full mount and auth
+// table save through the root barrier (the same thing runMountUpdates does
+// on an upgrade path) and verifies that namespace entries end up only in
+// the correct namespace-owned view.
+func TestMount_RunMountUpdates_NamespaceScoping(t *testing.T) {
+	tt := []struct {
+		name       string
+		mountPaths []string
+		tableType  string
+		local      bool
+	}{
+		{
+			name:       "global mount entries",
+			mountPaths: []string{"mount_global_1", "mount_global_2"},
+			tableType:  routing.MountTableType,
+			local:      false,
+		},
+		{
+			name:       "local mount entries",
+			mountPaths: []string{"mount_local_1", "mount_local_2"},
+			tableType:  routing.MountTableType,
+			local:      true,
+		},
+		{
+			name:       "global auth entries",
+			mountPaths: []string{"auth_global_1", "auth_global_2"},
+			tableType:  routing.CredentialTableType,
+			local:      false,
+		},
+		{
+			name:       "local auth entries",
+			mountPaths: []string{"auth_local_1", "auth_local_2"},
+			tableType:  routing.CredentialTableType,
+			local:      true,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			backend, err := inmem.NewInmem(nil, corehelpers.NewTestLogger(t))
+			require.NoError(t, err)
+
+			c, _, _ := TestCoreUnsealedBackend(t, backend)
+			noop := &be.Noop{}
+			c.logicalBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
+				return noop, nil
+			}
+
+			// Ensure we are using transactional storage.
+			_, ok := c.barrier.(logical.TransactionalStorage)
+			require.True(t, ok)
+
+			ns := &namespace.Namespace{Path: "ns1/"}
+			TestCoreCreateNamespaces(t, c, ns)
+
+			uuids, tunedMountUUID := testMount_RunMountUpdates_Setup(t, c, ns, tc.mountPaths, tc.tableType, tc.local)
+
+			// Seal and unseal the core. Verify that no entries were written twice.
+			require.NoError(t, c.sealInternal())
+			require.NoError(t, c.UnsealWithStoredKeys(t.Context()))
+			require.False(t, c.Sealed())
+
+			table := c.mounts
+			if tc.tableType == routing.CredentialTableType {
+				table = c.auth
+			}
+			nsMounts, err := table.FindAllNamespaceMounts(namespace.ContextWithNamespace(t.Context(), ns))
+			require.NoError(t, err)
+
+			existingUUIDs := []string{}
+			for _, me := range nsMounts {
+				if slices.Contains(uuids, me.UUID) {
+					existingUUIDs = append(existingUUIDs, me.UUID)
+				}
+				if me.UUID == tunedMountUUID {
+					require.Equal(t, "tuned", me.Description)
+				}
+			}
+			require.ElementsMatch(t, existingUUIDs, uuids)
+		})
+	}
+}
+
+func testMount_RunMountUpdates_Setup(t *testing.T, c *Core, ns *namespace.Namespace, mountPaths []string, tableType string, local bool) ([]string, string) {
+	t.Helper()
+
+	rootCtx := namespace.RootContext(t.Context())
+	nsCtx := namespace.ContextWithNamespace(t.Context(), ns)
+	uuids := make([]string, 0, len(mountPaths))
+	for _, mountPath := range mountPaths {
+		entry := &routing.MountEntry{
+			Table: tableType,
+			Path:  mountPath,
+			Local: local,
+			Type:  "noop",
+		}
+
+		if tableType == routing.CredentialTableType {
+			require.NoError(t, c.enableCredential(nsCtx, entry))
+		} else {
+			require.NoError(t, c.mount(nsCtx, entry))
+		}
+		uuids = append(uuids, entry.UUID)
+	}
+
+	// Create an entry in the root namespace to prove they also do not move.
+	rootEntry := &routing.MountEntry{
+		Table: tableType,
+		Path:  "root_" + mountPaths[0],
+		Local: local,
+		Type:  "noop",
+	}
+	if tableType == routing.CredentialTableType {
+		require.NoError(t, c.enableCredential(rootCtx, rootEntry))
+	} else {
+		require.NoError(t, c.mount(rootCtx, rootEntry))
+	}
+
+	var prefix string
+	var table *routing.MountTable
+	var persistFunc func(ctx context.Context, barrier logical.Storage, table *routing.MountTable, local *bool, mount string) error
+	switch tableType {
+	case routing.CredentialTableType:
+		table = c.auth
+		persistFunc = c.persistAuth
+		if local {
+			prefix = coreLocalAuthConfigPath
+		} else {
+			prefix = coreAuthConfigPath
+		}
+	case routing.MountTableType:
+		table = c.mounts
+		persistFunc = c.persistMounts
+		if local {
+			prefix = coreLocalMountConfigPath
+		} else {
+			prefix = coreMountConfigPath
+		}
+	default:
+		t.Fatalf("invalid table type provided: %s", tableType)
+	}
+
+	mountTableUUIDs := func(table *routing.MountTable, nsID string, local bool) []string {
+		uuids := []string{}
+		for _, entry := range table.Entries {
+			if entry.NamespaceID == nsID && entry.Local == local {
+				uuids = append(uuids, entry.UUID)
+			}
+		}
+		return uuids
+	}
+
+	// Save the in-memory table shape to later verify against.
+	wantRoot := mountTableUUIDs(table, namespace.RootNamespaceID, local)
+	wantNS := mountTableUUIDs(table, ns.ID, local)
+
+	requireStorageKeys := func(when string) {
+		t.Helper()
+
+		rootKeys, err := c.barrier.List(rootCtx, prefix+"/")
+		require.NoError(t, err)
+		require.ElementsMatch(t, wantRoot, rootKeys, "%s: unexpected root keys for %q", when, prefix)
+
+		nsKeys, err := c.NamespaceView(ns).List(rootCtx, prefix+"/")
+		require.NoError(t, err)
+		require.ElementsMatch(t, wantNS, nsKeys, "%s: unexpected namespace keys for %q", when, prefix)
+	}
+
+	// Verify that single-mount persistence wrote each entry to its own view.
+	requireStorageKeys("after initial mounts")
+
+	// Write mount entries to storage not present in in-memory table to verify the
+	// pruning of the persist function.
+	for _, v := range []logical.Storage{c.barrier, c.NamespaceView(ns)} {
+		require.NoError(t, v.Put(rootCtx, &logical.StorageEntry{Key: prefix + "/stale", Value: []byte("{}")}))
+		require.NoError(t, v.Put(rootCtx, &logical.StorageEntry{Key: prefix, Value: []byte("{}")}))
+	}
+
+	// Simulate `runMountUpdates` through full save of both tables through the root barrier.
+	require.NoError(t, persistFunc(rootCtx, c.barrier, table, nil, ""))
+
+	// A persist call must not move entries across namespaces.
+	requireStorageKeys("after persist")
+
+	// The legacy entries, if any, must be removed in every namespace view.
+	for _, tc := range []struct {
+		name string
+		view logical.Storage
+	}{
+		{"root", c.barrier},
+		{"namespace", c.NamespaceView(ns)},
+	} {
+		entry, err := tc.view.Get(rootCtx, prefix)
+		require.NoError(t, err)
+		require.Nil(t, entry, "legacy %q entry left in %s view", prefix, tc.name)
+	}
+
+	var tunedMount *routing.MountEntry
+	// Simulate mount tuning which persists into the namespace view.
+	for _, entry := range table.Entries {
+		if slices.Contains(uuids, entry.UUID) {
+			tunedMount = entry
+			break
+		}
+	}
+
+	tunedMount.Description = "tuned"
+	require.NoError(t, persistFunc(nsCtx, c.NamespaceView(ns), table, &tunedMount.Local, tunedMount.UUID))
+
+	// Tuning shouldn't make changes to the storage layout.
+	requireStorageKeys("after tuning")
+
+	return uuids, tunedMount.UUID
 }

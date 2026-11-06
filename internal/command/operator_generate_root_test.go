@@ -244,6 +244,123 @@ func TestOperatorGenerateRootCommand_Run(t *testing.T) {
 		}
 	})
 
+	t.Run("decode_unauthenticated", func(t *testing.T) {
+		t.Parallel()
+
+		encoded := "Bxg9JQQqOCNKBRICNwMIRzo2J3cWCBRi"
+		otp := "3JhHkONiyiaNYj14nnD9xZQS"
+
+		client, closer := testVaultServer(t)
+		defer closer()
+
+		// Clear token to simulate unauthenticated client
+		client.SetToken("")
+
+		// Verify calling GenerateRootStatus without token fails
+		_, err := client.Sys().GenerateRootStatus()
+		require.Error(t, err)
+
+		ui, cmd := testOperatorGenerateRootCommand(t)
+		cmd.client = client
+
+		// Simulate piped output to print raw output
+		old := os.Stdout
+		_, w, err := os.Pipe()
+		require.NoError(t, err)
+		os.Stdout = w
+
+		code := cmd.Run([]string{
+			"-decode", encoded,
+			"-otp", otp,
+		})
+		if exp := 0; code != exp {
+			t.Errorf("expected %d to be %d", code, exp)
+		}
+
+		w.Close()
+		os.Stdout = old
+
+		expected := "4RUmoevJ3lsLni9sTXcNnRE1"
+		combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
+		if combined != expected {
+			t.Errorf("expected %q to be %q", combined, expected)
+		}
+	})
+
+	t.Run("decode_unauthenticated_json", func(t *testing.T) {
+		t.Parallel()
+
+		encoded := "Bxg9JQQqOCNKBRICNwMIRzo2J3cWCBRi"
+		otp := "3JhHkONiyiaNYj14nnD9xZQS"
+
+		client, closer := testVaultServer(t)
+		defer closer()
+
+		client.SetToken("")
+
+		ui, cmd := testOperatorGenerateRootCommand(t)
+		cmd.client = client
+		cmd.UI = &VaultUI{Ui: ui, format: "json"}
+
+		code := cmd.Run([]string{
+			"-decode", encoded,
+			"-otp", otp,
+		})
+		if exp := 0; code != exp {
+			t.Errorf("expected %d to be %d", code, exp)
+		}
+
+		expected := `"token": "4RUmoevJ3lsLni9sTXcNnRE1"`
+		combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
+		if !strings.Contains(combined, expected) {
+			t.Errorf("expected %q to contain %q", combined, expected)
+		}
+	})
+
+	t.Run("decode_unauthenticated_from_stdin", func(t *testing.T) {
+		t.Parallel()
+
+		encoded := "Bxg9JQQqOCNKBRICNwMIRzo2J3cWCBRi\n"
+		otp := "3JhHkONiyiaNYj14nnD9xZQS"
+
+		client, closer := testVaultServer(t)
+		defer closer()
+
+		client.SetToken("")
+
+		stdinR, stdinW := io.Pipe()
+		go func() {
+			stdinW.Write([]byte(encoded))
+			stdinW.Close()
+		}()
+
+		ui, cmd := testOperatorGenerateRootCommand(t)
+		cmd.client = client
+		cmd.testStdin = stdinR
+
+		old := os.Stdout
+		_, w, err := os.Pipe()
+		require.NoError(t, err)
+		os.Stdout = w
+
+		code := cmd.Run([]string{
+			"-decode", "-",
+			"-otp", otp,
+		})
+		if exp := 0; code != exp {
+			t.Errorf("expected %d to be %d", code, exp)
+		}
+
+		w.Close()
+		os.Stdout = old
+
+		expected := "4RUmoevJ3lsLni9sTXcNnRE1"
+		combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
+		if combined != expected {
+			t.Errorf("expected %q to be %q", combined, expected)
+		}
+	})
+
 	t.Run("cancel", func(t *testing.T) {
 		t.Parallel()
 

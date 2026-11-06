@@ -1,0 +1,3 @@
+```release-note:bug
+secrets/transit: Ensure internal subdirectories in storage are ignored when listing keys.
+```

@@ -1101,7 +1101,10 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		resp, auth, err = c.handleRequest(ctx, req)
 	}
 
-	if err == nil && c.requestResponseCallback != nil {
+	// Standby audits requests it forwards, without the forward error
+	forwarding := c.standby.Load() && (logical.ShouldForward(err) || (resp != nil && logical.ShouldForward(resp.Error())))
+
+	if err == nil && c.requestResponseCallback != nil && !forwarding {
 		c.requestResponseCallback(c.router.MatchingBackend(ctx, req.Path), req, resp)
 	}
 
@@ -1244,10 +1247,21 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		OuterErr:            err,
 		NonHMACReqDataKeys:  nonHMACReqDataKeys,
 		NonHMACRespDataKeys: nonHMACRespDataKeys,
+		Forwarding:          forwarding,
+	}
+	if forwarding {
+		logInput.OuterErr = nil
+		logInput.Response = nil
 	}
 	if auditErr := c.auditBroker.LogResponse(ctx, logInput, c.auditedHeaders); auditErr != nil {
 		c.logger.Error("failed to audit response", "request_path", req.Path, "error", auditErr)
 		return nil, ErrInternalError
+	}
+	if forwarding {
+		if logical.ShouldForward(err) {
+			return nil, err
+		}
+		return nil, logical.ErrPerfStandbyPleaseForward
 	}
 
 	return resp, err

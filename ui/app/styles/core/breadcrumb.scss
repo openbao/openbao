@@ -53,7 +53,7 @@
     text-decoration: none;
 
     &:hover {
-      color: $blue;
+      color: $interactive;
     }
   }
 
@@ -65,7 +65,7 @@
     width: 0.5rem;
 
     &::before {
-      color: $blue;
+      color: $interactive;
       content: '❮';
       font-size: 1rem;
       line-height: 1;

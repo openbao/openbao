@@ -20,6 +20,14 @@ module('Unit | Adapter | secret-v2', function (hooks) {
 
   [
     ['query', null, {}, { id: '', backend: 'secret' }, 'GET', '/v1/secret/metadata/?list=true'],
+    [
+      'query',
+      null,
+      {},
+      { id: 'nested/', backend: 'secret', scan: true },
+      'GET',
+      '/v1/secret/metadata/nested/?scan=true',
+    ],
     ['queryRecord', null, {}, { id: 'foo', backend: 'secret' }, 'GET', '/v1/secret/metadata/foo'],
     [
       'updateRecord',

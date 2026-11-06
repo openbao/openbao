@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -245,8 +246,10 @@ func (c *Sys) RaftSnapshotRestore(snapReader io.Reader, force bool) error {
 	return c.RaftSnapshotRestoreWithContext(context.Background(), snapReader, force)
 }
 
-// RaftSnapshotRestoreWithContext reads the snapshot from the io.Reader and installs that
-// snapshot, returning the cluster to the state defined by it.
+// RaftSnapshotRestoreWithContext reads the snapshot from the io.Reader and
+// installs that snapshot, returning the cluster to the state defined by
+// it. Note that this method does not follow redirects and must be performed
+// directly against the active node.
 func (c *Sys) RaftSnapshotRestoreWithContext(ctx context.Context, snapReader io.Reader, force bool) error {
 	path := "/v1/sys/storage/raft/snapshot"
 	if force {
@@ -261,6 +264,12 @@ func (c *Sys) RaftSnapshotRestoreWithContext(ctx context.Context, snapReader io.
 		return err
 	}
 	defer resp.Body.Close() //nolint:errcheck
+
+	// Since httpRequestWithContext doesn't follow redirects, ensure the above
+	// actually *worked* and did not just yield a 3xx.
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("unexpected status code: %s", resp.Status)
+	}
 
 	return nil
 }

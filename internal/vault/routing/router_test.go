@@ -305,7 +305,7 @@ func TestRouter_NamespaceNameMount_NoConflict(t *testing.T) {
 	}
 }
 
-func TestRouter_RootPath(t *testing.T) {
+func TestRouter_SudoPath(t *testing.T) {
 	r := NewRouter(nil)
 	_, barr, _ := barrier.MockBarrier(t, logger)
 	view := barrier.NewView(barr, "logical/")
@@ -313,7 +313,7 @@ func TestRouter_RootPath(t *testing.T) {
 	meUUID, err := uuid.GenerateUUID()
 	require.NoError(t, err)
 	n := &backend.Noop{
-		Root: []string{
+		Sudo: []string{
 			"root",
 			"policy/*",
 		},
@@ -336,7 +336,7 @@ func TestRouter_RootPath(t *testing.T) {
 	}
 
 	for _, tc := range tcases {
-		out := r.RootPath(namespace.RootContext(t.Context()), tc.path)
+		out := r.SudoPath(namespace.RootContext(t.Context()), tc.path)
 		if out != tc.expect {
 			t.Fatalf("bad: path: %s expect: %v got %v", tc.path, tc.expect, out)
 		}

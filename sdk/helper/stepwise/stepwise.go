@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 // Package stepwise offers types and functions to enable black-box style tests
 // that are executed in defined set of steps. Stepwise utilizes "Environments" which
 // setup a running instance of Vault and provide a valid API client to execute

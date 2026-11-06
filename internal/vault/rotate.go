@@ -32,6 +32,15 @@ type rotationConfig struct {
 	recoveryConfig *SealConfig
 }
 
+// rotationBackupStoragePath returns the storage path for the rotation backup entry
+// based on the namespace and if the backup is of a recovery key
+func rotationBackupStoragePath(ns *namespace.Namespace, recovery bool) string {
+	if recovery {
+		return NamespaceStoragePathPrefix(ns) + coreRecoveryUnsealKeysBackupPath
+	}
+	return NamespaceStoragePathPrefix(ns) + coreBarrierUnsealKeysBackupPath
+}
+
 // RotationConfig acquires a read lock and reads the rotation config of
 // a given namespace.
 func (sm *SealManager) RotationConfig(nsUUID string, recovery bool) *SealConfig {
@@ -623,6 +632,7 @@ func (sm *SealManager) pgpEncryptShares(ctx context.Context, ns *namespace.Names
 
 	// If backup is enabled, store backup info in
 	// coreBarrierUnsealKeysBackupPath or coreRecoveryUnsealKeysBackupPath
+	// under the namespace's prefix
 	if rotationConfig.Backup {
 		backupInfo := map[string][]string{}
 		for i := 0; i < len(rotationResult.PGPFingerprints); i++ {
@@ -645,12 +655,8 @@ func (sm *SealManager) pgpEncryptShares(ctx context.Context, ns *namespace.Names
 		}
 
 		entry := &logical.StorageEntry{
-			Key:   coreBarrierUnsealKeysBackupPath,
+			Key:   rotationBackupStoragePath(ns, recovery),
 			Value: buf,
-		}
-
-		if recovery {
-			entry.Key = coreRecoveryUnsealKeysBackupPath
 		}
 
 		parentPath, hasParent := ns.ParentPath()
@@ -811,14 +817,13 @@ func (sm *SealManager) RetrieveRotationBackup(ctx context.Context, ns *namespace
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
-	path := coreBarrierUnsealKeysBackupPath
-	if recovery {
-		path = coreRecoveryUnsealKeysBackupPath
-	}
+	path := rotationBackupStoragePath(ns, recovery)
 
 	overwriteKeys := func(sa StorageAccess, path string, value []byte) {
 		if err := sa.Put(ctx, path, value); err != nil {
-			sm.logger.Error("Failed to overwrite backed up keys, please rotate the keys immediately after.")
+			sm.logger.Error("Failed to overwrite backed up keys.",
+				"error", err)
+			return
 		}
 		sm.logger.Info("Overwritten backed up keys.")
 	}
@@ -830,32 +835,21 @@ func (sm *SealManager) RetrieveRotationBackup(ctx context.Context, ns *namespace
 		storage := secureStorageAccess{sm.core.barrier}
 		// Try to read backed up keys through barrier.
 		value, err = storage.Get(ctx, path)
+		dirStorage := directStorageAccess{sm.core.physical}
 		switch {
 		case err != nil:
 			// Fallback to reading through physical if barrier read errors.
-			dirStorage := directStorageAccess{sm.core.physical}
 			value, err = dirStorage.Get(ctx, path)
-			if value != nil && err == nil {
-				defer overwriteKeys(&dirStorage, path, value)
-			}
 		case value == nil:
 			return nil, nil
+		default:
+			// Read through barrier succeeds, rewrite the backed up key
+			// through physical
+			defer overwriteKeys(&dirStorage, path, value)
 		}
 	} else {
-		pBarrier := secureStorageAccess{sm.namespaceBarrierByLongestPrefix(parentPath)}
-		value, err = pBarrier.Get(ctx, path)
-		// Try to read backed up keys through namespace parent's barrier.
-		switch {
-		case err != nil:
-			// Fallback to reading through namespace owned barrier if parent barrier read errors.
-			barrier := secureStorageAccess{sm.namespaceBarrierByLongestPrefix(ns.Path)}
-			value, err = barrier.Get(ctx, path)
-			if value != nil && err == nil {
-				defer overwriteKeys(&barrier, path, value)
-			}
-		case value == nil:
-			return nil, nil
-		}
+		barrier := &secureStorageAccess{sm.namespaceBarrierByLongestPrefix(parentPath)}
+		value, err = barrier.Get(ctx, path)
 	}
 
 	if err != nil {
@@ -874,17 +868,23 @@ func (sm *SealManager) RetrieveRotationBackup(ctx context.Context, ns *namespace
 }
 
 // DeleteRotationBackup is used to delete any backed-up PGP-encrypted unseal keys.
-func (sm *SealManager) DeleteRotationBackup(ctx context.Context, nsPath string, recovery bool) error {
+func (sm *SealManager) DeleteRotationBackup(ctx context.Context, ns *namespace.Namespace, recovery bool) error {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
-	path := coreBarrierUnsealKeysBackupPath
-	if recovery {
-		path = coreRecoveryUnsealKeysBackupPath
+	path := rotationBackupStoragePath(ns, recovery)
+
+	parentPath, hasParent := ns.ParentPath()
+	var err error
+	// namespace is root, delete with physical
+	if !hasParent {
+		err = sm.core.physical.Delete(ctx, path)
+	} else {
+		barrier := sm.namespaceBarrierByLongestPrefix(parentPath)
+		err = barrier.Delete(ctx, path)
 	}
 
-	barrier := sm.namespaceBarrier(nsPath)
-	if err := barrier.Delete(ctx, path); err != nil {
+	if err != nil {
 		return logical.CodedError(http.StatusInternalServerError, "error deleting backup keys: %w", err)
 	}
 

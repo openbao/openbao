@@ -16,6 +16,7 @@ var allowedMethods = []string{
 	http.MethodDelete,
 	http.MethodGet,
 	http.MethodOptions,
+	http.MethodPatch,
 	http.MethodPost,
 	http.MethodPut,
 	"LIST", // LIST is not an official HTTP method, but Vault supports it.

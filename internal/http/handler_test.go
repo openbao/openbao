@@ -107,6 +107,19 @@ func TestHandler_cors(t *testing.T) {
 	resp, err = client.Do(req)
 	require.NoError(t, err)
 
+	// PATCH is a supported request method (KV v2 merge, cf. logical.go), so a
+	// browser preflight for it has to be allowed rather than answered with 405.
+	req.Header.Set("Access-Control-Request-Method", http.MethodPatch)
+
+	client = cleanhttp.DefaultClient()
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+
+	require.Equal(t, http.StatusOK, resp.StatusCode, "preflight for PATCH must be allowed")
+
+	// and it has to be advertised, or the browser never sends the real request.
+	require.Contains(t, resp.Header.Get("Access-Control-Allow-Methods"), http.MethodPatch)
+
 	//
 	// Test that the CORS headers are applied correctly.
 	//

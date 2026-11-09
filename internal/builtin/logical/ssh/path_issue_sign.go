@@ -42,6 +42,11 @@ var ecCurveBitsToAlgoName = map[int]string{
 // mapping rather than using a named SSH key type, so erring out here
 // isn't advisable.
 
+const rsaSHA1DeprecationWarning = "Signing SSH certificates with an RSA CA key " +
+	"using SHA-1 ('algorithm_signer' is 'ssh-rsa' or empty) is deprecated and " +
+	"will be removed in v2.9.0. Update the role's 'algorithm_signer' to 'default', " +
+	"'rsa-sha2-256', or 'rsa-sha2-512'."
+
 type creationBundle struct {
 	KeyID           string
 	ValidPrincipals []string
@@ -159,6 +164,10 @@ func (b *backend) pathSignIssueCertificateHelper(sc *storageContext, req *logica
 
 	if err := logical.EndTxStorage(sc.Context, req); err != nil {
 		return nil, err
+	}
+
+	if certificate.Signature != nil && certificate.Signature.Format == ssh.KeyAlgoRSA {
+		response.AddWarning(rsaSHA1DeprecationWarning)
 	}
 
 	return response, nil

@@ -19,6 +19,19 @@ forum](https://github.com/orgs/openbao/discussions).
 Please refer to the [FAQ](faq.mdx) page for frequently asked questions
 concerning OpenBao feature deprecations.
 
+### RSA SHA-1 signing of SSH certificates
+
+> Announced **11/2026**, Deprecated in: **v2.8.0**, Removal: **v2.9.0**
+
+Support for signing SSH certificates with an RSA CA key using the SHA-1
+hash algorithm will be removed. This affects roles where `algorithm_signer`
+is `ssh-rsa` or empty. Existing roles will not be automatically migrated.
+Set `algorithm_signer` to `default`, `rsa-sha2-256`, or `rsa-sha2-512`.
+
+Also see:
+
+- [SSH role configuration](/docs/api/secret/ssh#createupdate-role)
+
 ### Custom token IDs
 
 > Announced **10/2026**, Deprecated in: **v2.8.0**, Removal: **v2.9.0**

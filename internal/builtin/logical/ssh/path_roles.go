@@ -547,6 +547,13 @@ func (b *backend) pathRoleWrite(ctx context.Context, req *logical.Request, d *fr
 	if err := req.Storage.Put(ctx, entry); err != nil {
 		return nil, err
 	}
+
+	if roleEntry.AlgorithmSigner == ssh.KeyAlgoRSA {
+		response := &logical.Response{}
+		response.AddWarning(rsaSHA1DeprecationWarning)
+		return response, nil
+	}
+
 	return nil, nil
 }
 

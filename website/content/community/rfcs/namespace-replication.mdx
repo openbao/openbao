@@ -69,7 +69,8 @@ Once replication is set up:
 Implementation can be divided into 2 phases:
 * In the first phase, requests that would have been forwarded to the source 
   cluster are rejected by the destination cluster. Within this phase: 
-  * Shared replicated data is read-only on destination namespaces.
+  * Shared replicated data is read-only on destination namespaces, with an 
+    exception of identity.
   * Local storage data can be mutated locally by the destination namespace.
 * In the second phase, request forwarding is implemented, allowing clients 
   to mutate shared replicated data by sending requests to destination clusters.
@@ -117,9 +118,9 @@ replication. It's useful to think of the boundaries of these 3 proposals as:
 * [Namespace Transfer](https://github.com/openbao/openbao/issues/1569) allows
   transfer of namespace ownership from one cluster to another cluster. Without
   further mechanisms like Federation or Replication, the namespace remains
-  available only the cluster that owns it.
+  available only on the cluster that owns it.
 * Namespace Replication, as proposed in this RFC, allows the namespace to be
-  continously replicated to other clusters, which maintain a local copy and can
+  continuously replicated to other clusters, which maintain a local copy and can
   handle some local operations, improving read locality in destination clusters.
 
 ## User-facing Description
@@ -165,7 +166,19 @@ namespace (similar to Namespace Federation).
 Child namespaces belonging to a source namespace are not replicated to the
 destination cluster.
 
-Destination namespace has the same UUID as that of the source namespace.
+Destination namespace has the same UUID and ID as that of the source namespace.
+
+### Behavior with plugins
+Since the namespaces reside in different OpenBao clusters, the availability of
+plugins can differ between them. Replication follows this set of rules to
+handle this:
+* When linking, if a specific plugin version used by the source namespace isn't
+  available on the destination, the linking operation fails.
+* When a link has already been established and the soure namespace mounts a
+  plugin not available on the destination namespace, keep replicating the mount,
+  but mark it as unavailable. When the plugin is installed, it can be mounted
+  again.
+* Plugin upgrading should be done from the destination namespaces first.
 
 ### Destination namespace lifecycle
 After a successful link, the destination namespace appears immediately on the
@@ -175,28 +188,45 @@ before replication can take place.
 Once the namespace is ready for replication, it needs some time to receive
 sufficient data from the source in order to catch up to the state of the source
 namespace. To make this visible to the user, a new optional `replicated_state`
-response field is added to the namespace object in namespace API requests. `replicated_state` is
-only available on destination namespaces and can be:
-* `bootstrapping`: after successfully linked and unsealed, the namespace is
-  receiving an initial log to catch up to the source namespace. This state
-  is also used when the namespaces needs more incremental updates through a
-  synchronization index after replication is paused and resumed. Requests are
-  rejected in this state.
-* `ready`: the namespace has received and applied the initial log along
-  with all updates through its synchronization index sent by the source and can
-  now service requests.
-* `failed`: permanent failure with the link/sync process (invalid credentials,
-  incompatible version etc...), requests are rejected.
-* `disconnected`: the namespace lost connection to the source. Requests are
-  rejected (after a pre-configured grace period if transitioned from `ready`).
-  Requests that would normally be forwarded to the source cluster are always
-  rejected.
+response field is added to namespace object and is visible in the GET namespace
+API calls. `replicated_state` is only available on destination namespaces and has this shape:
+```json
+{
+  "replicated_state": {
+    "connected": ...,
+    "state": ...,
+    "current_index": ...,
+    "source_index": ....
+  }
+}
+```
+* `connected` is a boolean and denotes if the gRPC link is up between the
+  destination and the source namespace.
+* `state` contains the state of the replication, and can be:
+  * `bootstrapping`: after successfully linked and unsealed, the namespace is
+    receiving an initial snapshot & logs to catch up to the source
+    namespace. Requests are rejected in this state. 
+  * `ready`: the namespace has received and applied the initial snapshot & logs
+    sent by the source and can now service requests. In this state, replication
+    logs are received from the source namespace and continuously applied. If log
+    index needed to catch up is already pruned on the source namespace,
+    transition back to `bootstrapping` to request for a snapshot. If `connected`
+    is `false`, the namespace can continue to serve local requests. A stale
+    warning is returned in the response of local requests when the gap between
+    `current_index` and `source_index` exceeds a `warn_gap` or `connected` stays
+    `false` for longer than a grace period `grace_period`. Both `warn_gap` and
+    `grace_period` are configurable per link.
+  * `failed`: permanent failure with the link/sync process (invalid credentials,
+    incompatible version etc...), requests are rejected.
+* `current_index` is the currently applied replication index on this destination
+  namespace.
+* `source_index` is the last known replication index from the source namespace.
 
 If a destination namespace is successfully unlinked, it is not visible on the
 destination cluster anymore.
 
 When a destination namespace is sealed, replication is paused and
-`replicated_state` is saved. After the namespace is unsealed, OpenBao checks the
+`replicated_state` is unchanged. After the namespace is unsealed, OpenBao checks the
 replication index for possible updates and transitions the state accordingly.
 The same mechanism applies for when the destination cluster has a leader change
 or is restarted.
@@ -204,18 +234,18 @@ or is restarted.
 ```mermaid
 stateDiagram-v2
     [*] --> bootstrapping
-    bootstrapping --> ready: logs applied from source
+    bootstrapping --> ready: snapshot + logs applied (index >= N_end)
+    ready --> ready: index out-of-date, receives logs from source
+    ready --> bootstrapping: replication log index pruned, re-sync
 
-    ready --> failed: unrecoverable error
-    ready --> disconnected: gRPC connection lost
-
-    bootstrapping --> failed: unrecoverable error
-    bootstrapping --> disconnected: gRPC connection lost
-
-    disconnected --> failed: unrecoverable error
-    disconnected --> ready: gRPC restored, index up-to-date
-    disconnected --> bootstrapping: gRPC restored, index out-of-date
+    bootstrapping --> failed: permanent failure
+    ready --> failed: permanent failure
 ```
+
+`N_end` is the target index considered safe to move from `bootstrapping` to
+`ready`, it is the known source replication index retrieved by the destination
+via the last page of the snapshot.
+
 
 ### Request handling
 On destination namespaces, requests that modifies a shared replicated state or
@@ -224,7 +254,6 @@ to the source cluster to be handled, while other requests are handled locally on
 the destination cluster. It is therefore important to classify what is
 replicated and what can be considered local-only. This is discussed in the
 technical description.
-
 
 ## Technical Description
 ### Replicated data and request forwarding decision
@@ -237,12 +266,31 @@ that is considered local:
 | Replicated  | auth and secret mount configuration, policies, kv/transit/pki keys. |
 | Local       | token, leases, pki issued leaf certificates, revocations, CRLs...   |
 
+Below are concrete paths that should be replicated, relative to the namespace
+path. This is an allow list:
+* `core/mounts/*`, `core/auth/*`: mount tables.
+* `sys/policy/*`, `sys/password_policy/*`: policies.
+* `sys/login-mfa/method/*`, `sys/login-mfa/enforcement/*`: MFA config.
+* `sys/mfa/totpkeys/*`: TOTP keys.
+* `sys/token/roles/*`: token roles.
+* `/sys/external-keys/keys/*`: external key references, to be decided in open question.
+* `logical/*/*`, `auth/*/*`: mount storage, except local mounts (`cubbyhole`),
+  more information below. Includes the identity mount.
+
+Anything that is not listed is not replicated, for example the seal/barrier
+materials in `core/keyring`, `core/root-key` and child namespaces in
+`core/namespaces/*`.
+
+#### Mount data replication
 In the logical backend contract, there are already some important options that
 allows OpenBao to decide which request to forward and which not. These are the
 [ForwardPerformanceSecondary](https://github.com/openbao/openbao/blob/19ed1503f38542430449248ab464df8a9a5c3424/sdk/framework/path.go#L206-L208)
 and
 [LocalStorage](https://github.com/openbao/openbao/blob/19ed1503f38542430449248ab464df8a9a5c3424/sdk/logical/logical.go#L128-L131)
-flags.
+flags. There's also
+[ReplicationState](https://github.com/openbao/openbao/blob/0d706a0c474ebf26265d0d1e4d9060320cd8ae13/sdk/logical/system_view.go#L48)
+to grant mounts knowledge about whether they reside in a replication or source
+namespace.
 
 The `LocalStorage` flag denotes the paths within a logical backend's storage
 data that should be considered local to the cluster and thus should not be
@@ -298,6 +346,22 @@ localStorage --true-->allowOnLocalStorage
 localStorage --false-->sourceClusterForward
 ```
 
+`ReplicationState` is called by mounts to check if they are in a source or a
+destination namespace (response enum `ReplicationPerformanceSecondary`). This is
+useful for plugins to decide whether to run storage migrations or background
+jobs etc... Currently, the response is based on the node, changes are needed to
+make the response based on namespace.
+
+These 3 contracts are requirements expected to be honored by plugins. Since they
+have been a part of the existing code base, built-in plugins are already aware
+of them. Plugins that do not adhere to the contracts must not be able to violate
+storage (they should get a read-only error when trying to modify storage on a
+destination namespace). However, the same guarantee cannot be made for external
+side effects a plugin may carry out.
+
+Applied replication logs also trigger invalidation on the applied entries like
+HA standbys.
+
 ### Storage changes
 Since source and destination namespaces can have different seal configurations
 and thus potentially different root keys, replication logs cannot directly rely
@@ -327,7 +391,7 @@ and on the destination cluster:
     current-index
 ```
 
-Since replication logs can contains secrets, anything under
+Since replication logs can contain secrets, anything under
 `/replication/<namespace-id>` must be stored behind the namespace's barrier.
 
 Whenever there is a logical write to a shared storage path, a replication log
@@ -369,7 +433,7 @@ replication logs transmission is asynchronous.
 
 The source cluster has a background job that keeps track of `current-index` and
 each of the destination namespace's `acked-index`. If `acked-index` lags behind
-`current-index`, it sends out consecutive replication logs starting from index
+`current-index`, it sends out batched replication logs starting from index
 `acked-index + 1` until `current-index`, each time waiting for an
 acknowledgement (ACK) from the destination cluster. The replication log message
 also contains the `current-index`
@@ -384,25 +448,107 @@ the source cluster, the source cluster retransmits the replication log.
 
 ```mermaid
 sequenceDiagram
+actor C as Client
 participant S as SourceCluster
 participant D as DestinationCluster
 
-note over S: current-index: 51, acked-index: 49
-S ->> D: replication log index 50, current-index: 51
-D ->> D: apply log index 50 to storage
-D ->> S: ACK index 50
-note over S: current-index: 51, acked-index: 50
-S ->> D: replication log index 51, current-index: 51
-D ->> D: apply log index 51 to storage
+note over S: current-index: 52, acked-index: 49
+S ->> D: batched replication log [50,51,52], current-index: 52
+D ->> D: apply logs index 50,51,52 to storage
+D ->> S: ACK index 52
+note over S: current-index: 52, acked-index: 52
+C ->> S: Write operation
+note over S: current-index: 53, acked-index: 52
+S ->> D: replication log index 53, current-index: 53
+D ->> D: apply log index 53 to storage
 note over S,D: ACK fails
-S ->> D: resend log index 51
-D ->> S: ACK index 51
+S ->> D: resend log index 53
+D ->> S: ACK index 53
 ```
 
 Destination cluster can also send a query to the source cluster asking for the
 `current-index`. This is helpful in case the destination cluster wants to check
 if if it's behind and needs to signal this back to the user via
 `replicated_state`, for example in the case of an unseal.
+
+### Logs pruning
+
+A periodic job takes care of pruning replication logs to save storage space. In
+general, logs below the minimum `acked-index` of all destination namespaces are
+safe to be pruned. However, a lagging namespace (for example, due to a long
+period of connection loss) could then hold up old logs from being pruned,
+because it has not ackowledged that log yet. For this reason, a
+`max_retained_logs` should be defined as the maximum number of replication logs
+to retain. The pruning decision is then based on this
+`max(min(acked-index of all destinations), current-index - max_retained_logs)`
+
+The lagging namespace that lags past `max_retained_logs` must re-sync via a
+snapshot.
+
+### Snapshot
+
+Data that exists pre-link in a source namespace is not included in replication
+logs, and logs can be pruned to save space. Therefore, it would be beneficial to
+have a snapshot mechanism to get `bootstrapping` replicated namespaces up to
+date with the current state of the source namespace.
+
+A snapshot is built from the source namespace's logical entries that are
+eligible for replication. To avoid a long-lived read transaction on the source
+namespace, snapshots are divided into pages, transmitted one after the other to
+the destination namespaces. Each page is limited by a configurable N number of
+entries, and replicated namespaces can request the next page by providing the
+last key from the last received page.
+
+Write requests can continue to be served when a snapshot is being transmitted.
+These writes also produce replication logs that will be transmitted to the
+replicated namespace once the snapshot tranmission is finished. This is the
+normal replication protocol mentioned above.
+
+```mermaid
+sequenceDiagram
+actor C as Client
+participant D as Destination Cluster
+participant S as Source Cluster
+
+D ->> D: set state = bootstrapping, remove replicated data
+D ->> S: Request snapshot, last_key = null
+activate S
+note over S: small read transaction
+S ->> D: Snapshot page 0, replication_index = N_start
+deactivate S
+D ->> S: Request snapshot, last_key = page 0 last key
+activate S
+note over S: small read transaction
+S ->> D: Snapshot page 1
+deactivate S
+C ->> S: Multiple write requests
+S ->> S: increase replication_index
+D ->> S: Request snapshot, last_key = page 1 last key
+activate S
+note over S: small read transaction
+S ->> D: Snapshot page 2 (final page), final = true, replication_index = N_end
+deactivate S
+
+loop from N_start + 1 until acked_index >= N_end
+  S <<->> D: replication log transmission/ack/replay
+end
+D ->> D: set state = ready
+```
+
+Since snapshots arrive in pages with possible writes in between, it can happen
+that data in a replication log is already contained in one of the snapshot
+pages. However, because replaying only starts after the final page of the
+snapshot is applied, and log entries are full values, replaying all the logs
+from `N_start + 1` to `N_end` would effectively land the destination namespace
+in the exact desired state at `N_end`.
+
+While a snapshot is running, logs starting from `N_start` are pinned and not
+pruned, even if it goes past `max_retained_logs`, with a timeout. A timed out
+snapshot must be repeated. To prevent an endless loop, the timeout must be 
+sufficiently large.
+
+In the future, partial snapshots can also be supported with the use of Merkle
+Tree. However, this is not strictly in scope for the first implementation.
 
 ### Request forwarding
 
@@ -451,6 +597,24 @@ RFC](https://openbao.org/community/rfcs/index-headers/).
 Due to the complexity and the security implication of this mechanism, request
 forwarding can also be implemented as a separate second phase.
 
+#### Identity replication
+
+Identities are replicated data, and some login requests handled by a destination
+namespace can create aliases and entities. This is considered a write to
+replicated data and would not work without request forwarding.
+
+If request forwarding is out of scope for the first implementation phase, a gRPC
+interface can be created to support this use case: creating entities/aliases on
+the first login. This has the drawback that on first login, the source namespace
+must be reachable.
+
+Such a gRPC can have this shape:
+* Request: alias name, mount, alias metadata, group alias.
+* Response: entity ID, replication index of the write.
+
+After receiving the response, the destination namespace waits until
+`current_index >= index` before issueing the token, with a timeout.
+
 ## Rationale and Alternatives
 Namespace is a natural level of segmentation for replication because they
 represent a unit of logical (and with [Namespace
@@ -462,6 +626,9 @@ secrets within this namespace without the performance loss coupled with the
 round trip to an off-site server, the namespace can be replicated to another
 cluster hosted in a data center near them.
 
+This RFC has a hard dependency on [Namespace
+Federation](https://github.com/openbao/openbao/issues/1568) for the link layer.
+
 An alternative to this is the stretched cluster setup discussed earlier in the
 Problem Statement. This is decided against due to the various disadvantages it
 brings.
@@ -469,6 +636,14 @@ brings.
 ## Downsides
 The design only improve read performance in read-heavy namespaces, especially
 when the majority of write requests are expected in a single location.
+
+Write throughput on the source namespaces is affected, either by the transaction
+or the lock contention. Namespaces that are not replicated are not affected.
+
+On first logins on destination namespaces, the source namespace must be
+reachable due to the identity gRPC.
+
+During re-syncs, requests to the destination namespaces are rejected.
 
 The effort required to implement the systems design in this RFC is also expected
 to be large, due to the possible complexities involved in the logical layer
@@ -482,20 +657,21 @@ namespaces are compromised as well. While this is a reasonable trade-off for
 better on-site read performance, operators should be aware of this decrease in
 security.
 
+Replication logs are transmitted as plain text over the gRPC link, it relies 
+on the link's mTLS to protect confidentiality.
+
 With request forwarding, compromising a destination namespace becomes another
 attack vector to mutate data on the source namespace and other destination
 namespaces.
 
+With identity replication, a compromised destination namespace can add existing
+entities to an external group, giving them the group's policy.
+
 ## Unresolved Questions
-* If a namespace has a large amount of data prior to linking, the first
-  replication log can be very large. How do we safely construct this log while
-  still allowing writes to happen? Should there be another method to transfer a
-  "storage snapshot" from the source namespace instead of a long initial log.
-* Should there be a pruning strategy for stored logs on the source namespace to
-  prevent the logs from filling up storage?
 * What should happen in case of a database restore on the source cluster,
   resulting in the `current-index` on the source namespace being behind those of
-  the destination namespaces?
+  the destination namespaces? A naive approach to this would be to force
+  replicated namespaces that are ahead to resync via snapshot.
 * Should promotion/ownership transfer be allowed?
 * How can replication work with namespaces that have [External
   Keys](https://openbao.org/community/rfcs/external-keys/)? While External Key
@@ -503,10 +679,13 @@ namespaces.
   by External Key lies in the server configuration and therefore is not
   replicated. Some options include: 
   * forbidding replication on namespaces that use External Keys, which can be
-    too limiting.
-  * require all servers to have compatible KMS plugin declarations (fail at
-    link time if not), and assume that the external key configurations resolve
-    to the same key materials.
+    limiting, but can also be a good fit for the first implementation version.
+  * replicate the key references under `sys/external-keys/keys/*` but not the
+    config `sys/external-keys/configs/*`. Configs are considered cluster-local.
+    Key comparison can be done on first config writes and first use of a key: 
+    compare the public keys for asymmetric keys, or decrypt a ciphertext 
+    encrypted by the source for symmetric keys. A comparison failure means that
+    the key cannot be used.
 
 ## Related Issues
 - https://github.com/openbao/openbao/issues/1462

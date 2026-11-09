@@ -22,16 +22,17 @@ type ShamirPurpose string
 const (
 	Primary  ShamirPurpose = "primary"
 	Recovery ShamirPurpose = "recovery"
+	// Emergency ShamirPurpose = "emergency"
 )
 
 // SealConfig is used to describe the shamir seal configuration.
 type SealConfig struct {
-	// Deprecated: Type is retained for legacy storage compatibility, provider
-	// validation and seal migration detection.
+	// Deprecated: Type is retained for legacy storage compatibility,
+	// provider validation and seal migration detection.
 	// Use Purpose to identify the Shamir configuration's role instead.
 	Type string `json:"type" mapstructure:"type"`
 
-	// Name of the seal to differ between emergency and primary seals.
+	// // Name of the seal to differ between emergency and primary seals.
 	Name string `json:"name" mapstructure:"name"`
 
 	// Purpose of the shamir seal.
@@ -178,7 +179,7 @@ func (c *Core) writeLegacyBarrierConfigOnAutoUnseal(ctx context.Context) error {
 	}
 
 	if err := c.physical.Put(ctx, &physical.Entry{
-		Key:   barrierSealConfigPath,
+		Key:   deprecatedBarrierSealConfigPath,
 		Value: buf,
 	}); err != nil {
 		c.logger.Error("failed to write legacy (barrier) seal configuration", "error", err)

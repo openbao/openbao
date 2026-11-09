@@ -93,12 +93,16 @@ func handleSysUnseal(core *vault.Core) http.Handler {
 			return
 		}
 
+		if req.Seal == "" {
+			req.Seal = "default"
+		}
+
 		if req.Reset {
 			if !core.Sealed() {
 				respondError(w, http.StatusBadRequest, errors.New("vault is unsealed"))
 				return
 			}
-			core.ResetUnsealProcess()
+			core.ResetUnsealProcess(req.Seal)
 			handleSysSealStatusRaw(core, w, r)
 			return
 		}
@@ -119,12 +123,7 @@ func handleSysUnseal(core *vault.Core) http.Handler {
 
 		// Attempt the unseal. If migrate was specified, the key should correspond
 		// to the old seal.
-		var err error
-		if req.Migrate {
-			_, err = core.UnsealMigrate(key)
-		} else {
-			_, err = core.Unseal(key)
-		}
+		_, err := core.Unseal(key, req.Seal, req.Migrate)
 		if err != nil {
 			switch {
 			case errwrap.ContainsType(err, new(vault.ErrInvalidKey)):
@@ -172,6 +171,7 @@ func handleSysSealStatusRaw(core *vault.Core, w http.ResponseWriter, r *http.Req
 // clients
 type UnsealRequest struct {
 	Key     string
+	Seal    string
 	Reset   bool
 	Migrate bool
 }

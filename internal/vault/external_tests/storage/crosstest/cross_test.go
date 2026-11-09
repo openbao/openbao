@@ -170,20 +170,20 @@ func allLogical(t *testing.T) (map[string]logical.Storage, func()) {
 	psql, psqlCleanup := postgresql.GetTestPostgreSQLBackend(t, logger)
 
 	return map[string]logical.Storage{
-			"pure-raft": logical.NewLogicalStorage(prb),
+		"pure-raft": logical.NewLogicalStorage(prb),
 
-			"raft":       logical.NewLogicalStorage(rb),
-			"raft-in-tx": logical.NewLogicalStorage(rt),
-			"file":       logical.NewLogicalStorage(fb),
+		"raft":       logical.NewLogicalStorage(rb),
+		"raft-in-tx": logical.NewLogicalStorage(rt),
+		"file":       logical.NewLogicalStorage(fb),
 
-			"inmem":               new(logical.InmemStorage),
-			"inmem-via-wrapper":   logical.NewLogicalStorage(inm),
-			"txinmem-via-wrapper": logical.NewLogicalStorage(txinm),
+		"inmem":               new(logical.InmemStorage),
+		"inmem-via-wrapper":   logical.NewLogicalStorage(inm),
+		"txinmem-via-wrapper": logical.NewLogicalStorage(txinm),
 
-			"psql": logical.NewLogicalStorage(psql),
-		}, func() {
-			psqlCleanup()
-		}
+		"psql": logical.NewLogicalStorage(psql),
+	}, func() {
+		psqlCleanup()
+	}
 }
 
 func newAESBarrier(t *testing.T, parent physical.Backend) barrier.SecurityBarrier {

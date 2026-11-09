@@ -58,7 +58,7 @@ With the following policies we may configure the examples from above.
   ```
   # admin authorizations are maintained internally
   path "*" { 
-      capabilities = ["read", "write"]
+      capabilities = ["read", "update"]
   }
   ```
   "userPolicy.hcl"
@@ -68,6 +68,20 @@ With the following policies we may configure the examples from above.
       capabilities = ["ask"]
   }
   ```
+
+The "ask" capability is supplementary to existing capabilities, i.e. the following rules shall be applied 
+when evaluating ACLs on requested paths:
+
+- If there is a "deny" capability, then reject access.
+- If there is a capability matching to the requested operation (for example, "read" capability for a GET request), then grant access.
+- If there is no matching capability, but an "ask" capability, then invoke the external authorization plugin.
+- The external authorization plugin can not grant "sudo" access. Instead, "sudo" can be granted from OpenBao policies only.
+
+The external authorization plugin must be called with user "EntityIDs", as anonymous users don't have authorizations.
+Thus, we may need to change existing code to guarantee that "logical.Requests" passed to the plugin always contain valid "EntityIDs". 
+
+Each namespace may have its own plugin configuration. If a plugin gets invoked from the "ask" capability of some policy,
+then we shall use the plugin configuration from the namespace where the policy is defined.
 
 ## Technical Description
 
@@ -119,8 +133,8 @@ But some authorization services like [OpenFGA](https://openfga.dev/docs/getting-
 containing object relations, which they use for authorization checks. This makes it important to sync the paths from OpenBao 
 to the external authorization service.
 
-As user identity, we should pass [entityID](https://openbao.org/docs/concepts/identity/) to the plugin. The entityID is a stable identifier of the user,
-which should not be considered as personal data under [GDPR](https://gdpr.eu/eu-gdpr-personal-data/).
+As user identity, we should pass [entityID](https://openbao.org/docs/concepts/identity/) to the plugin. The entityID is a stable 
+identifier of the user, which might not be considered as personal data under [GDPR](https://gdpr.eu/eu-gdpr-personal-data/).
 
 In the ACL processing of OpenBao, we must process the "ask" capability and call the plugin method `HasAuthorization` from:
 [acl.AllowOperation(ctx, req, capCheckOnly) *ACLResults](https://github.com/openbao/openbao/blob/main/internal/vault/policy/acl.go#L344).

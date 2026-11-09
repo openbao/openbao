@@ -15,7 +15,7 @@ import (
 func TestCORSPreflight_Methods(t *testing.T) {
 	core, _, _ := vault.TestCoreUnsealed(t)
 	ln, addr := TestServer(t, core)
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	origin := "https://test/"
 	err := core.CORSConfig().Enable(t.Context(), []string{origin}, nil, false)
@@ -34,7 +34,7 @@ func TestCORSPreflight_Methods(t *testing.T) {
 
 		resp, err := http.DefaultClient.Do(req)
 		require.NoError(t, err)
-		resp.Body.Close()
+		require.NoError(t, resp.Body.Close())
 
 		if method == http.MethodTrace {
 			require.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)

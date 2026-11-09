@@ -1625,6 +1625,8 @@ START:
 
 	// Check for a redirect, only allowing for a single redirect (if redirects aren't disabled)
 	if (resp.StatusCode == 301 || resp.StatusCode == 302 || resp.StatusCode == 307) && redirectCount == 0 && !disableRedirects {
+		_ = resp.Body.Close()
+
 		// Parse the updated location
 		respLoc, err := resp.Location()
 		if err != nil {
@@ -1666,10 +1668,11 @@ START:
 	return result, nil
 }
 
-// httpRequestWithContext avoids the use of the go-retryable library found in RawRequestWithContext and is
-// useful when making calls where a net/http client is desirable. A single redirect (status code 301, 302,
-// or 307) will be followed but all retry and timeout logic is the responsibility of the caller as is
-// closing the Response body.
+// httpRequestWithContext avoids the use of the go-retryable library found
+// in RawRequestWithContext and is useful when making calls where a net/http
+// client is desirable. A single redirect (status code 301, 302, or 307) will be
+// followed if there is no request body but all retry and timeout logic is the
+// responsibility of the caller, as is closing the response body.
 func (c *Client) httpRequestWithContext(ctx context.Context, r *Request) (*Response, error) {
 	req, err := http.NewRequestWithContext(ctx, r.Method, r.URL.RequestURI(), r.Body)
 	if err != nil {
@@ -1744,50 +1747,44 @@ func (c *Client) httpRequestWithContext(ctx context.Context, r *Request) (*Respo
 		return nil, err
 	}
 
-	var result *Response
-
 	resp, err := httpClient.Do(req)
-
-	if resp != nil {
-		result = &Response{Response: resp}
-	}
-
 	if err != nil {
 		if strings.Contains(err.Error(), "tls: oversized") {
 			err = fmt.Errorf("%w\n\n"+TLSErrorString, err) //nolint:staticcheck // user-facing error
 		}
-		return result, err
+		return nil, err
 	}
 
-	// Check for a redirect, only allowing for a single redirect, if redirects aren't disabled
-	if (resp.StatusCode == 301 || resp.StatusCode == 302 || resp.StatusCode == 307) && !disableRedirects {
+	// Check for a redirect, only allowing for a single redirect, if redirects
+	// aren't disabled and there is no body.
+	if (resp.StatusCode == 301 || resp.StatusCode == 302 || resp.StatusCode == 307) && !disableRedirects && req.Body == nil {
+		_ = resp.Body.Close()
+
 		// Parse the updated location
 		respLoc, err := resp.Location()
 		if err != nil {
-			return result, fmt.Errorf("redirect failed: %s", err)
+			return nil, fmt.Errorf("redirect failed: %w", err)
 		}
 
 		// Ensure a protocol downgrade doesn't happen
 		if req.URL.Scheme == "https" && respLoc.Scheme != "https" {
-			return result, errors.New("redirect would cause protocol downgrade")
+			return nil, errors.New("redirect would cause protocol downgrade")
 		}
 
 		// Update the request
 		req.URL = respLoc
 
-		// Reset the request body if any
-		if err := r.ResetJSONBody(); err != nil {
-			return result, fmt.Errorf("redirect failed: %s", err)
-		}
-
 		// Retry the request
-		_, err = httpClient.Do(req)
+		resp, err = httpClient.Do(req)
 		if err != nil {
-			return result, fmt.Errorf("redirect failed: %s", err)
+			return nil, fmt.Errorf("redirect failed: %s", err)
 		}
 	}
 
+	result := &Response{resp}
+
 	if err := result.Error(); err != nil {
+		_ = resp.Body.Close()
 		return nil, err
 	}
 

@@ -1,0 +1,12 @@
+```release-note:bug
+command/operator: Fix Raft snapshot saving discarding output when redirected to the active node.
+```
+```release-note:bug
+command/operator: Fix Raft snapshot restoration silently failing when redirected to the active node.
+```
+```release-note:bug
+api: Fix Raft snapshotting saving discarding output when redirected to the active node.
+```
+```release-note:bug
+api: Fix Raft snapshot restoration silently failing when redirected to the active node.
+```

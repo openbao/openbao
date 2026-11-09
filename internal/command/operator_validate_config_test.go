@@ -41,8 +41,12 @@ func TestOperatorValidateConfigCommand_Run(t *testing.T) {
 	}
 
 	expectedErrors := map[string]diagnose.Result{
-		"config2.hcl.json":                        warn("Unknown or unsupported field sentinel found in configuration"),
-		"config2.hcl":                             warn("Unknown or unsupported field sentinel found in configuration"),
+		"config2.hcl.json": warn("Unknown or unsupported field sentinel found in configuration"),
+		"config2.hcl": {
+			Name:    "Validate Config",
+			Status:  diagnose.ErrorStatus,
+			Message: "seals: more than three seals declared",
+		},
 		"config3.hcl":                             warn("Unknown or unsupported field sentinel found in configuration"),
 		"config.hcl":                              warn("Unknown or unsupported field sentinel found in configuration"),
 		"config_raft.hcl":                         warn("Unknown or unsupported field sentinel found in configuration"),

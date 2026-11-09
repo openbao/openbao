@@ -120,7 +120,7 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 	defer core1.Shutdown()
 	keys, root := vault.TestCoreInit(t, core1)
 	for _, key := range keys {
-		if _, err := core1.Unseal(vault.TestKeyCopy(key)); err != nil {
+		if _, err := vault.TestCoreUnseal(core1, key); err != nil {
 			t.Fatalf("unseal err: %s", err)
 		}
 	}
@@ -140,7 +140,7 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 	require.NoError(t, err)
 	defer core2.Shutdown()
 	for _, key := range keys {
-		if _, err := core2.Unseal(vault.TestKeyCopy(key)); err != nil {
+		if _, err := vault.TestCoreUnseal(core2, key); err != nil {
 			t.Fatalf("unseal err: %s", err)
 		}
 	}

@@ -72,7 +72,7 @@ func (c *Core) RekeyThreshold(ctx context.Context, recovery bool) (int, logical.
 	}
 	defer unlock()
 
-	seal := c.sealManager.NamespaceSeal(namespace.RootNamespaceUUID)
+	seal := c.sealManager.NamespaceSeal(namespace.RootNamespaceUUID, "default")
 	if seal == nil {
 		return 0, logical.CodedError(http.StatusBadRequest, ErrNotInit.Error())
 	}
@@ -80,7 +80,7 @@ func (c *Core) RekeyThreshold(ctx context.Context, recovery bool) (int, logical.
 	// If we are rekeying the recovery key, or if the seal supports
 	// recovery keys and we are rekeying the barrier key, we use the
 	// recovery config as the threshold instead.
-	config, err := c.seal.Config(ctx)
+	config, err := seal.Config(ctx)
 	if err != nil {
 		return 0, logical.CodedError(http.StatusInternalServerError, "unable to look up config: %v", err)
 	}

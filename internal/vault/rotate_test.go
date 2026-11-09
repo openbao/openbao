@@ -61,7 +61,7 @@ func testRotateLifecycleCommon(t *testing.T, sm *SealManager, ns *namespace.Name
 	sm.CancelRotation(ns.UUID, recovery)
 	require.Empty(t, sm.RotationConfig(ns.UUID, recovery))
 
-	seal := sm.NamespaceSeal(ns.UUID)
+	seal := sm.NamespaceSeal(ns.UUID, "default")
 	require.NotNil(t, seal)
 
 	prevSealConf, err := seal.Config(ctx)
@@ -168,7 +168,7 @@ func testInitRotationCommon(t *testing.T, sm *SealManager, ns *namespace.Namespa
 		Purpose:         Primary,
 	}
 
-	seal := sm.NamespaceSeal(ns.UUID)
+	seal := sm.NamespaceSeal(ns.UUID, "default")
 	require.NotNil(t, seal)
 
 	rotationResult, err = sm.InitRotation(ctx, ns, newConf, recovery, true)
@@ -188,6 +188,7 @@ func testInitRotationCommon(t *testing.T, sm *SealManager, ns *namespace.Namespa
 
 func TestUpdateRotation(t *testing.T) {
 	c, rootKeys, _, root := TestCoreUnsealedWithConfigs(t, &SealConfig{
+		// Name:            "default",
 		SecretShares:    1,
 		SecretThreshold: 1,
 	})
@@ -200,7 +201,7 @@ func TestUpdateRotation(t *testing.T) {
 
 func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, keys [][]byte, root string, recovery bool) {
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
-	seal := c.sealManager.NamespaceSeal(ns.UUID)
+	seal := c.sealManager.NamespaceSeal(ns.UUID, "default")
 	require.NotNil(t, seal)
 
 	purpose := Primary
@@ -209,7 +210,8 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 	}
 
 	newConf := &SealConfig{
-		Purpose:         purpose,
+		Purpose: purpose,
+		// Name:            "default",
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
@@ -275,7 +277,8 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 
 	// Start another rotation, this time we require a quorum
 	newConf = &SealConfig{
-		Purpose:         purpose,
+		Purpose: purpose,
+		// Name:            "default",
 		SecretThreshold: 1,
 		SecretShares:    1,
 	}
@@ -518,7 +521,7 @@ func TestRotateBarrierRootKey(t *testing.T) {
 func testRotateBarrierRootKey(t *testing.T, c *Core, ns *namespace.Namespace, unsealShares [][]byte) {
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	rootCtx := namespace.RootContext(ctx)
-	seal := c.sealManager.NamespaceSeal(ns.UUID)
+	seal := c.sealManager.NamespaceSeal(ns.UUID, "default")
 	require.NotNil(t, seal)
 
 	// read stored root key
@@ -550,7 +553,7 @@ func testRotateBarrierRootKey(t *testing.T, c *Core, ns *namespace.Namespace, un
 		var err error
 		for _, key := range unsealShares {
 			if ns.UUID == namespace.RootNamespaceUUID {
-				unsealed, err = c.Unseal(TestKeyCopy(key))
+				unsealed, err = TestCoreUnseal(c, key)
 			} else {
 				unsealed, err = TestNamespaceUnseal(c, ns, key)
 			}
@@ -572,6 +575,7 @@ func testRotateBarrierRootKey(t *testing.T, c *Core, ns *namespace.Namespace, un
 func TestRotationBackedUpKeys(t *testing.T) {
 	t.Run("root namespace barrier keys", func(t *testing.T) {
 		c, barrierKeys, _, _ := TestCoreUnsealedWithConfigSealOpts(t, &SealConfig{
+			// Name:            "default",
 			Purpose:         Primary,
 			SecretShares:    3,
 			SecretThreshold: 2,
@@ -581,6 +585,7 @@ func TestRotationBackedUpKeys(t *testing.T) {
 
 	t.Run("root namespace recovery keys", func(t *testing.T) {
 		c, _, recoveryKeys, _ := TestCoreUnsealedWithConfigSealOpts(t, &SealConfig{
+			// Name:            "default-recovery",
 			Purpose:         Recovery,
 			SecretShares:    3,
 			SecretThreshold: 2,
@@ -590,6 +595,7 @@ func TestRotationBackedUpKeys(t *testing.T) {
 
 	t.Run("child namespace barrier keys", func(t *testing.T) {
 		c, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t, &SealConfig{
+			// Name:            "default",
 			Purpose:         Primary,
 			SecretShares:    3,
 			SecretThreshold: 2,
@@ -602,16 +608,19 @@ func TestRotationBackedUpKeys(t *testing.T) {
 
 func testRotationBackedUpKeys(t *testing.T, c *Core, ns *namespace.Namespace, keys [][]byte, recovery bool) {
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
-	seal := c.sealManager.NamespaceSeal(ns.UUID)
+	seal := c.sealManager.NamespaceSeal(ns.UUID, "default")
 	require.NotNil(t, seal)
 
 	purpose := Primary
+	// name := "default"
 	if recovery {
 		purpose = Recovery
+		// name = "default-recovery"
 	}
 
 	newConf := &SealConfig{
-		Purpose:         purpose,
+		Purpose: purpose,
+		// Name:            name,
 		SecretThreshold: 1,
 		SecretShares:    1,
 		Backup:          true,

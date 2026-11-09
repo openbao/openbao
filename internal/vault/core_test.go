@@ -389,7 +389,7 @@ func TestCore_Unseal_MultiShare(t *testing.T) {
 		t.Fatal("should be sealed")
 	}
 
-	if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID); info != nil && len(info.Parts) != 0 {
+	if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID, "default"); info != nil && len(info.Parts) != 0 {
 		t.Fatalf("bad progress: %d", len(info.Parts))
 	}
 
@@ -404,14 +404,14 @@ func TestCore_Unseal_MultiShare(t *testing.T) {
 			if !unseal {
 				t.Fatal("should be unsealed")
 			}
-			if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID); info != nil && len(info.Parts) != 0 {
+			if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID, "default"); info != nil && len(info.Parts) != 0 {
 				t.Fatalf("bad progress: %d", len(info.Parts))
 			}
 		} else {
 			if unseal {
 				t.Fatal("should not be unsealed")
 			}
-			if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID); info != nil && len(info.Parts) != i+1 {
+			if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID, "default"); info != nil && len(info.Parts) != i+1 {
 				t.Fatalf("bad progress: %d", len(info.Parts))
 			}
 		}
@@ -544,7 +544,7 @@ func TestCore_Unseal_Single(t *testing.T) {
 		t.Fatal("should be sealed")
 	}
 
-	if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID); info != nil && len(info.Parts) != 0 {
+	if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID, "default"); info != nil && len(info.Parts) != 0 {
 		t.Fatalf("bad progress: %d", len(info.Parts))
 	}
 
@@ -554,7 +554,7 @@ func TestCore_Unseal_Single(t *testing.T) {
 	if !unseal {
 		t.Fatal("should be unsealed")
 	}
-	if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID); info != nil && len(info.Parts) != 0 {
+	if info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID, "default"); info != nil && len(info.Parts) != 0 {
 		t.Fatalf("bad progress: %d", len(info.Parts))
 	}
 

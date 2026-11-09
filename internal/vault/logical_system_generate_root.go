@@ -369,7 +369,7 @@ func (b *SystemBackend) generateRootStatus(ctx context.Context, otp string) (*lo
 		return handleError(err)
 	}
 
-	seal := b.Core.sealManager.NamespaceSeal(ns.UUID)
+	seal := b.Core.sealManager.NamespaceSeal(ns.UUID, "default")
 	if seal == nil {
 		return handleError(ErrNotSealable)
 	}

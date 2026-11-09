@@ -386,7 +386,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 	var sealConfigError error
 
 	infoKeys := make([]string, 0)
-	barrierSeal, barrierWrapper, unwrapSeal, seals, sealConfigError, err := setSeal(server, config, kms, &infoKeys, make(map[string]string))
+	barrierSeal, barrierWrapper, emergencySeal, unwrapSeal, seals, sealConfigError, err := setSeal(server, config, kms, &infoKeys, make(map[string]string))
 	// Check error here
 	if err != nil {
 		diagnose.Advise(ctx, "For assistance with the seal stanza, see the Vault configuration documentation.")
@@ -479,7 +479,7 @@ SEALFAIL:
 		return nil
 	})
 
-	coreConfig := createCoreConfig(server, config, *backend, configSR, barrierSeal, unwrapSeal, kms, metricsHelper, metricSink)
+	coreConfig := createCoreConfig(server, config, *backend, configSR, barrierSeal, emergencySeal, unwrapSeal, kms, metricsHelper, metricSink)
 
 	var disableClustering bool
 	_ = diagnose.Test(ctx, "HA Storage", func(ctx context.Context) error {

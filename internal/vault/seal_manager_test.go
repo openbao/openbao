@@ -11,6 +11,7 @@ import (
 
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
+	vaultseal "github.com/openbao/openbao/v2/internal/vault/seal"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,6 +27,7 @@ func TestSealManager_Reset(t *testing.T) {
 
 	sealConfig := &SealConfig{
 		Type:            "shamir",
+		Name:            "default",
 		SecretShares:    1,
 		SecretThreshold: 1,
 	}
@@ -101,12 +103,12 @@ func TestSealManager_SetSeal(t *testing.T) {
 				return
 			}
 
-			seal := c.sealManager.NamespaceSeal(tt.ns.UUID)
+			seal := c.sealManager.NamespaceSeal(tt.ns.UUID, "default")
 			require.NotEmpty(t, seal)
 			require.Equal(t, "default", seal.Name())
 
 			require.NotEmpty(t, c.sealManager.NamespaceBarrier(tt.ns.Path))
-			require.NotEmpty(t, c.sealManager.NamespaceSeal(tt.ns.UUID))
+			require.NotEmpty(t, c.sealManager.NamespaceSeal(tt.ns.UUID, "default"))
 
 			// verify storage
 			cfg, err := seal.BarrierConfig(ctx)
@@ -120,8 +122,8 @@ func TestSealManager_SetSeal(t *testing.T) {
 			c.sealManager.RemoveNamespace(tt.ns)
 
 			require.Empty(t, c.sealManager.NamespaceBarrier(tt.ns.Path))
-			require.Empty(t, c.sealManager.NamespaceSeal(tt.ns.UUID))
-			require.Nil(t, c.sealManager.NamespaceUnlockInformation(tt.ns.UUID))
+			require.Empty(t, c.sealManager.NamespaceSeal(tt.ns.UUID, "default"))
+			require.Nil(t, c.sealManager.NamespaceUnlockInformation(tt.ns.UUID, "default"))
 			require.Nil(t, c.sealManager.RotationConfig(tt.ns.UUID, false))
 		})
 	}
@@ -135,26 +137,27 @@ func TestSealManager_InitializeBarrier(t *testing.T) {
 	flawedNS := &namespace.Namespace{UUID: "notpresent", Path: "flawed/"}
 	// naive checking for seal & barrier in mem presence
 	// in real scenario if one exists the other also has to exist
-	_, err := c.sealManager.InitializeBarrier(ctx, flawedNS)
+	_, err := c.sealManager.InitializeBarrier(ctx, flawedNS, "default")
 	require.ErrorIs(t, err, ErrNotSealable)
 
-	tSeal := &defaultSeal{core: c}
+	tSeal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 	tSeal.SetConfigAccess(c.barrier)
 
-	c.sealManager.sealByNamespace["notpresent"] = tSeal
-	_, err = c.sealManager.InitializeBarrier(ctx, flawedNS)
+	c.sealManager.sealByNamespace["notpresent"] = map[string]Seal{"default": tSeal}
+	_, err = c.sealManager.InitializeBarrier(ctx, flawedNS, "default")
 	require.ErrorIs(t, err, ErrNotSealable)
 
 	nsBarrier := barrier.NewAESGCMBarrier(c.physical, flawedNS)
 	c.sealManager.barrierByNamespacePath.Insert(flawedNS.Path, nsBarrier)
 
 	// check seal config presence in storage
-	_, err = c.sealManager.InitializeBarrier(ctx, flawedNS)
+	_, err = c.sealManager.InitializeBarrier(ctx, flawedNS, "default")
 	// dummy barrier is sealed
 	require.ErrorContains(t, err, "failed to retrieve seal config")
 
 	sealConfig := &SealConfig{
 		Type:            "shamir",
+		Name:            "default",
 		SecretShares:    3,
 		SecretThreshold: 2,
 	}
@@ -162,7 +165,7 @@ func TestSealManager_InitializeBarrier(t *testing.T) {
 	err = c.sealManager.SetSeal(ctx, sealConfig, ns, true)
 	require.NoError(t, err)
 
-	keyShares, err := c.sealManager.InitializeBarrier(ctx, ns)
+	keyShares, err := c.sealManager.InitializeBarrier(ctx, ns, "default")
 	require.NoError(t, err)
 	require.NotEmpty(t, keyShares)
 
@@ -176,7 +179,7 @@ func TestSealManager_InitializeBarrier(t *testing.T) {
 	require.NotNil(t, keyring)
 
 	// stored keys are written
-	seal := c.sealManager.NamespaceSeal(ns.UUID)
+	seal := c.sealManager.NamespaceSeal(ns.UUID, "default")
 	require.NotNil(t, seal)
 	storedKeys, err := seal.GetStoredKeys(namespace.ContextWithNamespace(ctx, ns))
 	require.NoError(t, err)
@@ -189,7 +192,7 @@ func TestSealManager_SealStatus(t *testing.T) {
 	ctx := namespace.RootContext(t.Context())
 
 	// check for seal existence
-	sealStatus, err := c.sealManager.SealStatus(ctx, &namespace.Namespace{UUID: "notexisting/"})
+	sealStatus, err := c.sealManager.SealStatus(ctx, &namespace.Namespace{UUID: "notexisting/"}, "default")
 	require.ErrorIs(t, err, ErrNotSealable)
 	require.Nil(t, sealStatus)
 
@@ -204,12 +207,12 @@ func TestSealManager_SealStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	// barrier not yet initialized
-	sealStatus, err = c.sealManager.SealStatus(ctx, ns)
+	sealStatus, err = c.sealManager.SealStatus(ctx, ns, "default")
 	require.ErrorIs(t, err, barrier.ErrBarrierNotInit)
 	require.Nil(t, sealStatus)
 
 	// config has to be present in storage to init barrier
-	_, err = c.sealManager.InitializeBarrier(ctx, ns)
+	_, err = c.sealManager.InitializeBarrier(ctx, ns, "default")
 	require.ErrorContains(t, err, "namespace barrier reports initialized but no seal configuration found")
 
 	ns = &namespace.Namespace{UUID: "success", Path: "ns2/"}
@@ -218,10 +221,10 @@ func TestSealManager_SealStatus(t *testing.T) {
 	err = c.sealManager.SetSeal(ctx, sealConfig, ns, true)
 	require.NoError(t, err)
 
-	keyShares, err := c.sealManager.InitializeBarrier(ctx, ns)
+	keyShares, err := c.sealManager.InitializeBarrier(ctx, ns, "default")
 	require.NoError(t, err)
 
-	sealStatus, err = c.sealManager.SealStatus(ctx, ns)
+	sealStatus, err = c.sealManager.SealStatus(ctx, ns, "default")
 	require.NoError(t, err)
 	require.Equal(t, sealConfig.Type, sealStatus.Type)
 	require.True(t, sealStatus.Initialized)
@@ -233,11 +236,11 @@ func TestSealManager_SealStatus(t *testing.T) {
 	require.Empty(t, sealStatus.Nonce)
 
 	// verify update of unlock information
-	new, err := c.sealManager.recordUnsealPart(ns, keyShares[0])
+	new, err := c.sealManager.recordUnsealPart(ns, "default", keyShares[0])
 	require.True(t, new)
 	require.NoError(t, err)
 
-	sealStatus, err = c.sealManager.SealStatus(ctx, ns)
+	sealStatus, err = c.sealManager.SealStatus(ctx, ns, "default")
 	require.NoError(t, err)
 	require.Equal(t, 1, sealStatus.Progress)
 }
@@ -257,30 +260,30 @@ func TestSealManager_UnsealBarrier(t *testing.T) {
 	err := c.sealManager.SetSeal(ctx, sealConfig, ns, true)
 	require.NoError(t, err)
 
-	keyShares, err := c.sealManager.InitializeBarrier(ctx, ns)
+	keyShares, err := c.sealManager.InitializeBarrier(ctx, ns, "default")
 	require.NoError(t, err)
 
 	b := c.sealManager.NamespaceBarrier(ns.Path)
 	require.NotNil(t, b)
 	require.False(t, b.Sealed())
 
-	require.Nil(t, c.sealManager.NamespaceUnlockInformation(ns.UUID))
+	require.Nil(t, c.sealManager.NamespaceUnlockInformation(ns.UUID, "default"))
 
 	err = b.Seal()
 	require.NoError(t, err)
 	require.True(t, b.Sealed())
 
-	unsealed, err := c.sealManager.UnsealNamespace(ctx, ns, keyShares[0])
+	unsealed, err := c.sealManager.UnsealNamespace(ctx, ns, "default", keyShares[0])
 	require.NoError(t, err)
 	require.False(t, unsealed)
 
-	info := c.sealManager.NamespaceUnlockInformation(ns.UUID)
+	info := c.sealManager.NamespaceUnlockInformation(ns.UUID, "default")
 	require.Len(t, info.Parts, 1)
 	require.NotEmpty(t, info.Nonce)
 
-	unsealed, err = c.sealManager.UnsealNamespace(ctx, ns, keyShares[1])
+	unsealed, err = c.sealManager.UnsealNamespace(ctx, ns, "default", keyShares[1])
 	require.NoError(t, err)
 	require.True(t, unsealed)
 	require.False(t, b.Sealed())
-	require.Nil(t, c.sealManager.NamespaceUnlockInformation(ns.UUID))
+	require.Nil(t, c.sealManager.NamespaceUnlockInformation(ns.UUID, "default"))
 }

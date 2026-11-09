@@ -120,6 +120,7 @@ type SealStatusResponse struct {
 
 type UnsealOpts struct {
 	Key     string `json:"key"`
+	Seal    string `json:"seal"`
 	Reset   bool   `json:"reset"`
 	Migrate bool   `json:"migrate"`
 }

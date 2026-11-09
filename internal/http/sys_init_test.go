@@ -113,7 +113,7 @@ func TestSysInit_put(t *testing.T) {
 		keySlice, err := hex.DecodeString(key.(string))
 		require.NoError(t, err)
 
-		if _, err := core.Unseal(keySlice); err != nil {
+		if _, err := vault.TestCoreUnseal(core, keySlice); err != nil {
 			t.Fatalf("bad: %s", err)
 		}
 	}

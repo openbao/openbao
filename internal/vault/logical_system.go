@@ -4532,6 +4532,7 @@ func (c *Core) GetSealStatus(ctx context.Context, lock bool) (*CoreSealStatusRes
 
 	var sealConfig *SealConfig
 	var recoveryType string
+	// TODO:
 	sealAccess := c.SealAccess()
 	if sealAccess.RecoveryKeySupported() {
 		sealConfig, err = sealAccess.RecoveryConfig(ctx)
@@ -4572,7 +4573,7 @@ func (c *Core) GetSealStatus(ctx context.Context, lock bool) (*CoreSealStatusRes
 		cssr.ClusterID = cluster.ID
 	}
 
-	info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID)
+	info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID, "default")
 	if info != nil {
 		cssr.Progress, cssr.Nonce = len(info.Parts), info.Nonce
 	}

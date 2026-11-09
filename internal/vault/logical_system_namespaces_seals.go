@@ -199,7 +199,7 @@ func (b *SystemBackend) handleNamespaceSealStatus() framework.OperationFunc {
 			return nil, fmt.Errorf("namespace %q doesn't exist", path)
 		}
 
-		status, err := b.Core.sealManager.SealStatus(ctx, ns)
+		status, err := b.Core.sealManager.SealStatus(ctx, ns, "default")
 		if err != nil {
 			return handleError(err)
 		}
@@ -255,7 +255,7 @@ func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
 
 		resetFlag := data.Get("reset").(bool)
 		if resetFlag {
-			b.Core.sealManager.ResetUnsealProcess(ns.UUID)
+			b.Core.sealManager.ResetUnsealProcess(ns.UUID, "default")
 		} else {
 			key := data.Get("key").(string)
 			if key == "" {
@@ -285,7 +285,7 @@ func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
 			}
 		}
 
-		status, err := b.Core.sealManager.SealStatus(ctx, ns)
+		status, err := b.Core.sealManager.SealStatus(ctx, ns, "default")
 		if err != nil {
 			return handleError(err)
 		}

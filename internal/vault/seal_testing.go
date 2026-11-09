@@ -67,7 +67,7 @@ func TestCoreUnsealedWithConfigSealOpts(t testing.T, barrierConf, recoveryConf *
 
 	if core.Sealed() {
 		for _, key := range result.SecretShares {
-			if _, err := core.Unseal(TestKeyCopy(key)); err != nil {
+			if _, err := TestCoreUnseal(core, key); err != nil {
 				t.Fatalf("unseal err: %s", err)
 			}
 		}

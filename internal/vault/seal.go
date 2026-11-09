@@ -191,7 +191,7 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+sealConfigPath(d.Name()))
 	if err != nil {
 		d.core.logger.Error("failed to read seal configuration", "error", err)
-		return nil, fmt.Errorf("failed to check seal configuration: %w", err)
+		return nil, fmt.Errorf("failed to read seal configuration: %w", err)
 	}
 
 	// If the seal configuration is missing, we are not initialized

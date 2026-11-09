@@ -472,7 +472,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	var seal vault.Seal
 	switch configSeal.Type {
 	case string(vaultseal.WrapperTypeShamir):
-		seal = vault.NewShamirSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()), "default")
+		seal = vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 	default:
 		wrapper, config, err := kms.ConfigureWrapper(
 			context.Background(), configSeal.Type, wrapping.WithConfigMap(configSeal.Config),
@@ -1103,7 +1103,7 @@ func (c *ServerCommand) Run(args []string) int {
 	info[key] = strings.Join(envVarKeys, ", ")
 	infoKeys = append(infoKeys, key)
 
-	barrierSeal, _, unwrapSeal, seals, sealConfigError, err := setSeal(c, config, kms, &infoKeys, info)
+	barrierSeal, _, emergencySeal, unwrapSeal, seals, sealConfigError, err := setSeal(c, config, kms, &infoKeys, info)
 	// Check error here
 	if err != nil {
 		c.UI.Error(err.Error())
@@ -1131,7 +1131,7 @@ func (c *ServerCommand) Run(args []string) int {
 		return 1
 	}
 
-	coreConfig := createCoreConfig(c, config, backend, configSR, barrierSeal, unwrapSeal, kms, metricsHelper, metricSink)
+	coreConfig := createCoreConfig(c, config, backend, configSR, barrierSeal, emergencySeal, unwrapSeal, kms, metricsHelper, metricSink)
 	if c.flagDevThreeNode {
 		return c.enableThreeNodeDevCluster(&coreConfig, info, infoKeys, api.ReadBaoVariable("BAO_DEV_TEMP_DIR"))
 	}
@@ -1936,7 +1936,7 @@ func (c *ServerCommand) enableDev(core *vault.Core, coreConfig *vault.CoreConfig
 		copy(key, init.SecretShares[0])
 
 		// Unseal the core
-		unsealed, err := core.Unseal(key)
+		unsealed, err := core.Unseal(key, "default", false)
 		if err != nil {
 			return nil, err
 		}
@@ -2500,11 +2500,12 @@ func CheckStorageMigration(b physical.Backend) (*StorageMigrationStatus, error) 
 	return &status, nil
 }
 
-// setSeal returns barrierSeal, barrierWrapper, unwrapSeal, and all created
-// seals declared in the configs so we can close them in Run method.
-// The two errors are the sealConfigError and the regular error.
-func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, infoKeys *[]string, info map[string]string) (vault.Seal, wrapping.Wrapper, vault.Seal, []vault.Seal, error, error) {
+// setSeal returns barrierSeal, barrierWrapper, emergencySeal, unwrapSeal
+// and all created seals declared in the configs so we can close them in
+// Run method. The two errors are the sealConfigError and the regular error.
+func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, infoKeys *[]string, info map[string]string) (vault.Seal, wrapping.Wrapper, vault.Seal, vault.Seal, []vault.Seal, error, error) {
 	var barrierSeal vault.Seal
+	var emergencySeal vault.Seal
 	var barrierWrapper wrapping.Wrapper
 	var unwrapSeal vault.Seal
 
@@ -2513,36 +2514,45 @@ func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, in
 		access, _ := vaultseal.NewTestSeal(nil)
 		barrierSeal, err = vault.NewAutoSeal(access, "default")
 		if err != nil {
-			return nil, nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, nil, err
 		}
-		return barrierSeal, nil, nil, nil, nil, nil
+		return barrierSeal, nil, nil, nil, nil, nil, nil
 	}
 
-	defaultShamirSeal := &configutil.KMS{Type: vaultseal.WrapperTypeShamir.String()}
-	// Handle the case where no seal is provided
+	// Handle the case where no seal is provided.
 	if len(config.Seals) == 0 || (len(config.Seals) == 1 && config.Seals[0].Disabled) {
 		// If there's only one seal and it's disabled assume migration to shamir.
-		config.Seals = append(config.Seals, defaultShamirSeal)
+		config.Seals = append(config.Seals, &configutil.KMS{Type: vaultseal.WrapperTypeShamir.String()})
 	}
 
+	hasPrimaryAutoSeal := slices.ContainsFunc(config.Seals, func(conf *configutil.KMS) bool {
+		return !conf.Disabled && conf.Type != "shamir"
+	})
 	createdSeals := make([]vault.Seal, len(config.Seals))
-	// TODO(wslabosz): Adjust seal creation.
 	for _, configSeal := range config.Seals {
-		if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
-			configSeal.Type = api.ReadBaoVariable("BAO_SEAL_TYPE")
+		isEmergency := !configSeal.Disabled && configSeal.Type == "shamir" && hasPrimaryAutoSeal
+		envSealType := api.ReadBaoVariable("BAO_SEAL_TYPE")
+		if !configSeal.Disabled && !isEmergency && envSealType != "" {
+			configSeal.Type = envSealType
 		}
 
 		var seal vault.Seal
 		switch configSeal.Type {
 		case string(vaultseal.WrapperTypeShamir):
-			seal = vault.NewShamirSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()), "default")
+			if isEmergency {
+				emergencySeal = vault.NewShamirSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()), "emergency")
+				createdSeals = append(createdSeals, emergencySeal)
+				continue
+			} else {
+				seal = vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+			}
 		default:
 			wrapper, config, err := kms.ConfigureWrapper(
 				context.Background(), configSeal.Type, wrapping.WithConfigMap(configSeal.Config),
 			)
 			if err != nil {
 				//nolint:staticcheck // User-facing error.
-				return nil, nil, nil, nil, nil, fmt.Errorf("Error configuring seal %q: %w", configSeal.Type, err)
+				return nil, nil, nil, nil, nil, nil, fmt.Errorf("Error configuring seal %q: %w", configSeal.Type, err)
 			}
 
 			seal, err = vault.NewAutoSealWithHealthCheck(
@@ -2555,7 +2565,7 @@ func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, in
 			)
 			if err != nil {
 				//nolint:staticcheck // User-facing error.
-				return nil, nil, nil, nil, nil, fmt.Errorf("Error creating auto seal: %w", err)
+				return nil, nil, nil, nil, nil, nil, fmt.Errorf("Error creating auto seal: %w", err)
 			}
 
 			infoKey := "auto seal"
@@ -2575,7 +2585,7 @@ func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, in
 
 		createdSeals = append(createdSeals, seal)
 	}
-	return barrierSeal, barrierWrapper, unwrapSeal, createdSeals, nil, nil
+	return barrierSeal, barrierWrapper, emergencySeal, unwrapSeal, createdSeals, nil, nil
 }
 
 func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.CoreConfig, backend physical.Backend) (bool, error) {
@@ -2775,7 +2785,7 @@ func runUnseal(c *ServerCommand, core *vault.Core, sealShutdownCh chan<- struct{
 	}
 }
 
-func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.Backend, configSR sr.ServiceRegistration, barrierSeal, unwrapSeal vault.Seal,
+func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.Backend, configSR sr.ServiceRegistration, barrierSeal, emergencySeal, unwrapSeal vault.Seal,
 	kmsPluginCatalog *kmsplugin.Catalog, metricsHelper *metricsutil.MetricsHelper, metricSink *metricsutil.ClusterMetricSink,
 ) vault.CoreConfig {
 	coreConfig := &vault.CoreConfig{
@@ -2786,6 +2796,7 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		HAPhysical:                     nil,
 		ServiceRegistration:            configSR,
 		Seal:                           barrierSeal,
+		EmergencySeal:                  emergencySeal,
 		UnwrapSeal:                     unwrapSeal,
 		KMSPluginCatalog:               kmsPluginCatalog,
 		AuditBackends:                  c.AuditBackends,

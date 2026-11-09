@@ -43,7 +43,7 @@ func (sm *SealManager) RotationConfig(nsUUID string, recovery bool) *SealConfig 
 // RotationConfig returns the rotation config of the namespace
 // with the given UUID.
 func (sm *SealManager) rotationConfig(nsUUID string, recovery bool) *SealConfig {
-	rotationConfig, ok := sm.rotationConfigByNamespace[nsUUID]
+	rotationConfig, ok := sm.rotationConfigByNamespace[nsUUID]["default"]
 	if !ok {
 		return nil
 	}
@@ -57,10 +57,14 @@ func (sm *SealManager) rotationConfig(nsUUID string, recovery bool) *SealConfig 
 
 // setRotationConfig sets the root or recovery rotation config for a given namespace.
 func (sm *SealManager) setRotationConfig(nsUUID string, recovery bool, newConfig *SealConfig) error {
-	config, ok := sm.rotationConfigByNamespace[nsUUID]
+	config, ok := sm.rotationConfigByNamespace[nsUUID]["default"]
 	if !ok {
 		config = &rotationConfig{}
-		sm.rotationConfigByNamespace[nsUUID] = config
+		if _, ok := sm.rotationConfigByNamespace[nsUUID]; ok {
+			sm.rotationConfigByNamespace[nsUUID]["default"] = config
+		} else {
+			sm.rotationConfigByNamespace[nsUUID] = map[string]*rotationConfig{"default": config}
+		}
 	}
 
 	if recovery {
@@ -89,7 +93,7 @@ func (sm *SealManager) RotateBarrierRootKey(ctx context.Context, ns *namespace.N
 		return fmt.Errorf("failed to generate new root key: %v", err)
 	}
 
-	seal := sm.sealByNamespace[ns.UUID]
+	seal := sm.sealByNamespace[ns.UUID]["default"]
 	if seal == nil {
 		return ErrNotSealable
 	}
@@ -189,7 +193,7 @@ func (sm *SealManager) UpdateRotation(ctx context.Context, ns *namespace.Namespa
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
-	seal := sm.sealByNamespace[ns.UUID]
+	seal := sm.sealByNamespace[ns.UUID]["default"]
 	if seal == nil {
 		return nil, ErrNotSealable
 	}
@@ -474,7 +478,7 @@ func (sm *SealManager) validateRotationConfig(ns *namespace.Namespace, newConfig
 		return nil, errors.New("rotation already in progress")
 	}
 
-	seal := sm.sealByNamespace[ns.UUID]
+	seal := sm.sealByNamespace[ns.UUID]["default"]
 	if seal == nil {
 		return nil, ErrNotSealable
 	}
@@ -758,7 +762,7 @@ func (sm *SealManager) VerifyRotation(ctx context.Context, ns *namespace.Namespa
 		return nil, errors.New("rotation verification failed; incorrect key shares supplied")
 	}
 
-	seal := sm.sealByNamespace[ns.UUID]
+	seal := sm.sealByNamespace[ns.UUID]["default"]
 	if seal == nil {
 		return nil, ErrNotSealable
 	}

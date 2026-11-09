@@ -169,7 +169,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 
 	var unsealed bool
 	for i := range 3 {
-		unsealed, err = c.Unseal(unsealKey[i])
+		unsealed, err = TestCoreUnseal(c, unsealKey[i])
 		require.NoError(t, err)
 	}
 	if !unsealed {
@@ -865,7 +865,7 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 
 	var unsealed bool
 	for i := range unsealKey {
-		unsealed, err = c.Unseal(unsealKey[i])
+		unsealed, err = TestCoreUnseal(c, unsealKey[i])
 		require.NoError(t, err)
 	}
 	if !unsealed {

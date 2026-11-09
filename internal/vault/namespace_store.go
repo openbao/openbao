@@ -583,7 +583,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 				return nil, fmt.Errorf("failed to set namespace seal: %w", err)
 			}
 
-			sealKeyShares, err = ns.core.sealManager.InitializeBarrier(ctx, entry)
+			sealKeyShares, err = ns.core.sealManager.InitializeBarrier(ctx, entry, "default")
 			if err != nil {
 				return nil, fmt.Errorf("failed to initialize namespace barrier: %w", err)
 			}
@@ -1149,7 +1149,7 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 		return true, nil
 	}
 
-	unsealed, err := ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal, key)
+	unsealed, err := ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal, "default", key)
 	if err != nil {
 		return false, err
 	}

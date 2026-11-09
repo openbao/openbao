@@ -558,7 +558,7 @@ func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		seal := b.Core.sealManager.NamespaceSeal(ns.UUID)
+		seal := b.Core.sealManager.NamespaceSeal(ns.UUID, "default")
 		if seal == nil {
 			return handleError(ErrNotSealable)
 		}

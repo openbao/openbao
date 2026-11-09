@@ -302,8 +302,9 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 	return result.SecretShares, result.RecoveryShares, innerToken
 }
 
+// TestCoreUnseal attempts to unseal "default" core seal without migration.
 func TestCoreUnseal(core *Core, key []byte) (bool, error) {
-	return core.Unseal(key)
+	return core.Unseal(TestKeyCopy(key), "default", false)
 }
 
 func TestCoreSeal(core *Core) error {
@@ -914,7 +915,7 @@ func (c *TestCluster) UnsealCores(t testing.T) {
 func (c *TestCluster) UnsealCoresWithError(useStoredKeys bool) error {
 	unseal := func(core *Core) error {
 		for _, key := range c.BarrierKeys {
-			if _, err := core.Unseal(TestKeyCopy(key)); err != nil {
+			if _, err := TestCoreUnseal(core, key); err != nil {
 				return err
 			}
 		}
@@ -980,7 +981,7 @@ func (c *TestCluster) AttemptUnsealCore(core *TestClusterCore) error {
 		keys = c.BarrierKeys
 	}
 	for _, key := range keys {
-		if _, err := core.Unseal(TestKeyCopy(key)); err != nil {
+		if _, err := core.Unseal(TestKeyCopy(key), "default", false); err != nil {
 			return fmt.Errorf("unseal err: %w", err)
 		}
 	}
@@ -1547,6 +1548,7 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		coreConfig.CacheSize = base.CacheSize
 		coreConfig.PluginDirectory = base.PluginDirectory
 		coreConfig.Seal = base.Seal
+		coreConfig.EmergencySeal = base.EmergencySeal
 		coreConfig.UnwrapSeal = base.UnwrapSeal
 		coreConfig.DevToken = base.DevToken
 		coreConfig.EnableRaw = base.EnableRaw
@@ -2059,7 +2061,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 
 	// Unseal first core
 	for _, key := range bKeys {
-		if _, err := leader.Unseal(TestKeyCopy(key)); err != nil {
+		if _, err := leader.Unseal(TestKeyCopy(key), "default", false); err != nil {
 			t.Fatalf("unseal err: %s", err)
 		}
 	}
@@ -2118,7 +2120,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		for i := 1; i < numCores; i++ {
 			tc.Cores[i].seal.SetCachedConfig(cfg)
 			for _, key := range bKeys {
-				if _, err := tc.Cores[i].Unseal(TestKeyCopy(key)); err != nil {
+				if _, err := tc.Cores[i].Unseal(TestKeyCopy(key), "default", false); err != nil {
 					t.Fatalf("unseal err: %s", err)
 				}
 			}

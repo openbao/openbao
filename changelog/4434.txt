@@ -1,0 +1,3 @@
+```release-note:bug
+core: Fix `logical.Request.MountAccessor` is not set by the router.
+```

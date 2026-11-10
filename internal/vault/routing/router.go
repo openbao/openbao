@@ -716,6 +716,7 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 	req.Path = strings.TrimPrefix(ns.Path+req.Path, mount)
 	req.MountPoint = mount
 	req.MountType = re.MountEntry.Type
+	req.MountAccessor = re.MountEntry.Accessor
 	req.SetMountRunningSha256(re.MountEntry.RunningSha256)
 	req.SetMountRunningVersion(re.MountEntry.RunningVersion)
 	req.SetMountIsExternalPlugin(re.MountEntry.IsExternalPlugin())

@@ -1,0 +1,3 @@
+```release-note:improvement
+operator/migrate: Add `raft_snapshot` as storage migration source.
+```

@@ -107,7 +107,8 @@ type external-authz interface {
     // from Core.handleRequest, after doRoutingIfApproved if routeErr is nil and the response 
     // is not an error. This includes nil or empty response, otherwise inspect the response:
     // https://github.com/openbao/openbao/blob/main/internal/vault/request_handling.go#L1437
-    // Plugins should implement eventual consistency when passing changes to the external authz service.
+    // Plugins should implement eventual consistency when passing changes to the external authz 
+    // service, using a persistent change log which triggers asynchronous updates.
     // Parameter list:
     // - ctx: context as passed to create/update/delete
     // - add: additional authorization context
@@ -116,8 +117,9 @@ type external-authz interface {
     // Returns: nil in case of success or error (default implementation: return nil).
     UpdatePath(ctx context.Context, add *AuthzContext, path string, operation string) error
 
-    // Call plugin to sync the paths of an OpenBao subtree to the DB of the external authorization service (optional).
-    // To be called at initialization time of the plugin.
+    // Call plugin to sync the paths of an OpenBao subtree to the DB of the external authorization 
+    // service (optional). To be called at initialization time of the plugin or from a new API endpoint
+    // for repairing inconsistencies between OpenBao and the external authorization service.
     // Parameter list:
     // - ctx: context
     // - add: additional authorization context

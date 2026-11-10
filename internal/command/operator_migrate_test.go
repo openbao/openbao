@@ -23,6 +23,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	physFile "github.com/openbao/openbao/sdk/v2/physical/file"
 	"github.com/openbao/openbao/v2/internal/command/server"
+	"github.com/openbao/openbao/v2/internal/physical/raft"
 	"github.com/openbao/openbao/v2/internal/vault"
 	"github.com/stretchr/testify/require"
 )
@@ -286,6 +287,44 @@ storage_destination "dest_type2" {
 		outKeys.lock.Unlock()
 		if !reflect.DeepEqual(keys, outKeys.out) {
 			t.Fatalf("expected equal: %v, %v", keys, outKeys.out)
+		}
+	})
+
+	t.Run("Raft snapshot source", func(t *testing.T) {
+		ctx := t.Context()
+
+		data := generateData()
+		delete(data, "")
+
+		raftBackend := raft.GetRaft(t, true, false)
+		if err := storeData(t.Context(), raftBackend, data); err != nil {
+			t.Fatal(err)
+		}
+
+		tmpfile, err := os.CreateTemp(t.TempDir(), "raft-snapshot")
+		require.NoError(t, err)
+
+		err = raftBackend.Snapshot(tmpfile, nil)
+		require.NoError(t, err)
+
+		tmpfile.Close()
+
+		from, err := snapshotFactory(map[string]string{"path": tmpfile.Name()}, log.NewNullLogger())
+		require.NoError(t, err)
+
+		toFactory := physicalBackends["inmem"]
+		confTo := map[string]string{}
+		to, err := toFactory(confTo, nil)
+		require.NoError(t, err)
+		cmd := OperatorMigrateCommand{
+			logger: log.NewNullLogger(),
+		}
+		if err := cmd.migrateAll(ctx, from, to, 1); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := compareStoredData(ctx, to, data, ""); err != nil {
+			t.Fatal(err)
 		}
 	})
 }

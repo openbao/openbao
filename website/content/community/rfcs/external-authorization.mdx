@@ -78,7 +78,7 @@ when evaluating ACLs on requested paths:
 - The external authorization plugin can not grant "sudo" access. Instead, "sudo" can be granted from OpenBao policies only.
 
 The external authorization plugin must be called with user "EntityIDs", as anonymous users don't have authorizations.
-Thus, we may need to change existing code to guarantee that "logical.Requests" passed to the plugin always contain valid "EntityIDs". 
+In an additional authorization context, we should pass "EntityID" and optionally other user information, for example email addresses.
 
 Each namespace may have its own plugin configuration. If a plugin gets invoked from the "ask" capability of some policy,
 then we shall use the plugin configuration from the namespace where the policy is defined.
@@ -97,10 +97,10 @@ type external-authz interface {
     // https://github.com/openbao/openbao/blob/main/internal/vault/request_handling_list_filtering.go#L114
     // Parameter list:
     // - ctx: context as passed to ACL.AllowOperation
-    // - opts: additional options, struct AuthzOptions should contain a generic field of type map[string]string
+    // - add: additional authorization context, struct AuthzContext is of type map[string]string
     // - req: logical requests containing path, entityID and operation, pass a slice for batch processing
     // Returns: slice of true (allowed) or false (denied), errors must be treated as slice of false
-    HasAuthorization(ctx context.Context, opts *AuthzOptions, req ...(*logical.Request)) (allowed []bool, err error)
+    HasAuthorization(ctx context.Context, add *AuthzContext, req ...(*logical.Request)) (allowed []bool, err error)
 
     // Call plugin to update the DB of the external authorization service (optional).
     // To be called after successful changes (create, update, delete) to the OpenBao database,
@@ -109,21 +109,21 @@ type external-authz interface {
     // Plugins should implement eventual consistency when passing changes to the external authz service.
     // Parameter list:
     // - ctx: context as passed to create/update/delete
+    // - add: additional authorization context
     // - path: entry which has been changed
     // - operation: create, update or delete
-    // - opts: additional options 
     // Returns: nil in case of success or error (default implementation: return nil).
-    UpdatePath(ctx context.Context, path string, operation string, opts *AuthzOptions) error
+    UpdatePath(ctx context.Context, add *AuthzContext, path string, operation string) error
 
     // Call plugin to sync the paths of an OpenBao subtree to the DB of the external authorization service (optional).
     // To be called at initialization time of the plugin.
     // Parameter list:
     // - ctx: context
+    // - add: additional authorization context
     // - parentPath: root path of subtree
     // - subtree: relative paths of subtree
-    // - opts: additional options 
     // Returns: for each path in the subtree, return nil in case of success or error (default implementation: return slice of nil).
-    SyncSubtree(ctx context.Context, parentPath string, subtree []string, opts *AuthzOptions) []error
+    SyncSubtree(ctx context.Context, add *AuthzContext, parentPath string, subtree []string) []error
 
 }
 ```

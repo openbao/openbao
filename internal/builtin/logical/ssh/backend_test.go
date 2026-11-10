@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -950,6 +951,10 @@ func testSSHBackend_CA(t *testing.T, dockerImageTag, caPublicKey, caPrivateKey, 
 						return nil
 					}
 
+					if algorithmSigner == ssh.KeyAlgoRSA && !slices.Contains(resp.Warnings, rsaSHA1DeprecationWarning) {
+						return errors.New("expected RSA SHA-1 deprecation warning is missing")
+					}
+
 					signedKey := strings.TrimSpace(resp.Data["signed_key"].(string))
 					if signedKey == "" {
 						return errors.New("no signed key in response")
@@ -1785,10 +1790,53 @@ func TestSSHBackend_IssueSign(t *testing.T) {
 			issueSSHKeyPairStep("testing", "rsa", 2048, false, ""),
 			// key_type `ed22519` and key_bits `0` successfully created
 			issueSSHKeyPairStep("testing", "ed25519", 0, false, ""),
+			// key_type `rsa` and key_bits `2048` successfully created without deprecation warning
+			issueSSHKeyPairSHA1Step("testing", "rsa", 2048, false),
+
+			// RSA SHA-1 signing remains supported with a deprecation warning.
+			createRoleStep("sha1-testing", map[string]any{
+				"key_type":                "ca",
+				"allow_user_certificates": true,
+				"allowed_users":           "*",
+				"algorithm_signer":        ssh.KeyAlgoRSA,
+			}),
+
+			// key_type `rsa` and key_bits `2048` successfully created with a deprecation warning
+			issueSSHKeyPairSHA1Step("sha1-testing", "rsa", 2048, true),
 		},
 	}
 
 	logicaltest.Test(t, testCase)
+}
+
+func issueSSHKeyPairSHA1Step(role, keyType string, keyBits int, expectWarning bool) logicaltest.TestStep {
+	return logicaltest.TestStep{
+		Operation: logical.UpdateOperation,
+		Path:      "issue/" + role,
+		Data: map[string]any{
+			"key_type":         keyType,
+			"key_bits":         keyBits,
+			"valid_principals": "toor",
+		},
+		Check: func(resp *logical.Response) error {
+			if resp == nil {
+				return errors.New("issue response missing")
+			}
+
+			signedKey, _ := resp.Data["signed_key"].(string)
+			privateKey, _ := resp.Data["private_key"].(string)
+			if signedKey == "" || privateKey == "" {
+				return errors.New("expected private key and SSH certificate")
+			}
+
+			hasWarning := slices.Contains(resp.Warnings, rsaSHA1DeprecationWarning)
+			if hasWarning != expectWarning {
+				return fmt.Errorf("RSA SHA-1 deprecation warning mismatch. Expected: %t, actual: %t", expectWarning, hasWarning)
+			}
+
+			return nil
+		},
+	}
 }
 
 func getSshCaTestCluster(t *testing.T, userIdentity string) (*vault.TestCluster, string) {
@@ -2206,6 +2254,15 @@ func testRoleWrite(t *testing.T, name string, data map[string]any) logicaltest.T
 		Operation: logical.UpdateOperation,
 		Path:      "roles/" + name,
 		Data:      data,
+		Check: func(resp *logical.Response) error {
+			if data["key_type"] == KeyTypeCA &&
+				data["algorithm_signer"] == ssh.KeyAlgoRSA {
+				if resp == nil || !slices.Contains(resp.Warnings, rsaSHA1DeprecationWarning) {
+					return errors.New("expected RSA SHA-1 deprecation warning is missing")
+				}
+			}
+			return nil
+		},
 	}
 }
 

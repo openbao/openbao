@@ -2781,6 +2781,14 @@ func TestCore_HandleRequest_MountPointType(t *testing.T) {
 	_, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoError(t, err)
 
+	req = logical.TestRequest(t, logical.ReadOperation, "sys/mounts/foo")
+	req.ClientToken = root
+	res, err := c.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+	accessor, ok := res.Data["accessor"]
+	require.True(t, ok, "expected accessor in response data")
+	require.Contains(t, accessor, "noop_")
+
 	// Attempt to request
 	req = &logical.Request{
 		Operation:  logical.ReadOperation,
@@ -2792,7 +2800,7 @@ func TestCore_HandleRequest_MountPointType(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	// Verify Path, MountPoint, and MountType
+	// Verify Path, MountPoint, MountType, and MountAccessor
 	if noop.Requests[0].Path != "test" {
 		t.Fatalf("bad: %#v", noop.Requests)
 	}
@@ -2800,6 +2808,9 @@ func TestCore_HandleRequest_MountPointType(t *testing.T) {
 		t.Fatalf("bad: %#v", noop.Requests)
 	}
 	if noop.Requests[0].MountType != "noop" {
+		t.Fatalf("bad: %#v", noop.Requests)
+	}
+	if noop.Requests[0].MountAccessor != accessor {
 		t.Fatalf("bad: %#v", noop.Requests)
 	}
 }

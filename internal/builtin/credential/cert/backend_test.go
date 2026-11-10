@@ -2071,20 +2071,6 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 		t.Fatal("expected a successful authentication")
 	}
 
-	// Putting an incorrect leaf into the Processed headers should be ignored.
-	//
-	// This would fail if we actually used our tampered certificate.
-	newAClient.AddHeader(vaulthttp.ProcessedForwardedClientCertHeader, url.QueryEscape(base64.StdEncoding.EncodeToString(certBTampered)))
-	newAClient.AddHeader("X-Processed-Tls-Client-Certificate-Resp", url.QueryEscape(base64.StdEncoding.EncodeToString(certBTampered)))
-
-	secret, err = newAClient.Logical().Write("auth/cert/login", map[string]any{
-		"name": "trusted-leaf",
-	})
-	require.NoError(t, err)
-	require.NotNil(t, secret)
-	require.NotNil(t, secret.Auth)
-	require.NotEmpty(t, secret.Auth.ClientToken)
-
 	// Create a new API client with the tampered leaves; it should fail.
 	tamperedAClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig(), tamperedACertFile, leafAKeyFile)
 

@@ -5,6 +5,7 @@ package forwarding
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"io"
@@ -53,6 +54,13 @@ func GenerateForwardedRequest(req *http.Request) (*Request, error) {
 		}
 	}
 
+	if certs := ProxiedCertificatesFromContext(req.Context()); len(certs) > 0 {
+		fq.ProxiedCertificates = make([][]byte, len(certs))
+		for i, cert := range certs {
+			fq.ProxiedCertificates[i] = cert.Raw
+		}
+	}
+
 	return &fq, nil
 }
 
@@ -97,7 +105,34 @@ func ParseForwardedRequest(fq *Request) (*http.Request, error) {
 		}
 	}
 
+	if len(fq.ProxiedCertificates) > 0 {
+		certs := make([]*x509.Certificate, len(fq.ProxiedCertificates))
+		for i, certBytes := range fq.ProxiedCertificates {
+			cert, err := x509.ParseCertificate(certBytes)
+			if err != nil {
+				return nil, err
+			}
+			certs[i] = cert
+		}
+		ctx := WithProxiedCertificates(ret.Context(), certs)
+		ret = ret.WithContext(ctx)
+	}
+
 	return ret, nil
+}
+
+type ctxKeyProxiedCertificates struct{}
+
+func WithProxiedCertificates(ctx context.Context, certs []*x509.Certificate) context.Context {
+	return context.WithValue(ctx, ctxKeyProxiedCertificates{}, certs)
+}
+
+func ProxiedCertificatesFromContext(ctx context.Context) []*x509.Certificate {
+	certs := ctx.Value(ctxKeyProxiedCertificates{})
+	if certs == nil {
+		return nil
+	}
+	return certs.([]*x509.Certificate)
 }
 
 type RPCResponseWriter struct {

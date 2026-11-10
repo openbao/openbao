@@ -29,15 +29,19 @@ type Request struct {
 	// Not used right now but reserving in case it turns out that streaming
 	// makes things more economical on the gRPC side
 	//uint64 id = 1;
-	Method           string                  `protobuf:"bytes,2,opt,name=method,proto3" json:"method,omitempty"`
-	Url              *URL                    `protobuf:"bytes,3,opt,name=url,proto3" json:"url,omitempty"`
-	HeaderEntries    map[string]*HeaderEntry `protobuf:"bytes,4,rep,name=header_entries,json=headerEntries,proto3" json:"header_entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Body             []byte                  `protobuf:"bytes,5,opt,name=body,proto3" json:"body,omitempty"`
-	Host             string                  `protobuf:"bytes,6,opt,name=host,proto3" json:"host,omitempty"`
-	RemoteAddr       string                  `protobuf:"bytes,7,opt,name=remote_addr,json=remoteAddr,proto3" json:"remote_addr,omitempty"`
-	PeerCertificates [][]byte                `protobuf:"bytes,8,rep,name=peer_certificates,json=peerCertificates,proto3" json:"peer_certificates,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	Method        string                  `protobuf:"bytes,2,opt,name=method,proto3" json:"method,omitempty"`
+	Url           *URL                    `protobuf:"bytes,3,opt,name=url,proto3" json:"url,omitempty"`
+	HeaderEntries map[string]*HeaderEntry `protobuf:"bytes,4,rep,name=header_entries,json=headerEntries,proto3" json:"header_entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Body          []byte                  `protobuf:"bytes,5,opt,name=body,proto3" json:"body,omitempty"`
+	Host          string                  `protobuf:"bytes,6,opt,name=host,proto3" json:"host,omitempty"`
+	RemoteAddr    string                  `protobuf:"bytes,7,opt,name=remote_addr,json=remoteAddr,proto3" json:"remote_addr,omitempty"`
+	// PeerCertificates are certificates verified by OpenBao through a TLS
+	// connection.
+	PeerCertificates [][]byte `protobuf:"bytes,8,rep,name=peer_certificates,json=peerCertificates,proto3" json:"peer_certificates,omitempty"`
+	// ProxiedCertificates are certificates verified by a proxy header.
+	ProxiedCertificates [][]byte `protobuf:"bytes,9,rep,name=proxied_certificates,json=proxiedCertificates,proto3" json:"proxied_certificates,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *Request) Reset() {
@@ -115,6 +119,13 @@ func (x *Request) GetRemoteAddr() string {
 func (x *Request) GetPeerCertificates() [][]byte {
 	if x != nil {
 		return x.PeerCertificates
+	}
+	return nil
+}
+
+func (x *Request) GetProxiedCertificates() [][]byte {
+	if x != nil {
+		return x.ProxiedCertificates
 	}
 	return nil
 }
@@ -338,7 +349,7 @@ var File_internal_helper_forwarding_types_proto protoreflect.FileDescriptor
 const file_internal_helper_forwarding_types_proto_rawDesc = "" +
 	"\n" +
 	"&internal/helper/forwarding/types.proto\x12\n" +
-	"forwarding\"\xe4\x02\n" +
+	"forwarding\"\x97\x03\n" +
 	"\aRequest\x12\x16\n" +
 	"\x06method\x18\x02 \x01(\tR\x06method\x12!\n" +
 	"\x03url\x18\x03 \x01(\v2\x0f.forwarding.URLR\x03url\x12M\n" +
@@ -347,7 +358,8 @@ const file_internal_helper_forwarding_types_proto_rawDesc = "" +
 	"\x04host\x18\x06 \x01(\tR\x04host\x12\x1f\n" +
 	"\vremote_addr\x18\a \x01(\tR\n" +
 	"remoteAddr\x12+\n" +
-	"\x11peer_certificates\x18\b \x03(\fR\x10peerCertificates\x1aY\n" +
+	"\x11peer_certificates\x18\b \x03(\fR\x10peerCertificates\x121\n" +
+	"\x14proxied_certificates\x18\t \x03(\fR\x13proxiedCertificates\x1aY\n" +
 	"\x12HeaderEntriesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12-\n" +
 	"\x05value\x18\x02 \x01(\v2\x17.forwarding.HeaderEntryR\x05value:\x028\x01\"\xb1\x01\n" +

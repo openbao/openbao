@@ -1,3 +1,3 @@
 ```release-note:deprecation
-secrets/ssh: Deprecate RSA SHA-1 signing of SSH certificates (`algorithm_signer=ssh-rsa` or empty) for removal in v2.9.0.
+secrets/ssh: Deprecate RSA SHA-1 signing of SSH certificates for removal in v2.9.0.
 ```

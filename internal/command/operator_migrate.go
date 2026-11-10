@@ -176,6 +176,11 @@ func (c *OperatorMigrateCommand) Run(args []string) int {
 		return 1
 	}
 
+	if config.StorageDestination.Type == "raft_snapshot" {
+		c.UI.Error("\"raft_snapshot\" can't be the storage destination!")
+		return 1
+	}
+
 	c.PhysicalBackends["file"] = physFile.NewFileBackend
 	c.PhysicalBackends["raft_snapshot"] = snapshotFactory
 

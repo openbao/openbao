@@ -9,12 +9,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
+	"github.com/openbao/openbao/v2/internal/helper/forwarding"
 	"github.com/openbao/openbao/v2/internal/vault"
 	"github.com/stretchr/testify/require"
 	"github.com/tsaarni/certyaml"
@@ -24,7 +26,9 @@ func getCertTestHandler(listenerConfig *configutil.Listener) func(props *vault.H
 	return func(props *vault.HandlerProperties) http.Handler {
 		origHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Write out what we internally processed.
-			w.Header().Set("X-Processed-Tls-Client-Certificate-Resp", r.Header.Get(ProcessedForwardedClientCertHeader))
+			if certs := forwarding.ProxiedCertificatesFromContext(r.Context()); len(certs) > 0 {
+				w.Header().Set("X-Processed-Tls-Client-Certificate-Resp", base64.StdEncoding.EncodeToString(certs[0].Raw))
+			}
 			w.WriteHeader(http.StatusOK)
 		})
 		// This mirrors how the handlers would be set in server.go
@@ -38,7 +42,9 @@ func getCertTestHandlerWithForwardedFor(listenerConfig *configutil.Listener) fun
 	return func(props *vault.HandlerProperties) http.Handler {
 		origHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Write out what we internally processed.
-			w.Header().Set("X-Processed-Tls-Client-Certificate-Resp", r.Header.Get(ProcessedForwardedClientCertHeader))
+			if certs := forwarding.ProxiedCertificatesFromContext(r.Context()); len(certs) > 0 {
+				w.Header().Set("X-Processed-Tls-Client-Certificate-Resp", base64.StdEncoding.EncodeToString(certs[0].Raw))
+			}
 			w.WriteHeader(http.StatusOK)
 		})
 		// This mirrors how the handlers would be set in server.go
@@ -656,4 +662,36 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 			require.Empty(t, resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp"), "client certificate header should not have been set")
 		})
 	}
+}
+
+func TestHandler_XForwardedForClientCertForwarding(t *testing.T) {
+	cert := &certyaml.Certificate{Subject: "cn=cert.example.com"}
+	require.NoError(t, cert.Generate())
+	certDER := cert.GeneratedCert.Certificate[0]
+
+	config := getDefaultListenerConfigForClientCerts(nil)
+
+	active := wrapClientCertificateHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// The standby should've removed headers:
+		require.Empty(t, r.Header.Get(config.XForwardedForClientCertHeader))
+		// ...but it should've forwarded the proxied certs:
+		connection := getConnection(r)
+		require.Len(t, connection.ProxiedCertificates, 1)
+		require.Equal(t, certDER, connection.ProxiedCertificates[0].Raw)
+		w.WriteHeader(http.StatusNoContent)
+	}), &vault.HandlerProperties{ListenerConfig: &configutil.Listener{}})
+
+	standby := wrapClientCertificateHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// On our standby, serialize the request:
+		forwarded, err := forwarding.GenerateForwardedRequest(r)
+		require.NoError(t, err)
+		// "Forward" to the active, omitting the network hop:
+		r, err = forwarding.ParseForwardedRequest(forwarded)
+		require.NoError(t, err)
+		active.ServeHTTP(w, r)
+	}), &vault.HandlerProperties{ListenerConfig: config})
+
+	req := httptest.NewRequest(http.MethodPost, "http://localhost/v1/auth/cert/login", nil)
+	req.Header.Set(config.XForwardedForClientCertHeader, base64.StdEncoding.EncodeToString(certDER))
+	standby.ServeHTTP(httptest.NewRecorder(), req)
 }

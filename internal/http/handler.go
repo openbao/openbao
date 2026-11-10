@@ -36,6 +36,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
+	"github.com/openbao/openbao/v2/internal/helper/forwarding"
 	"github.com/openbao/openbao/v2/internal/helper/listenerutil"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault"
@@ -47,11 +48,6 @@ const (
 	// provided and the server is fed ever more data until it exhausts memory.
 	// Can be overridden per listener.
 	DefaultMaxRequestSize = 32 * 1024 * 1024
-
-	// ProcessedForwardedClientCertHeader is an internal-only header used for
-	// passing the leaf certificate to the logical layer from the http handler
-	// layer, when forwarded by a client.
-	ProcessedForwardedClientCertHeader = "X-Processed-Tls-Client-Certificate"
 
 	// RFC 9440 standardizes proposed headers for use with proxies. We trim
 	// these to avoid a confusion attack.
@@ -620,10 +616,6 @@ func wrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handle
 
 func wrapClientCertificateHandler(h http.Handler, props *vault.HandlerProperties) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Strip any X-Processed-Tls-Client-Certificate headers before
-		// processing.
-		r.Header.Del(ProcessedForwardedClientCertHeader)
-
 		var clientCertificateHeaderName string
 		var decoders []string
 		if props != nil && props.ListenerConfig != nil {
@@ -702,14 +694,13 @@ func wrapClientCertificateHandler(h http.Handler, props *vault.HandlerProperties
 		}
 
 		// Validate that the processed certificate is a valid certificate.
-		_, err = x509.ParseCertificate(certDer)
+		cert, err := x509.ParseCertificate(certDer)
 		if err != nil {
 			respondError(w, http.StatusBadRequest, errors.New("error decoding client certificate header as x509.Certificate"))
 			return
 		}
 
-		// Add the client cert header.
-		r.Header.Add(ProcessedForwardedClientCertHeader, headerValue)
+		r = r.WithContext(forwarding.WithProxiedCertificates(r.Context(), []*x509.Certificate{cert}))
 
 		// Delete the unprocessed header.
 		r.Header.Del(clientCertificateHeaderName)

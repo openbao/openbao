@@ -5,7 +5,6 @@ package http
 
 import (
 	"crypto/subtle"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -20,6 +19,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-uuid"
+	"github.com/openbao/openbao/helper/forwarding"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
@@ -547,41 +547,15 @@ func getConnection(r *http.Request) (connection *logical.Connection) {
 	}
 
 	connection = &logical.Connection{
-		RemoteAddr: remoteAddr,
-		RemotePort: remotePort,
-		ConnState:  r.TLS,
+		RemoteAddr:          remoteAddr,
+		RemotePort:          remotePort,
+		ConnState:           r.TLS,
+		ProxiedCertificates: forwarding.ProxiedCertificatesFromContext(r.Context()),
 	}
 
 	if r.TLS != nil {
 		connection.PeerCertificates = r.TLS.PeerCertificates
 	}
 
-	connection.ProxiedCertificates = handleForwardedCertHeaders(r)
-
 	return connection
-}
-
-// handleForwardedCertHeaders handles proxied/forwarded client certificates
-// from TLS terminated by an earlier reverse proxy.
-func handleForwardedCertHeaders(req *http.Request) []*x509.Certificate {
-	// We know we only set a single value.
-	headerValue := req.Header.Get(ProcessedForwardedClientCertHeader)
-	if len(headerValue) == 0 {
-		return nil
-	}
-
-	// Subsequent errors in this function should not occur:
-	// wrapClientCertificateHandler has previously validated this exact
-	// flow.
-	certDER, err := base64.StdEncoding.DecodeString(headerValue)
-	if err != nil {
-		return nil
-	}
-
-	x509ClientCert, err := x509.ParseCertificate(certDER)
-	if err != nil {
-		return nil
-	}
-
-	return []*x509.Certificate{x509ClientCert}
 }

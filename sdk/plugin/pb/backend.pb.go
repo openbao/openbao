@@ -3457,9 +3457,9 @@ type Connection struct {
 	// ConnectionState is the marshalled tls.ConnectionState from the original
 	// request
 	ConnectionState *ConnectionState `protobuf:"bytes,2,opt,name=connection_state,json=connectionState,proto3" json:"connection_state,omitempty"`
-	// ProxiedCertificate is a certificate verified by a proxy header.
+	// ProxiedCertificatesRaw are certificates verified by a proxy header.
 	ProxiedCertificatesRaw [][]byte `protobuf:"bytes,4,rep,name=proxied_certificates_raw,json=proxiedCertificatesRaw,proto3" json:"proxied_certificates_raw,omitempty"`
-	// PeerCertificate is a certificate verified by this server through a TLS
+	// PeerCertificatesRaw are certificates verified by OpenBao through a TLS
 	// connection.
 	PeerCertificatesRaw [][]byte `protobuf:"bytes,5,rep,name=peer_certificates_raw,json=peerCertificatesRaw,proto3" json:"peer_certificates_raw,omitempty"`
 	unknownFields       protoimpl.UnknownFields

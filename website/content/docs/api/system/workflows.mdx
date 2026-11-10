@@ -177,15 +177,10 @@ This endpoint lists the paths of all configured workflows. Unlike the manage
 endpoint, only the paths are returned. This endpoint optionally takes a prefix
 to list workflows under.
 
-| Method | Path                                      | Requires Authentication |
-| :----- | :---------------------------------------- | :---------------------- |
-| `LIST` | `/sys/workflows/execute`                  | yes                     |
-| `LIST` | `/sys/workflows/execute/:prefix`          | yes                     |
-| `LIST` | `/sys/workflows/unauthed-execute`         | no                      |
-| `LIST` | `/sys/workflows/unauthed-execute/:prefix` | no                      |
-
-The unauthenticated endpoint only list workflows with
-`allow_unauthenticated` set; otherwise permission is denied.
+| Method | Path                             |
+| :----- | :------------------------------- |
+| `LIST` | `/sys/workflows/execute`         |
+| `LIST` | `/sys/workflows/execute/:prefix` |
 
 #### Parameters
 

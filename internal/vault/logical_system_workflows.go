@@ -231,14 +231,14 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handleWorkflowsExecuteList(false, false /* we are authed */),
+					Callback: b.handleWorkflowsExecuteList(false),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{Description: "OK", Fields: workflowExecuteListSchema}},
 					},
 					Summary: "List workflows.",
 				},
 				logical.ScanOperation: &framework.PathOperation{
-					Callback: b.handleWorkflowsExecuteList(true, false /* we are authed */),
+					Callback: b.handleWorkflowsExecuteList(true),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{Description: "OK", Fields: workflowExecuteListSchema}},
 					},
@@ -293,14 +293,14 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 					Summary: "Execute the given workflow.",
 				},
 				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handleWorkflowsExecuteList(false, false /* we are authed */),
+					Callback: b.handleWorkflowsExecuteList(false),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{Description: "OK", Fields: workflowExecuteListSchema}},
 					},
 					Summary: "List workflows.",
 				},
 				logical.ScanOperation: &framework.PathOperation{
-					Callback: b.handleWorkflowsExecuteList(true, false /* we are authed */),
+					Callback: b.handleWorkflowsExecuteList(true),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{Description: "OK", Fields: workflowExecuteListSchema}},
 					},
@@ -348,43 +348,6 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 
 	if b.Core.allowUnauthedWorkflows {
 		paths = append(paths, &framework.Path{
-			Pattern: "workflows/unauthed-execute/?$",
-
-			DisplayAttrs: &framework.DisplayAttributes{
-				OperationPrefix: "workflows-unauthed-execute",
-			},
-
-			Fields: map[string]*framework.FieldSchema{
-				"after": {
-					Type:        framework.TypeString,
-					Description: "Optional entry to begin listing after; not required to exist.",
-				},
-				"limit": {
-					Type:        framework.TypeInt,
-					Description: "Optional number of entries to return; defaults to all entries.",
-				},
-			},
-
-			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handleWorkflowsExecuteList(false, true /* we are unauthed */),
-					Responses: map[int][]framework.Response{
-						http.StatusOK: {{Description: "OK", Fields: workflowExecuteListSchema}},
-					},
-					Summary: "List workflows.",
-				},
-				logical.ScanOperation: &framework.PathOperation{
-					Callback: b.handleWorkflowsExecuteList(true, true /* we are unauthed */),
-					Responses: map[int][]framework.Response{
-						http.StatusOK: {{Description: "OK", Fields: workflowExecuteListSchema}},
-					},
-					Summary: "Scan (recursively list) workflows.",
-				},
-			},
-
-			HelpSynopsis:    strings.TrimSpace(sysHelp["unauthed-exec-workflows"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["unauthed-exec-workflows"][1]),
-		}, &framework.Path{
 			Pattern: "workflows/unauthed-execute/(?P<path>.+)",
 
 			DisplayAttrs: &framework.DisplayAttributes{
@@ -425,20 +388,6 @@ func (b *SystemBackend) workflowPaths() []*framework.Path {
 						http.StatusOK: {{Description: "OK"}},
 					},
 					Summary: "Execute the given workflow without authentication.",
-				},
-				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handleWorkflowsExecuteList(false, true /* we are unauthed */),
-					Responses: map[int][]framework.Response{
-						http.StatusOK: {{Description: "OK", Fields: workflowExecuteListSchema}},
-					},
-					Summary: "List workflows.",
-				},
-				logical.ScanOperation: &framework.PathOperation{
-					Callback: b.handleWorkflowsExecuteList(true, true /* we are unauthed */),
-					Responses: map[int][]framework.Response{
-						http.StatusOK: {{Description: "OK", Fields: workflowExecuteListSchema}},
-					},
-					Summary: "Scan (recursively list) workflows.",
 				},
 			},
 
@@ -620,9 +569,9 @@ func (b *SystemBackend) handleWorkflowsExecuteRead(unauthed bool) framework.Oper
 	}
 }
 
-// handleWorkflowsExecuteList handles the LIST operation for the "/sys/workflows/execute" and "/sys/workflows/unauthed-execute/"
+// handleWorkflowsExecuteList handles the LIST operation for the "/sys/workflows/execute"
 // endpoint to list the workflow. This outputs only the keys (paths) from the workflows.
-func (b *SystemBackend) handleWorkflowsExecuteList(scan bool, unauthed bool) framework.OperationFunc {
+func (b *SystemBackend) handleWorkflowsExecuteList(scan bool) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		parent := ""
 		if _, present := data.Schema["path"]; present {
@@ -639,9 +588,6 @@ func (b *SystemBackend) handleWorkflowsExecuteList(scan bool, unauthed bool) fra
 
 		keys := make([]string, 0, len(workflows))
 		for _, entry := range workflows {
-			if unauthed && !entry.AllowUnauthenticated {
-				continue
-			}
 			keys = append(keys, entry.Path)
 		}
 

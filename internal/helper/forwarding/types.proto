@@ -17,7 +17,13 @@ message Request {
 	bytes body = 5;
 	string host = 6;
 	string remote_addr = 7;
+
+	// PeerCertificates are certificates verified by OpenBao through a TLS
+	// connection.
 	repeated bytes peer_certificates = 8;
+
+	// ProxiedCertificates are certificates verified by a proxy header.
+	repeated bytes proxied_certificates = 9;
 }
 
 message URL {

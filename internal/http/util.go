@@ -24,20 +24,6 @@ import (
 	"github.com/openbao/openbao/v2/internal/vault/quotas"
 )
 
-var (
-	genericWrapping = func(core *vault.Core, in http.Handler, props *vault.HandlerProperties) http.Handler {
-		// Wrap the help wrapped handler with another layer with a generic
-		// handler
-		return wrapGenericHandler(core, in, props)
-	}
-
-	additionalRoutes = func(mux *http.ServeMux, core *vault.Core) {}
-
-	nonVotersAllowed = true
-
-	adjustResponse = func(core *vault.Core, w http.ResponseWriter, req *logical.Request) {}
-)
-
 func isSnapshotRequest(req *http.Request) bool {
 	return req.URL.Path == "/v1/sys/storage/raft/snapshot" ||
 		req.URL.Path == "/v1/sys/storage/raft/snapshot-force"

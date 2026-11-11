@@ -660,3 +660,43 @@ func TestHTTP_Forwarding_StandbySystemEndpoints(t *testing.T) {
 	activeAfterStepDown := testhelpers.DeriveActiveCore(t, cluster)
 	require.NotEqual(t, activeBeforeStepDown.NodeID, activeAfterStepDown.NodeID, "expected different active after step-down")
 }
+
+func TestHTTP_Forwarding_DisabledEndpoints(t *testing.T) {
+	cluster := vault.NewTestCluster(t, &vault.CoreConfig{}, &vault.TestClusterOptions{
+		HandlerFunc: Handler,
+		DefaultHandlerProperties: vault.HandlerProperties{
+			// This will be our privileged cluster listener.
+			ListenerConfig: &configutil.Listener{
+				DisableUnauthedGenerateRootEndpoints: new(false),
+				DisableUnauthedRekeyEndpoints:        new(false),
+			},
+		},
+		NumCores: 2,
+	})
+
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
+
+	standbys := testhelpers.DeriveStandbyCores(t, cluster)
+	core := standbys[0].Core
+
+	// This is our unprivileged ingress listener.
+	props := &vault.HandlerProperties{
+		Core: core,
+		ListenerConfig: &configutil.Listener{
+			// To ensure that forwarding triggered by index headers does not
+			// interfere with rejecting requests, explicitly request to be
+			// forwarded by it.
+			ConsistencyMissingHeaderForward: true,
+		},
+	}
+
+	ln, addr := TestListener(t)
+	TestServerWithListenerAndProperties(t, ln, addr, core, props)
+	defer func() { _ = ln.Close() }()
+
+	resp := testHttpGet(t, "", addr+"/v1/sys/rekey/init")
+	testResponseStatus(t, resp, http.StatusMethodNotAllowed)
+}

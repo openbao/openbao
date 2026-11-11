@@ -484,7 +484,7 @@ func (lm *LockManager) GetPolicyWithLockType(ctx context.Context, req PolicyRequ
 	return retP, retUpserted, retErr
 }
 
-func (lm *LockManager) ImportPolicy(ctx context.Context, req PolicyRequest, key []byte, rand io.Reader) error {
+func (lm *LockManager) ImportPolicy(ctx context.Context, req PolicyRequest, key []byte, rand io.Reader, canAppendVersion bool) error {
 	var p *Policy
 	var err error
 
@@ -501,20 +501,22 @@ func (lm *LockManager) ImportPolicy(ctx context.Context, req PolicyRequest, key 
 		return err
 	}
 
-	if p != nil {
+	if p != nil && !canAppendVersion {
 		return fmt.Errorf("key %q already exists", req.Name)
 	}
 
-	p = &Policy{
-		l:                        new(sync.RWMutex),
-		Name:                     req.Name,
-		Type:                     req.KeyType,
-		Derived:                  req.Derived,
-		Exportable:               req.Exportable,
-		AllowPlaintextBackup:     req.AllowPlaintextBackup,
-		AutoRotatePeriod:         req.AutoRotatePeriod,
-		AllowImportedKeyRotation: req.AllowImportedKeyRotation,
-		Imported:                 true,
+	if p == nil {
+		p = &Policy{
+			l:                        new(sync.RWMutex),
+			Name:                     req.Name,
+			Type:                     req.KeyType,
+			Derived:                  req.Derived,
+			Exportable:               req.Exportable,
+			AllowPlaintextBackup:     req.AllowPlaintextBackup,
+			AutoRotatePeriod:         req.AutoRotatePeriod,
+			AllowImportedKeyRotation: req.AllowImportedKeyRotation,
+			Imported:                 true,
+		}
 	}
 
 	err = p.ImportPublicOrPrivate(ctx, req.Storage, key, req.IsPrivateKey, rand)

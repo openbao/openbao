@@ -54,11 +54,6 @@ func handleSysRaftJoinPost(core *vault.Core, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if req.NonVoter && !nonVotersAllowed {
-		respondError(w, http.StatusBadRequest, errors.New("non-voting nodes not allowed"))
-		return
-	}
-
 	var tlsConfig *tls.Config
 	var err error
 	if len(req.LeaderCACert) != 0 || len(req.LeaderClientCert) != 0 || len(req.LeaderClientKey) != 0 {

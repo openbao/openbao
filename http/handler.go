@@ -142,8 +142,13 @@ var _ vault.HandlerHandler = HandlerFunc(func(props *vault.HandlerProperties) ht
 func handler(props *vault.HandlerProperties) http.Handler {
 	core := props.Core
 
-	// Create the muxer to handle the actual endpoints
+	// This mux takes final endpoint registrations.
 	mux := http.NewServeMux()
+
+	// This mux will wrap the above mux, but only after applying several
+	// middleware layers beneath it. This allows fixing up behavior for specific
+	// paths in a way that avoids traversal of the middleware chain.
+	overlay := http.NewServeMux()
 
 	switch {
 	case props.RecoveryMode:
@@ -166,28 +171,45 @@ func handler(props *vault.HandlerProperties) http.Handler {
 		mux.Handle("/v1/sys/health", handleSysHealth(core))
 		mux.Handle("/v1/sys/monitor", handleLogicalNoForward(core))
 
-		// Register without unauthenticated generate root, if necessary.
-		if props.ListenerConfig != nil && props.ListenerConfig.DisableUnauthedGenerateRootEndpoints != nil && !*props.ListenerConfig.DisableUnauthedGenerateRootEndpoints {
-			mux.Handle("/v1/sys/generate-root/attempt",
-				handleForwardIfStandby(core, handleAuditNonLogical(core, handleSysGenerateRootAttempt(core, vault.GenerateStandardRootTokenStrategy))))
-			mux.Handle("/v1/sys/generate-root/update",
-				handleForwardIfStandby(core, handleAuditNonLogical(core, handleSysGenerateRootUpdate(core, vault.GenerateStandardRootTokenStrategy))))
+		generateRootHandlers := map[string]http.Handler{
+			"/v1/sys/generate-root/attempt": handleSysGenerateRootAttempt(core, vault.GenerateStandardRootTokenStrategy),
+			"/v1/sys/generate-root/update":  handleSysGenerateRootUpdate(core, vault.GenerateStandardRootTokenStrategy),
+		}
+		rekeyHandlers := map[string]http.Handler{
+			"/v1/sys/rekey/init":                handleSysRekeyInit(core, false),
+			"/v1/sys/rekey/update":              handleSysRekeyUpdate(core, false),
+			"/v1/sys/rekey/verify":              handleSysRekeyVerify(core, false),
+			"/v1/sys/rekey-recovery-key/init":   handleSysRekeyInit(core, true),
+			"/v1/sys/rekey-recovery-key/update": handleSysRekeyUpdate(core, true),
+			"/v1/sys/rekey-recovery-key/verify": handleSysRekeyVerify(core, true),
 		}
 
-		// Register without unauthenticated rekey, if necessary.
-		if props.ListenerConfig != nil && props.ListenerConfig.DisableUnauthedRekeyEndpoints != nil && !*props.ListenerConfig.DisableUnauthedRekeyEndpoints {
-			mux.Handle("/v1/sys/rekey/init",
-				handleForwardIfStandby(core, handleAuditNonLogical(core, handleSysRekeyInit(core, false))))
-			mux.Handle("/v1/sys/rekey/update",
-				handleForwardIfStandby(core, handleAuditNonLogical(core, handleSysRekeyUpdate(core, false))))
-			mux.Handle("/v1/sys/rekey/verify",
-				handleForwardIfStandby(core, handleAuditNonLogical(core, handleSysRekeyVerify(core, false))))
-			mux.Handle("/v1/sys/rekey-recovery-key/init",
-				handleForwardIfStandby(core, handleAuditNonLogical(core, handleSysRekeyInit(core, true))))
-			mux.Handle("/v1/sys/rekey-recovery-key/update",
-				handleForwardIfStandby(core, handleAuditNonLogical(core, handleSysRekeyUpdate(core, true))))
-			mux.Handle("/v1/sys/rekey-recovery-key/verify",
-				handleForwardIfStandby(core, handleAuditNonLogical(core, handleSysRekeyVerify(core, true))))
+		// Register enabled endpoints on the main mux and disabled paths on
+		// the overlay mux, which acts as a firewall in this case. The cluster
+		// listener is not user-configurable and trusts the forwarding peer, so
+		// it is statically configured to always register the below endpoints.
+		// Instead, user-configured "ingressing" listeners must enforce disabled
+		// paths when a request first enters the cluster. It is important to
+		// register disabled paths to the overlay mux such that middleware
+		// cannot make a forwarding decision without having evaluated disabled
+		// paths.
+		if props.ListenerConfig == nil || props.ListenerConfig.DisableUnauthedGenerateRootEndpoints == nil || *props.ListenerConfig.DisableUnauthedGenerateRootEndpoints {
+			for path := range generateRootHandlers {
+				overlay.Handle(path, http.HandlerFunc(handleDisabledPath))
+			}
+		} else {
+			for path, handler := range generateRootHandlers {
+				mux.Handle(path, handleForwardIfStandby(core, handleAuditNonLogical(core, handler)))
+			}
+		}
+		if props.ListenerConfig == nil || props.ListenerConfig.DisableUnauthedRekeyEndpoints == nil || *props.ListenerConfig.DisableUnauthedRekeyEndpoints {
+			for path := range rekeyHandlers {
+				overlay.Handle(path, http.HandlerFunc(handleDisabledPath))
+			}
+		} else {
+			for path, handler := range rekeyHandlers {
+				mux.Handle(path, handleForwardIfStandby(core, handleAuditNonLogical(core, handler)))
+			}
 		}
 
 		mux.Handle("/v1/sys/storage/raft/bootstrap", handleSysRaftBootstrap(core))
@@ -235,25 +257,27 @@ func handler(props *vault.HandlerProperties) http.Handler {
 		} else {
 			mux.Handle("/v1/sys/in-flight-req", handleLogicalNoForward(core))
 		}
-		additionalRoutes(mux, core)
 	}
 
-	// Wrap the handler in another handler to trigger all help paths.
-	helpWrappedHandler := wrapHelpHandler(mux, core)
-	corsWrappedHandler := wrapCORSHandler(helpWrappedHandler, core)
-	quotaWrappedHandler := rateLimitQuotaWrapping(corsWrappedHandler, core)
-	clientCertHandler := wrapClientCertificateHandler(quotaWrappedHandler, props)
-	genericWrappedHandler := genericWrapping(core, clientCertHandler, props)
-	metricsWrappedHandler := wrapMetricsListenerHandler(genericWrappedHandler, props)
-	wrappedHandler := wrapMaxRequestSizeHandler(metricsWrappedHandler, props)
-	// Wrap the handler with PrintablePathCheckHandler to check for non-printable
-	// characters in the request path.
-	printablePathCheckHandler := wrappedHandler
+	handler := http.Handler(mux)
+
+	// Layer middlewares on top of our main mux.
+	handler = wrapHelpHandler(handler, core)
+	handler = wrapCORSHandler(handler, core)
+	handler = rateLimitQuotaWrapping(handler, core)
+	handler = wrapClientCertificateHandler(handler, props)
+	handler = wrapGenericHandler(core, handler, props)
+	handler = wrapMetricsListenerHandler(handler, props)
+	handler = wrapMaxRequestSizeHandler(handler, props)
+
 	if !props.DisablePrintableCheck {
-		printablePathCheckHandler = cleanhttp.PrintablePathCheckHandler(wrappedHandler, nil)
+		handler = cleanhttp.PrintablePathCheckHandler(handler, nil)
 	}
 
-	return printablePathCheckHandler
+	// Then wrap in the overlay mux.
+	overlay.Handle("/", handler)
+
+	return overlay
 }
 
 type copyResponseWriter struct {
@@ -1264,4 +1288,8 @@ func handleForwardIfStandby(core *vault.Core, handler http.Handler) http.Handler
 			handler.ServeHTTP(w, r)
 		}
 	})
+}
+
+func handleDisabledPath(w http.ResponseWriter, r *http.Request) {
+	respondError(w, http.StatusMethodNotAllowed, logical.ErrUnsupportedOperation)
 }

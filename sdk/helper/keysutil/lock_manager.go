@@ -488,7 +488,7 @@ func (lm *LockManager) ImportPolicy(ctx context.Context, req PolicyRequest, key 
 	var p *Policy
 	var err error
 
-	// We're not using the cache, or it wasn't found; get an exclusive lock.
+	// Get an exclusive lock for this policy.
 	// This ensures that any other process writing the actual storage will be
 	// finished before we load from storage.
 	lock := locksutil.LockForKey(lm.keyLocks, req.Name)

@@ -487,19 +487,6 @@ func (lm *LockManager) GetPolicyWithLockType(ctx context.Context, req PolicyRequ
 func (lm *LockManager) ImportPolicy(ctx context.Context, req PolicyRequest, key []byte, rand io.Reader) error {
 	var p *Policy
 	var err error
-	var ok bool
-	var pRaw any
-
-	// Check if it's in our cache
-	if lm.useCache {
-		pRaw, ok = lm.cache.Load(req.Name)
-	}
-	if ok {
-		p = pRaw.(*Policy)
-		if p.deleted.Load() {
-			return nil
-		}
-	}
 
 	// We're not using the cache, or it wasn't found; get an exclusive lock.
 	// This ensures that any other process writing the actual storage will be
@@ -514,18 +501,20 @@ func (lm *LockManager) ImportPolicy(ctx context.Context, req PolicyRequest, key 
 		return err
 	}
 
-	if p == nil {
-		p = &Policy{
-			l:                        new(sync.RWMutex),
-			Name:                     req.Name,
-			Type:                     req.KeyType,
-			Derived:                  req.Derived,
-			Exportable:               req.Exportable,
-			AllowPlaintextBackup:     req.AllowPlaintextBackup,
-			AutoRotatePeriod:         req.AutoRotatePeriod,
-			AllowImportedKeyRotation: req.AllowImportedKeyRotation,
-			Imported:                 true,
-		}
+	if p != nil {
+		return fmt.Errorf("key %q already exists", req.Name)
+	}
+
+	p = &Policy{
+		l:                        new(sync.RWMutex),
+		Name:                     req.Name,
+		Type:                     req.KeyType,
+		Derived:                  req.Derived,
+		Exportable:               req.Exportable,
+		AllowPlaintextBackup:     req.AllowPlaintextBackup,
+		AutoRotatePeriod:         req.AutoRotatePeriod,
+		AllowImportedKeyRotation: req.AllowImportedKeyRotation,
+		Imported:                 true,
 	}
 
 	err = p.ImportPublicOrPrivate(ctx, req.Storage, key, req.IsPrivateKey, rand)

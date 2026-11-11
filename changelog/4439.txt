@@ -1,0 +1,6 @@
+```release-note:bug
+secret/transit: Fix TOCTOU race when importing the same key.
+```
+```release-note:bug
+secrets/transit: `derive-key` now fails if a key with the target name already exists, instead of adding a new version of that key.
+```

@@ -115,10 +115,15 @@ func (b *backend) pathLoginAliasLookahead(ctx context.Context, req *logical.Requ
 		return nil, err
 	}
 
+	aliasName := clientCerts[0].Subject.CommonName
+	if aliasName == "" && len(clientCerts[0].URIs) > 0 {
+		aliasName = clientCerts[0].URIs[0].String()
+	}
+
 	return &logical.Response{
 		Auth: &logical.Auth{
 			Alias: &logical.Alias{
-				Name: clientCerts[0].Subject.CommonName,
+				Name: aliasName,
 			},
 		},
 	}, nil

@@ -28,3 +28,13 @@
 .splash-page-header {
   padding: $size-6 0;
 }
+
+.theme-toggle {
+  margin-left: auto;
+  align-self: center;
+  color: var(--token-color-foreground-faint);
+
+  &:hover {
+    color: var(--token-color-foreground-strong);
+  }
+}

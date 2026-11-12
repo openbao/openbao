@@ -1,0 +1,20 @@
+{{#if @inSidebar}}
+  <Hds::SideNav::Header::IconButton
+    class="sidebar-button"
+    @icon={{this.icon}}
+    @ariaLabel={{this.label}}
+    title={{this.label}}
+    {{on "click" this.theme.cycle}}
+  />
+{{else}}
+  <button
+    type="button"
+    class="icon-button theme-toggle"
+    aria-label={{this.label}}
+    title={{this.label}}
+    data-test-theme-toggle
+    {{on "click" this.theme.cycle}}
+  >
+    <Icon @name={{this.icon}} @size="24" />
+  </button>
+{{/if}}

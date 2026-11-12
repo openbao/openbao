@@ -38,8 +38,8 @@ select {
   &:focus,
   &:focus-visible,
   &.is-active {
-    border-color: $blue-500;
-    box-shadow: 0 0 0 0.125em rgba(21, 99, 255, 0.25);
+    border-color: $interactive-500;
+    box-shadow: 0 0 0 0.125em rgba($interactive, 0.25);
   }
 }
 

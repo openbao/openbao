@@ -1209,23 +1209,26 @@ func TestTransit_SignVerify_SHA1Deprecation(t *testing.T) {
 	testCases := []struct {
 		keyType       keysutil.KeyType
 		hashAlgorithm string
+		urlSuffix     string
 		expectWarning bool
 	}{
-		{keysutil.KeyType_RSA2048, hashSHA1, true},
-		{keysutil.KeyType_RSA2048, hashSHA256, false},
-		{keysutil.KeyType_ECDSA_P256, hashSHA1, true},
-		{keysutil.KeyType_ECDSA_P256, hashSHA256, false},
-		{keysutil.KeyType_ED25519, hashSHA1, false},
-		{keysutil.KeyType_ED25519, hashSHA256, false},
+		{keysutil.KeyType_RSA2048, hashSHA1, "", true},
+		{keysutil.KeyType_RSA2048, hashSHA256, "", false},
+		{keysutil.KeyType_ECDSA_P256, hashSHA1, "", true},
+		{keysutil.KeyType_ECDSA_P256, hashSHA256, "", false},
+		{keysutil.KeyType_ED25519, hashSHA1, "", false},
+		{keysutil.KeyType_ED25519, hashSHA256, "", false},
+		{keysutil.KeyType_RSA2048, hashSHA256, "/" + hashSHA1, true},
+		{keysutil.KeyType_ECDSA_P256, hashSHA256, "/" + hashSHA1, true},
 	}
 	input := base64.StdEncoding.EncodeToString([]byte("test 12345"))
 
 	for _, tc := range testCases {
-		t.Run(tc.keyType.String()+"/"+tc.hashAlgorithm, func(t *testing.T) {
+		t.Run(tc.keyType.String()+"/"+tc.hashAlgorithm+tc.urlSuffix, func(t *testing.T) {
 			signResp, err := b.HandleRequest(t.Context(), &logical.Request{
 				Storage:   storage,
 				Operation: logical.UpdateOperation,
-				Path:      "sign/" + tc.keyType.String(),
+				Path:      "sign/" + tc.keyType.String() + tc.urlSuffix,
 				Data: map[string]any{
 					"input":          input,
 					"hash_algorithm": tc.hashAlgorithm,
@@ -1249,7 +1252,7 @@ func TestTransit_SignVerify_SHA1Deprecation(t *testing.T) {
 			verifyResp, err := b.HandleRequest(t.Context(), &logical.Request{
 				Storage:   storage,
 				Operation: logical.UpdateOperation,
-				Path:      "verify/" + tc.keyType.String(),
+				Path:      "verify/" + tc.keyType.String() + tc.urlSuffix,
 				Data: map[string]any{
 					"input":          input,
 					"hash_algorithm": tc.hashAlgorithm,

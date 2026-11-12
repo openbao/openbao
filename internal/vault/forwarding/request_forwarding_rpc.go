@@ -36,7 +36,7 @@ type forwardedRequestRPCServer struct {
 
 func (s *forwardedRequestRPCServer) ForwardRequest(ctx context.Context, freq *forwarding.Request) (*forwarding.Response, error) {
 	// Parse an http.Request out of it
-	req, err := forwarding.ParseForwardedRequest(freq)
+	req, err := forwarding.ParseForwardedRequest(ctx, freq)
 	if err != nil {
 		return nil, err
 	}

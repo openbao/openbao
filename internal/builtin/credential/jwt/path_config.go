@@ -74,6 +74,10 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 				Type:        framework.TypeCommaStringSlice,
 				Description: "The response types to request. Allowed values are 'code' and 'id_token'. Defaults to 'code'.",
 			},
+			"oidc_discovery_document": {
+				Type:        framework.TypeMap,
+				Description: `OIDC discovery document. When set, it is used instead of fetching the document from "oidc_discovery_url". Its "issuer" must equal "oidc_discovery_url", and it must contain "authorization_endpoint", "token_endpoint", "jwks_uri" and "userinfo_endpoint". JWT roles check the issuer only through "bound_issuer".`,
+			},
 			"jwks_url": {
 				Type:        framework.TypeString,
 				Description: `JWKS URL to use to authenticate signatures. Cannot be used with "oidc_discovery_url" or "jwt_validation_pubkeys".`,
@@ -174,6 +178,10 @@ func (b *jwtAuthBackend) config(ctx context.Context, s logical.Storage) (*jwtCon
 			return nil, fmt.Errorf("error parsing public key: %w", err)
 		}
 		config.ParsedJWTPubKeys = append(config.ParsedJWTPubKeys, key)
+	}
+
+	if err := config.parseDiscoveryDocument(); err != nil {
+		return nil, err
 	}
 
 	b.cachedConfig = config
@@ -294,6 +302,7 @@ func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reques
 			"oidc_client_id":                config.OIDCClientID,
 			"oidc_response_mode":            config.OIDCResponseMode,
 			"oidc_response_types":           config.OIDCResponseTypes,
+			"oidc_discovery_document":       config.OIDCDiscoveryDocument,
 			"default_role":                  config.DefaultRole,
 			"jwt_validation_pubkeys":        config.JWTValidationPubKeys,
 			"jwt_supported_algs":            config.JWTSupportedAlgs,
@@ -336,6 +345,10 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		OverrideAllowedServerNames: d.Get("override_allowed_server_names").([]string),
 	}
 
+	if doc, ok := d.GetOk("oidc_discovery_document"); ok {
+		config.OIDCDiscoveryDocument = doc.(map[string]any)
+	}
+
 	skipJwksValidation := d.Get("skip_jwks_validation").(bool)
 
 	txRollback, err := logical.StartTxStorage(ctx, req)
@@ -376,6 +389,10 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		methodCount++
 	}
 
+	if err := config.parseDiscoveryDocument(); err != nil {
+		return logical.ErrorResponse(err.Error()), nil
+	}
+
 	resp := &logical.Response{}
 	switch {
 	case methodCount != 1:
@@ -388,6 +405,28 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 	case config.OIDCDiscoveryURL != "":
 		if strings.Contains(config.OIDCDiscoveryURL, ".well-known/openid-configuration") {
 			return logical.ErrorResponse("'oidc_discovery_url' contains '.well-known' component"), nil
+		}
+
+		if config.hasDiscoveryDocument() {
+			// Building the provider from a discovery document makes no network
+			// calls, so its errors are config errors that skip_jwks_validation
+			// can't waive.
+			if config.OIDCClientID != "" {
+				provider, err := b.createProvider(config)
+				if err != nil {
+					return logical.ErrorResponse("error creating OIDC provider: %s", err.Error()), nil
+				}
+				provider.Done()
+			}
+
+			if err := checkJWKSURL(ctx, config.providerConfig.JWKSURL, config.OIDCDiscoveryCAPEM); err != nil {
+				if !skipJwksValidation {
+					b.Logger().Error("error checking jwks_uri", "error", err)
+					return logical.ErrorResponse("error checking jwks_uri: %s", err.Error()), nil
+				}
+				resp.AddWarning("error checking jwks_uri")
+			}
+			break
 		}
 
 		var err error
@@ -415,8 +454,7 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 
 		// Try to verify a correctly formatted JWT. The signature will fail to match, but other
 		// errors with fetching the remote keyset should be reported.
-		testJWT := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.NHVaYe26MbtOYhSKkoKYdFVomg4i8ZJd8_-RU8VNbftc4TSMb4bXP3l3YlNWACwyXPGffz5aXHc6lty1Y2t4SWRqGteragsVdZufDn5BlnJl9pdR_kdVFUsra2rWKEofkZeIC4yWytE58sMIihvo9H1ScmmVwBcQP6XETqYd0aSHp1gOa9RdUPDvoXQ5oqygTqVtxaDr6wUFKrKItgBMzWIdNZ6y7O9E0DhEPTbE9rfBo6KTFsHAZnMg4k68CDp2woYIaXbmYTWcvbzIuHO7_37GT79XdIwkm95QJ7hYC9RiwrV7mesbY4PAahERJawntho0my942XheVLmGwLMBkQ"
-		_, err = keyset.VerifySignature(ctx, testJWT)
+		_, err = keyset.VerifySignature(ctx, jwksProbeJWT)
 		if err == nil {
 			err = errors.New("unexpected verification of JWT")
 		}
@@ -498,6 +536,28 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 	return nil, nil
 }
 
+// jwksProbeJWT is a well-formed JWT. Its signature doesn't match a real key.
+const jwksProbeJWT = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.NHVaYe26MbtOYhSKkoKYdFVomg4i8ZJd8_-RU8VNbftc4TSMb4bXP3l3YlNWACwyXPGffz5aXHc6lty1Y2t4SWRqGteragsVdZufDn5BlnJl9pdR_kdVFUsra2rWKEofkZeIC4yWytE58sMIihvo9H1ScmmVwBcQP6XETqYd0aSHp1gOa9RdUPDvoXQ5oqygTqVtxaDr6wUFKrKItgBMzWIdNZ6y7O9E0DhEPTbE9rfBo6KTFsHAZnMg4k68CDp2woYIaXbmYTWcvbzIuHO7_37GT79XdIwkm95QJ7hYC9RiwrV7mesbY4PAahERJawntho0my942XheVLmGwLMBkQ" // gitleaks:allow
+
+// checkJWKSURL fetches the key set and verifies jwksProbeJWT against it. A
+// signature mismatch means the key set loaded. Any other error is reported.
+func checkJWKSURL(ctx context.Context, jwksURL, caPEM string) error {
+	keyset, err := jwt.NewJSONWebKeySet(ctx, jwksURL, caPEM)
+	if err != nil {
+		return err
+	}
+
+	_, err = keyset.VerifySignature(ctx, jwksProbeJWT)
+	switch {
+	case err == nil:
+		return errors.New("unexpected verification of JWT")
+	case strings.Contains(err.Error(), "failed to verify id token signature"):
+		return nil
+	default:
+		return err
+	}
+}
+
 func (b *jwtAuthBackend) createProvider(config *jwtConfig) (*oidc.Provider, error) {
 	supportedSigAlgs := make([]oidc.Alg, len(config.JWTSupportedAlgs))
 	for i, a := range config.JWTSupportedAlgs {
@@ -508,9 +568,14 @@ func (b *jwtAuthBackend) createProvider(config *jwtConfig) (*oidc.Provider, erro
 		supportedSigAlgs = []oidc.Alg{oidc.RS256}
 	}
 
+	opts := []oidc.Option{oidc.WithProviderCA(config.OIDCDiscoveryCAPEM)}
+	if config.hasDiscoveryDocument() {
+		opts = append(opts, oidc.WithProviderConfig(config.providerConfig))
+	}
+
 	c, err := oidc.NewConfig(config.OIDCDiscoveryURL, config.OIDCClientID,
 		oidc.ClientSecret(config.OIDCClientSecret), supportedSigAlgs, []string{},
-		oidc.WithProviderCA(config.OIDCDiscoveryCAPEM))
+		opts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating provider: %w", err)
 	}
@@ -628,7 +693,12 @@ type jwtConfig struct {
 	OverrideAllowedServerNames []string       `json:"override_allowed_server_names"`
 	NamespaceInState           bool           `json:"namespace_in_state"`
 
+	// OIDCDiscoveryDocument replaces the document fetched from
+	// OIDCDiscoveryURL.
+	OIDCDiscoveryDocument map[string]any `json:"oidc_discovery_document"`
+
 	ParsedJWTPubKeys []crypto.PublicKey `json:"-"`
+	providerConfig   *oidc.ProviderConfig
 	// These are looked up from OIDCDiscoveryURL when needed
 	OIDCDeviceAuthURL string `json:"-"`
 	OIDCTokenURL      string `json:"-"`
@@ -660,6 +730,71 @@ func (c jwtConfig) authType() int {
 	}
 
 	return unconfigured
+}
+
+// hasDiscoveryDocument reports whether a configured discovery document
+// replaces OIDC discovery.
+func (c jwtConfig) hasDiscoveryDocument() bool {
+	return c.providerConfig != nil
+}
+
+// parseDiscoveryDocument validates OIDCDiscoveryDocument and sets
+// providerConfig and the device endpoints from it. It runs on every config
+// load, so a reset() between device authorization and poll doesn't lose them.
+func (c *jwtConfig) parseDiscoveryDocument() error {
+	if len(c.OIDCDiscoveryDocument) == 0 {
+		return nil
+	}
+	if c.OIDCDiscoveryURL == "" {
+		return errors.New("'oidc_discovery_url' must be set when 'oidc_discovery_document' is set")
+	}
+
+	// go-oidc applies the same exact match to a fetched document.
+	issuer, _ := c.OIDCDiscoveryDocument["issuer"].(string)
+	if issuer != c.OIDCDiscoveryURL {
+		return fmt.Errorf("'oidc_discovery_document' issuer %q does not match 'oidc_discovery_url'", issuer)
+	}
+
+	pc := &oidc.ProviderConfig{}
+	var deviceAuthURL string
+	endpoints := []struct {
+		field    string
+		dst      *string
+		required bool
+	}{
+		{"authorization_endpoint", &pc.AuthURL, true},
+		{"token_endpoint", &pc.TokenURL, true},
+		{"jwks_uri", &pc.JWKSURL, true},
+		{"userinfo_endpoint", &pc.UserInfoURL, true},
+		{"device_authorization_endpoint", &deviceAuthURL, false},
+	}
+	for _, e := range endpoints {
+		raw, present := c.OIDCDiscoveryDocument[e.field]
+		value, isString := raw.(string)
+		switch {
+		case present && !isString:
+			return fmt.Errorf("'oidc_discovery_document' '%s' must be a string", e.field)
+		case value == "" && e.required:
+			return fmt.Errorf("'oidc_discovery_document' must contain '%s'", e.field)
+		case value == "":
+			continue
+		}
+		u, err := url.Parse(value)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return fmt.Errorf("'oidc_discovery_document' '%s' must be an absolute http or https URL", e.field)
+		}
+		*e.dst = value
+	}
+
+	c.providerConfig = pc
+	c.OIDCTokenURL = pc.TokenURL
+	c.OIDCDeviceAuthURL = deviceAuthURL
+	if deviceAuthURL == "" {
+		// configDeviceAuthURL reads "N/A" as no device endpoint, so it doesn't
+		// fall back to discovery.
+		c.OIDCDeviceAuthURL = "N/A"
+	}
+	return nil
 }
 
 // hasType returns whether the list of response types includes the requested

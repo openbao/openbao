@@ -1,0 +1,3 @@
+```release-note:bug
+audit: The standby's response entry for a forwarded request now has `forwarding: true` instead of the forward error
+```

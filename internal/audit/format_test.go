@@ -102,6 +102,42 @@ func TestFormatResponseErrors(t *testing.T) {
 	}
 }
 
+func TestFormatResponseForwarding(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      *logical.LogInput
+		forwarding bool
+		forwarded  bool
+	}{
+		{
+			name:       "standby",
+			input:      &logical.LogInput{Forwarding: true, Request: &logical.Request{}},
+			forwarding: true,
+		},
+		{
+			name:      "active",
+			input:     &logical.LogInput{Request: &logical.Request{ForwardedFrom: "standby-node"}},
+			forwarded: true,
+		},
+		{
+			name:  "local",
+			input: &logical.LogInput{Request: &logical.Request{}},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tfw := testingFormatWriter{}
+			formatter := AuditFormatter{&tfw}
+			err := formatter.FormatResponse(namespace.RootContext(t.Context()), io.Discard, FormatterConfig{}, tc.input)
+			require.NoError(t, err)
+			require.Equal(t, tc.forwarding, tfw.lastResponse.Forwarding)
+			require.Equal(t, tc.forwarded, tfw.lastResponse.Forwarded)
+			require.Empty(t, tfw.lastResponse.Error)
+		})
+	}
+}
+
 func TestElideListResponses(t *testing.T) {
 	tfw := testingFormatWriter{}
 	formatter := AuditFormatter{&tfw}

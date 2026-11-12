@@ -11,6 +11,7 @@ type LogInput struct {
 	OuterErr            error
 	NonHMACReqDataKeys  []string
 	NonHMACRespDataKeys []string
+	Forwarding          bool
 }
 
 type MarshalOptions struct {

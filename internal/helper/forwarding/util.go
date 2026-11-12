@@ -28,6 +28,7 @@ func GenerateForwardedRequest(req *http.Request) (*Request, error) {
 		Host:          req.Host,
 		RemoteAddr:    req.RemoteAddr,
 		Body:          body,
+		Limits:        RequestLimitsFromContext(req.Context()),
 	}
 
 	reqURL := req.URL
@@ -64,7 +65,7 @@ func GenerateForwardedRequest(req *http.Request) (*Request, error) {
 	return &fq, nil
 }
 
-func ParseForwardedRequest(fq *Request) (*http.Request, error) {
+func ParseForwardedRequest(ctx context.Context, fq *Request) (*http.Request, error) {
 	body, err := buffer.NewSeekableReader(bytes.NewReader(fq.Body))
 	if err != nil {
 		return nil, err
@@ -114,11 +115,28 @@ func ParseForwardedRequest(fq *Request) (*http.Request, error) {
 			}
 			certs[i] = cert
 		}
-		ctx := WithProxiedCertificates(ret.Context(), certs)
-		ret = ret.WithContext(ctx)
+		ctx = WithProxiedCertificates(ctx, certs)
 	}
 
-	return ret, nil
+	if fq.Limits != nil {
+		ctx = WithRequestLimits(ctx, fq.Limits)
+	}
+
+	return ret.WithContext(ctx), nil
+}
+
+type ctxKeyRequestLimits struct{}
+
+func WithRequestLimits(ctx context.Context, limits *RequestLimits) context.Context {
+	return context.WithValue(ctx, ctxKeyRequestLimits{}, limits)
+}
+
+func RequestLimitsFromContext(ctx context.Context) *RequestLimits {
+	limits := ctx.Value(ctxKeyRequestLimits{})
+	if limits == nil {
+		return nil
+	}
+	return limits.(*RequestLimits)
 }
 
 type ctxKeyProxiedCertificates struct{}

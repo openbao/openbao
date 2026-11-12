@@ -24,6 +24,8 @@ message Request {
 
 	// ProxiedCertificates are certificates verified by a proxy header.
 	repeated bytes proxied_certificates = 9;
+
+	RequestLimits limits = 20;
 }
 
 message URL {
@@ -43,6 +45,11 @@ message URL {
 
 message HeaderEntry {
 	repeated string values = 1;
+}
+
+message RequestLimits {
+	int64 max_json_memory = 2;
+	int64 max_json_strings = 3;
 }
 
 message Response {

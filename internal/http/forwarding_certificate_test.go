@@ -644,7 +644,7 @@ func TestHandler_XForwardedForClientCertForwarding(t *testing.T) {
 		forwarded, err := forwarding.GenerateForwardedRequest(r)
 		require.NoError(t, err)
 		// "Forward" to the active, omitting the network hop:
-		r, err = forwarding.ParseForwardedRequest(forwarded)
+		r, err = forwarding.ParseForwardedRequest(t.Context(), forwarded)
 		require.NoError(t, err)
 		active.ServeHTTP(w, r)
 	}), &vault.HandlerProperties{ListenerConfig: config})

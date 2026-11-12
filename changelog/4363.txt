@@ -1,0 +1,3 @@
+```release-note:improvement
+core/identity: Fix changes of one namespace’s group data deletes group data of other namespaces on standby nodes when using `unsafe_cross_namespace_identity`.
+```

@@ -22,24 +22,16 @@ func NewSealAccess(seal Seal) *SealAccess {
 	return &SealAccess{seal: seal}
 }
 
-func (s *SealAccess) BarrierType() wrapping.WrapperType {
-	return s.seal.BarrierType()
+func (s *SealAccess) WrapperType() wrapping.WrapperType {
+	return s.seal.WrapperType()
 }
 
-func (s *SealAccess) BarrierConfig(ctx context.Context) (*SealConfig, error) {
-	return s.seal.BarrierConfig(ctx)
+func (s *SealAccess) Config(ctx context.Context) (*SealConfig, error) {
+	return s.seal.Config(ctx)
 }
 
 func (s *SealAccess) RecoveryKeySupported() bool {
 	return s.seal.RecoveryKeySupported()
-}
-
-func (s *SealAccess) RecoveryType() string {
-	return s.seal.RecoveryType()
-}
-
-func (s *SealAccess) RecoveryConfig(ctx context.Context) (*SealConfig, error) {
-	return s.seal.RecoveryConfig(ctx)
 }
 
 func (s *SealAccess) VerifyRecoveryKey(ctx context.Context, key []byte) error {
@@ -48,10 +40,7 @@ func (s *SealAccess) VerifyRecoveryKey(ctx context.Context, key []byte) error {
 
 // TODO(SEALHA): This looks like it belongs in Seal instead, it only has two callers
 func (s *SealAccess) ClearCaches(ctx context.Context) {
-	s.seal.SetBarrierConfig(ctx, nil) //nolint:errcheck
-	if s.RecoveryKeySupported() {
-		s.seal.SetRecoveryConfig(ctx, nil) //nolint:errcheck
-	}
+	s.seal.SetConfig(ctx, nil) //nolint:errcheck
 }
 
 func (s *SealAccess) GetAccess() seal.Access {

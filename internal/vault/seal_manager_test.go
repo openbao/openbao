@@ -64,6 +64,7 @@ func TestSealManager_SetSeal(t *testing.T) {
 			name: "happy path",
 			config: &SealConfig{
 				Type:            "shamir",
+				Purpose:         Primary,
 				SecretShares:    1,
 				SecretThreshold: 1,
 			},
@@ -73,6 +74,7 @@ func TestSealManager_SetSeal(t *testing.T) {
 			name: "happy path, config saved to storage",
 			config: &SealConfig{
 				Type:            "shamir",
+				Purpose:         Primary,
 				SecretShares:    1,
 				SecretThreshold: 1,
 			},
@@ -83,6 +85,7 @@ func TestSealManager_SetSeal(t *testing.T) {
 			name: "validation failure",
 			config: &SealConfig{
 				Type:            "shamir",
+				Purpose:         Primary,
 				SecretShares:    1,
 				SecretThreshold: 3,
 			},
@@ -108,7 +111,7 @@ func TestSealManager_SetSeal(t *testing.T) {
 			require.NotEmpty(t, c.sealManager.NamespaceSeal(tt.ns.UUID))
 
 			// verify storage
-			cfg, err := seal.BarrierConfig(ctx)
+			cfg, err := seal.Config(ctx)
 			require.NoError(t, err)
 			if tt.writeToStorage {
 				require.Equal(t, tt.config, cfg)

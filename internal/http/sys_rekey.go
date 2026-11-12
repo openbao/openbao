@@ -36,7 +36,7 @@ func handleSysRekeyInit(core *vault.Core, recovery bool) http.Handler {
 }
 
 func handleSysRekeyInitGet(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
-	barrierConfig, barrierConfErr := core.SealAccess().BarrierConfig(ctx)
+	barrierConfig, barrierConfErr := core.SealAccess().Config(ctx)
 	if barrierConfErr != nil {
 		respondError(w, http.StatusInternalServerError, barrierConfErr)
 		return
@@ -95,7 +95,6 @@ func handleSysRekeyInitGet(ctx context.Context, core *vault.Core, recovery bool,
 }
 
 func handleSysRekeyInitPut(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
-	// Parse the request
 	var req RekeyRequest
 	if err := parseJSONRequest(r, &req); err != nil && !errors.Is(err, io.EOF) {
 		respondError(w, http.StatusBadRequest, err)
@@ -112,15 +111,13 @@ func handleSysRekeyInitPut(ctx context.Context, core *vault.Core, recovery bool,
 		return
 	}
 
-	// Initialize the rekey
-	err := core.RekeyInit(&vault.SealConfig{
+	if err := core.RekeyInit(&vault.SealConfig{
 		SecretShares:         req.SecretShares,
 		SecretThreshold:      req.SecretThreshold,
 		PGPKeys:              req.PGPKeys,
 		Backup:               req.Backup,
 		VerificationRequired: req.RequireVerification,
-	}, recovery)
-	if err != nil {
+	}, recovery); err != nil {
 		respondError(w, err.Code(), err)
 		return
 	}
@@ -226,7 +223,7 @@ func handleSysRekeyVerify(core *vault.Core, recovery bool) http.Handler {
 }
 
 func handleSysRekeyVerifyGet(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
-	barrierConfig, barrierConfErr := core.SealAccess().BarrierConfig(ctx)
+	barrierConfig, barrierConfErr := core.SealAccess().Config(ctx)
 	if barrierConfErr != nil {
 		respondError(w, http.StatusInternalServerError, barrierConfErr)
 		return

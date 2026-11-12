@@ -21,12 +21,12 @@ import (
 )
 
 func TestCore_Init(t *testing.T) {
-	testCoreInitCommon(t, nil, &SealConfig{SecretShares: 5, SecretThreshold: 3}, nil)
+	testCoreInitCommon(t, nil, &SealConfig{Type: "shamir", Purpose: Primary, SecretShares: 5, SecretThreshold: 3})
 
 	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
 	autoSeal, err := NewAutoSeal(testSeal)
 	require.NoError(t, err)
-	testCoreInitCommon(t, autoSeal, &SealConfig{SecretShares: 1, SecretThreshold: 1}, &SealConfig{SecretShares: 0, SecretThreshold: 0})
+	testCoreInitCommon(t, autoSeal, &SealConfig{Type: "test-auto", Purpose: Recovery, SecretShares: 0, SecretThreshold: 0})
 }
 
 func testCoreNewTestCore(t *testing.T, seal Seal) (*Core, *CoreConfig) {
@@ -55,7 +55,7 @@ func testCoreNewTestCore(t *testing.T, seal Seal) (*Core, *CoreConfig) {
 	return c, conf
 }
 
-func testCoreInitCommon(t *testing.T, s Seal, barrierConf, recoveryConf *SealConfig) {
+func testCoreInitCommon(t *testing.T, s Seal, sealConf *SealConfig) {
 	c, conf := testCoreNewTestCore(t, s)
 	ctx := namespace.RootContext(t.Context())
 	init, err := c.Initialized(ctx)
@@ -63,41 +63,33 @@ func testCoreInitCommon(t *testing.T, s Seal, barrierConf, recoveryConf *SealCon
 	require.False(t, init)
 
 	// Check the seal configuration
-	outConf, err := c.seal.BarrierConfig(ctx)
+	outConf, err := c.seal.Config(ctx)
 	require.NoError(t, err)
 	require.Empty(t, outConf)
 
-	if recoveryConf != nil {
-		outConf, err := c.seal.RecoveryConfig(ctx)
-		require.NoError(t, err)
-		require.Empty(t, outConf)
-	}
-
 	res, err := c.Initialize(ctx, &InitParams{
-		BarrierConfig:  barrierConf,
-		RecoveryConfig: recoveryConf,
+		SealConfig: sealConf,
 	})
 	require.NoError(t, err)
 
 	require.Falsef(
 		t,
-		c.seal.BarrierType() == seal.WrapperTypeShamir && len(res.SecretShares) != barrierConf.SecretShares,
-		"Bad: got\n%#v\nexpected conf matching\n%#v\n", *res, *barrierConf,
+		c.seal.WrapperType() == seal.WrapperTypeShamir && len(res.SecretShares) != sealConf.SecretShares,
+		"Bad: got\n%#v\nexpected conf matching\n%#v\n", *res, *sealConf,
 	)
 
-	if recoveryConf != nil {
+	if c.seal.WrapperType() != seal.WrapperTypeShamir {
 		require.Falsef(
 			t,
-			len(res.RecoveryShares) != recoveryConf.SecretShares,
-			"Bad: got\n%#v\nexpected conf matching\n%#v\n", *res, *recoveryConf,
+			len(res.RecoveryShares) != sealConf.SecretShares,
+			"Bad: got\n%#v\nexpected conf matching\n%#v\n", *res, *sealConf,
 		)
 	}
 
 	require.NotEmpty(t, res.RootToken)
 
 	_, err = c.Initialize(ctx, &InitParams{
-		BarrierConfig:  barrierConf,
-		RecoveryConfig: recoveryConf,
+		SealConfig: sealConf,
 	})
 	require.ErrorIs(t, err, ErrAlreadyInit)
 
@@ -106,23 +98,16 @@ func testCoreInitCommon(t *testing.T, s Seal, barrierConf, recoveryConf *SealCon
 	require.True(t, init)
 
 	// Check the seal configuration
-	outConf, err = c.seal.BarrierConfig(ctx)
+	outConf, err = c.seal.Config(ctx)
 	require.NoError(t, err)
-	require.Equal(t, barrierConf, outConf)
-
-	if recoveryConf != nil {
-		outConf, err = c.seal.RecoveryConfig(ctx)
-		require.NoError(t, err)
-		require.Equal(t, recoveryConf, outConf)
-	}
+	require.Equal(t, sealConf, outConf)
 
 	// New Core, same backend
 	c2, err := NewCore(conf)
 	require.NoError(t, err)
 
 	_, err = c2.Initialize(ctx, &InitParams{
-		BarrierConfig:  barrierConf,
-		RecoveryConfig: recoveryConf,
+		SealConfig: sealConf,
 	})
 	require.ErrorIs(t, err, ErrAlreadyInit)
 
@@ -131,15 +116,9 @@ func testCoreInitCommon(t *testing.T, s Seal, barrierConf, recoveryConf *SealCon
 	require.True(t, init)
 
 	// Check the seal configuration
-	outConf, err = c2.seal.BarrierConfig(ctx)
+	outConf, err = c2.seal.Config(ctx)
 	require.NoError(t, err)
-	require.Equal(t, barrierConf, outConf)
-
-	if recoveryConf != nil {
-		outConf, err = c2.seal.RecoveryConfig(ctx)
-		require.NoError(t, err)
-		require.Equal(t, recoveryConf, outConf)
-	}
+	require.Equal(t, sealConf, outConf)
 }
 
 func TestCore_InitParallelRequests(t *testing.T) {
@@ -200,7 +179,7 @@ func TestCore_InitParallelRequests(t *testing.T) {
 	time.Sleep(150 * time.Millisecond)
 
 	resp, err := c.Initialize(ctx, &InitParams{
-		BarrierConfig: &SealConfig{SecretShares: 5, SecretThreshold: 3},
+		SealConfig: &SealConfig{SecretShares: 5, SecretThreshold: 3},
 	})
 	require.NoError(t, err)
 

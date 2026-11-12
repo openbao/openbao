@@ -688,7 +688,7 @@ func joinAsVoterAndUnseal(t *testing.T, core *vault.TestClusterCore, cluster *va
 // and whether to wait (up to a timeout) for the core to be unsealed before returning.
 func joinAndUnseal(t *testing.T, core *vault.TestClusterCore, cluster *vault.TestCluster, nonVoter bool, waitForUnseal bool) {
 	leader, leaderAddr := clusterLeader(t, cluster)
-	_, err := core.JoinRaftCluster(namespace.RootContext(t.Context()), []*raft.LeaderJoinInfo{
+	_, err := core.JoinRaftCluster(namespace.RootContext(t.Context()), nil, []*raft.LeaderJoinInfo{
 		{
 			LeaderAPIAddr: leaderAddr,
 			TLSConfig:     leader.TLSConfig(),

@@ -54,6 +54,11 @@ func GetPlugin(t testing.T, typ consts.PluginType) (string, string, string, stri
 		pluginName = "vault-plugin-database-" + pluginType
 		pluginMain = filepath.Join("builtin", "database", pluginType, fmt.Sprintf("%s-database-plugin", pluginType), "main.go")
 		pluginVersionLocation = fmt.Sprintf("github.com/openbao/openbao/v2/internal/builtin/database/%s.ReportedVersion", pluginType)
+	case consts.PluginTypeJoin:
+		pluginType = "static"
+		pluginName = "bao-plugin-join-" + pluginType
+		pluginMain = filepath.Join("builtin", "join", pluginType, fmt.Sprintf("%s-join-plugin", pluginType), "main.go")
+		pluginVersionLocation = fmt.Sprintf("github.com/openbao/openbao/v2/internal/builtin/join/%s.ReportedVersion", pluginType)
 	default:
 		t.Fatal(typ.String())
 	}

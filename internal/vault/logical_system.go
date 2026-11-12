@@ -64,27 +64,30 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 		Help:           strings.TrimSpace(sysHelpRoot),
 
 		PathsSpecial: &logical.Paths{
-			Root: []string{
-				"auth/*",
-				"remount",
+			SudoRequired: []string{
 				"audit",
 				"audit/*",
+				"config/auditing/request-headers",   // exact match
+				"config/auditing/request-headers/*", // wildcard
+				"config/cors",
+				"config/ui/headers",   // exact match
+				"config/ui/headers/*", // wildcard
+				"internal/inspect/*",
+				"leases",
+				"leases/lookup/*",
+				"leases/revoke-force/*",
+				"leases/revoke-prefix/*",
+				// TODO(wslabosz): Adjustment of plugins catalog paths would require a
+				// rework of the sudo paths radix which currently doesn't support wildcard
+				// segments (currently there are only exact or "starting with" matches)
+				// or introduction of breaking changes within plugin catalog API paths.
+				"plugins/catalog/*",
 				"raw",
 				"raw/*",
+				"remount",
 				"rotate",
 				"rotate/keyring",
 				"rotate/root",
-				"config/cors",
-				"config/auditing/*",
-				"config/ui/headers/*",
-				"plugins/catalog/*",
-				"revoke-prefix/*",
-				"revoke-force/*",
-				"leases/revoke-prefix/*",
-				"leases/revoke-force/*",
-				"leases/lookup/*",
-				"leases",
-				"internal/inspect/*",
 			},
 
 			Unauthenticated: []string{
@@ -5668,7 +5671,7 @@ This path responds to the following HTTP methods.
 	},
 	"list-leases": {
 		"List leases associated with this OpenBao cluster",
-		"Requires sudo capability. List leases associated with this OpenBao cluster",
+		"List leases associated with this OpenBao cluster",
 	},
 	"version-history": {
 		"List historical version changes sorted by installation time in ascending order.",

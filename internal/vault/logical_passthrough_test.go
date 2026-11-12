@@ -14,12 +14,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPassthroughBackend_RootPaths(t *testing.T) {
+func TestPassthroughBackend_SudoRequiredPaths(t *testing.T) {
 	b := testPassthroughBackend(t)
 	test := func(b logical.Backend) {
-		root := b.SpecialPaths()
-		if len(root.Root) != 0 {
-			t.Fatalf("unexpected: %v", root)
+		paths := b.SpecialPaths()
+		if len(paths.SudoRequired) != 0 {
+			t.Fatalf("unexpected: %v", paths)
 		}
 	}
 	test(b)

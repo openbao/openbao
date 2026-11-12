@@ -348,9 +348,9 @@ func (c *Core) StepDown(httpCtx context.Context, req *logical.Request) (retErr e
 		}
 	}
 
-	// Verify that this operation is allowed
+	// Verify that this operation is allowed.
 	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &policy.CheckOpts{
-		RootPrivsRequired: true,
+		SudoRequired: true,
 	})
 	if !authResults.Allowed {
 		retErr = multierror.Append(retErr, authResults.Error)

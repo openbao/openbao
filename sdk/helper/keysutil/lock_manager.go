@@ -484,24 +484,11 @@ func (lm *LockManager) GetPolicyWithLockType(ctx context.Context, req PolicyRequ
 	return retP, retUpserted, retErr
 }
 
-func (lm *LockManager) ImportPolicy(ctx context.Context, req PolicyRequest, key []byte, rand io.Reader) error {
+func (lm *LockManager) ImportPolicy(ctx context.Context, req PolicyRequest, key []byte, rand io.Reader, canAppendVersion bool) error {
 	var p *Policy
 	var err error
-	var ok bool
-	var pRaw any
 
-	// Check if it's in our cache
-	if lm.useCache {
-		pRaw, ok = lm.cache.Load(req.Name)
-	}
-	if ok {
-		p = pRaw.(*Policy)
-		if p.deleted.Load() {
-			return nil
-		}
-	}
-
-	// We're not using the cache, or it wasn't found; get an exclusive lock.
+	// Get an exclusive lock for this policy.
 	// This ensures that any other process writing the actual storage will be
 	// finished before we load from storage.
 	lock := locksutil.LockForKey(lm.keyLocks, req.Name)
@@ -512,6 +499,10 @@ func (lm *LockManager) ImportPolicy(ctx context.Context, req PolicyRequest, key 
 	p, err = lm.getPolicyFromStorage(ctx, req.Storage, req.Name)
 	if err != nil {
 		return err
+	}
+
+	if p != nil && !canAppendVersion {
+		return fmt.Errorf("key %q already exists", req.Name)
 	}
 
 	if p == nil {

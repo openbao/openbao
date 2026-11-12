@@ -727,3 +727,38 @@ func TestHTTP_Forwarding_DisabledEndpoints(t *testing.T) {
 	resp := testHttpGet(t, "", addr+"/v1/sys/rekey/init")
 	testResponseStatus(t, resp, http.StatusMethodNotAllowed)
 }
+
+func TestHTTP_Forwarding_JSONLimits(t *testing.T) {
+	cluster := vault.NewTestCluster(t, &vault.CoreConfig{}, &vault.TestClusterOptions{
+		HandlerFunc:         Handler,
+		NumCores:            2,
+		DisableStandbyReads: true,
+	})
+
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
+
+	standbys := testhelpers.DeriveStandbyCores(t, cluster)
+	core := standbys[0].Core
+
+	props := &vault.HandlerProperties{
+		Core: core,
+		ListenerConfig: &configutil.Listener{
+			MaxRequestJsonStrings: 1,
+		},
+	}
+
+	ln, addr := TestListener(t)
+	TestServerWithListenerAndProperties(t, ln, addr, core, props)
+	defer func() { _ = ln.Close() }()
+
+	// Under the limit, fails at auth:
+	resp := testHttpPost(t, "", addr+"/v1/sys/bogus", map[string]any{"foo": 1})
+	testResponseStatus(t, resp, http.StatusForbidden)
+
+	// Go over the limit:
+	resp = testHttpPost(t, "", addr+"/v1/sys/bogus", map[string]any{"foo": "bar"})
+	testResponseStatus(t, resp, http.StatusBadRequest)
+}

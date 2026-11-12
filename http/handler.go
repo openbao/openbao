@@ -398,9 +398,12 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 
 		// Start with the request context
 		ctx := r.Context()
+		_, hasDeadline := ctx.Deadline()
 		var cancelFunc context.CancelFunc
-		// Add our timeout, but not for the monitor or events endpoints, as they are streaming
-		if strings.HasSuffix(r.URL.Path, "sys/monitor") || strings.Contains(r.URL.Path, "sys/events") {
+		// Add our timeout if the request context does not have one yet (request
+		// forwarding might already have set one). Also exclude the monitor
+		// endpoint as it is streaming.
+		if hasDeadline || strings.HasSuffix(r.URL.Path, "sys/monitor") {
 			ctx, cancelFunc = context.WithCancel(ctx)
 		} else {
 			ctx, cancelFunc = context.WithTimeout(ctx, maxRequestDuration)
@@ -413,9 +416,18 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 			nw.Header().Set(consts.NamespaceHeaderName, nsHeader)
 		}
 
-		// Safely limit our input JSON
-		ctx = addMaximumJsonMemoryToContext(ctx, maxRequestJsonMemory)
-		ctx = addMaximumJsonStringsToContext(ctx, maxRequestJsonStrings)
+		// If we've received a set of request limits via forwarding, use those
+		// to handle this request. Otherwise, populate request context with a
+		// set of limits based on our own listener configuration that is then
+		// picked up by other handlers or request forwarding down the chain.
+		limits := forwarding.RequestLimitsFromContext(ctx)
+		if limits == nil {
+			limits = &forwarding.RequestLimits{
+				MaxJsonMemory:  maxRequestJsonMemory,
+				MaxJsonStrings: maxRequestJsonStrings,
+			}
+			ctx = forwarding.WithRequestLimits(ctx, limits)
+		}
 
 		ctx = namespace.ContextWithNamespaceHeader(ctx, nsHeader)
 		r = r.WithContext(ctx)

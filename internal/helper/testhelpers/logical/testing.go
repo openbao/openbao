@@ -218,7 +218,7 @@ func Test(tt TestT, c TestCase) {
 	}
 
 	// Unseal the core
-	if unsealed, err := core.Unseal(init.SecretShares[0]); err != nil {
+	if unsealed, err := core.Unseal(init.SecretShares[0], "default", false); err != nil {
 		tt.Fatal("error unsealing core: ", err)
 		return
 	} else if !unsealed {

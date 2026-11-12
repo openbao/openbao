@@ -558,7 +558,7 @@ func TestHA_UnsealLeaderThenStandbys_SharedKeys(t *testing.T) {
 
 	// Unseal leader
 	for _, share := range keys {
-		_, err := initCore.Unseal(share)
+		_, err := initCore.Unseal(vault.TestKeyCopy(share), "default", false)
 		require.NoError(t, err)
 	}
 	require.False(t, initCore.Sealed(), "initCore should be unsealed")
@@ -578,7 +578,7 @@ func TestHA_UnsealLeaderThenStandbys_SharedKeys(t *testing.T) {
 		}
 
 		for _, k := range keys {
-			_, err := c.Unseal(k)
+			_, err := c.Unseal(vault.TestKeyCopy(k), "default", false)
 			require.NoError(t, err)
 		}
 		require.False(t, c.Sealed(), "standby core should be unsealed")

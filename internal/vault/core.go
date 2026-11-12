@@ -239,8 +239,11 @@ type Core struct {
 	// implementation. This is an un-trusted backend with durable data
 	underlyingPhysical physical.Backend
 
-	// seal is our seal, for seal configuration information
+	// seal is our primary seal, for seal configuration information
 	seal Seal
+
+	// emergencySeal is the optional emergency shamir seal.
+	emergencySeal Seal
 
 	// raftJoinDoneCh is used by the raft retry join routine to inform unseal process
 	// that the join is complete
@@ -689,8 +692,12 @@ type CoreConfig struct {
 	ServiceRegistration sr.ServiceRegistration
 
 	// Seal is the configured seal, or if none is configured explicitly, a
-	// shamir seal.  In migration scenarios this is the new seal.
+	// shamir seal. In migration scenarios this is the new seal.
 	Seal Seal
+
+	// EmergencySeal is the configured emergency shamir seal working as a
+	// breakglass solution when primary auto unseal method is unavailable.
+	EmergencySeal Seal
 
 	// Unwrap seal is the optional seal marked "disabled"; this is the old
 	// seal in migration scenarios.
@@ -938,6 +945,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		storageType:         conf.StorageType,
 		redirectAddr:        conf.RedirectAddr,
 		seal:                conf.Seal,
+		emergencySeal:       conf.EmergencySeal,
 		stateLock:           stateLock,
 		router:              routing.NewRouter(routerLogger),
 		baseLogger:          conf.Logger,
@@ -1051,6 +1059,10 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		c.seal = NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 	}
 	c.seal.SetCore(c)
+
+	if c.emergencySeal != nil {
+		c.emergencySeal.SetCore(c)
+	}
 
 	// Create the invalidation manager and track connected peers for GRPC.
 	c.NewInvalidationManager()
@@ -1463,19 +1475,14 @@ func (c *Core) NamespaceSealed(ns *namespace.Namespace) bool {
 }
 
 // ResetUnsealProcess removes the current unlock parts from memory, to reset
-// the unsealing process
-func (c *Core) ResetUnsealProcess() {
-	c.sealManager.ResetUnsealProcess(namespace.RootNamespaceUUID)
-}
-
-func (c *Core) UnsealMigrate(key []byte) (bool, error) {
-	err := c.unsealFragment(key, true)
-	return !c.Sealed(), err
+// the unsealing process.
+func (c *Core) ResetUnsealProcess(sealName string) {
+	c.sealManager.ResetUnsealProcess(namespace.RootNamespaceUUID, sealName)
 }
 
 // Unseal is used to provide one of the key parts to unseal the Vault.
-func (c *Core) Unseal(key []byte) (bool, error) {
-	err := c.unsealFragment(key, false)
+func (c *Core) Unseal(key []byte, sealName string, migrate bool) (bool, error) {
+	err := c.unsealFragment(key, sealName, migrate)
 	return !c.Sealed(), err
 }
 
@@ -1500,7 +1507,7 @@ func (c *Core) Unseal(key []byte) (bool, error) {
 // In migration scenarios a side-effect of unsealing is that
 // the members of c.migrationInfo are populated (excluding
 // .seal, which must already be populated before unseal is called).
-func (c *Core) unsealFragment(key []byte, migrate bool) error {
+func (c *Core) unsealFragment(key []byte, sealName string, migrate bool) error {
 	defer metrics.MeasureSince([]string{"core", "unseal"}, time.Now())
 
 	c.stateLock.Lock()
@@ -1540,7 +1547,11 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 		return nil
 	}
 
-	sealToUse := c.seal
+	sealToUse := c.sealManager.NamespaceSeal(namespace.RootNamespaceUUID, sealName)
+	if sealToUse == nil {
+		return fmt.Errorf("specified seal doesn't exist")
+	}
+
 	if migrate {
 		c.logger.Info("unsealing using migration seal")
 		sealToUse = c.migrationInfo.seal
@@ -1556,7 +1567,7 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 	}
 
 	if c.isRaftUnseal() {
-		return c.unsealWithRaft(combinedKey)
+		return c.unsealWithRaft(sealToUse, combinedKey)
 	}
 
 	rootKey, err := c.sealManager.unsealKeyToRootKey(ctx, sealToUse, combinedKey, false, true)
@@ -1567,11 +1578,11 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 	return c.unsealInternal(ctx, rootKey)
 }
 
-func (c *Core) unsealWithRaft(combinedKey []byte) error {
+func (c *Core) unsealWithRaft(seal Seal, combinedKey []byte) error {
 	ctx := context.Background()
 
-	if c.seal.BarrierType() == vaultseal.WrapperTypeShamir {
-		shamirWrapper, err := c.seal.GetShamirWrapper()
+	if seal.BarrierType() == vaultseal.WrapperTypeShamir {
+		shamirWrapper, err := seal.GetShamirWrapper()
 		if err == nil {
 			if err = shamirWrapper.SetAesGcmKeyBytes(combinedKey); err != nil {
 				return err
@@ -1595,7 +1606,7 @@ func (c *Core) unsealWithRaft(combinedKey []byte) error {
 	} else {
 		// This is the case for manual raft join. Send the answer to the leader node and
 		// wait for data to start streaming in.
-		if err := c.joinRaftSendAnswer(ctx, c.seal.GetAccess(), raftInfo); err != nil {
+		if err := c.joinRaftSendAnswer(ctx, seal.GetAccess(), raftInfo); err != nil {
 			return err
 		}
 		// Reset the state
@@ -1621,7 +1632,7 @@ func (c *Core) unsealWithRaft(combinedKey []byte) error {
 			}
 			if keyringFound && len(rootKey) == 0 {
 				var err error
-				rootKey, err = c.sealManager.unsealKeyToRootKey(ctx, c.seal, combinedKey, false, true)
+				rootKey, err = c.sealManager.unsealKeyToRootKey(ctx, seal, combinedKey, false, true)
 				if err != nil {
 					c.logger.Error("failed to read root key", "error", err)
 					return
@@ -2569,16 +2580,22 @@ func (c *Core) AuditedHeadersConfig() *AuditedHeadersConfig {
 }
 
 func (c *Core) PhysicalSealConfigs(ctx context.Context) (*SealConfig, *SealConfig, error) {
-	pe, err := c.physical.Get(ctx, barrierSealConfigPath)
+	pe, err := c.physical.Get(ctx, sealConfigPath(c.seal.Name()))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to fetch barrier seal configuration at migration check time: %w", err)
 	}
 	if pe == nil {
-		return nil, nil, nil
+		pe, err = c.physical.Get(ctx, deprecatedBarrierSealConfigPath)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to fetch legacy barrier seal configuration at migration check time: %w", err)
+		}
+
+		if pe == nil {
+			return nil, nil, nil
+		}
 	}
 
 	barrierConf := new(SealConfig)
-
 	if err := jsonutil.DecodeJSON(pe.Value, barrierConf); err != nil {
 		return nil, nil, fmt.Errorf("failed to decode barrier seal configuration at migration check time: %w", err)
 	}
@@ -2593,10 +2610,18 @@ func (c *Core) PhysicalSealConfigs(ctx context.Context) (*SealConfig, *SealConfi
 	}
 
 	var recoveryConf *SealConfig
-	pe, err = c.physical.Get(ctx, recoverySealConfigPath)
+	pe, err = c.physical.Get(ctx, recoverySealConfigPath(c.seal.Name()))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to fetch seal configuration at migration check time: %w", err)
+		return nil, nil, fmt.Errorf("failed to fetch recovery seal configuration at migration check time: %w", err)
 	}
+
+	if pe == nil {
+		pe, err = c.physical.Get(ctx, deprecatedRecoverySealConfigPath)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to fetch legacy recovery seal configuration at migration check time: %w", err)
+		}
+	}
+
 	if pe != nil {
 		recoveryConf = &SealConfig{}
 		if err := jsonutil.DecodeJSON(pe.Value, recoveryConf); err != nil {
@@ -2666,6 +2691,7 @@ func (c *Core) adjustForSealMigration(unwrapSeal Seal) error {
 		case existBarrierSealConfig.Type == vaultseal.WrapperTypeShamir.String():
 			// The configured seal is not Shamir, the stored seal config is Shamir.
 			// This is a migration away from Shamir.
+			// TODO: look into that
 			unwrapSeal = NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 		default:
 			// We know at this point that there is a configured non-Shamir seal,
@@ -2741,8 +2767,13 @@ func (c *Core) migrateSealConfig(ctx context.Context) error {
 		if err := c.seal.SetRecoveryConfig(ctx, rc); err != nil {
 			return fmt.Errorf("error storing recovery config after migration: %w", err)
 		}
-	} else if err := c.physical.Delete(ctx, recoverySealConfigPath); err != nil {
-		return fmt.Errorf("failed to delete old recovery seal configuration during migration: %w", err)
+	} else {
+		if err := c.physical.Delete(ctx, recoverySealConfigPath(c.seal.Name())); err != nil {
+			return fmt.Errorf("failed to delete old recovery seal configuration during migration: %w", err)
+		}
+		if err := c.physical.Delete(ctx, deprecatedRecoverySealConfigPath); err != nil {
+			return fmt.Errorf("failed to delete old legacy recovery seal configuration during migration: %w", err)
+		}
 	}
 
 	return nil

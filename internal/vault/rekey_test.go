@@ -148,6 +148,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 
 	newConf := &SealConfig{
 		Type:            expType,
+		Name:            "default",
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
@@ -231,6 +232,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	// Start another rekey, this time we require a quorum!
 	newConf = &SealConfig{
 		Type:            expType,
+		Name:            "default",
 		SecretThreshold: 1,
 		SecretShares:    1,
 	}

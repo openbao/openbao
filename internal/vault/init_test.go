@@ -24,7 +24,7 @@ func TestCore_Init(t *testing.T) {
 	testCoreInitCommon(t, nil, &SealConfig{SecretShares: 5, SecretThreshold: 3}, nil)
 
 	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
-	autoSeal, err := NewAutoSeal(testSeal)
+	autoSeal, err := NewAutoSeal(testSeal, "default")
 	require.NoError(t, err)
 	testCoreInitCommon(t, autoSeal, &SealConfig{SecretShares: 1, SecretThreshold: 1}, &SealConfig{SecretShares: 0, SecretThreshold: 0})
 }
@@ -109,11 +109,13 @@ func testCoreInitCommon(t *testing.T, s Seal, barrierConf, recoveryConf *SealCon
 	outConf, err = c.seal.BarrierConfig(ctx)
 	require.NoError(t, err)
 	require.Equal(t, barrierConf, outConf)
+	require.Equal(t, "default", outConf.Name)
 
 	if recoveryConf != nil {
 		outConf, err = c.seal.RecoveryConfig(ctx)
 		require.NoError(t, err)
 		require.Equal(t, recoveryConf, outConf)
+		require.Equal(t, "default-recovery", outConf.Name)
 	}
 
 	// New Core, same backend

@@ -77,7 +77,7 @@ func TestSystemBackend_Plugin_secret(t *testing.T) {
 			barrierKeys := cluster.BarrierKeys
 			for _, core := range cluster.Cores {
 				for _, key := range barrierKeys {
-					_, err := core.Unseal(vault.TestKeyCopy(key))
+					_, err := core.Unseal(vault.TestKeyCopy(key), "default", false)
 					require.NoError(t, err)
 				}
 				if core.Sealed() {
@@ -128,7 +128,7 @@ func TestSystemBackend_Plugin_auth(t *testing.T) {
 			barrierKeys := cluster.BarrierKeys
 			for _, core := range cluster.Cores {
 				for _, key := range barrierKeys {
-					_, err := core.Unseal(vault.TestKeyCopy(key))
+					_, err := core.Unseal(vault.TestKeyCopy(key), "default", false)
 					require.NoError(t, err)
 				}
 				if core.Sealed() {
@@ -289,7 +289,7 @@ func testPlugin_CatalogRemoved(t *testing.T, btype logical.BackendType, testMoun
 			barrierKeys := cluster.BarrierKeys
 			for _, core := range cluster.Cores {
 				for _, key := range barrierKeys {
-					_, err := core.Unseal(vault.TestKeyCopy(key))
+					_, err := core.Unseal(vault.TestKeyCopy(key), "default", false)
 					require.NoError(t, err)
 				}
 				if core.Sealed() {
@@ -406,7 +406,7 @@ func TestSystemBackend_Plugin_SealUnseal(t *testing.T) {
 			barrierKeys := cluster.BarrierKeys
 			for _, core := range cluster.Cores {
 				for _, key := range barrierKeys {
-					_, err := core.Unseal(vault.TestKeyCopy(key))
+					_, err := core.Unseal(vault.TestKeyCopy(key), "default", false)
 					require.NoError(t, err)
 				}
 				if core.Sealed() {

@@ -88,7 +88,7 @@ func testInitRotationCommon(t *testing.T, sm *SealManager, ns *namespace.Namespa
 		SecretShares:    5,
 	}
 
-	seal := sm.NamespaceSeal(ns.UUID)
+	seal := sm.NamespaceSeal(ns.UUID, "default")
 	require.NotNil(t, seal)
 
 	// If recovery key is supported, set newConf to be a recovery seal config
@@ -108,6 +108,7 @@ func testInitRotationCommon(t *testing.T, sm *SealManager, ns *namespace.Namespa
 
 func TestUpdateRotation(t *testing.T) {
 	bc := &SealConfig{
+		Name:            "default",
 		SecretShares:    1,
 		SecretThreshold: 1,
 	}
@@ -121,7 +122,7 @@ func TestUpdateRotation(t *testing.T) {
 
 func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, keys [][]byte, root string, recovery bool) {
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
-	seal := c.sealManager.NamespaceSeal(ns.UUID)
+	seal := c.sealManager.NamespaceSeal(ns.UUID, "default")
 	require.NotNil(t, seal)
 
 	var expType string
@@ -133,6 +134,7 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 
 	newConf := &SealConfig{
 		Type:            expType,
+		Name:            "default",
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
@@ -199,6 +201,7 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 	// Start another rotation, this time we require a quorum
 	newConf = &SealConfig{
 		Type:            expType,
+		Name:            "default",
 		SecretThreshold: 1,
 		SecretShares:    1,
 	}
@@ -445,7 +448,7 @@ func TestRotateBarrierRootKey(t *testing.T) {
 func testRotateBarrierRootKey(t *testing.T, c *Core, ns *namespace.Namespace, unsealShares [][]byte) {
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	rootCtx := namespace.RootContext(ctx)
-	seal := c.sealManager.NamespaceSeal(ns.UUID)
+	seal := c.sealManager.NamespaceSeal(ns.UUID, "default")
 	require.NotNil(t, seal)
 
 	// read stored root key
@@ -477,7 +480,7 @@ func testRotateBarrierRootKey(t *testing.T, c *Core, ns *namespace.Namespace, un
 		var err error
 		for _, key := range unsealShares {
 			if ns.UUID == namespace.RootNamespaceUUID {
-				unsealed, err = c.Unseal(TestKeyCopy(key))
+				unsealed, err = TestCoreUnseal(c, key)
 			} else {
 				unsealed, err = TestNamespaceUnseal(c, ns, key)
 			}
@@ -498,6 +501,7 @@ func testRotateBarrierRootKey(t *testing.T, c *Core, ns *namespace.Namespace, un
 
 func TestRotationBackedUpKeys(t *testing.T) {
 	config := &SealConfig{
+		Name:            "default",
 		SecretShares:    3,
 		SecretThreshold: 2,
 	}
@@ -522,18 +526,22 @@ func TestRotationBackedUpKeys(t *testing.T) {
 
 func testRotationBackedUpKeys(t *testing.T, c *Core, ns *namespace.Namespace, keys [][]byte, recovery bool) {
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
-	seal := c.sealManager.NamespaceSeal(ns.UUID)
+	seal := c.sealManager.NamespaceSeal(ns.UUID, "default")
 	require.NotNil(t, seal)
 
 	var expType string
+	var name string
 	if recovery {
 		expType = seal.RecoveryType()
+		name = "default-recovery"
 	} else {
 		expType = seal.BarrierType().String()
+		name = "default"
 	}
 
 	newConf := &SealConfig{
 		Type:            expType,
+		Name:            name,
 		SecretThreshold: 1,
 		SecretShares:    1,
 		Backup:          true,

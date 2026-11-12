@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -58,10 +59,8 @@ func testForwardedRequestGenerateParse(t testing.TB) int64 {
 	size := int64(proto.Size(forwardedRequest))
 
 	// Now extract the forwarded request to generate a final request for processing
-	finalReq, err := ParseForwardedRequest(forwardedRequest)
-	if err != nil {
-		t.Fatal(err)
-	}
+	finalReq, err := ParseForwardedRequest(t.Context(), forwardedRequest)
+	require.NoError(t, err)
 
 	switch {
 	case initialReq.Method != finalReq.Method:

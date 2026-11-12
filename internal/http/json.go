@@ -4,7 +4,6 @@
 package http
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/v2/internal/helper/forwarding"
 )
 
 var (
@@ -21,15 +21,27 @@ var (
 
 func parseJSONRequest(r *http.Request, out any) error {
 	ctx := r.Context()
+	limits := forwarding.RequestLimitsFromContext(ctx)
+
+	maxMemory, maxStrings := int64(-1), int64(-1)
+	if limits != nil {
+		maxMemory = limits.MaxJsonMemory
+		maxStrings = limits.MaxJsonStrings
+	}
 
 	// Enforce limits on JSON complexity.
-	if _, _, err := EnforceJSONComplexityLimits(ctx, r.Body); err != nil {
+	if _, _, err := EnforceJSONComplexityLimits(r.Body, maxMemory, maxStrings); err != nil {
 		switch {
 		case errors.Is(err, ErrJSONExceededMemory), errors.Is(err, ErrJSONExceededStrings):
 			return fmt.Errorf("refused JSON input due to high complexity: %w", err)
 		default:
 			return fmt.Errorf("failed to decode JSON input: %w", err)
 		}
+	}
+
+	// Check for context cancellation.
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 
 	// Reset to the beginning.
@@ -48,34 +60,6 @@ func parseJSONRequest(r *http.Request, out any) error {
 	}
 
 	return nil
-}
-
-type ctxKeyMaxRequestJsonMemory struct{}
-
-func maximumJsonMemoryFromContext(ctx context.Context) int64 {
-	maxJsonMemory := ctx.Value(ctxKeyMaxRequestJsonMemory{})
-	if maxJsonMemory == nil {
-		return -1
-	}
-	return maxJsonMemory.(int64)
-}
-
-func addMaximumJsonMemoryToContext(ctx context.Context, limit int64) context.Context {
-	return context.WithValue(ctx, ctxKeyMaxRequestJsonMemory{}, limit)
-}
-
-type ctxKeyMaxRequestJsonStringCount struct{}
-
-func maximumJsonStringsFromContext(ctx context.Context) int64 {
-	maxJsonStrings := ctx.Value(ctxKeyMaxRequestJsonStringCount{})
-	if maxJsonStrings == nil {
-		return -1
-	}
-	return maxJsonStrings.(int64)
-}
-
-func addMaximumJsonStringsToContext(ctx context.Context, limit int64) context.Context {
-	return context.WithValue(ctx, ctxKeyMaxRequestJsonStringCount{}, limit)
 }
 
 const (
@@ -119,10 +103,7 @@ func memoryForToken(rawToken json.Token) int64 {
 // or number of distinct strings (currently defined to be all strings,
 // including keys in a map, which aren't HMAC'd but will contribute to
 // overhead).
-func EnforceJSONComplexityLimits(ctx context.Context, reader io.Reader) (int64, int64, error) {
-	maxMemory := maximumJsonMemoryFromContext(ctx)
-	maxStrings := maximumJsonStringsFromContext(ctx)
-
+func EnforceJSONComplexityLimits(reader io.Reader, maxMemory, maxStrings int64) (int64, int64, error) {
 	if maxMemory < 0 && maxStrings < 0 {
 		// Nothing to do.
 		return -1, -1, nil
@@ -158,11 +139,6 @@ func EnforceJSONComplexityLimits(ctx context.Context, reader io.Reader) (int64, 
 				return memory, strings, ErrJSONExceededStrings
 			}
 		}
-	}
-
-	// Check for context cancellation.
-	if err := ctx.Err(); err != nil {
-		return memory, strings, err
 	}
 
 	return memory, strings, nil

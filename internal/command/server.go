@@ -1315,11 +1315,17 @@ func (c *ServerCommand) Run(args []string) int {
 	core.SetClusterListenerAddrs(clusterAddrs)
 	core.SetClusterHandler(vaulthttp.Handler.Handler(&vault.HandlerProperties{
 		Core: core,
-		// The cluster handler allows all endpoints to support forwarding.
-		// The decision to disable unauthed endpoints is made by external-facing listeners, so this is safe.
 		ListenerConfig: &configutil.Listener{
+			// The cluster handler allows all endpoints to support forwarding.
+			// The decision to disable unauthed endpoints is made by
+			// external-facing listeners, so this is safe.
 			DisableUnauthedGenerateRootEndpoints: new(false),
 			DisableUnauthedRekeyEndpoints:        new(false),
+			// Similarly, the request size is enforced by external-facing
+			// listeners before forwarding (as forwarding requires reading the
+			// entire request body), so re-applying a static limit via cluster
+			// handler would be incorrect.
+			MaxRequestSize: -1,
 		},
 	}))
 

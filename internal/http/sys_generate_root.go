@@ -33,23 +33,14 @@ func handleSysGenerateRootAttemptGet(core *vault.Core, w http.ResponseWriter, r 
 	defer cancel()
 
 	// Get the current seal configuration
-	barrierConfig, err := core.SealAccess().BarrierConfig(ctx)
+	sealConfig, err := core.SealAccess().Config(ctx)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err)
 		return
 	}
-	if barrierConfig == nil {
+	if sealConfig == nil {
 		respondError(w, http.StatusBadRequest, errors.New("server is not yet initialized"))
 		return
-	}
-
-	sealConfig := barrierConfig
-	if core.SealAccess().RecoveryKeySupported() {
-		sealConfig, err = core.SealAccess().RecoveryConfig(ctx)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, err)
-			return
-		}
 	}
 
 	// Get the generation configuration

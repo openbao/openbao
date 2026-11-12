@@ -1492,12 +1492,12 @@ func (c *Core) checkKeyringUpgrade(ctx context.Context, b barrier.SecurityBarrie
 }
 
 func (c *Core) reloadShamirKey(ctx context.Context) error {
-	_ = c.seal.SetBarrierConfig(ctx, nil)
-	if cfg, _ := c.seal.BarrierConfig(ctx); cfg == nil {
+	_ = c.seal.SetConfig(ctx, nil)
+	if cfg, _ := c.seal.Config(ctx); cfg == nil {
 		return nil
 	}
 
-	if c.seal.BarrierType() != seal.WrapperTypeShamir {
+	if c.seal.WrapperType() != seal.WrapperTypeShamir {
 		return nil
 	}
 

@@ -24,10 +24,10 @@ func TestDefaultSeal_Config(t *testing.T) {
 
 	defSeal := NewDefaultSeal(nil)
 	defSeal.SetCore(core)
-	err := defSeal.SetBarrierConfig(t.Context(), bc)
+	err := defSeal.SetConfig(t.Context(), bc)
 	require.NoError(t, err)
 
-	newBc, err := defSeal.BarrierConfig(t.Context())
+	newBc, err := defSeal.Config(t.Context())
 	require.NoError(t, err)
 	if !reflect.DeepEqual(*bc, *newBc) {
 		t.Fatal("config mismatch")
@@ -36,7 +36,7 @@ func TestDefaultSeal_Config(t *testing.T) {
 	// Now, test without the benefit of the cached value in the seal
 	defSeal = NewDefaultSeal(nil)
 	defSeal.SetCore(core)
-	newBc, err = defSeal.BarrierConfig(t.Context())
+	newBc, err = defSeal.Config(t.Context())
 	require.NoError(t, err)
 	if !reflect.DeepEqual(*bc, *newBc) {
 		t.Fatal("config mismatch")

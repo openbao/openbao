@@ -77,16 +77,10 @@ func (c *Core) RekeyThreshold(ctx context.Context, recovery bool) (int, logical.
 		return 0, logical.CodedError(http.StatusBadRequest, ErrNotInit.Error())
 	}
 
-	var config *SealConfig
-	var err error
 	// If we are rekeying the recovery key, or if the seal supports
 	// recovery keys and we are rekeying the barrier key, we use the
 	// recovery config as the threshold instead.
-	if recovery || seal.RecoveryKeySupported() {
-		config, err = seal.RecoveryConfig(ctx)
-	} else {
-		config, err = seal.BarrierConfig(ctx)
-	}
+	config, err := c.seal.Config(ctx)
 	if err != nil {
 		return 0, logical.CodedError(http.StatusInternalServerError, "unable to look up config: %v", err)
 	}

@@ -10,7 +10,7 @@ go 1.27.0
 replace github.com/openbao/openbao/api/v2 => ../api
 
 require (
-	cel.dev/cel-go v0.32.0
+	cel.dev/cel-go v0.33.1
 	github.com/armon/go-radix v1.0.0
 	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/containerd/errdefs v1.0.0

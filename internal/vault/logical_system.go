@@ -4662,6 +4662,99 @@ func (b *SystemBackend) handleLeaderStatus(ctx context.Context, req *logical.Req
 	return httpResp, nil
 }
 
+type HealthResponse struct {
+	Initialized                bool   `json:"initialized"`
+	Sealed                     bool   `json:"sealed"`
+	Ready                      bool   `json:"ready"`
+	Standby                    bool   `json:"standby"`
+	ReplicationPerformanceMode string `json:"replication_performance_mode"`
+	ReplicationDRMode          string `json:"replication_dr_mode"`
+	ServerTimeUTC              int64  `json:"server_time_utc"`
+	Version                    string `json:"version"`
+	ClusterName                string `json:"cluster_name,omitempty"`
+	ClusterID                  string `json:"cluster_id,omitempty"`
+}
+
+func (core *Core) GetSysHealth(ctx context.Context, fd *framework.FieldData, viaRouter bool) (int, *HealthResponse, error) {
+	// Check system status
+	sealed := core.Sealed()
+	standby := core.Standby()
+	var replicationState consts.ReplicationState
+	if standby {
+		replicationState = core.ActiveNodeReplicationState()
+	} else {
+		replicationState = core.ReplicationState()
+	}
+
+	init, err := core.Initialized(ctx)
+	if err != nil {
+		return http.StatusInternalServerError, nil, err
+	}
+
+	// Determine the status code
+	code := fd.Get("activecode").(int)
+	switch {
+	case !init:
+		code = fd.Get("uninitcode").(int)
+	case sealed:
+		code = fd.Get("sealedcode").(int)
+	case standby:
+		// Check if being a standby is allowed for the purpose of a 200 OK
+		standbyOK := fd.Get("standbyok").(bool)
+		if !standbyOK {
+			code = fd.Get("standbycode").(int)
+		}
+	}
+
+	hr := &HealthResponse{
+		Initialized:                init,
+		Sealed:                     sealed,
+		Ready:                      viaRouter,
+		Standby:                    standby,
+		ReplicationPerformanceMode: replicationState.GetPerformanceString(),
+		ReplicationDRMode:          replicationState.GetDRString(),
+		ServerTimeUTC:              time.Now().UTC().Unix(),
+		Version:                    version.GetVersion().VersionNumber(),
+	}
+
+	// Fetch the local cluster name and identifier
+	if !sealed {
+		cluster, err := core.Cluster(ctx)
+		if err != nil {
+			return http.StatusInternalServerError, nil, err
+		}
+
+		hr.ClusterName = cluster.Name
+		hr.ClusterID = cluster.ID
+	}
+
+	return code, hr, nil
+}
+
+func (b *SystemBackend) handleHealth(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	code, body, err := b.Core.GetSysHealth(ctx, d, true)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf []byte
+	if req.Operation != logical.HeaderOperation {
+		buf, err = json.Marshal(body)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	httpResp := &logical.Response{
+		Data: map[string]any{
+			logical.HTTPStatusCode:  code,
+			logical.HTTPRawBody:     buf,
+			logical.HTTPContentType: "application/json",
+		},
+	}
+	return httpResp, nil
+}
+
 func (b *SystemBackend) handleHAStatus(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	// We're always the leader if we're handling this request.
 	nodes, err := b.Core.getHAMembers()

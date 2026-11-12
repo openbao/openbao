@@ -1,0 +1,3 @@
+```release-note:bug
+http: Allow PATCH, HEAD, and HELP in CORS preflight responses so cross-origin requests using these methods succeed.
+```

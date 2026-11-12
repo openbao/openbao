@@ -699,15 +699,15 @@ func TestPluginClientConfig(c *Core, pluginType consts.PluginType, pluginName st
 
 // This adds a logical backend for the test core. This needs to be
 // invoked before the test core is created.
-func AddTestLogicalBackend(name string, factory logical.Factory) error {
-	if name == "" {
-		return errors.New("missing backend name")
-	}
-	if factory == nil {
-		return errors.New("missing backend factory function")
-	}
+func AddTestLogicalBackend(t testing.T, name string, factory logical.Factory) {
+	t.Helper()
+	t.Setenv("DO_NOT_RUN_IN_PARALLEL", "this is a hack to prevent the helper to be used in a parallel test")
+	require.NotEmpty(t, name, "missing backend name")
+	require.NotNil(t, factory, "missing backend factory function")
 	be.TestLogicalBackends[name] = factory
-	return nil
+	t.Cleanup(func() {
+		delete(be.TestLogicalBackends, name)
+	})
 }
 
 type rawHTTP struct{}

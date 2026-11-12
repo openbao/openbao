@@ -58,7 +58,7 @@ the --signoff option in your `git commit` or `git rebase` commands:
 
 ```bash
 # Sign off a commit
-git commit --signoff -m"my commit"
+git commit --signoff -m "my commit"
 
 # Add a signoff to the last commit you made
 git commit --amend --signoff

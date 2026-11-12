@@ -609,6 +609,8 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	stop := context.AfterFunc(httpCtx, cancel)
 	defer stop()
 
+	ctx = configutil.AddListenerConfigToContext(ctx, configutil.GetListenerConfigToContext(httpCtx))
+
 	nsHeader := textproto.MIMEHeader(req.Headers).Get(consts.NamespaceHeaderName)
 
 	contextNS, err := namespace.FromContext(httpCtx)

@@ -398,6 +398,8 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 		ctx = addMaximumJsonMemoryToContext(ctx, maxRequestJsonMemory)
 		ctx = addMaximumJsonStringsToContext(ctx, maxRequestJsonStrings)
 
+		ctx = configutil.AddListenerConfigToContext(ctx, props.ListenerConfig)
+
 		r = r.WithContext(ctx)
 
 		// Set some response headers with raft node id (if applicable) and hostname, if available

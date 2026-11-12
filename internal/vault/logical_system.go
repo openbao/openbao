@@ -38,6 +38,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/hostutil"
 	"github.com/openbao/openbao/v2/internal/helper/identity"
 	"github.com/openbao/openbao/v2/internal/helper/logging"
@@ -4347,8 +4348,16 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 		return nil, err
 	}
 
+	v := version.Version
+	if req.ClientToken == "" {
+		listener := configutil.GetListenerConfigToContext(ctx)
+		if listener != nil && listener.DisableUnauthedMetadata {
+			v = "(version redacted)"
+		}
+	}
+
 	// Set up target document
-	doc := framework.NewOASDocument(version.Version)
+	doc := framework.NewOASDocument(v)
 
 	// Generic mount paths will primarily be used for code generation purposes.
 	// This will result in parameterized mount paths being returned instead of
@@ -4629,6 +4638,15 @@ func (b *SystemBackend) handleSealStatus(ctx context.Context, req *logical.Reque
 	if err != nil {
 		return nil, err
 	}
+
+	if req.ClientToken == "" {
+		listener := configutil.GetListenerConfigToContext(ctx)
+		if listener != nil && listener.DisableUnauthedMetadata {
+			status.Version = "(version redacted)"
+			status.CommitDate = "(date redacted)"
+		}
+	}
+
 	buf, err := json.Marshal(status)
 	if err != nil {
 		return nil, err
@@ -4675,7 +4693,7 @@ type HealthResponse struct {
 	ClusterID                  string `json:"cluster_id,omitempty"`
 }
 
-func (core *Core) GetSysHealth(ctx context.Context, fd *framework.FieldData, viaRouter bool) (int, *HealthResponse, error) {
+func (core *Core) GetSysHealth(ctx context.Context, fd *framework.FieldData, viaRouter bool, isAuthenticated bool) (int, *HealthResponse, error) {
 	// Check system status
 	sealed := core.Sealed()
 	standby := core.Standby()
@@ -4717,6 +4735,13 @@ func (core *Core) GetSysHealth(ctx context.Context, fd *framework.FieldData, via
 		Version:                    version.GetVersion().VersionNumber(),
 	}
 
+	if !isAuthenticated {
+		listener := configutil.GetListenerConfigToContext(ctx)
+		if listener != nil && listener.DisableUnauthedMetadata {
+			hr.Version = "(version redacted)"
+		}
+	}
+
 	// Fetch the local cluster name and identifier
 	if !sealed {
 		cluster, err := core.Cluster(ctx)
@@ -4732,7 +4757,7 @@ func (core *Core) GetSysHealth(ctx context.Context, fd *framework.FieldData, via
 }
 
 func (b *SystemBackend) handleHealth(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	code, body, err := b.Core.GetSysHealth(ctx, d, true)
+	code, body, err := b.Core.GetSysHealth(ctx, d, true, req.ClientToken != "")
 	if err != nil {
 		return nil, err
 	}

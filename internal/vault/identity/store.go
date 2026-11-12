@@ -849,6 +849,12 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 		return
 	}
 
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		i.logger.Error("error retrieving namespace", "error", err)
+		return
+	}
+
 	switch {
 	// Check if the key is a storage entry key for an entity bucket
 	case strings.HasPrefix(key, storagepacker.StoragePackerBucketsPrefix):
@@ -860,7 +866,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 		// entry key of the entity bucket. Fetch all the entities that
 		// belong to this bucket using the hash value. Remove these entities
 		// from MemDB along with all the aliases of each entity.
-		entitiesFetched, err := i.MemDBEntitiesByBucketKeyInTxn(txn, key)
+		entitiesFetched, err := i.MemDBEntitiesByBucketKeyInTxn(txn, key, ns.ID)
 		if err != nil {
 			i.logger.Error("failed to fetch entities using the bucket key", "key", key)
 			return
@@ -935,7 +941,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 		txn := i.db(ctx).Txn(true)
 		defer txn.Abort()
 
-		groupsFetched, err := i.MemDBGroupsByBucketKeyInTxn(txn, key)
+		groupsFetched, err := i.MemDBGroupsByBucketKeyInTxn(txn, key, ns.ID)
 		if err != nil {
 			i.logger.Error("failed to fetch groups using the bucket key", "key", key)
 			return
@@ -1035,7 +1041,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 		// both from aliases table and entities table. We will add the local
 		// aliases back by parsing the storage key. This way the deletion
 		// invalidation gets handled.
-		aliases, err := i.MemDBLocalAliasesByBucketKeyInTxn(txn, key)
+		aliases, err := i.MemDBLocalAliasesByBucketKeyInTxn(txn, key, ns.ID)
 		if err != nil {
 			i.logger.Error("failed to fetch entities using the bucket key", "key", key)
 			return

@@ -719,10 +719,8 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 	}
 
 	txn = is.Txn(ctx, false)
-	entitiesFetched, err := is.MemDBEntitiesByBucketKeyInTxn(txn, entity.BucketKey)
-	if err != nil {
-		t.Fatal(err)
-	}
+	entitiesFetched, err := is.MemDBEntitiesByBucketKeyInTxn(txn, entity.BucketKey, entity.NamespaceID)
+	require.NoError(t, err)
 
 	if len(entitiesFetched) != 1 {
 		t.Fatalf("bad: length of entities; expected: 1, actual: %d", len(entitiesFetched))

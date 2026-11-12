@@ -5,6 +5,7 @@ package command
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -286,6 +287,9 @@ func (c *OperatorGenerateRootCommand) generateOTP(client *api.Client, kind gener
 
 // decode decodes the given value using the otp.
 func (c *OperatorGenerateRootCommand) decode(client *api.Client, encoded, otp string, kind generateRootKind) int {
+	encoded = strings.TrimSpace(encoded)
+	otp = strings.TrimSpace(otp)
+
 	if encoded == "" {
 		c.UI.Error("Missing encoded value: use -decode=<string> to supply it")
 		return 1
@@ -311,7 +315,7 @@ func (c *OperatorGenerateRootCommand) decode(client *api.Client, encoded, otp st
 			return 1
 		}
 
-		encoded = buf.String()
+		encoded = strings.TrimSpace(buf.String())
 
 		if encoded == "" {
 			c.UI.Error("Missing encoded value. When using -decode=\"-\" value must be passed via stdin.")
@@ -319,19 +323,25 @@ func (c *OperatorGenerateRootCommand) decode(client *api.Client, encoded, otp st
 		}
 	}
 
-	f := client.Sys().GenerateRootStatus
-	switch kind {
-	case generateRootRecovery:
-		f = client.Sys().GenerateRecoveryOperationTokenStatus
+	otpLength := 0
+	if rawDecoded, err := base64.RawStdEncoding.DecodeString(encoded); err == nil && len(rawDecoded) == len(otp) {
+		otpLength = len(otp)
+	} else if client != nil {
+		f := client.Sys().GenerateRootStatus
+		switch kind {
+		case generateRootRecovery:
+			f = client.Sys().GenerateRecoveryOperationTokenStatus
+		}
+
+		status, err := f()
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Error getting root generation status: %s", err))
+			return 2
+		}
+		otpLength = status.OTPLength
 	}
 
-	status, err := f()
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error getting root generation status: %s", err))
-		return 2
-	}
-
-	token, err := roottoken.DecodeToken(encoded, otp, status.OTPLength)
+	token, err := roottoken.DecodeToken(encoded, otp, otpLength)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error decoding root token: %s", err))
 		return 1

@@ -703,7 +703,7 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 	}
 
 	txn = is.Txn(ctx, false)
-	entitiesFetched, err := is.MemDBEntitiesByBucketKeyInTxn(txn, entity.BucketKey)
+	entitiesFetched, err := is.MemDBEntitiesByBucketKeyInTxn(txn, entity.BucketKey, entity.NamespaceID)
 	require.NoError(t, err)
 
 	if len(entitiesFetched) != 1 {

@@ -1692,6 +1692,9 @@ func (c *Core) defaultMountTable(ctx context.Context) *routing.MountTable {
 			UUID:             mountUUID,
 			Accessor:         mountAccessor,
 			BackendAwareUUID: bUUID,
+			Config: routing.MountConfig{
+				UseHMACSHA256: true,
+			},
 			Options: map[string]string{
 				"version": "2",
 			},

@@ -159,6 +159,11 @@ flags](../index.mdx) included on all commands.
   [reloaded](../plugin/reload.mdx). Can also be set to "latest" to automatically
   pick the latest available plugin version on reload.
 
+- `-use-hmac-sha256` `(bool)` - Salt the client token passed to backends via
+  HMAC-SHA256 instead of SHA-1. New mounts use HMAC-SHA256 by default. Existing mounts
+  can be switched to HMAC-SHA256 or continue using SHA-1 until upgraded. Once enabled,
+  HMAC-SHA256 cannot be disabled.
+
 - `-user-lockout-threshold` `(string: "")` - Specifies the number of failed login attempts
   after which the user is locked out.
 

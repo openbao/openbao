@@ -758,3 +758,99 @@ func isHealthyAfterStabilization(t *testing.T, leaderCore *vault.TestClusterCore
 	require.NotNil(t, state)
 	return state.Healthy
 }
+
+// TestRaft_Autopilot_ManualJoin_NonVoter verifies that a node joined manually as a
+// non-voter (Retry: false, as sent by `bao operator raft join -non-voter`) remains
+// a non-voter in autopilot across stabilization and leader election, and is not
+// promoted to voter (#4228).
+func TestRaft_Autopilot_ManualJoin_NonVoter(t *testing.T) {
+	cluster, _ := raftCluster(t, &RaftClusterOpts{
+		DisableFollowerJoins: true,
+		InmemCluster:         true,
+		EnableAutopilot:      true,
+		PhysicalFactoryConfig: map[string]any{
+			"performance_multiplier":       "5",
+			"autopilot_reconcile_interval": "300ms",
+			"autopilot_update_interval":    "100ms",
+		},
+		VersionMap: map[int]string{
+			0: version.Version,
+			1: version.Version,
+			2: version.Version,
+			3: version.Version,
+		},
+		NumCores: 4,
+	})
+	defer cluster.Cleanup()
+	testhelpers.WaitForActiveNode(t, cluster)
+
+	client := cluster.Cores[0].Client
+	config, err := client.Sys().RaftAutopilotConfiguration()
+	require.NoError(t, err)
+
+	joinAndStabilizeAndPromote(t, cluster.Cores[1], client, cluster, config, "core-1", 2)
+	joinAndStabilizeAndPromote(t, cluster.Cores[2], client, cluster, config, "core-2", 3)
+
+	leader, leaderAddr := clusterLeader(t, cluster)
+
+	// Perform manual join via RaftJoin API with NonVoter=true and Retry=false (CLI default)
+	req := &api.RaftJoinRequest{
+		LeaderAPIAddr: leaderAddr,
+		LeaderCACert:  string(cluster.CACertPEM),
+		NonVoter:      true,
+		Retry:         false,
+	}
+	resp, err := cluster.Cores[3].Client.Sys().RaftJoin(req)
+	require.NoError(t, err)
+	require.True(t, resp.Joined)
+
+	// Node should report not a voter before unseal
+	require.False(t, cluster.Cores[3].Core.IsRaftVoter())
+
+	// Unseal the node with Shamir keys
+	cluster.UnsealCore(t, cluster.Cores[3])
+	waitForCoreUnseal(t, cluster.Cores[3])
+
+	// Wait past stabilization time and reconciliation
+	time.Sleep(config.ServerStabilizationTime + 2*time.Second)
+
+	// Verify that autopilot registered core-3 as non-voter and did not promote it to voter
+	state, err := client.Sys().RaftAutopilotState()
+	require.NoError(t, err)
+	require.Contains(t, state.NonVoters, "core-3")
+	require.NotContains(t, state.Voters, "core-3")
+	require.Equal(t, "non-voter", state.Servers["core-3"].NodeType)
+	require.Equal(t, "non-voter", state.Servers["core-3"].Status)
+
+	// Wait additional reconciliation cycles to confirm it is never promoted
+	time.Sleep(2 * time.Second)
+	state, err = client.Sys().RaftAutopilotState()
+	require.NoError(t, err)
+	require.Equal(t, "non-voter", state.Servers["core-3"].Status)
+
+	// Seal current leader to trigger election
+	testhelpers.EnsureCoreSealed(t, leader)
+	time.Sleep(config.ServerStabilizationTime + 2*time.Second)
+
+	// On the new leader, core-3 must remain a non-voter
+	var newLeaderClient *api.Client
+	for _, c := range cluster.Cores {
+		if !c.Sealed() {
+			isLeader, _, _, err := c.Leader()
+			if err == nil && isLeader {
+				newLeaderClient = c.Client
+				break
+			}
+		}
+	}
+	if newLeaderClient == nil {
+		newLeaderClient = cluster.Cores[1].Client
+	}
+
+	state, err = newLeaderClient.Sys().RaftAutopilotState()
+	require.NoError(t, err)
+	require.Contains(t, state.NonVoters, "core-3")
+	require.NotContains(t, state.Voters, "core-3")
+	require.Equal(t, "non-voter", state.Servers["core-3"].NodeType)
+	require.Equal(t, "non-voter", state.Servers["core-3"].Status)
+}

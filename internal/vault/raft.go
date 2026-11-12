@@ -924,6 +924,8 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 	// func uses the seal to compute an answer to the challenge and sends it
 	// back to the server that provided the challenge.
 	answerChallenge := func(ctx context.Context, raftInfo *raftInformation) error {
+		raftInfo.nonVoter = nonVoter
+
 		// If we're using Shamir and using raft for both physical and HA, we
 		// need to block until the node is unsealed, unless retry is set to
 		// false.
@@ -945,7 +947,6 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 			}
 		}
 
-		raftInfo.nonVoter = nonVoter
 		if err := c.joinRaftSendAnswer(ctx, c.seal.GetAccess(), raftInfo); err != nil {
 			return fmt.Errorf("failed to send answer to raft leader node: %w", err)
 		}

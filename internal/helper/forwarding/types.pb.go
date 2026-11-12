@@ -39,7 +39,8 @@ type Request struct {
 	// connection.
 	PeerCertificates [][]byte `protobuf:"bytes,8,rep,name=peer_certificates,json=peerCertificates,proto3" json:"peer_certificates,omitempty"`
 	// ProxiedCertificates are certificates verified by a proxy header.
-	ProxiedCertificates [][]byte `protobuf:"bytes,9,rep,name=proxied_certificates,json=proxiedCertificates,proto3" json:"proxied_certificates,omitempty"`
+	ProxiedCertificates [][]byte       `protobuf:"bytes,9,rep,name=proxied_certificates,json=proxiedCertificates,proto3" json:"proxied_certificates,omitempty"`
+	Limits              *RequestLimits `protobuf:"bytes,20,opt,name=limits,proto3" json:"limits,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -126,6 +127,13 @@ func (x *Request) GetPeerCertificates() [][]byte {
 func (x *Request) GetProxiedCertificates() [][]byte {
 	if x != nil {
 		return x.ProxiedCertificates
+	}
+	return nil
+}
+
+func (x *Request) GetLimits() *RequestLimits {
+	if x != nil {
+		return x.Limits
 	}
 	return nil
 }
@@ -271,6 +279,58 @@ func (x *HeaderEntry) GetValues() []string {
 	return nil
 }
 
+type RequestLimits struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	MaxJsonMemory  int64                  `protobuf:"varint,2,opt,name=max_json_memory,json=maxJsonMemory,proto3" json:"max_json_memory,omitempty"`
+	MaxJsonStrings int64                  `protobuf:"varint,3,opt,name=max_json_strings,json=maxJsonStrings,proto3" json:"max_json_strings,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *RequestLimits) Reset() {
+	*x = RequestLimits{}
+	mi := &file_internal_helper_forwarding_types_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestLimits) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestLimits) ProtoMessage() {}
+
+func (x *RequestLimits) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_helper_forwarding_types_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestLimits.ProtoReflect.Descriptor instead.
+func (*RequestLimits) Descriptor() ([]byte, []int) {
+	return file_internal_helper_forwarding_types_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *RequestLimits) GetMaxJsonMemory() int64 {
+	if x != nil {
+		return x.MaxJsonMemory
+	}
+	return 0
+}
+
+func (x *RequestLimits) GetMaxJsonStrings() int64 {
+	if x != nil {
+		return x.MaxJsonStrings
+	}
+	return 0
+}
+
 type Response struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Not used right now but reserving in case it turns out that streaming
@@ -288,7 +348,7 @@ type Response struct {
 
 func (x *Response) Reset() {
 	*x = Response{}
-	mi := &file_internal_helper_forwarding_types_proto_msgTypes[3]
+	mi := &file_internal_helper_forwarding_types_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -300,7 +360,7 @@ func (x *Response) String() string {
 func (*Response) ProtoMessage() {}
 
 func (x *Response) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_helper_forwarding_types_proto_msgTypes[3]
+	mi := &file_internal_helper_forwarding_types_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -313,7 +373,7 @@ func (x *Response) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Response.ProtoReflect.Descriptor instead.
 func (*Response) Descriptor() ([]byte, []int) {
-	return file_internal_helper_forwarding_types_proto_rawDescGZIP(), []int{3}
+	return file_internal_helper_forwarding_types_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Response) GetStatusCode() uint32 {
@@ -349,7 +409,7 @@ var File_internal_helper_forwarding_types_proto protoreflect.FileDescriptor
 const file_internal_helper_forwarding_types_proto_rawDesc = "" +
 	"\n" +
 	"&internal/helper/forwarding/types.proto\x12\n" +
-	"forwarding\"\x97\x03\n" +
+	"forwarding\"\xca\x03\n" +
 	"\aRequest\x12\x16\n" +
 	"\x06method\x18\x02 \x01(\tR\x06method\x12!\n" +
 	"\x03url\x18\x03 \x01(\v2\x0f.forwarding.URLR\x03url\x12M\n" +
@@ -359,7 +419,8 @@ const file_internal_helper_forwarding_types_proto_rawDesc = "" +
 	"\vremote_addr\x18\a \x01(\tR\n" +
 	"remoteAddr\x12+\n" +
 	"\x11peer_certificates\x18\b \x03(\fR\x10peerCertificates\x121\n" +
-	"\x14proxied_certificates\x18\t \x03(\fR\x13proxiedCertificates\x1aY\n" +
+	"\x14proxied_certificates\x18\t \x03(\fR\x13proxiedCertificates\x121\n" +
+	"\x06limits\x18\x14 \x01(\v2\x19.forwarding.RequestLimitsR\x06limits\x1aY\n" +
 	"\x12HeaderEntriesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12-\n" +
 	"\x05value\x18\x02 \x01(\v2\x17.forwarding.HeaderEntryR\x05value:\x028\x01\"\xb1\x01\n" +
@@ -372,7 +433,10 @@ const file_internal_helper_forwarding_types_proto_rawDesc = "" +
 	"\traw_query\x18\b \x01(\tR\brawQuery\x12\x1a\n" +
 	"\bfragment\x18\t \x01(\tR\bfragment\"%\n" +
 	"\vHeaderEntry\x12\x16\n" +
-	"\x06values\x18\x01 \x03(\tR\x06values\"\x92\x02\n" +
+	"\x06values\x18\x01 \x03(\tR\x06values\"a\n" +
+	"\rRequestLimits\x12&\n" +
+	"\x0fmax_json_memory\x18\x02 \x01(\x03R\rmaxJsonMemory\x12(\n" +
+	"\x10max_json_strings\x18\x03 \x01(\x03R\x0emaxJsonStrings\"\x92\x02\n" +
 	"\bResponse\x12\x1f\n" +
 	"\vstatus_code\x18\x02 \x01(\rR\n" +
 	"statusCode\x12\x12\n" +
@@ -395,26 +459,28 @@ func file_internal_helper_forwarding_types_proto_rawDescGZIP() []byte {
 	return file_internal_helper_forwarding_types_proto_rawDescData
 }
 
-var file_internal_helper_forwarding_types_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_internal_helper_forwarding_types_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_internal_helper_forwarding_types_proto_goTypes = []any{
-	(*Request)(nil),     // 0: forwarding.Request
-	(*URL)(nil),         // 1: forwarding.URL
-	(*HeaderEntry)(nil), // 2: forwarding.HeaderEntry
-	(*Response)(nil),    // 3: forwarding.Response
-	nil,                 // 4: forwarding.Request.HeaderEntriesEntry
-	nil,                 // 5: forwarding.Response.HeaderEntriesEntry
+	(*Request)(nil),       // 0: forwarding.Request
+	(*URL)(nil),           // 1: forwarding.URL
+	(*HeaderEntry)(nil),   // 2: forwarding.HeaderEntry
+	(*RequestLimits)(nil), // 3: forwarding.RequestLimits
+	(*Response)(nil),      // 4: forwarding.Response
+	nil,                   // 5: forwarding.Request.HeaderEntriesEntry
+	nil,                   // 6: forwarding.Response.HeaderEntriesEntry
 }
 var file_internal_helper_forwarding_types_proto_depIdxs = []int32{
 	1, // 0: forwarding.Request.url:type_name -> forwarding.URL
-	4, // 1: forwarding.Request.header_entries:type_name -> forwarding.Request.HeaderEntriesEntry
-	5, // 2: forwarding.Response.header_entries:type_name -> forwarding.Response.HeaderEntriesEntry
-	2, // 3: forwarding.Request.HeaderEntriesEntry.value:type_name -> forwarding.HeaderEntry
-	2, // 4: forwarding.Response.HeaderEntriesEntry.value:type_name -> forwarding.HeaderEntry
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	5, // 1: forwarding.Request.header_entries:type_name -> forwarding.Request.HeaderEntriesEntry
+	3, // 2: forwarding.Request.limits:type_name -> forwarding.RequestLimits
+	6, // 3: forwarding.Response.header_entries:type_name -> forwarding.Response.HeaderEntriesEntry
+	2, // 4: forwarding.Request.HeaderEntriesEntry.value:type_name -> forwarding.HeaderEntry
+	2, // 5: forwarding.Response.HeaderEntriesEntry.value:type_name -> forwarding.HeaderEntry
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_internal_helper_forwarding_types_proto_init() }
@@ -428,7 +494,7 @@ func file_internal_helper_forwarding_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_helper_forwarding_types_proto_rawDesc), len(file_internal_helper_forwarding_types_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -51,7 +51,7 @@ func testForwardedRequestGenerateParse(t testing.TB) int64 {
 	size := int64(proto.Size(forwardedRequest))
 
 	// Now extract the forwarded request to generate a final request for processing
-	finalReq, err := ParseForwardedRequest(forwardedRequest)
+	finalReq, err := ParseForwardedRequest(t.Context(), forwardedRequest)
 	require.NoError(t, err)
 
 	switch {

@@ -16,6 +16,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/metricsutil"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/physical/raft"
+	"github.com/openbao/openbao/v2/internal/version"
 )
 
 func (c *Core) metricsLoop(stopCh chan struct{}) {
@@ -171,6 +172,16 @@ func (c *Core) emitUnsealedStatusMetric(shutdownCh <-chan struct{}) {
 		case <-shutdownCh:
 			return
 		case <-ticker.C:
+			v := version.GetVersion()
+			c.metricSink.SetGaugeWithLabels(
+				[]string{"build_info"},
+				1,
+				[]metrics.Label{
+					{Name: "version", Value: v.VersionNumber()},
+					{Name: "revision", Value: v.Revision},
+				},
+			)
+
 			if c.Sealed() {
 				c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 0, nil)
 			} else {

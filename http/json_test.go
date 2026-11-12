@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/buffer"
+	"github.com/openbao/openbao/helper/forwarding"
 	"github.com/stretchr/testify/require"
 )
 
@@ -49,28 +50,22 @@ func TestSafeJSONReader(t *testing.T) {
 
 	for index, test := range tests {
 		// First compute actual values.
-		ctx := addMaximumJsonMemoryToContext(t.Context(), math.MaxInt64)
-		ctx = addMaximumJsonStringsToContext(ctx, math.MaxInt64)
-		actualMemory, actualStrings, err := EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
+		actualMemory, actualStrings, err := EnforceJSONComplexityLimits(bytes.NewBufferString(test), math.MaxInt64, math.MaxInt64)
 		require.NoError(t, err)
 
 		// Setting these actual values should allow parsing to succeed and
 		// be consistent.
-		ctx = addMaximumJsonMemoryToContext(t.Context(), actualMemory)
-		newMemory, newStrings, err := EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
+		newMemory, newStrings, err := EnforceJSONComplexityLimits(bytes.NewBufferString(test), actualMemory, -1)
 		require.NoError(t, err)
 		require.Equal(t, actualMemory, newMemory)
 		require.Equal(t, actualStrings, newStrings)
 
-		ctx = addMaximumJsonStringsToContext(t.Context(), actualStrings)
-		newMemory, newStrings, err = EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
+		newMemory, newStrings, err = EnforceJSONComplexityLimits(bytes.NewBufferString(test), -1, actualStrings)
 		require.NoError(t, err)
 		require.Equal(t, actualMemory, newMemory)
 		require.Equal(t, actualStrings, newStrings)
 
-		ctx = addMaximumJsonMemoryToContext(t.Context(), actualMemory)
-		ctx = addMaximumJsonStringsToContext(ctx, actualStrings)
-		newMemory, newStrings, err = EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
+		newMemory, newStrings, err = EnforceJSONComplexityLimits(bytes.NewBufferString(test), actualMemory, actualStrings)
 		require.NoError(t, err)
 		require.Equal(t, actualMemory, newMemory)
 		require.Equal(t, actualStrings, newStrings)
@@ -80,6 +75,10 @@ func TestSafeJSONReader(t *testing.T) {
 		body, err := buffer.NewSeekableReader(bytes.NewReader([]byte(test)))
 		require.NoError(t, err)
 
+		ctx := forwarding.WithRequestLimits(t.Context(), &forwarding.RequestLimits{
+			MaxJsonMemory:  actualMemory,
+			MaxJsonStrings: actualStrings,
+		})
 		req, err := http.NewRequestWithContext(ctx, "POST", "/v1/sys/testing", body)
 		require.NoError(t, err)
 
@@ -89,11 +88,14 @@ func TestSafeJSONReader(t *testing.T) {
 		// Decreasing memory by one, if allowed, should cause a failure. This
 		// shows the bound is tight.
 		if actualMemory > 0 {
-			ctx = addMaximumJsonMemoryToContext(t.Context(), actualMemory-1)
-			_, _, err := EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
+			_, _, err := EnforceJSONComplexityLimits(bytes.NewBufferString(test), actualMemory-1, -1)
 			require.Error(t, err, "test case %d: %q", index, test)
 			require.ErrorContains(t, err, ErrJSONExceededMemory.Error())
 
+			ctx := forwarding.WithRequestLimits(t.Context(), &forwarding.RequestLimits{
+				MaxJsonMemory:  actualMemory - 1,
+				MaxJsonStrings: -1,
+			})
 			req, err := http.NewRequestWithContext(ctx, "POST", "/v1/sys/testing", bytes.NewBufferString(test))
 			require.NoError(t, err)
 
@@ -105,11 +107,14 @@ func TestSafeJSONReader(t *testing.T) {
 		// Decreasing strings by one, if allowed, should cause a failure. This
 		// shows the bound is tight.
 		if actualStrings > 0 {
-			ctx = addMaximumJsonStringsToContext(t.Context(), actualStrings-1)
-			_, _, err := EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
+			_, _, err := EnforceJSONComplexityLimits(bytes.NewBufferString(test), -1, actualStrings-1)
 			require.Error(t, err, "test case %d: %q", index, test)
 			require.ErrorContains(t, err, ErrJSONExceededStrings.Error())
 
+			ctx := forwarding.WithRequestLimits(t.Context(), &forwarding.RequestLimits{
+				MaxJsonMemory:  -1,
+				MaxJsonStrings: actualStrings - 1,
+			})
 			req, err := http.NewRequestWithContext(ctx, "POST", "/v1/sys/testing", bytes.NewBufferString(test))
 			require.NoError(t, err)
 
@@ -120,9 +125,7 @@ func TestSafeJSONReader(t *testing.T) {
 
 		// Decreasing both bounds should fail.
 		if actualStrings > 0 && actualMemory > 0 {
-			ctx = addMaximumJsonMemoryToContext(t.Context(), actualMemory-1)
-			ctx = addMaximumJsonStringsToContext(ctx, actualStrings-1)
-			_, _, err := EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
+			_, _, err := EnforceJSONComplexityLimits(bytes.NewBufferString(test), actualMemory-1, actualStrings-1)
 			require.Error(t, err, "test case %d: %q", index, test)
 		}
 	}
@@ -237,11 +240,7 @@ func TestSafeJSONReaderValidateSizes(t *testing.T) {
 
 		buf := bytes.NewBuffer(output)
 
-		ctx := t.Context()
-		ctx = addMaximumJsonMemoryToContext(ctx, math.MaxInt64)
-		ctx = addMaximumJsonStringsToContext(ctx, math.MaxInt64)
-
-		memoryEstimate, _, err := EnforceJSONComplexityLimits(ctx, buf)
+		memoryEstimate, _, err := EnforceJSONComplexityLimits(buf, math.MaxInt64, math.MaxInt64)
 		require.NoError(t, err)
 
 		memoryActual := fakeSizeOf(t, output)

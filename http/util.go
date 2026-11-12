@@ -47,15 +47,15 @@ func resetBody(req *http.Request) error {
 }
 
 func wrapMaxRequestSizeHandler(handler http.Handler, props *vault.HandlerProperties) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var maxRequestSize int64
-		if props.ListenerConfig != nil {
-			maxRequestSize = props.ListenerConfig.MaxRequestSize
-		}
-		if maxRequestSize == 0 {
-			maxRequestSize = DefaultMaxRequestSize
-		}
+	var maxRequestSize int64
+	if props.ListenerConfig != nil {
+		maxRequestSize = props.ListenerConfig.MaxRequestSize
+	}
+	if maxRequestSize == 0 {
+		maxRequestSize = DefaultMaxRequestSize
+	}
 
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Before continuing, clone the request: per https://pkg.go.dev/net/http#Handler,
 		//
 		// > Except for reading the body, handlers should not modify the

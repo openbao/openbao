@@ -385,7 +385,7 @@ func (b *SystemBackend) handleRaftBootstrapChallengeWrite() framework.OperationF
 			return nil, err
 		}
 
-		sealConfig, err := b.Core.seal.BarrierConfig(ctx)
+		sealConfig, err := b.Core.seal.Config(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -665,7 +665,7 @@ func (b *SystemBackend) handleStorageRaftSnapshotWrite(force bool) framework.Ope
 		switch {
 		case err == nil:
 		case strings.Contains(err.Error(), "failed to open the sealed hashes"):
-			switch b.Core.seal.BarrierType() {
+			switch b.Core.seal.WrapperType() {
 			case seal.WrapperTypeShamir:
 				return logical.ErrorResponse("could not verify hash file, possibly the snapshot is using a different set of unseal keys; use the snapshot-force API to bypass this check"), logical.ErrInvalidRequest
 			default:

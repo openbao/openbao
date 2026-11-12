@@ -284,19 +284,12 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 	t.Helper()
 	core.SetClusterHandler(handler)
 
-	barrierConfig := &SealConfig{
-		SecretShares:    3,
-		SecretThreshold: 3,
-	}
-
-	recoveryConfig := &SealConfig{
-		SecretShares:    3,
-		SecretThreshold: 3,
-	}
-
 	initParams := &InitParams{
-		BarrierConfig:  barrierConfig,
-		RecoveryConfig: recoveryConfig,
+		SealConfig: &SealConfig{
+			Purpose:         Primary,
+			SecretShares:    3,
+			SecretThreshold: 3,
+		},
 	}
 	result, err := core.Initialize(namespace.RootContext(context.Background()), initParams)
 	if err != nil {
@@ -351,7 +344,7 @@ func TestCoreCreateNamespaces(t testing.T, core *Core, namespaces ...*namespace.
 func TestCoreCreateSealedNamespaces(t testing.T, core *Core, namespaces ...*namespace.Namespace) map[string][][]byte {
 	t.Helper()
 	sealConfig := &SealConfig{
-		Type:            "shamir",
+		Purpose:         Primary,
 		SecretShares:    3,
 		SecretThreshold: 3,
 	}
@@ -2114,7 +2107,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		t.Fatal(err)
 	}
 
-	cfg, err := leader.seal.BarrierConfig(ctx)
+	cfg, err := leader.seal.Config(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2123,7 +2116,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 	numCores := len(tc.Cores)
 	if (opts == nil || !opts.KeepStandbysSealed) && numCores > 1 {
 		for i := 1; i < numCores; i++ {
-			tc.Cores[i].seal.SetCachedBarrierConfig(cfg)
+			tc.Cores[i].seal.SetCachedConfig(cfg)
 			for _, key := range bKeys {
 				if _, err := tc.Cores[i].Unseal(TestKeyCopy(key)); err != nil {
 					t.Fatalf("unseal err: %s", err)

@@ -22,12 +22,11 @@ import (
 )
 
 func TestRotateLifecycle(t *testing.T) {
-	bc := &SealConfig{
+	c, rootKeys, _, _ := TestCoreUnsealedWithConfigs(t, &SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
-	}
-	c, rootKeys, _, _ := TestCoreUnsealedWithConfigs(t, bc, nil)
-	require.Lenf(t, rootKeys, 1, "expected %d secret shares for a total of 1 root key, got %d", bc.SecretShares, len(rootKeys))
+	})
+	require.Lenf(t, rootKeys, 1, "expected %d secret shares for a total of 1 root key, got %d", 1, len(rootKeys))
 
 	ns := &namespace.Namespace{Path: "ns1/"}
 	_ = TestCoreCreateUnsealedNamespaces(t, c, ns)
@@ -73,7 +72,7 @@ func TestInitRotation(t *testing.T) {
 
 func testInitRotationCommon(t *testing.T, sm *SealManager, ns *namespace.Namespace, recovery bool) {
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
-	// Try an invalid config
+
 	badConf := &SealConfig{
 		SecretThreshold: 5,
 		SecretShares:    1,
@@ -82,23 +81,33 @@ func testInitRotationCommon(t *testing.T, sm *SealManager, ns *namespace.Namespa
 	require.Error(t, err)
 	require.Empty(t, rotationResult)
 
-	// Start rotation
+	// Won't pass validation - wrong purpose.
+	badConf = &SealConfig{
+		SecretThreshold: 5,
+		SecretShares:    1,
+		Purpose:         Recovery,
+	}
+	rotationResult, err = sm.InitRotation(ctx, ns, badConf, recovery, true)
+	require.Error(t, err)
+	require.Empty(t, rotationResult)
+
 	newConf := &SealConfig{
 		SecretThreshold: 3,
 		SecretShares:    5,
+		Purpose:         Primary,
 	}
 
 	seal := sm.NamespaceSeal(ns.UUID)
 	require.NotNil(t, seal)
 
-	// If recovery key is supported, set newConf to be a recovery seal config
-	if seal.RecoveryKeySupported() {
-		newConf.Type = seal.RecoveryType()
-	}
-
 	rotationResult, err = sm.InitRotation(ctx, ns, newConf, recovery, true)
 	require.NoError(t, err)
 	require.Empty(t, rotationResult)
+	if recovery {
+		require.Equal(t, newConf.Purpose, Recovery)
+	} else {
+		require.Equal(t, newConf.Purpose, Primary)
+	}
 
 	// Second should fail
 	rotationResult, err = sm.InitRotation(ctx, ns, newConf, recovery, true)
@@ -107,11 +116,10 @@ func testInitRotationCommon(t *testing.T, sm *SealManager, ns *namespace.Namespa
 }
 
 func TestUpdateRotation(t *testing.T) {
-	bc := &SealConfig{
+	c, rootKeys, _, root := TestCoreUnsealedWithConfigs(t, &SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
-	}
-	c, rootKeys, _, root := TestCoreUnsealedWithConfigs(t, bc, nil)
+	})
 	testUpdateRotationCommon(t, c, namespace.RootNamespace, rootKeys, root, false)
 
 	ns := &namespace.Namespace{Path: "ns1/"}
@@ -124,15 +132,13 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 	seal := c.sealManager.NamespaceSeal(ns.UUID)
 	require.NotNil(t, seal)
 
-	var expType string
+	purpose := Primary
 	if recovery {
-		expType = seal.RecoveryType()
-	} else {
-		expType = seal.BarrierType().String()
+		purpose = Recovery
 	}
 
 	newConf := &SealConfig{
-		Type:            expType,
+		Purpose:         purpose,
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
@@ -159,16 +165,15 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 	require.Nil(t, c.sealManager.RotationConfig(ns.UUID, recovery))
 
 	// SealConfig should update
-	var sealConf *SealConfig
-	var err error
-	if recovery {
-		sealConf, err = seal.RecoveryConfig(ctx)
-	} else {
-		sealConf, err = seal.BarrierConfig(ctx)
-	}
+	sealConf, err := seal.Config(ctx)
 	require.NoError(t, err)
 	require.NotNil(t, sealConf)
-	require.Equal(t, sealConf, newConf)
+	require.Equal(t, &SealConfig{
+		Type:            "shamir",
+		Purpose:         purpose,
+		SecretThreshold: 3,
+		SecretShares:    5,
+	}, sealConf)
 
 	// At this point bail if we are rotating the barrier key with recovery
 	// keys, since a new rotation should still be using the same set
@@ -199,7 +204,7 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 
 	// Start another rotation, this time we require a quorum
 	newConf = &SealConfig{
-		Type:            expType,
+		Purpose:         purpose,
 		SecretThreshold: 1,
 		SecretShares:    1,
 	}
@@ -244,24 +249,24 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 	}
 
 	// SealConfig should update
-	if recovery {
-		sealConf, err = seal.RecoveryConfig(ctx)
-	} else {
-		sealConf, err = seal.BarrierConfig(ctx)
-	}
+	sealConf, err = seal.Config(ctx)
 	require.NoError(t, err)
-	require.Equal(t, sealConf, newConf)
+	require.Equal(t, &SealConfig{
+		Type:            "shamir",
+		Purpose:         purpose,
+		SecretThreshold: 1,
+		SecretShares:    1,
+	}, sealConf)
 
 	// verfiy nonce was removed after rotation.
 	require.Empty(t, sealConf.Nonce)
 }
 
 func TestRotateInvalid(t *testing.T) {
-	bc := &SealConfig{
+	c, rootKeys, _, _ := TestCoreUnsealedWithConfigs(t, &SealConfig{
 		SecretShares:    3,
 		SecretThreshold: 3,
-	}
-	c, rootKeys, _, _ := TestCoreUnsealedWithConfigs(t, bc, nil)
+	})
 	testRotateInvalidCommon(t, c, namespace.RootNamespace, rootKeys, false)
 
 	ns := &namespace.Namespace{Path: "ns1/"}
@@ -392,12 +397,11 @@ func TestRotationStandby(t *testing.T) {
 	require.NotNil(t, rotationResult2)
 }
 
-// Verifies that if we are using recovery keys to force a rotation of a stored-shares
-// barrier that verification is not allowed since the keys aren't returned.
+// TestVerficationInvalid verifies that auto-unseal root rotation
+// rejects verification because it generates no new Shamir shares.
 func TestVerficationInvalid(t *testing.T) {
 	core, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
-		&SealConfig{SecretShares: 1, SecretThreshold: 1},
-		&SealConfig{SecretShares: 1, SecretThreshold: 1},
+		&SealConfig{Purpose: Recovery, SecretShares: 1, SecretThreshold: 1},
 		&vaultseal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
 
 	_, err := core.sealManager.InitRotation(t.Context(), namespace.RootNamespace, &SealConfig{
@@ -408,8 +412,7 @@ func TestVerficationInvalid(t *testing.T) {
 
 func TestRotationGenerateRecoveryKey(t *testing.T) {
 	core, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
-		&SealConfig{SecretShares: 1, SecretThreshold: 1},
-		&SealConfig{SecretShares: 0, SecretThreshold: 0},
+		&SealConfig{Purpose: Recovery, SecretShares: 0, SecretThreshold: 0},
 		&vaultseal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
 
 	// Rotate (generate) the recovery key
@@ -426,13 +429,11 @@ func TestRotationGenerateRecoveryKey(t *testing.T) {
 
 func TestRotateBarrierRootKey(t *testing.T) {
 	c1, unsealShares, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
-		&SealConfig{SecretShares: 3, SecretThreshold: 2},
-		nil,
+		&SealConfig{Purpose: Primary, SecretShares: 3, SecretThreshold: 2},
 		&vaultseal.TestSealOpts{Wrapper: vaultseal.WrapperTypeShamir})
 
 	c2, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
-		&SealConfig{},
-		&SealConfig{SecretShares: 3, SecretThreshold: 2},
+		&SealConfig{Purpose: Recovery, SecretShares: 3, SecretThreshold: 2},
 		&vaultseal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
 
 	ns := &namespace.Namespace{Path: "ns1/"}
@@ -470,7 +471,7 @@ func testRotateBarrierRootKey(t *testing.T, c *Core, ns *namespace.Namespace, un
 		require.True(t, c.NamespaceSealed(ns))
 	}
 
-	switch seal.BarrierType() {
+	switch seal.WrapperType() {
 	case vaultseal.WrapperTypeShamir:
 		// verify you can unseal using the same
 		// unseal key as before rotation
@@ -498,23 +499,30 @@ func testRotateBarrierRootKey(t *testing.T, c *Core, ns *namespace.Namespace, un
 }
 
 func TestRotationBackedUpKeys(t *testing.T) {
-	config := &SealConfig{
-		SecretShares:    3,
-		SecretThreshold: 2,
-	}
-
 	t.Run("root namespace barrier keys", func(t *testing.T) {
-		c, barrierKeys, _, _ := TestCoreUnsealedWithConfigs(t, config, nil)
+		c, barrierKeys, _, _ := TestCoreUnsealedWithConfigSealOpts(t, &SealConfig{
+			Purpose:         Primary,
+			SecretShares:    3,
+			SecretThreshold: 2,
+		}, &vaultseal.TestSealOpts{Wrapper: vaultseal.WrapperTypeShamir})
 		testRotationBackedUpKeys(t, c, namespace.RootNamespace, barrierKeys, false)
 	})
 
 	t.Run("root namespace recovery keys", func(t *testing.T) {
-		c, _, recoveryKeys, _ := TestCoreUnsealedWithConfigs(t, config, config)
+		c, _, recoveryKeys, _ := TestCoreUnsealedWithConfigSealOpts(t, &SealConfig{
+			Purpose:         Recovery,
+			SecretShares:    3,
+			SecretThreshold: 2,
+		}, &vaultseal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
 		testRotationBackedUpKeys(t, c, namespace.RootNamespace, recoveryKeys, true)
 	})
 
 	t.Run("child namespace barrier keys", func(t *testing.T) {
-		c, _, _, _ := TestCoreUnsealedWithConfigs(t, config, nil)
+		c, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t, &SealConfig{
+			Purpose:         Primary,
+			SecretShares:    3,
+			SecretThreshold: 2,
+		}, &vaultseal.TestSealOpts{Wrapper: vaultseal.WrapperTypeShamir})
 		ns := &namespace.Namespace{Path: "ns1/"}
 		keys := TestCoreCreateUnsealedNamespaces(t, c, ns)
 		testRotationBackedUpKeys(t, c, ns, keys["ns1/"], false)
@@ -526,15 +534,13 @@ func testRotationBackedUpKeys(t *testing.T, c *Core, ns *namespace.Namespace, ke
 	seal := c.sealManager.NamespaceSeal(ns.UUID)
 	require.NotNil(t, seal)
 
-	var expType string
+	purpose := Primary
 	if recovery {
-		expType = seal.RecoveryType()
-	} else {
-		expType = seal.BarrierType().String()
+		purpose = Recovery
 	}
 
 	newConf := &SealConfig{
-		Type:            expType,
+		Purpose:         purpose,
 		SecretThreshold: 1,
 		SecretShares:    1,
 		Backup:          true,
@@ -563,16 +569,17 @@ func testRotationBackedUpKeys(t *testing.T, c *Core, ns *namespace.Namespace, ke
 	require.Nil(t, c.sealManager.RotationConfig(ns.UUID, recovery))
 
 	// SealConfig should update
-	var sealConf *SealConfig
-	var err error
-	if recovery {
-		sealConf, err = seal.RecoveryConfig(ctx)
-	} else {
-		sealConf, err = seal.BarrierConfig(ctx)
-	}
+	sealConf, err := seal.Config(ctx)
 	require.NoError(t, err)
 	require.NotNil(t, sealConf)
-	require.Equal(t, sealConf, newConf)
+	require.Equal(t, &SealConfig{
+		Type:            "shamir",
+		Purpose:         purpose,
+		SecretThreshold: 1,
+		SecretShares:    1,
+		Backup:          true,
+		PGPKeys:         []string{pgpkeys.TestPubKey1},
+	}, sealConf)
 
 	// Verify we can read backed up keys.
 	backedKeys, err := c.sealManager.RetrieveRotationBackup(ctx, ns, recovery)

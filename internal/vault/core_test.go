@@ -149,36 +149,37 @@ func TestNewCore_configureLogicalBackends(t *testing.T) {
 	t.Parallel()
 
 	// configureLogicalBackends will add some default backends for us:
-	// cubbyhole
-	// identity
-	// kv
-	// system
+	// - cubbyhole
+	// - identity
+	// - system
+	// In both their root namespace and namespaced forms, i.e., there are 6
+	// default backends.
 
 	tests := map[string]struct {
-		backends               map[string]logical.Factory
-		expectedNonEntBackends int
+		backends         map[string]logical.Factory
+		expectedBackends int
 	}{
 		"none": {
-			backends:               nil,
-			expectedNonEntBackends: 0,
+			backends:         nil,
+			expectedBackends: 6,
 		},
 		"database": {
 			backends: map[string]logical.Factory{
 				"database": logicalDb.Factory,
 			},
-			expectedNonEntBackends: 5, // database + defaults
+			expectedBackends: 7, // database + defaults
 		},
 		"kv": {
 			backends: map[string]logical.Factory{
 				"kv": logicalKv.Factory,
 			},
-			expectedNonEntBackends: 4, // kv + defaults (kv is a default)
+			expectedBackends: 7, // kv + defaults
 		},
 		"plugin": {
 			backends: map[string]logical.Factory{
 				"plugin": plugin.Factory,
 			},
-			expectedNonEntBackends: 5, // plugin + defaults
+			expectedBackends: 7, // plugin + defaults
 		},
 		"all": {
 			backends: map[string]logical.Factory{
@@ -186,7 +187,7 @@ func TestNewCore_configureLogicalBackends(t *testing.T) {
 				"kv":       logicalKv.Factory,
 				"plugin":   plugin.Factory,
 			},
-			expectedNonEntBackends: 6, // database, plugin + defaults
+			expectedBackends: 9, // database, kv, plugin + defaults
 		},
 	}
 
@@ -197,8 +198,7 @@ func TestNewCore_configureLogicalBackends(t *testing.T) {
 			core := &Core{}
 			require.Len(t, core.logicalBackends, 0)
 			core.configureLogicalBackends(tc.backends, corehelpers.NewTestLogger(t))
-			require.GreaterOrEqual(t, len(core.logicalBackends), tc.expectedNonEntBackends)
-			require.Contains(t, core.logicalBackends, routing.MountTypeKV)
+			require.Equal(t, tc.expectedBackends, len(core.logicalBackends))
 			require.Contains(t, core.logicalBackends, routing.MountTypeCubbyhole)
 			require.Contains(t, core.logicalBackends, routing.MountTypeSystem)
 			require.Contains(t, core.logicalBackends, routing.MountTypeIdentity)
@@ -2303,6 +2303,9 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		HAPhysical:      inmha,
 		RedirectAddr:    redirectOriginal,
 		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
+		LogicalBackends: map[string]logical.Factory{
+			"kv": PassthroughBackendFactory,
+		},
 	})
 	require.NoError(t, err)
 	defer core.Shutdown()
@@ -2351,6 +2354,9 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		Physical:     inm,
 		HAPhysical:   inmha,
 		RedirectAddr: redirectOriginal2,
+		LogicalBackends: map[string]logical.Factory{
+			"kv": PassthroughBackendFactory,
+		},
 	})
 	require.NoError(t, err)
 	defer core2.Shutdown()

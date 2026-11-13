@@ -104,7 +104,31 @@ func (c *ReadCommand) Run(args []string) int {
 	}
 
 	if Format(c.UI) != "raw" {
-		secret, err := client.Logical().ReadWithDataWithContext(ctx, path, data)
+		resp, err := client.Logical().ReadRawWithDataWithContext(ctx, path, data)
+
+		// Non-JSON bodies (e.g. PEM), non-404s are printed as raw.
+		if err == nil && resp.StatusCode != 404 && !resp.IsJSON() {
+			defer resp.Body.Close() //nolint:errcheck
+
+			if c.flagField != "" {
+				c.UI.Error("'-field' parameter is not supported when output type is 'raw'")
+				return 2
+			}
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				c.UI.Error(fmt.Sprintf("Error reading %s: %s", path, err))
+				return 2
+			}
+			if len(body) == 0 {
+				c.UI.Error("No value found")
+				return 2
+			}
+			c.UI.Output(string(body))
+			return 0
+		}
+
+		// JSON responses or 404s take decode as secret to display warnings and errors.
+		secret, err := client.Logical().ParseRawResponseAndCloseBody(resp, err)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error reading %s: %s", path, err))
 			return 2

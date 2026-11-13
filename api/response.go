@@ -8,7 +8,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
+	"strings"
 )
 
 // Response is a raw response that wraps an HTTP response.
@@ -135,4 +137,19 @@ func (r *ResponseError) Error() string {
 	}
 
 	return errBody.String()
+}
+
+// IsJSON checks if the content type is a valid json type
+// valid types are 'application/json' (RFC 8259) and also 'application/*json' types
+func (r *Response) IsJSON() bool {
+	ct := r.Header.Get("Content-Type")
+	if ct == "" {
+		return true
+	}
+	mediaType, _, err := mime.ParseMediaType(ct)
+	if err != nil {
+		return false
+	}
+	mediaType = strings.ToLower(mediaType)
+	return mediaType == "application/json" || strings.HasSuffix(mediaType, "+json")
 }

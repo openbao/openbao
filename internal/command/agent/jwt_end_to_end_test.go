@@ -24,6 +24,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/dhutil"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -246,86 +247,66 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 	}
 
 	checkToken := func() string {
-		timeout := time.Now().Add(5 * time.Second)
-		for {
-			if time.Now().After(timeout) {
-				t.Fatal("did not find a written token after timeout")
+		var val []byte
+		require.EventuallyWithT(t, func(collect *assert.CollectT) {
+			v, err := os.ReadFile(out)
+			require.NoError(collect, err)
+			require.NotEmpty(collect, v)
+			val = v
+		}, 10*time.Second, time.Second)
+		err = os.Remove(out)
+		require.NoError(t, err)
+		if removeJWTAfterReading {
+			_, err = os.Stat(in)
+			require.Error(t, err, "no error returned from stat, indicating the jwt is still present")
+			require.Truef(t, os.IsNotExist(err), "unexpected error: %v", err)
+		} else {
+			_, err = os.Stat(in)
+			require.NoError(t, err)
+		}
+		// First decrypt it
+		resp := new(dhutil.Envelope)
+		err = jsonutil.DecodeJSON(val, resp)
+		require.NoError(t, err)
+		shared, err := dhutil.GenerateSharedSecret(pri, resp.Curve25519PublicKey)
+		require.NoError(t, err)
+		aesKey, err := dhutil.DeriveSharedKey(shared, pub, resp.Curve25519PublicKey)
+		require.NoError(t, err)
+		require.NotEmpty(t, aesKey)
+		val, err = dhutil.DecryptAES(aesKey, resp.EncryptedPayload, resp.Nonce, []byte("foobar"))
+		require.NoErrorf(t, err, "error: %v\nresp: %v", err, string(val))
+
+		// Now unwrap it
+		wrapInfo := new(api.SecretWrapInfo)
+		err = jsonutil.DecodeJSON(val, wrapInfo)
+		require.NoError(t, err)
+		require.Equalf(t, 10, wrapInfo.TTL, "bad wrap info: %v", wrapInfo.TTL)
+		require.NotEmpty(t, wrapInfo.Token, "wrap token is empty")
+
+		// clone token
+		cloned.SetToken(wrapInfo.Token)
+		secret, err := cloned.Logical().Unwrap("")
+		require.NoError(t, err)
+		if ahWrapping {
+			switch {
+			case wrapInfo.CreationPath != "auth/jwt/login":
+				t.Fatalf("bad wrap path: %v", wrapInfo.CreationPath)
+			case secret.Auth == nil:
+				t.Fatal("unwrap secret auth is nil")
+			case secret.Auth.ClientToken == "":
+				t.Fatal("unwrap token is nil")
 			}
-			val, err := os.ReadFile(out)
-			if err == nil {
-				os.Remove(out)
-				if len(val) == 0 {
-					t.Fatal("written token was empty")
-				}
-
-				// First, ensure JWT has been removed
-				if removeJWTAfterReading {
-					_, err = os.Stat(in)
-					if err == nil {
-						t.Fatal("no error returned from stat, indicating the jwt is still present")
-					}
-					if !os.IsNotExist(err) {
-						t.Fatalf("unexpected error: %v", err)
-					}
-				} else {
-					_, err := os.Stat(in)
-					require.NoError(t, err)
-				}
-
-				// First decrypt it
-				resp := new(dhutil.Envelope)
-				if err := jsonutil.DecodeJSON(val, resp); err != nil {
-					continue
-				}
-
-				shared, err := dhutil.GenerateSharedSecret(pri, resp.Curve25519PublicKey)
-				require.NoError(t, err)
-				aesKey, err := dhutil.DeriveSharedKey(shared, pub, resp.Curve25519PublicKey)
-				require.NoError(t, err)
-				if len(aesKey) == 0 {
-					t.Fatal("got empty aes key")
-				}
-
-				val, err = dhutil.DecryptAES(aesKey, resp.EncryptedPayload, resp.Nonce, []byte("foobar"))
-				require.NoErrorf(t, err, "error: %v\nresp: %v", err, string(val))
-
-				// Now unwrap it
-				wrapInfo := new(api.SecretWrapInfo)
-				if err := jsonutil.DecodeJSON(val, wrapInfo); err != nil {
-					t.Fatal(err)
-				}
-				switch {
-				case wrapInfo.TTL != 10:
-					t.Fatalf("bad wrap info: %v", wrapInfo.TTL)
-				case !ahWrapping && wrapInfo.CreationPath != "sys/wrapping/wrap":
-					t.Fatalf("bad wrap path: %v", wrapInfo.CreationPath)
-				case ahWrapping && wrapInfo.CreationPath != "auth/jwt/login":
-					t.Fatalf("bad wrap path: %v", wrapInfo.CreationPath)
-				case wrapInfo.Token == "":
-					t.Fatal("wrap token is empty")
-				}
-				cloned.SetToken(wrapInfo.Token)
-				secret, err := cloned.Logical().Unwrap("")
-				require.NoError(t, err)
-				if ahWrapping {
-					switch {
-					case secret.Auth == nil:
-						t.Fatal("unwrap secret auth is nil")
-					case secret.Auth.ClientToken == "":
-						t.Fatal("unwrap token is nil")
-					}
-					return secret.Auth.ClientToken
-				} else {
-					switch {
-					case secret.Data == nil:
-						t.Fatal("unwrap secret data is nil")
-					case secret.Data["token"] == nil:
-						t.Fatal("unwrap token is nil")
-					}
-					return secret.Data["token"].(string)
-				}
+			return secret.Auth.ClientToken
+		} else {
+			switch {
+			case wrapInfo.CreationPath != "sys/wrapping/wrap":
+				t.Fatalf("bad wrap path: %v", wrapInfo.CreationPath)
+			case secret.Data == nil:
+				t.Fatal("unwrap secret data is nil")
+			case secret.Data["token"] == nil:
+				t.Fatal("unwrap token is nil")
 			}
-			time.Sleep(250 * time.Millisecond)
+			return secret.Data["token"].(string)
 		}
 	}
 	origToken := checkToken()

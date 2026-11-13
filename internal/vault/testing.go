@@ -1534,7 +1534,9 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 	// Note: it's 105 so that we don't conflict with a running Consul by
 	// default.
 	coreConfig := &CoreConfig{
-		LogicalBackends:    make(map[string]logical.Factory),
+		LogicalBackends: map[string]logical.Factory{
+			"kv": PassthroughBackendFactory,
+		},
 		CredentialBackends: make(map[string]logical.Factory),
 		AuditBackends:      make(map[string]audit.Factory),
 		RedirectAddr:       fmt.Sprintf("https://127.0.0.1:%d", listeners[0][0].Address.Port),

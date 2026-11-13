@@ -27,7 +27,6 @@ import (
 	postgreshelper "github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/builtin/database/postgresql"
-	"github.com/openbao/openbao/v2/internal/helper/builtinplugins"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	vaulthttp "github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
@@ -39,7 +38,6 @@ func getCluster(t *testing.T) (*vault.TestCluster, logical.SystemView) {
 		LogicalBackends: map[string]logical.Factory{
 			"database": Factory,
 		},
-		BuiltinRegistry: builtinplugins.Registry,
 	}
 
 	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{

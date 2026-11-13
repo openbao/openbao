@@ -9,10 +9,10 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 )
 
-// Allow usernames to contain alphanumeric characters, -, ., and @
+// Define username rules. Usernames are allowed to contain alphanumeric characters, -, ., and @
 var validUsername = regexp.MustCompile("^" + framework.GenericNameWithAtRegex("username") + "$")
 
-// During routing, anything except "/" is acceptable in a username.
+// During routing, anything except "/" is acceptable in a username. Routing only checks for endpoint matches. Username rules are checked separately.
 func usernamePathRegex() string {
 	return `(?P<username>[^/]+)`
 }

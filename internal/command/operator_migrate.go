@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"net/url"
 	"os"
@@ -19,12 +20,16 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
+	raftlib "github.com/hashicorp/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	physFile "github.com/openbao/openbao/sdk/v2/physical/file"
+	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 	"github.com/openbao/openbao/v2/internal/command/server"
+	"github.com/openbao/openbao/v2/internal/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/physical/raft"
+	"github.com/openbao/openbao/v2/internal/physical/raft/snapshot"
 	"github.com/openbao/openbao/v2/internal/vault"
 	"github.com/posener/complete"
 	"golang.org/x/sync/errgroup"
@@ -166,7 +171,18 @@ func (c *OperatorMigrateCommand) Run(args []string) int {
 		return 1
 	}
 
+	if config.StorageSource.Type == "raft_snapshot" && c.flagReset {
+		c.UI.Error("storage source \"raft_snapshot\" does not require -reset")
+		return 1
+	}
+
+	if config.StorageDestination.Type == "raft_snapshot" {
+		c.UI.Error("\"raft_snapshot\" can't be the storage destination!")
+		return 1
+	}
+
 	c.PhysicalBackends["file"] = physFile.NewFileBackend
+	c.PhysicalBackends["raft_snapshot"] = snapshotFactory
 
 	if err := c.migrate(config); err != nil {
 		if err == errAbort {
@@ -183,6 +199,49 @@ func (c *OperatorMigrateCommand) Run(args []string) int {
 	}
 
 	return 0
+}
+
+func snapshotFactory(config map[string]string, logger log.Logger) (physical.Backend, error) {
+	path, ok := config["path"]
+	if !ok {
+		return nil, fmt.Errorf("path variable is required")
+	}
+
+	snapFile, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer snapFile.Close() //nolint:errcheck
+
+	tempSnapFile, cleanup, err := snapshot.WriteToTempFile(logger, snapFile, &raftlib.SnapshotMeta{})
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
+
+	ephemInmem, err := inmem.NewInmem(nil, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	reader := raft.NewDelimitedReader(tempSnapFile, math.MaxInt32)
+
+	entry := new(pb.StorageEntry)
+	for {
+		err := reader.ReadMsg(entry)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return nil, err
+		}
+		err = ephemInmem.Put(context.Background(), &physical.Entry{Key: entry.Key, Value: entry.Value})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return ephemInmem, nil
 }
 
 // migrate attempts to instantiate the source and destinations backends,
@@ -219,6 +278,8 @@ func (c *OperatorMigrateCommand) migrate(config *migratorConfig) (err error) {
 		// Raft storage cannot be written to when shutdown. Also the boltDB file
 		// already uses file locking to ensure two processes are not accessing
 		// it.
+	case "raft_snapshot":
+		// For the restoration from a snapshot, no lock is required.
 	default:
 		if err := SetStorageMigration(from, true); err != nil {
 			return fmt.Errorf("error setting migration lock: %w", err)

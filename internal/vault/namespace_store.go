@@ -107,14 +107,22 @@ type NamespaceStore struct {
 // NewNamespaceStore creates a new NamespaceStore that is backed
 // using a given view. It used used to durable store and manage named namespace.
 func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*NamespaceStore, error) {
+	tree := newNamespaceTree(namespace.RootNamespace)
+	tree.createHook = core.router.MountNamespace
+	tree.deleteHook = core.router.UnmountNamespace
+
 	ns := &NamespaceStore{
-		core:                 core,
-		storage:              core.barrier,
-		logger:               logger,
-		namespacesByPath:     newNamespaceTree(nil),
-		namespacesByUUID:     make(map[string]*namespace.Namespace),
-		namespacesByAccessor: make(map[string]*namespace.Namespace),
-		creationDeletionMap:  make(map[string]bool),
+		core:             core,
+		storage:          core.barrier,
+		logger:           logger,
+		namespacesByPath: tree,
+		namespacesByUUID: map[string]*namespace.Namespace{
+			namespace.RootNamespaceUUID: namespace.RootNamespace,
+		},
+		namespacesByAccessor: map[string]*namespace.Namespace{
+			namespace.RootNamespaceID: namespace.RootNamespace,
+		},
+		creationDeletionMap: make(map[string]bool),
 	}
 
 	ns.creationDeletionJobContext, ns.creationDeletionJobCancelFunc = context.WithCancel(core.activeContext.Load())
@@ -164,27 +172,17 @@ func (ns *NamespaceStore) CancelNamespaceDeletion() {
 // loadNamespaces loads all stored namespaces from disk. It assumes the lock
 // is held when required.
 func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
-	// Assume we roughly have as many namespaces as we have presently. During
-	// invalidation this will pre-allocate enough space to reload everything
-	// as we'll likely be essentially in sync already. However, at startup, this
-	// will mostly just give us space for the root namespace.
-	namespacesByPath := newNamespaceTree(namespace.RootNamespace)
-	namespacesByUUID := make(map[string]*namespace.Namespace, len(ns.namespacesByUUID)+1)
-	namespacesByAccessor := make(map[string]*namespace.Namespace, len(ns.namespacesByAccessor)+1)
-	namespacesByUUID[namespace.RootNamespaceUUID] = namespace.RootNamespace
-	namespacesByAccessor[namespace.RootNamespaceID] = namespace.RootNamespace
-
 	loadNamespaceInsert := func(namespace *namespace.Namespace) error {
 		ns.logger.Info("discovered namespace", "path", namespace.Path, "uuid", namespace.UUID)
 
-		if _, ok := namespacesByUUID[namespace.UUID]; ok {
+		if _, ok := ns.namespacesByUUID[namespace.UUID]; ok {
 			return fmt.Errorf("namespace with UUID %q is not unique in storage", namespace.UUID)
 		}
-		if err := namespacesByPath.Insert(namespace); err != nil {
+		if err := ns.namespacesByPath.Insert(namespace); err != nil {
 			return err
 		}
-		namespacesByUUID[namespace.UUID] = namespace
-		namespacesByAccessor[namespace.ID] = namespace
+		ns.namespacesByUUID[namespace.UUID] = namespace
+		ns.namespacesByAccessor[namespace.ID] = namespace
 		return nil
 	}
 
@@ -194,14 +192,10 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 		return err
 	}
 
-	err := namespacesByPath.validate()
+	err := ns.namespacesByPath.validate()
 	if err != nil {
 		return err
 	}
-
-	ns.namespacesByPath = namespacesByPath
-	ns.namespacesByUUID = namespacesByUUID
-	ns.namespacesByAccessor = namespacesByAccessor
 
 	return nil
 }
@@ -443,35 +437,18 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		}
 	}
 
-	if !exists {
-		// Before attempting to create it, ensure we don't have a mount table
-		// entry that conflicts with this new namespace. We assume we only
-		// need to look at our parent's namespace's mount table for the last
-		// path component of this new namespace; while mount paths can have
-		// any number of components, our namespace only has one and is relative
-		// to some parent path.
-		path := entry.Path
-		if parent.ID != namespace.RootNamespaceID {
-			if !entry.HasParent(parent) {
-				return nil, errors.New("namespace path lacks parent as a prefix")
-			}
-
-			path = namespace.Canonicalize(parent.TrimmedPath(entry.Path))
-		}
-
-		if conflict := ns.core.router.MatchingPrefixInternal(ctx, path); conflict != "" {
-			return nil, fmt.Errorf("new namespace conflicts with existing mount: %v", conflict)
-		}
+	if err := ns.namespacesByPath.Insert(entry); err != nil {
+		return nil, fmt.Errorf("failed to insert namespace entry: %w", err)
 	}
+	ns.namespacesByUUID[entry.UUID] = entry
+	ns.namespacesByAccessor[entry.ID] = entry
 
 	// Order of storage operations is important:
 	//
 	// 1. Write the durable storage entry as tainted. This helps signal
 	//    standby nodes to ignore the update.
-	// 2. Update the in-mem namespace store, marking the namespace as
-	//    undergoing an asynchronous modification.
-	// 3. Write the in-namespace entries.
-	// 4. Finalize the namespace by re-writing the durable storage entry
+	// 2. Write the in-namespace entries.
+	// 3. Finalize the namespace by re-writing the durable storage entry
 	//    as not tainted.
 	//
 	// Cleanup thus needs to handle partial deletion and remove any storage
@@ -517,12 +494,6 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		entry.Tainted = false
 		ns.creationDeletionMap[entry.UUID] = true
 	}
-
-	if err := ns.namespacesByPath.Insert(entry); err != nil {
-		return nil, fmt.Errorf("failed to insert namespace entry: %w", err)
-	}
-	ns.namespacesByUUID[entry.UUID] = entry
-	ns.namespacesByAccessor[entry.ID] = entry
 
 	var sealKeyShares [][]byte
 	if !exists {

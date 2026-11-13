@@ -139,7 +139,7 @@ func (r *ResponseError) Error() string {
 	return errBody.String()
 }
 
-// IsJSON checks if the content type is a valid json type
+// IsJSON checks if the content type is a valid JSON type
 // valid types are 'application/json' (RFC 8259) and also 'application/*json' types
 func (r *Response) IsJSON() bool {
 	ct := r.Header.Get("Content-Type")

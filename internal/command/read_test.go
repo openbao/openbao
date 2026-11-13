@@ -4,10 +4,15 @@
 package command
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/cli"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func testReadCommand(tb testing.TB) (*cli.MockUi, *ReadCommand) {
@@ -161,5 +166,80 @@ func TestReadCommand_Run(t *testing.T) {
 
 		_, cmd := testReadCommand(t)
 		assertNoTabs(t, cmd)
+	})
+
+	t.Run("gh_issue_4367_non_json_response", func(t *testing.T) {
+		t.Parallel()
+		type testCase struct {
+			name         string
+			srv          *httptest.Server
+			assertResult func(*testing.T, *cli.MockUi, *ReadCommand)
+		}
+		const pemBody = "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n"
+
+		var testCases = []testCase{
+			{
+				name: "non_json_non_404_response_parsed_as_raw",
+				srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/pem-certificate-chain")
+					_, _ = w.Write([]byte(pemBody))
+					w.WriteHeader(http.StatusOK)
+				})),
+				assertResult: func(t *testing.T, ui *cli.MockUi, command *ReadCommand) {
+					assert.Equal(t, 0, command.Run([]string{"pki/issuer/test/pem"}), "read returned non-zero result")
+					assert.Equal(t, pemBody+"\n", ui.OutputWriter.String(), "reading \"pki/issuer/test/pem\" did not output as raw format")
+				},
+			},
+			{
+				name: "json_404_returns_warnings_with_zero_exit_status",
+				srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"warnings":["something happened"]}`))
+					w.WriteHeader(http.StatusNotFound)
+				})),
+				assertResult: func(t *testing.T, ui *cli.MockUi, command *ReadCommand) {
+					assert.Equal(t, 0, command.Run([]string{"pki/issuer/test/pem"}), "bad read exited on 0")
+					assert.Equal(t, "WARNING! The following warnings were returned from OpenBao:\n\n  * something happened\n\n", ui.ErrorWriter.String(), "valid 404 not parsed correctly")
+				},
+			},
+			{
+				name: "non_json_response_error_with_field_flag",
+				srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/pem-certificate-chain")
+					_, _ = w.Write([]byte(pemBody))
+					w.WriteHeader(http.StatusOK)
+				})),
+				assertResult: func(t *testing.T, ui *cli.MockUi, command *ReadCommand) {
+					assert.NotEqual(t, 0, command.Run([]string{"-field", "mycustomfield", "pki/issuer/test/pem"}), "bad read exited on 0")
+					assert.Equal(t, "'-field' parameter is not supported when output type is 'raw'\n", ui.ErrorWriter.String(), "error was not loggged when -field passed reading raw secret value")
+					assert.Empty(t, ui.OutputWriter.String())
+				},
+			},
+			{
+				name: "bad_json_returns_error",
+				srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte("this is an invalid JSON body"))
+					w.WriteHeader(http.StatusOK)
+				})),
+				assertResult: func(t *testing.T, ui *cli.MockUi, command *ReadCommand) {
+					assert.NotEqual(t, 0, command.Run([]string{"pki/issuer/test/pem"}), "bad read exited on 0")
+					assert.Equal(t, "Error reading pki/issuer/test/pem: invalid character 'h' in literal true (expecting 'r')\n", ui.ErrorWriter.String(), "reading \"pki/issuer/test/pem\" did not output as raw format")
+				},
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				defer tc.srv.Close()
+				cfg := api.DefaultConfig()
+				cfg.Address = tc.srv.URL
+				client, err := api.NewClient(cfg)
+				require.NoError(t, err)
+				ui, command := testReadCommand(t)
+				command.client = client
+				tc.assertResult(t, ui, command)
+			})
+		}
 	})
 }

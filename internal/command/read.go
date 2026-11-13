@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/cli"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -104,10 +105,47 @@ func (c *ReadCommand) Run(args []string) int {
 	}
 
 	if Format(c.UI) != "raw" {
-		secret, err := client.Logical().ReadWithDataWithContext(ctx, path, data)
+		resp, err := client.Logical().ReadRawWithDataWithContext(ctx, path, data)
+		// Non-2xx responses come back with both a response and an error. A 404
+		// is still a valid read (it can carry warnings or data), so only treat
+		// other failures as errors.
+		if err != nil && (resp == nil || resp.StatusCode != 404) {
+			c.UI.Error(fmt.Sprintf("Error reading %s: %s", path, err))
+			return 2
+		}
+		if resp == nil || resp.Body == nil {
+			c.UI.Error(fmt.Sprintf("No value found at %s", path))
+			return 2
+		}
+		defer resp.Body.Close() //nolint:errcheck
+
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error reading %s: %s", path, err))
 			return 2
+		}
+		if len(body) == 0 {
+			c.UI.Error(fmt.Sprintf("No value found at %s", path))
+			return 2
+		}
+
+		// if response format is not JSON and is a non-404 error, parse as raw
+		if resp.StatusCode != 404 && !resp.IsJSON() {
+			if c.flagField != "" {
+				c.UI.Error("'-field' parameter is not supported when output type is 'raw'")
+				return 2
+			}
+			c.UI.Output(string(body))
+			return 0
+		}
+
+		secret, err := api.ParseSecret(bytes.NewReader(body))
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Error reading %s: %s", path, err))
+			return 2
+		}
+		if resp.StatusCode == 404 && (secret == nil || (len(secret.Warnings) == 0 && len(secret.Data) == 0)) {
+			secret = nil
 		}
 		if secret == nil {
 			c.UI.Error(fmt.Sprintf("No value found at %s", path))

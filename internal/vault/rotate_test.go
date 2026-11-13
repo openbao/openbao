@@ -518,9 +518,61 @@ func TestRotationBackedUpKeys(t *testing.T) {
 		keys := TestCoreCreateUnsealedNamespaces(t, c, ns)
 		testRotationBackedUpKeys(t, c, ns, keys["ns1/"], false)
 	})
+
+	t.Run("namespaces store to their own prefix", func(t *testing.T) {
+		c, keyRoot, _, _ := TestCoreUnsealedWithConfigs(t, config, nil)
+		ns1 := &namespace.Namespace{Path: "ns1/"}
+		ns2 := &namespace.Namespace{Path: "ns2/"}
+		keysNs1 := TestCoreCreateUnsealedNamespaces(t, c, ns1)
+		keysNs2 := TestCoreCreateUnsealedNamespaces(t, c, ns2)
+
+		resultRoot := testRotateBackedUpKeys(t, c, namespace.RootNamespace, keyRoot, false)
+		resultNs1 := testRotateBackedUpKeys(t, c, ns1, keysNs1["ns1/"], false)
+		resultNs2 := testRotateBackedUpKeys(t, c, ns2, keysNs2["ns2/"], false)
+
+		for _, tc := range []struct {
+			ns          *namespace.Namespace
+			rekeyResult *RekeyResult
+		}{
+			{namespace.RootNamespace, resultRoot},
+			{ns1, resultNs1},
+			{ns2, resultNs2},
+		} {
+			ctx := namespace.ContextWithNamespace(t.Context(), tc.ns)
+			backedUpKeys, err := c.sealManager.RetrieveRotationBackup(ctx, tc.ns, false)
+			require.NoError(t, err)
+			require.NotNil(t, backedUpKeys)
+			decodedKey, err := hex.DecodeString(backedUpKeys.Keys[tc.rekeyResult.PGPFingerprints[0]][0])
+			require.NoError(t, err)
+			require.Equal(t, tc.rekeyResult.SecretShares[0], decodedKey)
+		}
+
+		// Removing a namespace's backup does not affect the other
+		err := c.sealManager.DeleteRotationBackup(
+			namespace.ContextWithNamespace(t.Context(), ns1), ns1, false)
+		require.NoError(t, err)
+
+		// Check that the backup for ns1 is gone
+		backup, err := c.sealManager.RetrieveRotationBackup(
+			namespace.ContextWithNamespace(t.Context(), ns1), ns1, false)
+		require.NoError(t, err)
+		require.Nil(t, backup)
+
+		// But the backups for the other namespaces are still there
+		backup, err = c.sealManager.RetrieveRotationBackup(
+			namespace.ContextWithNamespace(t.Context(), ns2), ns2, false)
+		require.NoError(t, err)
+		require.NotNil(t, backup)
+
+		backup, err = c.sealManager.RetrieveRotationBackup(
+			namespace.ContextWithNamespace(t.Context(), namespace.RootNamespace),
+			namespace.RootNamespace, false)
+		require.NoError(t, err)
+		require.NotNil(t, backup)
+	})
 }
 
-func testRotationBackedUpKeys(t *testing.T, c *Core, ns *namespace.Namespace, keys [][]byte, recovery bool) {
+func testRotateBackedUpKeys(t *testing.T, c *Core, ns *namespace.Namespace, keys [][]byte, recovery bool) *RekeyResult {
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	seal := c.sealManager.NamespaceSeal(ns.UUID)
 	require.NotNil(t, seal)
@@ -572,6 +624,14 @@ func testRotationBackedUpKeys(t *testing.T, c *Core, ns *namespace.Namespace, ke
 	require.NotNil(t, sealConf)
 	require.Equal(t, sealConf, newConf)
 
+	return result
+}
+
+func testRotationBackedUpKeys(t *testing.T, c *Core, ns *namespace.Namespace, keys [][]byte, recovery bool) {
+	result := testRotateBackedUpKeys(t, c, ns, keys, recovery)
+
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
+
 	// Verify we can read backed up keys.
 	backedKeys, err := c.sealManager.RetrieveRotationBackup(ctx, ns, recovery)
 	require.NoError(t, err)
@@ -580,30 +640,28 @@ func testRotationBackedUpKeys(t *testing.T, c *Core, ns *namespace.Namespace, ke
 	require.NoError(t, err)
 	require.Equal(t, result.SecretShares[0], decodedKey)
 
-	// Verify fallback path.
-	barrier := c.sealManager.NamespaceBarrier(ns.Path)
-	eKey := coreBarrierUnsealKeysBackupPath
-	if recovery {
-		eKey = coreRecoveryUnsealKeysBackupPath
+	// Verify fallback path, which only applies to root
+	if ns.UUID == namespace.RootNamespaceUUID {
+		eKey := rotationBackupStoragePath(ns, recovery)
+
+		buf, err := json.Marshal(backedKeys)
+		require.NoError(t, err)
+
+		require.NoError(t, c.barrier.Put(ctx, &logical.StorageEntry{
+			Key:   eKey,
+			Value: buf,
+		}))
+
+		backedKeys, err = c.sealManager.RetrieveRotationBackup(ctx, ns, recovery)
+		require.NoError(t, err)
+
+		decodedKey, err = hex.DecodeString(backedKeys.Keys[result.PGPFingerprints[0]][0])
+		require.NoError(t, err)
+		require.Equal(t, result.SecretShares[0], decodedKey)
 	}
 
-	buf, err := json.Marshal(backedKeys)
-	require.NoError(t, err)
-
-	require.NoError(t, barrier.Put(ctx, &logical.StorageEntry{
-		Key:   eKey,
-		Value: buf,
-	}))
-
-	backedKeys, err = c.sealManager.RetrieveRotationBackup(ctx, ns, recovery)
-	require.NoError(t, err)
-
-	decodedKey, err = hex.DecodeString(backedKeys.Keys[result.PGPFingerprints[0]][0])
-	require.NoError(t, err)
-	require.Equal(t, result.SecretShares[0], decodedKey)
-
 	// Verify deletion works as intended.
-	require.NoError(t, c.sealManager.DeleteRotationBackup(ctx, ns.Path, recovery))
+	require.NoError(t, c.sealManager.DeleteRotationBackup(ctx, ns, recovery))
 	backedKeys, err = c.sealManager.RetrieveRotationBackup(ctx, ns, recovery)
 	require.NoError(t, err)
 	require.Nil(t, backedKeys)

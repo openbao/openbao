@@ -1,0 +1,3 @@
+```release-note: improvement
+credential/userpass: allow emails to be used as usernames by decoupling updated username rules from routing. 
+```

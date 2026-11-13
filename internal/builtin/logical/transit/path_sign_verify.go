@@ -125,7 +125,7 @@ derivation is enabled; currently only available with ed25519 keys.`,
 				Type: framework.TypeString,
 				Description: `Hash algorithm to use (POST body parameter). Valid values are:
 
-* sha1
+* sha1 (deprecated in: v2.8.0, removal: v2.9.0)
 * sha2-224
 * sha2-256
 * sha2-384
@@ -252,7 +252,7 @@ derivation is enabled; currently only available with ed25519 keys.`,
 				Type: framework.TypeString,
 				Description: `Hash algorithm to use (POST body parameter). Valid values are:
 
-* sha1
+* sha1 (deprecated in: v2.8.0, removal: v2.9.0)
 * sha2-224
 * sha2-256
 * sha2-384
@@ -505,6 +505,10 @@ func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, d *fr
 		}
 	}
 
+	if hashAlgorithm == keysutil.HashTypeSHA1 && (p.Type.HashSignatureInput() || p.Type == keysutil.KeyType_ExternalKey) {
+		resp.AddWarning(sha1SigningDeprecationWarning)
+	}
+
 	return resp, nil
 }
 
@@ -715,6 +719,10 @@ func (b *backend) pathVerifyWrite(ctx context.Context, req *logical.Request, d *
 		}
 	}
 
+	if hashAlgorithm == keysutil.HashTypeSHA1 && (p.Type.HashSignatureInput() || p.Type == keysutil.KeyType_ExternalKey) {
+		resp.AddWarning(sha1VerificationDeprecationWarning)
+	}
+
 	return resp, nil
 }
 
@@ -728,3 +736,9 @@ const pathVerifyHelpSyn = `Verify a signature or HMAC for input data created usi
 const pathVerifyHelpDesc = `
 Verifies a signature or HMAC of the input data using the named key and the given hash algorithm.
 `
+
+const sha1SigningDeprecationWarning = "Signing data using SHA-1 is deprecated and will be removed in v2.9.0. " +
+	"Use 'sha2-256' or another supported algorithm for new signatures."
+
+const sha1VerificationDeprecationWarning = "Verifying signatures using SHA-1 is deprecated and will be removed in v2.9.0. " +
+	"Re-sign the original data using 'sha2-256' or another supported algorithm."

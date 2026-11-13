@@ -19,6 +19,23 @@ forum](https://github.com/orgs/openbao/discussions).
 Please refer to the [FAQ](faq.mdx) page for frequently asked questions
 concerning OpenBao feature deprecations.
 
+### SHA-1 signing and verification in the Transit secrets engine
+
+> Announced **11/2026**, Deprecated in: **v2.8.0**, Removal: **v2.9.0**
+
+The SHA-1 hash algorithm will be removed for signing and signature verification
+in the Transit secrets engine. For new signatures, set `hash_algorithm` to
+`sha2-256` or another supported algorithm. This affects requests to the `sign`
+and `verify` endpoints that use `sha1` with RSA, ECDSA, or external keys.
+
+To migrate existing signed data, re-sign the original data using a supported
+hash algorithm.
+
+Also see:
+
+- [Transit signing](/docs/api/secret/transit#sign-data)
+- [Transit signature verification](/docs/api/secret/transit#verify-signed-data)
+
 ### RSA SHA-1 signing of SSH certificates
 
 > Announced **11/2026**, Deprecated in: **v2.8.0**, Removal: **v2.9.0**

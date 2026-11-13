@@ -5707,13 +5707,58 @@ This path responds to the following HTTP methods.
 		Delete a workflow.
 		`,
 	},
-	"exec-workflows": {
-		"Execute a workflow.",
+	"trace-workflows": {
+		"Execute a workflow and return its full execution trace.",
 		`
 This path responds to the following HTTP methods.
 
 	PUT /<path>
+		Execute a workflow and return a trace of every step, including the
+		complete request information. The trace will contain privileged information!
+		`,
+	},
+	"list-exec-workflows": {
+		"List executable workflows.",
+		`
+This path responds to the following HTTP methods.
+
+	LIST /
+		List the paths of workflows.
+
+	SCAN /
+		Scan (recursively list) the paths of workflows.
+		`,
+	},
+	"execute-workflows": {
+		"Read, list and execute workflows.",
+		`
+This path responds to the following HTTP methods.
+
+	GET /<path>
+		Retrieve the information required to execute a workflow: its path,
+		description, whether it allows unauthenticated execution and its inputs.
+
+	PUT /<path>
 		Execute a workflow.
+
+	LIST /<prefix>
+		List the paths of workflows under the prefix.
+
+	SCAN /<prefix>
+		Scan (recursively list) the paths of workflows under the prefix.
+		`,
+	},
+	"unauthed-exec-workflows": {
+		"Read and execute workflows without authentication.",
+		`
+This path responds to the following HTTP methods.
+
+	GET /<path>
+		Retrieve the information required to execute a workflow. Only
+		succeeds for workflows allowing unauthenticated execution.
+
+	PUT /<path>
+		Execute a workflow allowing unauthenticated execution.
 		`,
 	},
 }

@@ -25,8 +25,8 @@ concerning OpenBao feature deprecations.
 
 The SHA-1 hash algorithm will be removed for signing and signature verification
 in the Transit secrets engine. For new signatures, set `hash_algorithm` to
-`sha2-256` or another supported algorithm. This affects requests to the
-`sign` and `verify` endpoints that use `sha1` with RSA and ECDSA keys.
+`sha2-256` or another supported algorithm. This affects requests to the `sign`
+and `verify` endpoints that use `sha1` with RSA, ECDSA, or external keys.
 
 To migrate existing signed data, re-sign the original data using a supported
 hash algorithm.

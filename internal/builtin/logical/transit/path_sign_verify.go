@@ -125,7 +125,7 @@ derivation is enabled; currently only available with ed25519 keys.`,
 				Type: framework.TypeString,
 				Description: `Hash algorithm to use (POST body parameter). Valid values are:
 
-* sha1
+* sha1 (deprecated in: v2.8.0, removal: v2.9.0)
 * sha2-224
 * sha2-256
 * sha2-384
@@ -252,7 +252,7 @@ derivation is enabled; currently only available with ed25519 keys.`,
 				Type: framework.TypeString,
 				Description: `Hash algorithm to use (POST body parameter). Valid values are:
 
-* sha1
+* sha1 (deprecated in: v2.8.0, removal: v2.9.0)
 * sha2-224
 * sha2-256
 * sha2-384

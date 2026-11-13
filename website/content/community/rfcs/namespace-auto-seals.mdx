@@ -65,14 +65,31 @@ key as follows:
    key. If they differ, both are decrypted and re-encrypted with the current
    key.
 
-After re-encryption, the previous KMS key is no longer needed and may be
-retired according to the KMS rotation policy.
-
 A configuration update proceeds as follows:
 
-1. The new configuration must successfully decrypt the stored barrier key. If
-   it cannot, the update is rejected and the existing configuration is kept
-   intact.
+1. The new configuration is verified by the test-before-swap guard, which
+   performs two checks with the new configuration, in this order:
+   1. Decryption. The stored barrier key is decrypted. This proves that the
+      new configuration can still read the barrier key, which is protected by
+      the KMS key currently in use.
+   2. Encryption and decryption. A random test value is encrypted, then
+      decrypted, and the result is compared with the original value. This
+      proves that the new configuration can encrypt with the new KMS key and
+      decrypt what it encrypted, which the re-encryption in step 3 requires.
+      This matters in particular for public key encryption, where encryption
+      and decryption use different keys and may be subject to different KMS
+      permissions.
+
+   If either check fails, the update is rejected and the existing
+   configuration is kept intact.
+
+   The order matters. Neither check writes anything to storage, so a failure
+   leaves the namespace unchanged. Decryption comes first because it is the
+   precondition for everything else: if the new configuration cannot read the
+   current barrier key, re-encryption is impossible. The encryption and
+   decryption check comes second because it covers the operation step 3
+   performs next, re-encryption with the new KMS key. Only when both checks
+   have passed is anything written.
 2. The new configuration is stored and replaces the previous one.
 3. If the new configuration uses a different KMS key, the barrier key and the
    recovery key are immediately re-encrypted with it, as part of the request.
@@ -172,9 +189,11 @@ This complements the endpoint, but this RFC does not rely on it.
 ### Configuration Updates (PUT /config/seal)
 
 A request that changes the seal provider is rejected. For Auto Unseal
-mechanisms, the verification described above, where the new configuration must
-decrypt the existing stored barrier key, is referred to in this RFC as the
-test-before-swap guard.
+mechanisms, the verification described above is referred to in this RFC as
+the test-before-swap guard. It first decrypts the stored barrier key with the
+new configuration, then encrypts and decrypts a random test value with it and
+compares the result. This round-trip follows the same approach as the
+existing health check of the global Auto Unseal.
 
 The re-encryption of the stored barrier key and the recovery key after a KMS
 key change reuses the logic the global Auto Unseal already runs after unseal,
@@ -285,8 +304,8 @@ parent namespaces already control the lifecycle of their children.
 
 The test-before-swap guard on `PUT /config/seal` is a convenience rather than a
 security boundary. It rejects a new configuration that cannot read the stored
-barrier key, so that the mistake is reported immediately instead of surfacing
-at the next unseal.
+barrier key, or that cannot encrypt and decrypt with the new KMS key, so that
+the mistake is reported immediately instead of surfacing at the next unseal.
 
 Without the guard, a faulty configuration would not affect a namespace that is
 already unsealed, since its barrier keyring is held in memory. The failure

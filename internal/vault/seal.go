@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 	"sync/atomic"
 
@@ -318,6 +319,11 @@ type SealConfig struct {
 
 	// Stores the progress of the verification operation (key shares)
 	VerificationProgress shamir.Shares `json:"-"`
+
+	// KMSConfig holds provider-specific configuration for auto-seal types
+	// (e.g. transit, awskms). Stored encrypted in the parent namespace barrier
+	// without unsealing the respective namespace barrier. Not used for Shamir seals.
+	KMSConfig map[string]string `json:"kms_config,omitempty" mapstructure:"kms_config"`
 }
 
 // baseValidate is used as a shared base between `Validate` and `ValidateRecovery`
@@ -353,8 +359,13 @@ func (s *SealConfig) baseValidate() error {
 	return nil
 }
 
-// Validate is used to sanity check the (barrier) seal configuration
+// Validate is used to sanity check the (barrier) seal configuration.
+// Non-Shamir seals skip the share/threshold checks; those fields are
+// unused when a KMS wrapper handles key storage.
 func (s *SealConfig) Validate() error {
+	if s.Type != "" && s.Type != "shamir" {
+		return nil
+	}
 	if s.SecretShares < 1 {
 		return errors.New("shares must be at least one")
 	}
@@ -387,6 +398,10 @@ func (s *SealConfig) Clone() *SealConfig {
 	if len(s.VerificationKey) > 0 {
 		ret.VerificationKey = make([]byte, len(s.VerificationKey))
 		copy(ret.VerificationKey, s.VerificationKey)
+	}
+	if len(s.KMSConfig) > 0 {
+		ret.KMSConfig = make(map[string]string, len(s.KMSConfig))
+		maps.Copy(ret.KMSConfig, s.KMSConfig)
 	}
 	return ret
 }

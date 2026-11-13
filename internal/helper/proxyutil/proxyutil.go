@@ -59,7 +59,7 @@ func WrapInProxyProto(listener net.Listener, config *ProxyProtoConfig) (net.List
 
 				sa, err := sockaddr.NewSockAddr(addr.String())
 				if err != nil {
-					return proxyproto.REJECT, fmt.Errorf("error parsing remote address: %w", err)
+					return proxyproto.REJECT, fmt.Errorf("%w: error parsing remote address: %v", proxyproto.ErrInvalidUpstream, err)
 				}
 
 				for _, authorizedAddr := range config.AuthorizedAddrs {
@@ -72,7 +72,7 @@ func WrapInProxyProto(listener net.Listener, config *ProxyProtoConfig) (net.List
 					return proxyproto.IGNORE, nil
 				}
 
-				return proxyproto.REJECT, errors.New(`upstream connection not trusted proxy_protocol_behavior is "deny_unauthorized"`)
+				return proxyproto.REJECT, fmt.Errorf("%w: upstream connection not trusted proxy_protocol_behavior is 'deny_unauthorized'", proxyproto.ErrInvalidUpstream)
 			},
 		}
 	default:

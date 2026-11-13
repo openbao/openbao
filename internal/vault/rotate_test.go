@@ -45,13 +45,13 @@ func testRotateLifecycleCommon(t *testing.T, sm *SealManager, ns *namespace.Name
 	require.ErrorContainsf(t, err, "no rotation in progress", "rotation shouldn't be in progress, err: %v", err)
 
 	require.Nil(t, sm.RotationConfig(ns.UUID, recovery))
-	require.NoError(t, sm.CancelRotation(ctx, ns.UUID, false))
+	sm.CancelRotation(ns.UUID, recovery)
 
 	newConf := &SealConfig{
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
-	rotationResult, err := sm.InitRotation(ctx, ns, newConf, recovery)
+	rotationResult, err := sm.InitRotation(ctx, ns, newConf, recovery, true)
 	require.NoError(t, err)
 	require.Empty(t, rotationResult)
 
@@ -59,7 +59,7 @@ func testRotateLifecycleCommon(t *testing.T, sm *SealManager, ns *namespace.Name
 	newConf.Nonce = conf.Nonce
 	require.Equal(t, conf, newConf)
 
-	require.NoError(t, sm.CancelRotation(ctx, ns.UUID, recovery))
+	sm.CancelRotation(ns.UUID, recovery)
 	require.Empty(t, sm.RotationConfig(ns.UUID, recovery))
 }
 
@@ -78,7 +78,7 @@ func testInitRotationCommon(t *testing.T, sm *SealManager, ns *namespace.Namespa
 		SecretThreshold: 5,
 		SecretShares:    1,
 	}
-	rotationResult, err := sm.InitRotation(ctx, ns, badConf, recovery)
+	rotationResult, err := sm.InitRotation(ctx, ns, badConf, recovery, true)
 	require.Error(t, err)
 	require.Empty(t, rotationResult)
 
@@ -96,12 +96,12 @@ func testInitRotationCommon(t *testing.T, sm *SealManager, ns *namespace.Namespa
 		newConf.Type = seal.RecoveryType()
 	}
 
-	rotationResult, err = sm.InitRotation(ctx, ns, newConf, recovery)
+	rotationResult, err = sm.InitRotation(ctx, ns, newConf, recovery, true)
 	require.NoError(t, err)
 	require.Empty(t, rotationResult)
 
 	// Second should fail
-	rotationResult, err = sm.InitRotation(ctx, ns, newConf, recovery)
+	rotationResult, err = sm.InitRotation(ctx, ns, newConf, recovery, true)
 	require.Error(t, err)
 	require.Empty(t, rotationResult)
 }
@@ -136,8 +136,8 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
-	rotationResult, err := c.sealManager.InitRotation(ctx, ns, newConf, recovery)
-	require.NoError(t, err)
+	rotationResult, httpErr := c.sealManager.InitRotation(ctx, ns, newConf, recovery, true)
+	require.NoError(t, httpErr)
 	require.Empty(t, rotationResult)
 
 	// Fetch new config with generated nonce
@@ -147,8 +147,8 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 	// Provide the root/recovery keys
 	var result *RekeyResult
 	for _, key := range keys {
-		result, err = c.sealManager.UpdateRotation(ctx, ns, key, rotConfig.Nonce, recovery)
-		require.NoError(t, err)
+		result, httpErr = c.sealManager.UpdateRotation(ctx, ns, key, rotConfig.Nonce, recovery)
+		require.NoError(t, httpErr)
 		if result != nil {
 			break
 		}
@@ -160,6 +160,7 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 
 	// SealConfig should update
 	var sealConf *SealConfig
+	var err error
 	if recovery {
 		sealConf, err = seal.RecoveryConfig(ctx)
 	} else {
@@ -202,7 +203,7 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 		SecretThreshold: 1,
 		SecretShares:    1,
 	}
-	rotationResult, err = c.sealManager.InitRotation(ctx, ns, newConf, recovery)
+	rotationResult, err = c.sealManager.InitRotation(ctx, ns, newConf, recovery, true)
 	require.NoError(t, err)
 	require.Empty(t, rotationResult)
 
@@ -213,13 +214,12 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 	// Provide the parts root
 	oldResult := result
 	for i := range 3 {
-		result, err = c.sealManager.UpdateRotation(ctx, ns, TestKeyCopy(oldResult.SecretShares[i]), rotConfig.Nonce, recovery)
-		require.NoError(t, err)
+		result, httpErr = c.sealManager.UpdateRotation(ctx, ns, TestKeyCopy(oldResult.SecretShares[i]), rotConfig.Nonce, recovery)
+		require.NoError(t, httpErr)
 
 		// Should be progress
 		if i < 2 {
-			rConfig := c.sealManager.RotationConfig(ns.UUID, recovery)
-			require.Equal(t, len(rConfig.RotationProgress), i+1)
+			require.Equal(t, c.sealManager.RotationProgress(ns.UUID, recovery, false), i+1)
 		}
 	}
 
@@ -276,8 +276,8 @@ func testRotateInvalidCommon(t *testing.T, c *Core, ns *namespace.Namespace, key
 	}
 
 	// Start rotation
-	rotationResult, err := c.sealManager.InitRotation(ctx, ns, newConf, recovery)
-	require.NoError(t, err)
+	rotationResult, httpErr := c.sealManager.InitRotation(ctx, ns, newConf, recovery, true)
+	require.NoError(t, httpErr)
 	require.Empty(t, rotationResult)
 
 	// Fetch new config with generated nonce
@@ -285,8 +285,8 @@ func testRotateInvalidCommon(t *testing.T, c *Core, ns *namespace.Namespace, key
 	require.NotNil(t, rotConfig)
 
 	// Provide invalid nonce
-	_, err = c.sealManager.UpdateRotation(ctx, ns, keys[0], "abcd", recovery)
-	require.Error(t, err)
+	_, httpErr = c.sealManager.UpdateRotation(ctx, ns, keys[0], "abcd", recovery)
+	require.Error(t, httpErr)
 
 	// Corrupt the first byte of the first key so we'll fail once $threshold
 	// keys have been provided.
@@ -354,7 +354,7 @@ func TestRotationStandby(t *testing.T) {
 		SecretShares:    1,
 		SecretThreshold: 1,
 	}
-	_, err = core.sealManager.InitRotation(t.Context(), namespace.RootNamespace, newConf, false)
+	_, err = core.sealManager.InitRotation(t.Context(), namespace.RootNamespace, newConf, false, false)
 	require.NoError(t, err)
 
 	// Fetch new config with generated nonce
@@ -376,7 +376,7 @@ func TestRotationStandby(t *testing.T) {
 	TestWaitActive(t, core2)
 
 	// Rotate the root key again
-	_, err = core2.sealManager.InitRotation(t.Context(), namespace.RootNamespace, newConf, false)
+	_, err = core2.sealManager.InitRotation(t.Context(), namespace.RootNamespace, newConf, false, false)
 	require.NoError(t, err)
 
 	// Fetch new config with generated nonce
@@ -401,7 +401,7 @@ func TestVerficationInvalid(t *testing.T) {
 
 	_, err := core.sealManager.InitRotation(t.Context(), namespace.RootNamespace, &SealConfig{
 		VerificationRequired: true,
-	}, false)
+	}, false, false)
 	require.ErrorContainsf(t, err, "requiring verification not supported", "unexpected error: %v", err)
 }
 
@@ -417,7 +417,7 @@ func TestRotationGenerateRecoveryKey(t *testing.T) {
 		SecretThreshold: 3,
 	}
 
-	result, err := core.sealManager.InitRotation(t.Context(), namespace.RootNamespace, rotConfig, true)
+	result, err := core.sealManager.InitRotation(t.Context(), namespace.RootNamespace, rotConfig, true, true)
 	require.NoError(t, err)
 	require.Len(t, result.SecretShares, 5)
 	require.Empty(t, result.PGPFingerprints)
@@ -539,8 +539,8 @@ func testRotationBackedUpKeys(t *testing.T, c *Core, ns *namespace.Namespace, ke
 		Backup:          true,
 		PGPKeys:         []string{pgpkeys.TestPubKey1},
 	}
-	rotationResult, err := c.sealManager.InitRotation(ctx, ns, newConf, recovery)
-	require.NoError(t, err)
+	rotationResult, httpErr := c.sealManager.InitRotation(ctx, ns, newConf, recovery, true)
+	require.NoError(t, httpErr)
 	require.Empty(t, rotationResult)
 
 	// Fetch new config with generated nonce
@@ -550,8 +550,8 @@ func testRotationBackedUpKeys(t *testing.T, c *Core, ns *namespace.Namespace, ke
 	// Provide the root/recovery keys
 	var result *RekeyResult
 	for _, key := range keys {
-		result, err = c.sealManager.UpdateRotation(ctx, ns, key, rotConfig.Nonce, recovery)
-		require.NoError(t, err)
+		result, httpErr = c.sealManager.UpdateRotation(ctx, ns, key, rotConfig.Nonce, recovery)
+		require.NoError(t, httpErr)
 		if result != nil {
 			break
 		}
@@ -563,6 +563,7 @@ func testRotationBackedUpKeys(t *testing.T, c *Core, ns *namespace.Namespace, ke
 
 	// SealConfig should update
 	var sealConf *SealConfig
+	var err error
 	if recovery {
 		sealConf, err = seal.RecoveryConfig(ctx)
 	} else {

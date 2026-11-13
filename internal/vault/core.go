@@ -300,13 +300,6 @@ type Core struct {
 	namespaceRootGens    map[string]*rootTokenGeneration
 	namespaceRootGenLock sync.RWMutex
 
-	// These variables holds the config and shares we have until we reach
-	// enough to verify the appropriate root key. Note that the same lock is
-	// used; this isn't time-critical so this shouldn't be a problem.
-	rootRotationConfig     *SealConfig
-	recoveryRotationConfig *SealConfig
-	rotationLock           sync.RWMutex
-
 	// mounts is loaded after unseal since it is a protected
 	// configuration
 	mounts *routing.MountTable
@@ -2465,10 +2458,6 @@ func (c *Core) preSeal() error {
 	// Clear any pending funcs
 	c.postUnsealFuncs = nil
 	c.activeTime = time.Time{}
-
-	// Clear any rotation progress
-	c.rootRotationConfig = nil
-	c.recoveryRotationConfig = nil
 
 	if c.metricsCh != nil {
 		close(c.metricsCh)

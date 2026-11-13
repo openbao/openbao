@@ -15,6 +15,7 @@ import (
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/vault/seal"
 )
@@ -35,16 +36,12 @@ func testCore_Rekey_Lifecycle_Common(t *testing.T, c *Core, recovery bool) {
 	min, _ := c.barrier.KeyLength()
 	// Verify update not allowed
 	_, err := c.RekeyUpdate(t.Context(), make([]byte, min), "", recovery)
-	expected := "no barrier rekey in progress"
-	if recovery {
-		expected = "no recovery rekey in progress"
-	}
-	if err == nil || !strings.Contains(err.Error(), expected) {
-		t.Fatalf("no rekey should be in progress, err: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "no rotation in progress") {
+		t.Fatalf("no rotation should be in progress, err: %v", err)
 	}
 
 	// Should be no progress
-	if _, _, err := c.RekeyProgress(recovery, false); err == nil {
+	if _, err := c.RekeyProgress(recovery, false); err == nil {
 		t.Fatal("expected error from RekeyProgress")
 	}
 
@@ -64,7 +61,7 @@ func testCore_Rekey_Lifecycle_Common(t *testing.T, c *Core, recovery bool) {
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
-	err = c.RekeyInit(newConf, recovery)
+	err = c.RekeyInit(namespace.RootContext(t.Context()), newConf, recovery)
 	require.NoError(t, err)
 
 	// Should get config
@@ -100,7 +97,7 @@ func testCore_Rekey_Init_Common(t *testing.T, c *Core, recovery bool) {
 		SecretThreshold: 5,
 		SecretShares:    1,
 	}
-	err := c.RekeyInit(badConf, recovery)
+	err := c.RekeyInit(namespace.RootContext(t.Context()), badConf, recovery)
 	if err == nil {
 		t.Fatal("should fail")
 	}
@@ -117,11 +114,11 @@ func testCore_Rekey_Init_Common(t *testing.T, c *Core, recovery bool) {
 		newConf.Type = c.seal.RecoveryType()
 	}
 
-	err = c.RekeyInit(newConf, recovery)
+	err = c.RekeyInit(namespace.RootContext(t.Context()), newConf, recovery)
 	require.NoError(t, err)
 
 	// Second should fail
-	err = c.RekeyInit(newConf, recovery)
+	err = c.RekeyInit(namespace.RootContext(t.Context()), newConf, recovery)
 	if err == nil {
 		t.Fatal("should fail")
 	}
@@ -151,7 +148,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
-	hErr := c.RekeyInit(newConf, recovery)
+	hErr := c.RekeyInit(namespace.RootContext(t.Context()), newConf, recovery)
 	if hErr != nil {
 		t.Fatalf("err: %v", hErr)
 	}
@@ -179,7 +176,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	}
 
 	// Should be no progress
-	if _, _, err := c.RekeyProgress(recovery, false); err == nil {
+	if _, err := c.RekeyProgress(recovery, false); err == nil {
 		t.Fatal("expected error from RekeyProgress")
 	}
 
@@ -234,7 +231,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 		SecretThreshold: 1,
 		SecretShares:    1,
 	}
-	err = c.RekeyInit(newConf, recovery)
+	err = c.RekeyInit(namespace.RootContext(t.Context()), newConf, recovery)
 	require.NoError(t, err)
 
 	// Fetch new config with generated nonce
@@ -252,7 +249,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 
 		// Should be progress
 		if i < 2 {
-			_, num, err := c.RekeyProgress(recovery, false)
+			num, err := c.RekeyProgress(recovery, false)
 			require.NoError(t, err)
 			if num != i+1 {
 				t.Fatalf("bad: %d", num)
@@ -302,7 +299,7 @@ func testCore_Rekey_Invalid_Common(t *testing.T, c *Core, keys [][]byte, recover
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
-	err := c.RekeyInit(newConf, recovery)
+	err := c.RekeyInit(namespace.RootContext(t.Context()), newConf, recovery)
 	require.NoError(t, err)
 
 	// Fetch new config with generated nonce
@@ -329,7 +326,7 @@ func testCore_Rekey_Invalid_Common(t *testing.T, c *Core, keys [][]byte, recover
 	}
 
 	// Check progress has been reset
-	_, num, err := c.RekeyProgress(recovery, false)
+	num, err := c.RekeyProgress(recovery, false)
 	require.NoError(t, err)
 	if num != 0 {
 		t.Fatalf("rekey progress should be 0, got: %d", num)
@@ -385,7 +382,7 @@ func TestCore_Rekey_Standby(t *testing.T) {
 		SecretShares:    1,
 		SecretThreshold: 1,
 	}
-	err = core.RekeyInit(newConf, false)
+	err = core.RekeyInit(namespace.RootContext(t.Context()), newConf, false)
 	require.NoError(t, err)
 	// Fetch new config with generated nonce
 	rkconf, err := core.RekeyConfig(false)
@@ -410,7 +407,7 @@ func TestCore_Rekey_Standby(t *testing.T) {
 	TestWaitActive(t, core2)
 
 	// Rekey the root key again
-	err = core2.RekeyInit(newConf, false)
+	err = core2.RekeyInit(namespace.RootContext(t.Context()), newConf, false)
 	require.NoError(t, err)
 	// Fetch new config with generated nonce
 	rkconf, err = core2.RekeyConfig(false)
@@ -437,9 +434,9 @@ func TestSysRekey_Verification_Invalid(t *testing.T) {
 		&SealConfig{SecretShares: 1, SecretThreshold: 1},
 		&seal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
 
-	err := core.BarrierRekeyInit(&SealConfig{
+	err := core.RekeyInit(namespace.RootContext(t.Context()), &SealConfig{
 		VerificationRequired: true,
-	})
+	}, false)
 
 	if err == nil {
 		t.Fatal("expected error")

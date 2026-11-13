@@ -60,6 +60,7 @@ func (b *backend) pathUserPoliciesUpdate(ctx context.Context, req *logical.Reque
 	}
 	defer txRollback()
 
+	username, err := getUsername(d)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}

@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
 	"strings"
 	"sync"
 	"time"
@@ -186,6 +187,7 @@ func (c *cassandraConnectionProducer) createSession(ctx context.Context) (*gocql
 	if c.Port != 0 {
 		clusterConfig.Port = c.Port
 	}
+	clusterConfig.AddressTranslator = newPortAddressTranslator(c.Port)
 
 	clusterConfig.ProtoVersion = c.ProtocolVersion
 	if clusterConfig.ProtoVersion == 0 {
@@ -242,4 +244,18 @@ func (c *cassandraConnectionProducer) secretValues() map[string]string {
 		c.PemBundle: "[pem_bundle]",
 		c.PemJSON:   "[pem_json]",
 	}
+}
+
+// newPortAddressTranslator returns a translator that pins every host to port, or nil if port is 0.
+//
+// Cassandra advertises its plain native port (native_port in system.peers_v2) for every peer, and gocql uses
+// that for discovered hosts instead of the configured port. With TLS on a different port the discovered hosts
+// are then unreachable. Keeping the configured port for all of them avoids that.
+func newPortAddressTranslator(port int) gocql.AddressTranslator {
+	if port == 0 {
+		return nil
+	}
+	return gocql.AddressTranslatorFunc(func(addr net.IP, _ int) (net.IP, int) {
+		return addr, port
+	})
 }

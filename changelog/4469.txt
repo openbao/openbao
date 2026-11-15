@@ -1,0 +1,3 @@
+```release-note:bug
+database/cassandra: Use the configured `port` for hosts discovered through the cluster, fixing connections to discovered nodes when TLS listens on a non-default port.
+```

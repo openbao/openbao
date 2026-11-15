@@ -1,0 +1,3 @@
+```release-note:improvement
+database/cassandra: Add the `allowed_authenticators` parameter to override the server authenticator class names accepted by the plugin, for example to connect to clusters using `LDAPAuthenticator`.
+```

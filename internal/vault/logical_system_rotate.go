@@ -582,13 +582,13 @@ func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 			},
 		}
 
-		rotConf := b.Core.sealManager.RotationConfig(ns.UUID, recovery)
+		rotConf, progress := b.Core.sealManager.RotationConfigWithProgress(ns.UUID, recovery, false)
 		if rotConf != nil {
 			resp.Data["nonce"] = rotConf.Nonce
 			resp.Data["started"] = true
 			resp.Data["t"] = rotConf.SecretThreshold
 			resp.Data["n"] = rotConf.SecretShares
-			resp.Data["progress"] = b.Core.sealManager.RotationProgress(ns.UUID, recovery, false)
+			resp.Data["progress"] = progress
 			resp.Data["verification_required"] = rotConf.VerificationRequired
 			resp.Data["verification_nonce"] = rotConf.VerificationNonce
 			if len(rotConf.PGPKeys) != 0 {
@@ -791,12 +791,10 @@ func (b *SystemBackend) handleRotateVerifyGet() framework.OperationFunc {
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		rotConf := b.Core.sealManager.RotationConfig(ns.UUID, recovery)
+		rotConf, progress := b.Core.sealManager.RotationConfigWithProgress(ns.UUID, recovery, true)
 		if rotConf == nil {
 			return handleError(errors.New("no rotation configuration found"))
 		}
-
-		progress := b.Core.sealManager.RotationProgress(ns.UUID, recovery, true)
 		return &logical.Response{
 			Data: map[string]any{
 				"nonce":    rotConf.VerificationNonce,

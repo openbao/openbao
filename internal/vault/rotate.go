@@ -31,18 +31,19 @@ type rotationConfig struct {
 	recoveryConfig *SealConfig
 }
 
-// RotationProgress acquires a read lock and reads the number of provided shares,
-// meaning the progress of the rotation and rotation verification processes.
-func (sm *SealManager) RotationProgress(nsUUID string, recovery, verification bool) int {
+// RotationConfigWithProgress returns a cloned rotation configuration
+// and the number of shares submitted for rotation or verification.
+// It returns nil and zero when no rotation is in progress.
+func (sm *SealManager) RotationConfigWithProgress(nsUUID string, recovery, verification bool) (*SealConfig, int) {
 	sm.lock.RLock()
 	defer sm.lock.RUnlock()
 	if config := sm.rotationConfig(nsUUID, recovery); config != nil {
 		if verification {
-			return len(config.VerificationProgress)
+			return config.Clone(), len(config.VerificationProgress)
 		}
-		return len(config.RotationProgress)
+		return config.Clone(), len(config.RotationProgress)
 	}
-	return 0
+	return nil, 0
 }
 
 // RotationConfig acquires a read lock and reads the rotation config of
@@ -56,8 +57,8 @@ func (sm *SealManager) RotationConfig(nsUUID string, recovery bool) *SealConfig 
 	return nil
 }
 
-// RotationConfig returns the rotation config of the namespace
-// with the given UUID.
+// rotationConfig returns the internal root or recovery rotation configuration
+// for the namespace, or nil if none exists. The caller must hold sm.lock.
 func (sm *SealManager) rotationConfig(nsUUID string, recovery bool) *SealConfig {
 	rotationConfig, ok := sm.rotationConfigByNamespace[nsUUID]
 	if !ok {
@@ -65,15 +66,10 @@ func (sm *SealManager) rotationConfig(nsUUID string, recovery bool) *SealConfig 
 	}
 
 	if recovery {
-		if rotationConfig.recoveryConfig != nil {
-			return rotationConfig.recoveryConfig
-		}
+		return rotationConfig.recoveryConfig
 	} else {
-		if rotationConfig.rootConfig != nil {
-			return rotationConfig.rootConfig
-		}
+		return rotationConfig.rootConfig
 	}
-	return nil
 }
 
 // setRotationConfig sets the root or recovery rotation config for a given namespace.
@@ -158,9 +154,11 @@ func (sm *SealManager) RotateBarrierKey(ctx context.Context, ns *namespace.Names
 	return nil
 }
 
-// InitRotation will either initialize the rotation of barrier or recovery key
-// depending on the value of recovery parameter.
-func (sm *SealManager) InitRotation(ctx context.Context, ns *namespace.Namespace, newConfig *SealConfig, recovery, allowRecoveryKeyRotation bool) (*RekeyResult, logical.HTTPCodedError) {
+// InitRotation starts root or recovery key rotation. If allowImmediateRecoveryKeyGen
+// is true and no recovery shares exist, recovery rotation generates and returns shares
+// immediately. The new recovery key is installed unless verification is required which
+// defers the installation until verification completes.
+func (sm *SealManager) InitRotation(ctx context.Context, ns *namespace.Namespace, newConfig *SealConfig, recovery, allowImmediateRecoveryKeyGen bool) (*RekeyResult, logical.HTTPCodedError) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
@@ -174,7 +172,7 @@ func (sm *SealManager) InitRotation(ctx context.Context, ns *namespace.Namespace
 		return nil, logical.CodedError(http.StatusBadRequest, ErrNotSealable.Error())
 	}
 
-	if httpErr := sm.validateRotationConfig(ns, seal, newConfig, recovery); httpErr != nil {
+	if httpErr := sm.validateRotationConfig(seal, newConfig, recovery); httpErr != nil {
 		return nil, httpErr
 	}
 
@@ -190,9 +188,9 @@ func (sm *SealManager) InitRotation(ctx context.Context, ns *namespace.Namespace
 	sm.setRotationConfig(ns.UUID, recovery, config)
 	sm.logger.Info("rotation initialized", "namespace", ns.Path, "nonce", config.Nonce, "shares", config.SecretShares, "threshold", config.SecretThreshold, "validation_required", config.VerificationRequired)
 
-	if recovery && allowRecoveryKeyRotation {
-		// if no key shares exist, meaning we've initialized the instance
-		// without creating them at time, then return the keys immediately
+	if recovery && allowImmediateRecoveryKeyGen {
+		// If no key shares exist, meaning we've initialized the instance
+		// without creating them at time, then return the keys immediately.
 		return sm.rotateRecoveryNoKeyShares(ctx, ns, seal, config)
 	}
 
@@ -487,7 +485,7 @@ func (sm *SealManager) performRecoveryRotation(ctx context.Context, newRootKey [
 }
 
 // validateRotationConfig validates properties of recovery or barrier rotation config.
-func (sm *SealManager) validateRotationConfig(ns *namespace.Namespace, seal Seal, newConfig *SealConfig, recovery bool) logical.HTTPCodedError {
+func (sm *SealManager) validateRotationConfig(seal Seal, newConfig *SealConfig, recovery bool) logical.HTTPCodedError {
 	if recovery {
 		if !seal.RecoveryKeySupported() {
 			return logical.CodedError(http.StatusBadRequest, "recovery keys not supported")
@@ -530,9 +528,9 @@ func (sm *SealManager) validateRotationConfig(ns *namespace.Namespace, seal Seal
 	return nil
 }
 
-// rotateRecoveryNoKeyShares verifies that setup recovery config exists
-// with `SecretShares` value is set as 0, and immediately returns back
-// recovery key shares.
+// rotateRecoveryNoKeyShares generates recovery shares immediately when the existing
+// configuration has zero shares. Otherwise, it returns nil, nil and leaves rotation
+// pending. Required verification defers installation of the generated key.
 func (sm *SealManager) rotateRecoveryNoKeyShares(ctx context.Context, ns *namespace.Namespace, seal Seal, config *SealConfig) (*RekeyResult, logical.HTTPCodedError) {
 	existingRecoveryConfig, err := seal.RecoveryConfig(ctx)
 	if err != nil {

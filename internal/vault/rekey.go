@@ -99,15 +99,18 @@ func (c *Core) RekeyThreshold(ctx context.Context, recovery bool) (int, logical.
 
 // RekeyProgress is used to return the rekey progress (num shares).
 func (c *Core) RekeyProgress(recovery, verification bool) (int, logical.HTTPCodedError) {
-	conf, err := c.RekeyConfig(recovery)
-	if err != nil {
-		return 0, err
+	unlock, httpErr := c.rekeyStateLock()
+	if httpErr != nil {
+		return 0, httpErr
 	}
+	defer unlock()
+
+	conf, progress := c.sealManager.RotationConfigWithProgress(namespace.RootNamespaceUUID, recovery, verification)
 	if conf == nil {
 		return 0, logical.CodedError(http.StatusBadRequest, "rekey operation not in progress")
 	}
 
-	return c.sealManager.RotationProgress(namespace.RootNamespaceUUID, recovery, verification), nil
+	return progress, nil
 }
 
 // RekeyConfig is used to read the rekey configuration.

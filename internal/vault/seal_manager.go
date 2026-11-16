@@ -95,6 +95,9 @@ func (sm *SealManager) sealAll() error {
 
 // Reset clears rotation and unlock internal states.
 func (sm *SealManager) Reset() {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
 	sm.unlockInformationByNamespace = map[string]*unlockInformation{}
 	sm.rotationConfigByNamespace = map[string]*rotationConfig{}
 }

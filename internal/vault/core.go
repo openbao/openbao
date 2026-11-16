@@ -2459,6 +2459,7 @@ func (c *Core) preSeal() error {
 	}
 	var result error
 
+	c.sealManager.Reset()
 	c.stopForwarding()
 	c.stopRaftActiveNode()
 	c.cancelNamespaceDeletion()

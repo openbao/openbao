@@ -38,7 +38,7 @@ The plugins are also adjusted to handle the execution by the CLI.
 
 When `bao login` is run and no built-in handler matches the method,
 the binaries in `$PATH` are searched based on the naming scheme `openbao-plugin-auth-[method]`.
-The plugin is then executed with a stripped version of the environment,
+The plugin is then executed with the current shell environment,
 appended with environment variables that pass information into the plugin.
 
 When the plugin binary is executed, an indicator signals that it is operating in "CLI mode".

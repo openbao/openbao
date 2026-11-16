@@ -26,6 +26,17 @@ func testReadCommand(tb testing.TB) (*cli.MockUi, *ReadCommand) {
 	}
 }
 
+func testReadCommandWithFormat(tb testing.TB, format string) (*cli.MockUi, *ReadCommand) {
+	tb.Helper()
+
+	ui := cli.NewMockUi()
+	return ui, &ReadCommand{
+		BaseCommand: &BaseCommand{
+			UI: &VaultUI{Ui: ui, format: format},
+		},
+	}
+}
+
 func TestReadCommand_Run(t *testing.T) {
 	t.Parallel()
 
@@ -174,6 +185,7 @@ func TestReadCommand_Run(t *testing.T) {
 			name         string
 			srv          *httptest.Server
 			assertResult func(*testing.T, *cli.MockUi, *ReadCommand)
+			format       string
 		}
 		const pemBody = "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n"
 
@@ -194,12 +206,37 @@ func TestReadCommand_Run(t *testing.T) {
 				name: "json_404_returns_warnings_with_zero_exit_status",
 				srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.Header().Set("Content-Type", "application/json")
-					_, _ = w.Write([]byte(`{"warnings":["something happened"]}`))
 					w.WriteHeader(http.StatusNotFound)
+					_, _ = w.Write([]byte(`{"warnings":["something happened"]}`))
 				})),
 				assertResult: func(t *testing.T, ui *cli.MockUi, command *ReadCommand) {
 					assert.Equal(t, 0, command.Run([]string{"pki/issuer/test/pem"}), "bad read exited on 0")
 					assert.Equal(t, "WARNING! The following warnings were returned from OpenBao:\n\n  * something happened\n\n", ui.ErrorWriter.String(), "valid 404 not parsed correctly")
+				},
+			},
+			{
+				name:   "json_404_returns_error_when_format_is_raw",
+				format: "raw",
+				srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusNotFound)
+					_, _ = w.Write([]byte(`{"warnings":["something happened"]}`))
+				})),
+				assertResult: func(t *testing.T, ui *cli.MockUi, command *ReadCommand) {
+					assert.Equal(t, 2, command.Run([]string{"pki/issuer/test/pem"}), "read should have exited with 2")
+					assert.Contains(t, ui.ErrorWriter.String(), "Error reading", "did not output ui error prefix")
+				},
+			},
+			{
+				name: "html_404_returns_error",
+				srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "text/html")
+					w.WriteHeader(http.StatusNotFound)
+					_, _ = w.Write([]byte(`404 Page Not Found`))
+				})),
+				assertResult: func(t *testing.T, ui *cli.MockUi, command *ReadCommand) {
+					assert.Equal(t, 2, command.Run([]string{"pki/issuer/test/pem"}), "bad read did not exit 2")
+					assert.Contains(t, ui.ErrorWriter.String(), "404 Page Not Found", "html 404 not returned correctly")
 				},
 			},
 			{
@@ -211,7 +248,7 @@ func TestReadCommand_Run(t *testing.T) {
 				})),
 				assertResult: func(t *testing.T, ui *cli.MockUi, command *ReadCommand) {
 					assert.NotEqual(t, 0, command.Run([]string{"-field", "mycustomfield", "pki/issuer/test/pem"}), "bad read exited on 0")
-					assert.Equal(t, "'-field' parameter is not supported when output type is 'raw'\n", ui.ErrorWriter.String(), "error was not loggged when -field passed reading raw secret value")
+					assert.Equal(t, "'-field' parameter is not supported when parsing response as 'raw'\n", ui.ErrorWriter.String(), "error was not loggged when -field passed reading raw secret value")
 					assert.Empty(t, ui.OutputWriter.String())
 				},
 			},
@@ -236,7 +273,13 @@ func TestReadCommand_Run(t *testing.T) {
 				cfg.Address = tc.srv.URL
 				client, err := api.NewClient(cfg)
 				require.NoError(t, err)
-				ui, command := testReadCommand(t)
+				var ui *cli.MockUi
+				var command *ReadCommand
+				if tc.format != "" {
+					ui, command = testReadCommandWithFormat(t, tc.format)
+				} else {
+					ui, command = testReadCommand(t)
+				}
 				command.client = client
 				tc.assertResult(t, ui, command)
 			})

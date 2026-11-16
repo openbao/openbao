@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 
@@ -103,64 +104,43 @@ func (c *ReadCommand) Run(args []string) int {
 		return 1
 	}
 
-	if Format(c.UI) != "raw" {
-		resp, err := client.Logical().ReadRawWithDataWithContext(ctx, path, data)
-
-		// Non-JSON bodies (e.g. PEM), non-404s are printed as raw.
-		if err == nil && resp.StatusCode != 404 && !resp.IsJSON() {
-			defer resp.Body.Close() //nolint:errcheck
-
-			if c.flagField != "" {
-				c.UI.Error("'-field' parameter is not supported when output type is 'raw'")
-				return 2
-			}
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				c.UI.Error(fmt.Sprintf("Error reading %s: %s", path, err))
-				return 2
-			}
-			if len(body) == 0 {
-				c.UI.Error("No value found")
-				return 2
-			}
-			c.UI.Output(string(body))
-			return 0
+	resp, err := client.Logical().ReadRawWithDataWithContext(ctx, path, data)
+	// JSON 404s with a response body can carry warnings or data, so let them pass through.
+	if err != nil && (resp == nil || resp.StatusCode != http.StatusNotFound || !resp.IsJSON() || Format(c.UI) == "raw") {
+		c.UI.Error(fmt.Sprintf("Error reading %s: %s", path, err))
+		return 2
+	}
+	defer resp.Body.Close() //nolint:errcheck
+	// if expected output is raw or response content-type is not explicitly JSON, then output as raw response bytes
+	if Format(c.UI) == "raw" || !resp.IsJSON() {
+		if c.flagField != "" {
+			c.UI.Error("'-field' parameter is not supported when parsing response as 'raw'")
+			return 2
 		}
-
-		// JSON responses or 404s take decode as secret to display warnings and errors.
-		secret, err := client.Logical().ParseRawResponseAndCloseBody(resp, err)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error reading %s: %s", path, err))
 			return 2
 		}
-		if secret == nil {
+		if len(body) == 0 {
 			c.UI.Error(fmt.Sprintf("No value found at %s", path))
 			return 2
 		}
-
-		if c.flagField != "" {
-			return PrintRawField(c.UI, secret, c.flagField)
-		}
-
-		return OutputSecret(c.UI, secret)
+		c.UI.Output(string(body))
+		return 0
 	}
-
-	resp, err := client.Logical().ReadRawWithDataWithContext(ctx, path, data)
+	// decode response as JSON Secret
+	secret, err := client.Logical().ParseRawResponseAndCloseBody(resp, err)
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error reading: %s: %s", path, err))
+		c.UI.Error(fmt.Sprintf("Error reading %s: %s", path, err))
 		return 2
 	}
-	if resp == nil || resp.Body == nil {
+	if secret == nil {
 		c.UI.Error(fmt.Sprintf("No value found at %s", path))
 		return 2
 	}
-	defer resp.Body.Close() //nolint:errcheck
-
-	contents, err := io.ReadAll(resp.Body)
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error reading: %s: %s", path, err))
-		return 2
+	if c.flagField != "" {
+		return PrintRawField(c.UI, secret, c.flagField)
 	}
-
-	return OutputData(c.UI, contents)
+	return OutputSecret(c.UI, secret)
 }

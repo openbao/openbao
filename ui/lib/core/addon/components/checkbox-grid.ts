@@ -5,7 +5,7 @@
 
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
-import { HTMLElementEvent } from 'forms';
+import type { HTMLElementEvent } from 'forms';
 
 interface CheckboxGridArgs {
   name: string;

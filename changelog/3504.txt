@@ -1,0 +1,6 @@
+```release-note:bug
+packaging/container: Ensure that labels on UBI-based images comply with Red Hat's certification requirements.
+```
+```release-note:change
+packaging/container: Revert removal of legacy, non-opencontainers image labels for maximum compatibility.
+```

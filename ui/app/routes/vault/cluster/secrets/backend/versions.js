@@ -10,6 +10,7 @@ import { inject as service } from '@ember/service';
 
 export default Route.extend({
   store: service(),
+  router: service(),
   templateName: 'vault/cluster/secrets/backend/versions',
 
   beforeModel() {
@@ -20,9 +21,9 @@ export default Route.extend({
       return;
     }
     if (parentKey) {
-      return this.transitionTo('vault.cluster.secrets.backend.list', parentKey);
+      return this.router.transitionTo('vault.cluster.secrets.backend.list', parentKey);
     } else {
-      return this.transitionTo('vault.cluster.secrets.backend.list-root');
+      return this.router.transitionTo('vault.cluster.secrets.backend.list-root');
     }
   },
 

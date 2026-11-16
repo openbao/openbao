@@ -138,12 +138,12 @@ to specify where the configuration is.
 
 - `plugin_file_uid` `(integer: 0)` – Uid of the plugin directories and plugin binaries if they
   are owned by an user other than the user running OpenBao. This only needs to be set if the
-  file permissions check is enabled via the environment variable `VAULT_ENABLE_FILE_PERMISSIONS_CHECK`.
+  file permissions check is enabled via the environment variable `BAO_ENABLE_FILE_PERMISSIONS_CHECK`.
 
 - `plugin_file_permissions` `(string: "")` – Octal permission string of the plugin
   directories and plugin binaries if they have write or execute permissions for group or others.
   This only needs to be set if the file permissions check is enabled via the environment variable
-  `VAULT_ENABLE_FILE_PERMISSIONS_CHECK`.
+  `BAO_ENABLE_FILE_PERMISSIONS_CHECK`.
 
 - `plugin` <code>([Plugin][oci-plugins]: &lt;none&gt;)</code> – Specifies declarative plugin
   downloading from OCI images and registration. Can be specified multiple times.
@@ -191,7 +191,7 @@ can have a negative effect on performance due to the tracking of each lock attem
 - `ui` `(bool: false)` <a name="ui"></a> – Enables the built-in web UI, which is available on all
   listeners (address + port) at the `/ui` path. Browsers accessing the standard
   OpenBao API address will automatically redirect there. This can also be provided
-  via the environment variable `VAULT_UI`. For more information, please see the
+  via the environment variable `BAO_UI`. For more information, please see the
   [ui configuration documentation](ui.mdx).
 
 - `pid_file` `(string: "")` - Path to the file in which the OpenBao server's
@@ -269,7 +269,7 @@ The following parameters are used on backends that support [High Availability][h
 - `api_addr` `(string: "")` <a name="api_addr"></a> – Specifies the address (full URL) to advertise to
   other OpenBao servers in the cluster for client redirection. This value is also
   used for [plugin backends][plugins]. This can also be provided via the
-  environment variable `VAULT_API_ADDR`. In general this should be set as a full
+  environment variable `BAO_API_ADDR`. In general this should be set as a full
   URL that points to the value of the [`listener`][listener] address.
   This can be dynamically defined with a
   [go-sockaddr template](https://pkg.go.dev/github.com/hashicorp/go-sockaddr/template)
@@ -277,7 +277,7 @@ The following parameters are used on backends that support [High Availability][h
 
 - `cluster_addr` `(string: "")` <a name="cluster_addr"></a> – Specifies the address to advertise to other
   OpenBao servers in the cluster for request forwarding. This can also be provided
-  via the environment variable `VAULT_CLUSTER_ADDR`. This is a full URL, like
+  via the environment variable `BAO_CLUSTER_ADDR`. This is a full URL, like
   `api_addr`, but OpenBao will ignore the scheme (all cluster members always
   use TLS with a private key/certificate).
   This can be dynamically defined with a

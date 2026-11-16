@@ -1,6 +1,3 @@
 ```release-note:bug
-core/ha: Return to read-enabled standby mode instead of read-disabled standby
-mode after stepping down from active mode when standby reads are enabled. This
-also fixes SIGHUPs crashing standby nodes if they've previously stepped down
-from active.
+core/ha: Return to read-enabled standby mode instead of read-disabled standby mode after stepping down from active mode when standby reads are enabled. This also fixes SIGHUPs crashing standby nodes if they've previously stepped down from active.
 ```

@@ -1,0 +1,3 @@
+```release-note:bug
+secrets/transit: Respect the `hash_algorithm` parameter when verifying HMACs.
+```

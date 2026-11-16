@@ -10,6 +10,7 @@ import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { maybeQueryRecord } from 'vault/macros/maybe-query-record';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 const getErrorMessage = (errors) => {
   const errorMessage =
@@ -140,7 +141,7 @@ export default class SecretDeleteMenu extends Component {
     }
     if (deleteType === 'destroy-all-versions' || deleteType === 'v1') {
       this.args.model.destroyRecord().then(() => {
-        return this.router.transitionTo('vault.cluster.secrets.backend.list-root');
+        return transitionToSafe(this.router, 'vault.cluster.secrets.backend.list-root');
       });
     } else {
       // if they do not have read access on the metadata endpoint we need to pull the version from modelForData so they can perform delete and undelete operations

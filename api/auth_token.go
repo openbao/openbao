@@ -93,7 +93,7 @@ func (c *TokenAuth) LookupWithContext(ctx context.Context, token string) (*Secre
 	defer cancelFunc()
 
 	r := c.c.NewRequest(http.MethodPost, "/v1/auth/token/lookup")
-	if err := r.SetJSONBody(map[string]interface{}{
+	if err := r.SetJSONBody(map[string]any{
 		"token": token,
 	}); err != nil {
 		return nil, err
@@ -117,7 +117,7 @@ func (c *TokenAuth) LookupAccessorWithContext(ctx context.Context, accessor stri
 	defer cancelFunc()
 
 	r := c.c.NewRequest(http.MethodPost, "/v1/auth/token/lookup-accessor")
-	if err := r.SetJSONBody(map[string]interface{}{
+	if err := r.SetJSONBody(map[string]any{
 		"accessor": accessor,
 	}); err != nil {
 		return nil, err
@@ -160,7 +160,7 @@ func (c *TokenAuth) RenewAccessorWithContext(ctx context.Context, accessor strin
 	defer cancelFunc()
 
 	r := c.c.NewRequest(http.MethodPost, "/v1/auth/token/renew-accessor")
-	if err := r.SetJSONBody(map[string]interface{}{
+	if err := r.SetJSONBody(map[string]any{
 		"accessor":  accessor,
 		"increment": increment,
 	}); err != nil {
@@ -185,7 +185,7 @@ func (c *TokenAuth) RenewWithContext(ctx context.Context, token string, incremen
 	defer cancelFunc()
 
 	r := c.c.NewRequest(http.MethodPut, "/v1/auth/token/renew")
-	if err := r.SetJSONBody(map[string]interface{}{
+	if err := r.SetJSONBody(map[string]any{
 		"token":     token,
 		"increment": increment,
 	}); err != nil {
@@ -211,7 +211,7 @@ func (c *TokenAuth) RenewSelfWithContext(ctx context.Context, increment int) (*S
 
 	r := c.c.NewRequest(http.MethodPut, "/v1/auth/token/renew-self")
 
-	body := map[string]interface{}{"increment": increment}
+	body := map[string]any{"increment": increment}
 	if err := r.SetJSONBody(body); err != nil {
 		return nil, err
 	}
@@ -239,7 +239,7 @@ func (c *TokenAuth) RenewTokenAsSelfWithContext(ctx context.Context, token strin
 	r := c.c.NewRequest(http.MethodPut, "/v1/auth/token/renew-self")
 	r.ClientToken = token
 
-	body := map[string]interface{}{"increment": increment}
+	body := map[string]any{"increment": increment}
 	if err := r.SetJSONBody(body); err != nil {
 		return nil, err
 	}
@@ -265,7 +265,7 @@ func (c *TokenAuth) RevokeAccessorWithContext(ctx context.Context, accessor stri
 	defer cancelFunc()
 
 	r := c.c.NewRequest(http.MethodPost, "/v1/auth/token/revoke-accessor")
-	if err := r.SetJSONBody(map[string]interface{}{
+	if err := r.SetJSONBody(map[string]any{
 		"accessor": accessor,
 	}); err != nil {
 		return err
@@ -292,7 +292,7 @@ func (c *TokenAuth) RevokeOrphanWithContext(ctx context.Context, token string) e
 	defer cancelFunc()
 
 	r := c.c.NewRequest(http.MethodPut, "/v1/auth/token/revoke-orphan")
-	if err := r.SetJSONBody(map[string]interface{}{
+	if err := r.SetJSONBody(map[string]any{
 		"token": token,
 	}); err != nil {
 		return err
@@ -343,7 +343,7 @@ func (c *TokenAuth) RevokeTreeWithContext(ctx context.Context, token string) err
 	defer cancelFunc()
 
 	r := c.c.NewRequest(http.MethodPut, "/v1/auth/token/revoke")
-	if err := r.SetJSONBody(map[string]interface{}{
+	if err := r.SetJSONBody(map[string]any{
 		"token": token,
 	}); err != nil {
 		return err

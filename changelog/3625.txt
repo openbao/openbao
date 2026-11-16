@@ -1,0 +1,3 @@
+```release-note:bug
+ui: fix client side validation for userpass user creation
+```

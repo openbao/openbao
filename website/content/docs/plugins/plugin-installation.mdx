@@ -1,0 +1,75 @@
+---
+sidebar_label: Plugin Installation
+description: Learn how to install external plugins.
+---
+
+# External plugin installation
+
+This guide explains how to install an external plugin, which involves downloading the plugin binary.
+Once it has been installed/downloaded, you need to [register](index.mdx#plugin-registration) the plugin.
+
+## Step 1: Define the download directory
+
+You need a directory where plugin binaries downloaded to, stored, and executed from.
+
+Edit the [config file](../configuration/index.mdx) to tell OpenBao where to this directory is located:
+
+```hcl
+plugin_directory = "/opt/openbao/plugins"
+```
+
+Depending on how you installed OpenBao, you may need to create this directory,
+change the owner/group to `openbao:openbao`, or mount it as a volume to the OpenBao container.
+The OpenBao process needs read and execute access to this directory and to the plugin binaries.
+
+If you enable plugin auto-download (see below), the main OpenBao process needs write access to the plugin directory.
+
+:::warning
+
+It is important to lock down the file system permissions of the plugin directory.
+Anyone with write access to this directory can put arbitrary plugins here
+that OpenBao may load and execute (depending on their other access and how OpenBao is configured).
+
+:::
+
+## Step 2: Obtain the checksum
+
+Obtain the SHA-256 digest for your plugin binary, for example, from the
+[openbao-plugins](https://github.com/openbao/openbao-plugins/releases) releases page
+or by running `sha256sum`.
+
+You will need this checksum later when you register the plugin with OpenBao.
+This allows OpenBao to check the integrity of the plugin before executing it.
+
+## Step 3: Download plugin binary
+
+There are two distribution/packaging mechanisms for external plugins: _raw binaries_ and _OCI artifacts_.
+Depending on which mechanism you choose, the installation process differs.
+
+### Raw binaries
+
+External plugins can be distributed as raw binaries.
+You download them yourself and place them into the plugin directory.
+
+Steps to install the plugin:
+
+1. Obtain the plugin binary, for example, by downloading it from its publisher's
+   release artifacts or by building it from source.
+1. Place the binary in the plugin directory.
+
+### OCI artifacts
+
+External plugins can also be distributed as OCI artifacts.
+OpenBao downloads them on your behalf from an OCI registry and stores them in the plugin directory.
+The download happens either automatically (if you enable auto-download) or manually when you trigger it.
+
+Steps to install the plugin:
+
+1. Define a [`plugin` stanza](../configuration/plugins.mdx) with an `image` field.
+1. Trigger OpenBao to download the artifact. You have two options:
+   1. Run [`bao plugin init`](../commands/plugin/init.mdx), or
+   1. Enable auto-download in the config file. Then restart OpenBao or send a SIGHUP.
+
+      ```hcl
+      plugin_auto_download = true
+      ```

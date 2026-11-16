@@ -641,6 +641,6 @@ func (b *fakeResponseBody) Close() error {
 	return nil
 }
 
-func fakeRequestFunc(_, _ string, _ interface{}) (*retryablehttp.Request, error) {
+func fakeRequestFunc(_, _ string, _ any) (*retryablehttp.Request, error) {
 	return nil, nil
 }

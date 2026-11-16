@@ -27,9 +27,11 @@ export default Route.extend({
     this._super(...arguments);
     const { item_type: itemType } = this.paramsFor('vault.cluster.access.method.item');
     const { path: method } = this.paramsFor('vault.cluster.access.method');
+    const methodModel = this.modelFor('vault.cluster.access.method');
     controller.set('itemType', singularize(itemType));
     controller.set('mode', 'create');
     controller.set('method', method);
+    controller.set('methodModel', methodModel);
   },
 
   resetController(controller, isExiting) {

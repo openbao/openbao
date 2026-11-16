@@ -100,11 +100,11 @@ func TestTranslation_Request(t *testing.T) {
 			ReplicationCluster: "RID",
 			Operation:          logical.CreateOperation,
 			Path:               "test/foo",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"string": "string",
 				"bool":   true,
-				"array":  []interface{}{"1", "2"},
-				"map": map[string]interface{}{
+				"array":  []any{"1", "2"},
+				"map": map[string]any{
 					"key": "value",
 				},
 			},
@@ -116,7 +116,7 @@ func TestTranslation_Request(t *testing.T) {
 					Increment: time.Second,
 					IssueTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 				},
-				InternalData: map[string]interface{}{
+				InternalData: map[string]any{
 					"role": "test",
 				},
 				LeaseID: "LeaseID",
@@ -129,7 +129,7 @@ func TestTranslation_Request(t *testing.T) {
 					Increment: time.Second,
 					IssueTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 				},
-				InternalData: map[string]interface{}{
+				InternalData: map[string]any{
 					"role": "test",
 				},
 				DisplayName: "test",
@@ -196,17 +196,17 @@ func TestTranslation_Response(t *testing.T) {
 	tCases := []*logical.Response{
 		nil,
 		{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"data": "blah",
 			},
 			Warnings: []string{"warning"},
 		},
 		{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"string": "string",
 				"bool":   true,
-				"array":  []interface{}{"1", "2"},
-				"map": map[string]interface{}{
+				"array":  []any{"1", "2"},
+				"map": map[string]any{
 					"key": "value",
 				},
 			},
@@ -218,7 +218,7 @@ func TestTranslation_Response(t *testing.T) {
 					Increment: time.Second,
 					IssueTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 				},
-				InternalData: map[string]interface{}{
+				InternalData: map[string]any{
 					"role": "test",
 				},
 				LeaseID: "LeaseID",
@@ -231,7 +231,7 @@ func TestTranslation_Response(t *testing.T) {
 					Increment: time.Second,
 					IssueTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 				},
-				InternalData: map[string]interface{}{
+				InternalData: map[string]any{
 					"role": "test",
 				},
 				DisplayName: "test",

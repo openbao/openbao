@@ -36,7 +36,7 @@ module('Integration | Component | sidebar-user-menu', function (hooks) {
 
   test('it should render conditional menu items', async function (assert) {
     const router = this.owner.lookup('service:router');
-    const transitionStub = sinon.stub(router, 'transitionTo');
+    const transitionStub = sinon.stub(router, 'transitionTo').resolves();
     const renewStub = sinon.stub(this.auth, 'renew').resolves();
     const revokeStub = sinon.stub(this.auth, 'revokeCurrentToken').resolves();
     const date = new Date();

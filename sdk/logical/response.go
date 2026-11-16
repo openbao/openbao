@@ -68,7 +68,7 @@ type Response struct {
 	// secrets, this data is sent down to the user as-is. To store internal
 	// data that you don't want the user to see, store it in
 	// Secret.InternalData.
-	Data map[string]interface{} `json:"data" structs:"data" mapstructure:"data"`
+	Data map[string]any `json:"data" structs:"data" mapstructure:"data"`
 
 	// Redirect is an HTTP URL to redirect to for further authentication.
 	// This is only valid for credential backends. This will be blanked
@@ -118,9 +118,9 @@ func (r *Response) Error() error {
 }
 
 // HelpResponse is used to format a help response
-func HelpResponse(text string, seeAlso []string, oapiDoc interface{}) *Response {
+func HelpResponse(text string, seeAlso []string, oapiDoc any) *Response {
 	return &Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"help":     text,
 			"see_also": seeAlso,
 			"openapi":  oapiDoc,
@@ -129,12 +129,12 @@ func HelpResponse(text string, seeAlso []string, oapiDoc interface{}) *Response 
 }
 
 // ErrorResponse is used to format an error response
-func ErrorResponse(text string, vargs ...interface{}) *Response {
+func ErrorResponse(text string, vargs ...any) *Response {
 	if len(vargs) > 0 {
 		text = fmt.Sprintf(text, vargs...)
 	}
 	return &Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"error": text,
 		},
 	}
@@ -143,7 +143,7 @@ func ErrorResponse(text string, vargs ...interface{}) *Response {
 // ListResponse is used to format a response to a list operation.
 func ListResponse(keys []string) *Response {
 	resp := &Response{
-		Data: map[string]interface{}{},
+		Data: map[string]any{},
 	}
 	if len(keys) != 0 {
 		resp.Data["keys"] = keys
@@ -153,10 +153,10 @@ func ListResponse(keys []string) *Response {
 
 // ListResponseWithInfo is used to format a response to a list operation and
 // return the keys as well as a map with corresponding key info.
-func ListResponseWithInfo(keys []string, keyInfo map[string]interface{}) *Response {
+func ListResponseWithInfo(keys []string, keyInfo map[string]any) *Response {
 	resp := ListResponse(keys)
 
-	keyInfoData := make(map[string]interface{})
+	keyInfoData := make(map[string]any)
 	for _, key := range keys {
 		val, ok := keyInfo[key]
 		if ok {
@@ -175,7 +175,7 @@ func ListResponseWithInfo(keys []string, keyInfo map[string]interface{}) *Respon
 // the provided Status Code.
 func RespondWithStatusCode(resp *Response, req *Request, code int) (*Response, error) {
 	ret := &Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			HTTPContentType: "application/json",
 			HTTPStatusCode:  code,
 		},
@@ -325,7 +325,7 @@ var _ WrappingResponseWriter = &StatusHeaderResponseWriter{}
 // ResolveRoleResponse returns a standard response to be returned by functions handling a ResolveRoleOperation
 func ResolveRoleResponse(roleName string) (*Response, error) {
 	return &Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"role": roleName,
 		},
 	}, nil

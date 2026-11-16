@@ -8,6 +8,7 @@ import { setupApplicationTest } from 'ember-qunit';
 
 import initPage from 'vault/tests/pages/init';
 import Pretender from 'pretender';
+import { waitUntil, settled } from '@ember/test-helpers';
 
 const HEALTH_RESPONSE = {
   initialized: false,
@@ -107,8 +108,11 @@ module('Acceptance | init', function (hooks) {
 
     setInitResponse(this.server, CLOUD_SEAL_RESPONSE);
     setStatusResponse(this.server, CLOUD_SEAL_STATUS_RESPONSE);
-
     await initPage.init(5, 3);
+    await waitUntil(() => initPage.keys.length === CLOUD_SEAL_RESPONSE.recovery_keys.length, {
+      timeout: 2000,
+      timeoutMessage: 'Timeout waiting for recovery keys to render',
+    });
 
     assert.strictEqual(
       initPage.keys.length,
@@ -121,6 +125,7 @@ module('Acceptance | init', function (hooks) {
       assert,
       true
     );
+    await settled();
   });
 
   test('shamir seal init', async function (assert) {
@@ -130,6 +135,10 @@ module('Acceptance | init', function (hooks) {
     setStatusResponse(this.server, SEAL_STATUS_RESPONSE);
 
     await initPage.init(3, 2);
+    await waitUntil(() => initPage.keys.length === SEAL_RESPONSE.keys.length, {
+      timeout: 2000,
+      timeoutMessage: 'Timeout waiting for recovery keys to render',
+    });
 
     assert.strictEqual(initPage.keys.length, SEAL_RESPONSE.keys.length, 'shows all of the recovery keys');
     assert.strictEqual(initPage.buttonText, 'Continue to Unseal', 'links to unseal');
@@ -138,5 +147,6 @@ module('Acceptance | init', function (hooks) {
       assert,
       false
     );
+    await settled();
   });
 });

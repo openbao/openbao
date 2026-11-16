@@ -1,0 +1,3 @@
+```release-note:bug
+sys/namespaces: Support clearing a namespace's `custom_metadata` by providing a patch that sets `custom_metadata` to `null` at the top-level.
+```

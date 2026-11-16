@@ -23,14 +23,22 @@ var (
 	// changed
 	DefaultWrappingTTL = "5m"
 
-	// The default function used if no other function is set. It honors the env
-	// var to set the wrap TTL. The default wrap TTL will apply when when writing
-	// to `sys/wrapping/wrap` when the env var is not set.
+	// DefaultWrappingLookupFunc is the default function used if no other
+	// function is set and environment access isn't disabled, honoring the
+	// BAO_WRAP_TTL variable. The default wrap TTL will apply when when writing
+	// to `sys/wrapping/wrap` when the environment variable is not set.
 	DefaultWrappingLookupFunc = func(operation, path string) string {
-		if ReadBaoVariable(EnvVaultWrapTTL) != "" {
-			return ReadBaoVariable(EnvVaultWrapTTL)
+		if env := ReadBaoVariable(EnvVaultWrapTTL); env != "" {
+			return env
 		}
 
+		return BaseWrappingLookupFunc(operation, path)
+	}
+
+	// BaseWrappingLookupFunc is the default function used if no other function
+	// is set and env access is disabled. DefaultWrappingLookupFunc calls into
+	// this function if no environment variable was set.
+	BaseWrappingLookupFunc = func(operation, path string) string {
 		if (operation == http.MethodPut || operation == http.MethodPost) && path == "sys/wrapping/wrap" {
 			return DefaultWrappingTTL
 		}
@@ -317,11 +325,11 @@ func (c *Logical) ScanPageWithContext(ctx context.Context, path string, after st
 	return ParseSecret(resp.Body)
 }
 
-func (c *Logical) Write(path string, data map[string]interface{}) (*Secret, error) {
+func (c *Logical) Write(path string, data map[string]any) (*Secret, error) {
 	return c.WriteWithContext(context.Background(), path, data)
 }
 
-func (c *Logical) WriteWithContext(ctx context.Context, path string, data map[string]interface{}) (*Secret, error) {
+func (c *Logical) WriteWithContext(ctx context.Context, path string, data map[string]any) (*Secret, error) {
 	r := c.c.NewRequest(http.MethodPut, "/v1/"+path)
 	if err := r.SetJSONBody(data); err != nil {
 		return nil, err
@@ -330,7 +338,7 @@ func (c *Logical) WriteWithContext(ctx context.Context, path string, data map[st
 	return c.write(ctx, r)
 }
 
-func (c *Logical) JSONMergePatch(ctx context.Context, path string, data map[string]interface{}) (*Secret, error) {
+func (c *Logical) JSONMergePatch(ctx context.Context, path string, data map[string]any) (*Secret, error) {
 	r := c.c.NewRequest(http.MethodPatch, "/v1/"+path)
 	r.Headers.Set("Content-Type", "application/merge-patch+json")
 	if err := r.SetJSONBody(data); err != nil {
@@ -443,13 +451,13 @@ func (c *Logical) UnwrapWithContext(ctx context.Context, wrappingToken string) (
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	var data map[string]interface{}
+	var data map[string]any
 	wt := strings.TrimSpace(wrappingToken)
 	if wrappingToken != "" {
 		if c.c.Token() == "" {
 			c.c.SetToken(wt)
 		} else if wrappingToken != c.c.Token() {
-			data = map[string]interface{}{
+			data = map[string]any{
 				"token": wt,
 			}
 		}

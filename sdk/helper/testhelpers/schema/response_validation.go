@@ -34,7 +34,7 @@ func ValidateResponse(t *testing.T, schema *framework.Response, response *logica
 // through the data map and validates conversions in the schema. In "strict"
 // mode, this function will also ensure that the data map has all schema's
 // required fields and does not have any fields outside of the schema.
-func ValidateResponseData(t *testing.T, schema *framework.Response, data map[string]interface{}, strict bool) {
+func ValidateResponseData(t *testing.T, schema *framework.Response, data map[string]any, strict bool) {
 	t.Helper()
 
 	if err := validateResponseDataImpl(
@@ -47,7 +47,7 @@ func ValidateResponseData(t *testing.T, schema *framework.Response, data map[str
 }
 
 // validateResponseDataImpl is extracted so that it can be tested
-func validateResponseDataImpl(schema *framework.Response, data map[string]interface{}, strict bool) error {
+func validateResponseDataImpl(schema *framework.Response, data map[string]any, strict bool) error {
 	// nothing to validate
 	if schema == nil {
 		return nil
@@ -71,7 +71,7 @@ func validateResponseDataImpl(schema *framework.Response, data map[string]interf
 		return fmt.Errorf("failed to convert input to json: %w", err)
 	}
 
-	var dataWithStringValues map[string]interface{}
+	var dataWithStringValues map[string]any
 	if err := json.Unmarshal(
 		jsonBytes,
 		&dataWithStringValues,

@@ -16,13 +16,13 @@ type Transactional interface {
 	// This function allows the creation of a new interactive transaction
 	// handle, only supporting read operations. Attempts to perform write
 	// operations (Put(...) or Delete(...)) will err.
-	BeginReadOnlyTx(context.Context) (Transaction, error)
+	BeginReadOnlyTx(ctx context.Context) (txn Transaction, err error)
 
 	// This function allows the creation of a new interactive transaction
 	// handle, supporting read/write transactions. In some cases, the
 	// underlying physical storage backend cannot handle parallel read/write
 	// transactions.
-	BeginTx(context.Context) (Transaction, error)
+	BeginTx(ctx context.Context) (txn Transaction, err error)
 }
 
 // Transaction is an interactive transactional interface: backend storage
@@ -35,11 +35,11 @@ type Transaction interface {
 	// Commit a transaction; this is equivalent to Rollback on a read-only
 	// transaction. Either Commit or Rollback must be called to release
 	// resources.
-	Commit(context.Context) error
+	Commit(ctx context.Context) error
 
 	// Rollback a transaction, preventing any changes from being persisted.
 	// Either Commit or Rollback must be called to release resources.
-	Rollback(context.Context) error
+	Rollback(ctx context.Context) error
 }
 
 // TransactionalStorage is implemented if a storage backend implements

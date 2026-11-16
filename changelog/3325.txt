@@ -1,0 +1,3 @@
+```release-note:improvement
+http: Ensure that `passthrough_request_headers` can pass the `Host` header to plugins.
+```

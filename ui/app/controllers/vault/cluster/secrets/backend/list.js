@@ -11,15 +11,30 @@ import utils from 'vault/lib/key-utils';
 import { task } from 'ember-concurrency';
 import escapeStringRegexp from 'escape-string-regexp';
 import commonPrefix from 'core/utils/common-prefix';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 export default Controller.extend({
+  router: service(),
+  store: service(),
   navToNearestAncestor: task(function* (key) {
     const ancestors = utils.ancestorKeysForKey(key);
     let errored = false;
     let nearest = ancestors.pop();
+    // Force a refetch of the current folder when navigating to the same
+    // route/params after a deletion: ember-data 4.12 keeps deleted records
+    // in an already-cached lazy page, so a 404-folder would still appear to
+    // contain the deleted key. Only KV listings are cleared here; non-KV
+    // engines list under a different cache key, so clear everything (transit
+    // keys can contain '/', so same-route ancestor transitions do happen).
+    if (['kv', 'generic', 'cubbyhole'].includes(this.backendType)) {
+      this.store.clearDataset('secret');
+      this.store.clearDataset('secret-v2');
+    } else {
+      this.store.clearAllDatasets();
+    }
     while (nearest) {
       try {
-        const transition = this.transitionToRoute('vault.cluster.secrets.backend.list', nearest);
+        const transition = this.router.transitionTo('vault.cluster.secrets.backend.list', nearest);
         transition.data.isDeletion = true;
         yield transition.promise;
       } catch {
@@ -36,7 +51,16 @@ export default Controller.extend({
         errored = false;
       }
     }
-    yield this.transitionToRoute('vault.cluster.secrets.backend.list-root');
+    // A root-level key has no ancestor to navigate to. If we're deleting it
+    // while already on the list page, transitioning to list-root is a
+    // same-route no-op that won't refetch, leaving the stale entry in the
+    // (possibly non-KV, e.g. ssh/transit/aws) listing. Force a reload instead,
+    // which clears every dataset and re-runs the model hook.
+    if (this.router.currentRouteName === 'vault.cluster.secrets.backend.list-root') {
+      this.send('reload');
+    } else {
+      yield transitionToSafe(this.router, 'vault.cluster.secrets.backend.list-root');
+    }
   }),
 
   flashMessages: service(),
@@ -129,9 +153,10 @@ export default Controller.extend({
         .destroyRecord()
         .then(() => {
           this.flashMessages.success(`${name} was successfully deleted.`);
-          this.send('reload');
           if (type === 'secret') {
             this.navToNearestAncestor.perform(name);
+          } else {
+            this.send('reload');
           }
         })
         .catch((e) => {

@@ -1,0 +1,3 @@
+```release-note:security
+secrets/pki: Also enforce allowed_ip_sans_cidr on IP SANs from CSRs. GHSA-g892-p242-8g86.
+```

@@ -8,6 +8,7 @@ import { inject as service } from '@ember/service';
 import Component from '@ember/component';
 import { task } from 'ember-concurrency';
 import { waitFor } from '@ember/test-waiters';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 /**
  * @module AuthConfigForm/Config
@@ -42,7 +43,7 @@ export default class AuthConfigBase extends Component {
       }
       return;
     }
-    this.router.transitionTo('vault.cluster.access.methods').followRedirects();
+    transitionToSafe(this.router, 'vault.cluster.access.methods');
     this.flashMessages.success('The configuration was saved successfully.');
   }
 

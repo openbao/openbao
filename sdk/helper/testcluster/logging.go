@@ -12,7 +12,7 @@ import (
 
 func JSONLogNoTimestamp(outlog hclog.Logger, text string) {
 	d := json.NewDecoder(strings.NewReader(text))
-	m := map[string]interface{}{}
+	m := map[string]any{}
 	if err := d.Decode(&m); err != nil {
 		outlog.Error("failed to decode json output from dev vault", "error", err, "input", text)
 		return
@@ -28,7 +28,7 @@ func JSONLogNoTimestamp(outlog hclog.Logger, text string) {
 		outlog = outlog.Named(module.(string))
 	}
 
-	var pairs []interface{}
+	var pairs []any
 	for k, v := range m {
 		pairs = append(pairs, k, v)
 	}

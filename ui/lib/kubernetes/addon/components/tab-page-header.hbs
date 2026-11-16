@@ -13,9 +13,9 @@
 <div class="tabs-container box is-bottomless is-marginless is-paddingless">
   <nav class="tabs" aria-label="kubernetes tabs">
     <ul>
-      <LinkTo @route="overview" data-test-tab="overview">Overview</LinkTo>
-      <LinkTo @route="roles" data-test-tab="roles">Roles</LinkTo>
-      <LinkTo @route="configuration" data-test-tab="config">Configuration</LinkTo>
+      <LinkTo @route="overview" data-test-tab="overview" @model={{(current-mount-path)}}>Overview</LinkTo>
+      <LinkTo @route="roles" data-test-tab="roles" @model={{(current-mount-path)}}>Roles</LinkTo>
+      <LinkTo @route="configuration" data-test-tab="config" @model={{(current-mount-path)}}>Configuration</LinkTo>
     </ul>
   </nav>
 </div>

@@ -196,7 +196,7 @@ Default: ({{.UserAttr}}={{.Username}})`,
 			DisplayAttrs: &framework.DisplayAttributes{
 				Name: "Minimum TLS Version",
 			},
-			AllowedValues: []interface{}{"tls10", "tls11", "tls12", "tls13"},
+			AllowedValues: []any{"tls10", "tls11", "tls12", "tls13"},
 		},
 
 		"tls_max_version": {
@@ -206,7 +206,7 @@ Default: ({{.UserAttr}}={{.Username}})`,
 			DisplayAttrs: &framework.DisplayAttributes{
 				Name: "Maximum TLS Version",
 			},
-			AllowedValues: []interface{}{"tls10", "tls11", "tls12", "tls13"},
+			AllowedValues: []any{"tls10", "tls11", "tls12", "tls13"},
 		},
 
 		"deny_null_bind": {
@@ -247,7 +247,7 @@ Default: ({{.UserAttr}}={{.Username}})`,
 			Type:          framework.TypeString,
 			Description:   "When aliases should be dereferenced on search operations. Accepted values are 'never', 'finding', 'searching', 'always'. Defaults to 'never'.",
 			Default:       "never",
-			AllowedValues: []interface{}{"never", "finding", "searching", "always"},
+			AllowedValues: []any{"never", "finding", "searching", "always"},
 		},
 
 		"max_page_size": {
@@ -472,14 +472,14 @@ type ConfigEntry struct {
 	ClientTLSKey       string `json:"ClientTLSKey"`
 }
 
-func (c *ConfigEntry) Map() map[string]interface{} {
+func (c *ConfigEntry) Map() map[string]any {
 	m := c.PasswordlessMap()
 	m["bindpass"] = c.BindPassword
 	return m
 }
 
-func (c *ConfigEntry) PasswordlessMap() map[string]interface{} {
-	m := map[string]interface{}{
+func (c *ConfigEntry) PasswordlessMap() map[string]any {
+	m := map[string]any{
 		"url":                    c.Url,
 		"userdn":                 c.UserDN,
 		"groupdn":                c.GroupDN,

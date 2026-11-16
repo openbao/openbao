@@ -1,0 +1,3 @@
+```release-note:bug
+core/mfa: Handle invalidation for login MFA within namespaces, ensuring standby nodes respond appropriately on writes.
+```

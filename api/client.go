@@ -1326,11 +1326,16 @@ func (c *Client) SetPolicyOverride(override bool) {
 // doesn't need to be called externally.
 func (c *Client) NewRequest(method, requestPath string) *Request {
 	c.modifyLock.RLock()
+	c.config.modifyLock.RLock()
+
 	addr := c.addr
 	token := c.token
 	mfaCreds := c.mfaCreds
 	wrappingLookupFunc := c.wrappingLookupFunc
 	policyOverride := c.policyOverride
+	disableEnvironment := c.config.DisableEnvironment
+
+	c.config.modifyLock.RUnlock()
 	c.modifyLock.RUnlock()
 
 	host := addr.Host
@@ -1371,6 +1376,8 @@ func (c *Client) NewRequest(method, requestPath string) *Request {
 
 	if wrappingLookupFunc != nil {
 		req.WrapTTL = wrappingLookupFunc(method, lookupPath)
+	} else if disableEnvironment {
+		req.WrapTTL = BaseWrappingLookupFunc(method, lookupPath)
 	} else {
 		req.WrapTTL = DefaultWrappingLookupFunc(method, lookupPath)
 	}
@@ -1734,7 +1741,7 @@ func InlineWithOperation(op string) InlineAuthOpts {
 // Operations which result in lease creation will not work.
 //
 // Refer to the OpenBao documentation for more information.
-func (c *Client) WithInlineAuth(path string, data map[string]interface{}, opts ...InlineAuthOpts) (*Client, error) {
+func (c *Client) WithInlineAuth(path string, data map[string]any, opts ...InlineAuthOpts) (*Client, error) {
 	client, err := c.Clone()
 	if err != nil {
 		return nil, fmt.Errorf("error cloning client: %w", err)
@@ -1758,7 +1765,7 @@ func (c *Client) WithInlineAuth(path string, data map[string]interface{}, opts .
 	}
 
 	for key, value := range data {
-		jEncoded, err := json.Marshal(map[string]interface{}{
+		jEncoded, err := json.Marshal(map[string]any{
 			"key":   key,
 			"value": value,
 		})

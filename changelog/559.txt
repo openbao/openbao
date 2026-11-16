@@ -1,3 +1,3 @@
 ```release-note:bug
-secrets/pki: Fix ACME HTTP-01 challenge validation with IPv6 addresses
+secrets/pki: Fix ACME HTTP-01 challenge validation with IPv6 addresses.
 ```

@@ -28,7 +28,7 @@ func TestResponseUtil_RespondErrorCommon_basic(t *testing.T) {
 			title:   "Throttled, with error",
 			respErr: ErrUpstreamRateLimited,
 			resp: &Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"error": "rate limited",
 				},
 			},
@@ -65,7 +65,7 @@ func TestResponseUtil_RespondErrorCommon_basic(t *testing.T) {
 				Operation: ListOperation,
 			},
 			resp: &Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"keys": []string{"some", "things", "here"},
 				},
 			},
@@ -76,7 +76,7 @@ func TestResponseUtil_RespondErrorCommon_basic(t *testing.T) {
 			title:   "Invalid Credentials error ",
 			respErr: ErrInvalidCredentials,
 			resp: &Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"error": "error due to wrong credentials",
 				},
 			},

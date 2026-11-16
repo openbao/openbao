@@ -4,6 +4,9 @@ on:
   # Change to nightly cadence once API-credential-requiring tests are added to the jobs
   workflow_dispatch: 
 
+permissions:
+  contents: read
+
 # Currently the jobs here are only for acceptance tests that have no dependencies except for Docker
 jobs:
   plugins-database:

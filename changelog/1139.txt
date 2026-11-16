@@ -1,3 +1,0 @@
-```release-note:bug
-pki: addresses a timing issue revealed in pki Backend_RevokePlusTidy test
-```

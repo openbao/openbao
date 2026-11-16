@@ -5,33 +5,8 @@ sidebar_position: 4
 
 # Adopters
 
-import Randomize from './lib/Randomize.tsx';
-import Member from './lib/Member.tsx';
+Organizations which run and use OpenBao.
 
-<div className="container">
-  <div className="row">
-    <Randomize>
-      <Member title="ApeiroRA">
-        [ApeiroRA](https://apeirora.eu/)
-        uses OpenBao for
-        [Secrets Management and PKI](https://apeirora.eu/content/impact/security-kms/).
-      </Member>
-      <Member title="Adfinis">
-        [Adfinis](https://www.adfinis.com/en/partners-and-products/openbao?mtm_campaign=openbao&mtm_kwd=global&mtm_source=openbao&mtm_medium=website)
-        relies on OpenBao to secure its own internal infrastructure and in
-        support of customer-related 24/7 managed services.
-      </Member>
-      <Member title="Fermilab">
-        [Fermilab](https://fnal.gov) uses OpenBao to
-        [securely store authentication tokens](https://arxiv.org/pdf/2503.24196)
-        for scientific computing as configured through their
-        [htvault-config](https://github.com/fermitools/htvault-config) package.
-      </Member>
-      <Member title="NVIDIA">
-        [NVIDIA Cloud Functions (NVCF)](https://github.com/NVIDIA/nvcf/)
-        relies on OpenBao as part of its internal secrets-management
-        infrastructure.
-      </Member>
-    </Randomize>
-  </div>
-</div>
+import Adopters from './contents/_adopters.mdx';
+
+<Adopters />

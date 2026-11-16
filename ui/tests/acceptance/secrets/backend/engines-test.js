@@ -65,7 +65,7 @@ module('Acceptance | secret-engine list view', function (hooks) {
     await settled();
     // filter by type
     await clickTrigger('#filter-by-engine-type');
-    await searchSelect.options[1].click();
+    await searchSelect.options[0].click();
 
     const rows = document.querySelectorAll('[data-test-auth-backend-link]');
     const rowsAws = Array.from(rows).filter((row) => row.innerText.includes('database'));
@@ -86,5 +86,33 @@ module('Acceptance | secret-engine list view', function (hooks) {
     // cleanup
     await consoleComponent.runCommands([`delete sys/mounts/${enginePath1}`]);
     await consoleComponent.runCommands([`delete sys/mounts/${enginePath2}`]);
+  });
+
+  test('it hides internal engines by default and shows them when toggled', async function (assert) {
+    assert.expect(3);
+
+    await backendsPage.visit();
+    await settled();
+    assert.strictEqual(
+      backendsPage.rows.filterBy('path', 'cubbyhole/').length,
+      0,
+      'does not show the internal cubbyhole engine by default'
+    );
+
+    await backendsPage.showInternalEngines();
+    await settled();
+    assert.strictEqual(
+      backendsPage.rows.filterBy('path', 'cubbyhole/').length,
+      1,
+      'shows the internal cubbyhole engine once toggled on'
+    );
+
+    await backendsPage.showInternalEngines();
+    await settled();
+    assert.strictEqual(
+      backendsPage.rows.filterBy('path', 'cubbyhole/').length,
+      0,
+      'hides the internal cubbyhole engine again once toggled off'
+    );
   });
 });

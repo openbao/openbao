@@ -1,0 +1,54 @@
+---
+title: "Announcing OpenBao v2.6!"
+description: "We are thrilled to announce the availability of OpenBao v2.6, adding per-namespace sealing and the new workflow engine for cross-plugin communication!"
+slug: release-v2-6-0
+authors:
+ - cipherboy
+tags: [release, announcement]
+image: https://openssf.org/wp-content/uploads/2026/08/OpenSSF-Blog-Graphics-87.png
+---
+
+import Head from '@docusaurus/Head';
+
+<Head>
+    <link rel="canonical" href="https://openssf.org/blog/2026/08/06/announcing-openbao-v2-6/" />
+</Head>
+
+![Announcing OpenBao 2.6](https://openssf.org/wp-content/uploads/2026/08/OpenSSF-Blog-Graphics-87.png)
+
+We are thrilled to announce [the availability](https://openbao.org/downloads/?version=v2.6.1) of [OpenBao v2.6](https://openbao.org/community/release-notes/2-6-0/), adding per-namespace sealing and the new workflow engine for cross-plugin communication!
+
+Our most collaborative release to date, v2.6 features contributions from 42 first-time contributors, 27 individuals contributing multiple changes, and 8 users with double-digit change counts. Simply fantastic work and a big thanks to the community that makes this happen!
+
+:::info
+
+OpenBao v2.6.x has been out for a month now and v2.7.x will soon follow, stay
+tuned for more releases!
+
+:::
+
+<!-- truncate -->
+
+## Key highlights of this release
+
+We saw many innovative improvements this release:
+
+- **Namespace Sealing**: Allows construction of an additional Shamir seal and scoped barrier keyring on namespace creation to partition tenant storage with distinct cryptographic key material. This allows tenants to revoke instance operator's access to their namespace via seal operation without impacting other tenants.
+- **Auto Unseal Plugins**: Adds a new kms plugin type in the configuration file which enables auto-unseal mechanisms to be distributed as external binary plugins. This allows a decoupled release process and easier adoption of third-party key management systems (KMSes).
+- **Workflows**: Adds new endpoints under sys/workflows to allow operators to create multi-request workflows for cross-plugin communication and allows users to execute them. This can unlock in-process, organization-specific native governance of OpenBao or simplified facades over multiple individual pieces of OpenBao functionality.
+- **Distroless container images**: Introduces a new container image variant based on distroless/static, available as openbao-distroless. The only executable contained in these images is OpenBao itself.
+- **Authenticated root generation**: New sys/generate-root-token endpoints are available as replacements for the deprecated unauthenticated ones.
+
+There were also over 38 other feature improvements to our core plugins; refer to the [improvements section](https://openbao.org/community/release-notes/2-6-0/#improvements-1) of [our release notes](https://openbao.org/community/release-notes/2-6-0/#v260) for information on all of them!
+
+Stay tuned for more great features to come!
+
+## Looking ahead
+
+OpenBao v2.7.0 is already shaping up to be an exciting release! Control Groups landed early, allowing human-in-the-loop review of sensitive operations. External keys, a redesign of Vault Enterprise's Managed Keys, will allow for HSM- and KMS-backed key material in secret engines such as PKI and Transit. And support for PostgreSQL horizontal scalability will bring significant disaster recovery and operator experience improvements over the existing Raft support.
+
+Interested in getting involved? Take a look at our [roadmap](https://github.com/openbao/openbao/issues/1974), [fix a bug](https://github.com/openbao/openbao/issues/?q=is%3Aissue%20state%3Aopen%20label%3Abug), [help with documentation](https://github.com/openbao/openbao/issues/?q=is%3Aissue%20state%3Aopen%20label%3Adocs), [join our community calls](https://openbao.org/community/contributing/#community-calendar), [publicize the release](https://www.linkedin.com/company/openbao/posts), or join us on the [Linux Foundation's Zulip instance](https://openbao.org/community/contributing/#chat-server)!
+
+---
+
+This post was originally authored by Alex Scheel and posted on [the OpenSSF blog](https://openssf.org/blog/2026/08/06/announcing-openbao-v2-6/).

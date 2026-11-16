@@ -9,3 +9,5 @@ allowBuilds:
   core-js: true
   ember-modal-dialog: true
   fsevents: true
+  sinon: true
+  

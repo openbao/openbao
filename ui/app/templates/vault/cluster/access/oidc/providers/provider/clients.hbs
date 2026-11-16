@@ -7,7 +7,7 @@
     @title="No applications allowed"
     @message="Access to this provider has been limited, and no applications are allowed to use it. Edit the provider to allow access."
   >
-    <LinkTo @route="vault.cluster.access.oidc.providers.provider.edit">
+    <LinkTo @route="vault.cluster.access.oidc.providers.provider.edit" @model={{this.providerName}}>
       Edit provider
     </LinkTo>
   </EmptyState>

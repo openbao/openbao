@@ -1,3 +1,5 @@
+BROWSER ?= chrome
+
 .PHONY: frontend
 frontend:
 	pnpm start
@@ -8,7 +10,7 @@ backend:
 
 .PHONY: test
 test:
-	pnpm test
+	pnpm test --launch "$(BROWSER)"
 
 .PHONY: check
 check: test

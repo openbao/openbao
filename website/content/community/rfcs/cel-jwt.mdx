@@ -62,7 +62,9 @@ CEL roles integrate with OpenBao's Auth engine (OIDC and JWT) to dynamically eva
 ---
 
 ### CEL Role Format
+
 A CEL role is defined as a JSON object with the following fields:
+
 ```json
 {
   "name": "string",
@@ -111,9 +113,9 @@ The CEL expression itself may return one of the following:
 
 ## Rationale and alternatives
 
-Dynamic policy assignment can be implemented using templating for [ACLs](/api-docs/auth/jwt/#acl-policy-templating-examples), but the expressiveness of CEL is much greater.
+Dynamic policy assignment can be implemented using templating for [ACLs](/docs/api/auth/jwt/#acl-policy-templating-examples), but the expressiveness of CEL is much greater.
 
-Some form CEL or regex evaluation could be added to existing role instead of creating a new type, as with [glob matching](/api-docs/auth/jwt/#createupdate-role) for `bound_claims`.
+Some form CEL or regex evaluation could be added to existing role instead of creating a new type, as with [glob matching](/docs/api/auth/jwt/#createupdate-role) for `bound_claims`.
 
 Alternatively, a web hook approach like [Vault's CIEPS](https://developer.hashicorp.com/vault/docs/secrets/pki/cieps) could be used to achieve similar flexibility. However, the performance implications and system brittleness make this an unattractive alternative.
 
@@ -122,10 +124,11 @@ Alternatively, a web hook approach like [Vault's CIEPS](https://developer.hashic
 Additional complexity of a new type; not backwards compatible with Vault.
 
 ## Demo
+
 ```bash
 bao server -dev -dev-root-token-id="dev-only-token"
-export VAULT_ADDR=http://localhost:8200
-export VAULT_TOKEN=dev-only-token
+export BAO_ADDR=http://localhost:8200
+export BAO_TOKEN=dev-only-token
 
 # Create userpass
 bao auth enable userpass
@@ -155,28 +158,27 @@ cat << EOF > cel-role.json
 EOF
 
 BAO_TOKEN="dev-only-token" bao write auth/jwt/cel/role/example @cel-role.json
-Key                  Value
----                  -----
-bound_audiences      [aud aud1]
-cel_program          map[expression:pb.Auth{policies:['example']}]
-clock_skew_leeway    60
-expiration_leeway    150
-message              n/a
-name                 example
-not_before_leeway    150
+# Key                  Value
+# ---                  -----
+# bound_audiences      [aud aud1]
+# cel_program          map[expression:pb.Auth{policies:['example']}]
+# clock_skew_leeway    60
+# expiration_leeway    150
+# message              n/a
+# name                 example
+# not_before_leeway    150
 
 
 # login to role with jwt from above
 bao write auth/jwt/cel/login role=example jwt=$JWT
-Key                  Value
----                  -----
-token                s.Y2uJO5FC8WOMoRVMgZ5pnw2H
-token_accessor       bu8HpQbueHv8Ln911hRBOjlL
-token_duration       768h
-token_renewable      true
-token_policies       ["default" "example"]
-identity_policies    []
-policies             ["default" "example"]
-token_meta_role      example
-
+# Key                  Value
+# ---                  -----
+# token                s.Y2uJO5FC8WOMoRVMgZ5pnw2H
+# token_accessor       bu8HpQbueHv8Ln911hRBOjlL
+# token_duration       768h
+# token_renewable      true
+# token_policies       ["default" "example"]
+# identity_policies    []
+# policies             ["default" "example"]
+# token_meta_role      example
 ```

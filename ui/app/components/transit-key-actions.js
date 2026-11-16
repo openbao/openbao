@@ -149,7 +149,9 @@ export default Component.extend(TRANSIT_PARAMS, {
   },
 
   handleError(e) {
-    this.set('errors', e.errors);
+    if (!this.isDestroyed && !this.isDestroying) {
+      this.set('errors', e.errors);
+    }
   },
 
   clearErrors() {
@@ -163,6 +165,9 @@ export default Component.extend(TRANSIT_PARAMS, {
   },
 
   handleSuccess(resp, options, action) {
+    if (this.isDestroyed || this.isDestroying) {
+      return;
+    }
     let props = {};
     if (resp && resp.data) {
       if (action === 'export' && resp.data.keys) {
@@ -174,10 +179,8 @@ export default Component.extend(TRANSIT_PARAMS, {
     if (options.wrapTTL) {
       props = assign({}, props, { wrappedToken: resp.wrap_info.token });
     }
-    if (!this.isDestroyed && !this.isDestroying) {
-      this.toggleProperty('isModalActive');
-      this.setProperties(props);
-    }
+    this.toggleProperty('isModalActive');
+    this.setProperties(props);
     if (action === 'rotate') {
       this.onRefresh();
     }

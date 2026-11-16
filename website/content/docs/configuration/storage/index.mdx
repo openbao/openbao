@@ -36,25 +36,128 @@ storage "raft" {
 }
 ```
 
+or:
+
+```hcl
+// Set BAO_PG_CONNECTION_URL=postgres://postgres:postgres@localhost:5432.
+storage "postgresql" {
+  ha_enabled = true
+  max_connect_retries = 50
+}
+```
+
 For configuration options which also read an environment variable, the
 environment variable will take precedence over values in the configuration
 file.
 
 ## Integrated Storage (Raft) vs. PostgreSQL
 
-It is recommended to use OpenBao's [integrated storage](raft.mdx)
-for most use cases rather than configuring another system to store OpenBao
-data externally. (Integrated Storage is an **embedded OpenBao data storage**
-writing to the file system).
+It is recommended to evaluate both storage engines on their merits and
+choose the best for your needs. If you're new to running OpenBao, we
+recommend PostgreSQL as an easier storage backend to safely operate than
+Raft.
 
 The table below compares the characteristics of Integrated Storage and PostgreSQL.
 
-|                                | Integrated Storage                                                                                                   | PostgreSQL                                                                                                                                                                                                                              |
-|--------------------------------|----------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Production Ready               | Yes                                                                                                                  | Yes                                                                                                                                                                                                                                     |
-| Operation                      | Operationally simpler with no additional software installation required.                                             | Must install and configure the external storage environment outside of OpenBao. For high availability, the external storage should be clustered.                                                                                        |
-| Networking                     | One less network hop: data is stored locally resulting in higher read performance.                                   | Extra network hop between OpenBao and the external storage system if not co-located.                                                                                                                                                    |
-| High Availability support      | Yes                                                                                                                  | Yes                                                                                                                                                                                                                                     |
-| Troubleshooting and monitoring | Integrated Storage is a part of OpenBao; therefore, OpenBao is the only system you need to monitor and troubleshoot. | The source of failure could be the external storage; therefore, you need to check the health of both OpenBao and the external storage. This requires expertise in the chosen storage backend and additional monitoring of that storage. |
-| Data location                  | The encrypted OpenBao data is stored on the same host where the OpenBao server process runs.                         | The encrypted OpenBao data is stored where the external storage is located. Therefore, the OpenBao server and the data storage are hosted on physically separate hosts.                                                                 |
-| System requirements            | Avoid "burstable" CPU and storage options. SSDs should be used for the hard drive.                                   | Follow the system requirements given by your chosen storage backend.                                                                                                                                                                    |
+<table>
+  <thead>
+    <tr>
+      <td></td>
+      <td>[**Integrated Storage (Raft)**](./raft.mdx)</td>
+      <td>[**PostgreSQL**](./postgresql.mdx)</td>
+    </tr>
+  </thead>
+
+  <tbody>
+    <tr>
+      <td>**Production Ready**</td>
+      <td>Yes</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>**Operation**</td>
+      <td>
+        Operationally simpler to setup with no additional software installation
+        required. Operator experience with Raft is highly recommended; refer
+        to OpenBao's documentation for more information. OpenBao requires
+        special operations to join, manage, and failover nodes using the Raft
+        backend.
+      </td>
+      <td>
+        Must install and configure the external storage environment outside
+        of OpenBao. For high availability and horizontal scalability,
+        PostgreSQL should be clustered. OpenBao requires no special operation
+        beyond a PostgreSQL connection URL to join, manage, and failover nodes
+        with a PostgreSQL backend.
+      </td>
+    </tr>
+    <tr>
+      <td>**Networking**</td>
+      <td>
+        One less network hop: data is stored locally resulting in better read
+        performance. Write performance is more limited as all nodes must vote
+        to agree on a write, resulting in more latency-sensitive network
+        traffic.
+      </td>
+      <td>
+        Extra network hop between OpenBao and PostgreSQL if not co-located.
+        Reads are cached by default unless
+        [`disable_cache=true`](../index.mdx#parameters)
+        is specified. However, PostgreSQL can often have better write
+        performance than Raft as it has a single active node which mirrors
+        writes to followers.
+      </td>
+    </tr>
+    <tr>
+      <td>**High Availability and Disaster Recovery Support**</td>
+      <td>
+        Yes, with horizontal scalability (read).
+      </td>
+      <td>
+        Yes, with horizontal scalability (read).
+      </td>
+    </tr>
+    <tr>
+      <td>**Troubleshooting and Monitoring**</td>
+      <td>
+        Integrated Storage is a part of OpenBao; therefore, OpenBao is the
+        only system you need to monitor and troubleshoot. However, Raft and
+        BBolt failure modes can often be complex or require specialized
+        expertise to troubleshoot and snapshots to recover from.
+      </td>
+      <td>
+        The source of failure could be the external storage; therefore, you
+        need to check the health of both OpenBao and the external storage.
+        This requires expertise in the chosen storage backend and additional
+        monitoring of that storage.
+      </td>
+    </tr>
+    <tr>
+      <td>**Data Location**</td>
+      <td>
+        The encrypted OpenBao data is stored on the same host where the
+        OpenBao server process runs. This makes it slower to horizontally
+        scale on compute-heavy workloads as data must also be replicated.
+      </td>
+      <td>
+        The encrypted OpenBao data is stored where the external storage is
+        located. Therefore, the OpenBao server and the data storage may be
+        hosted on physically separate hosts. This may make it faster to
+        horizontally scale OpenBao on compute-heavy workloads as existing
+        database nodes may be used.
+      </td>
+    </tr>
+    <tr>
+      <td>**System Requirements**</td>
+      <td>
+        Avoid "burstable" CPU and storage options due to the latency
+        sensitive nature of this backend. SSDs should be used for the hard
+        drives.
+      </td>
+      <td>
+        Follow the system requirements given by your chosen storage backend
+        and size OpenBao nodes according to compute complexity.
+      </td>
+    </tr>
+  </tbody>
+</table>

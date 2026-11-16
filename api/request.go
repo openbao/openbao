@@ -24,7 +24,7 @@ type Request struct {
 	ClientToken   string
 	MFAHeaderVals []string
 	WrapTTL       string
-	Obj           interface{}
+	Obj           any
 
 	// When possible, use BodyBytes as it is more efficient due to how the
 	// retry logic works
@@ -41,7 +41,7 @@ type Request struct {
 }
 
 // SetJSONBody is used to set a request body that is a JSON-encoded value.
-func (r *Request) SetJSONBody(val interface{}) error {
+func (r *Request) SetJSONBody(val any) error {
 	if val == nil {
 		return nil
 	}
@@ -98,7 +98,7 @@ func (r *Request) toRetryableHTTP() (*retryablehttp.Request, error) {
 	var req *retryablehttp.Request
 
 	var err error
-	var body interface{}
+	var body any
 
 	switch {
 	case r.BodyBytes == nil && r.Body == nil:

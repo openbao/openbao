@@ -56,7 +56,15 @@ export default class PkiIssuerAdapter extends ApplicationAdapter {
     const backend = this._getBackend(snapshot);
     const data = this.serialize(snapshot);
     const url = this.urlForQuery(backend, issuerId);
-    return this.ajax(url, 'POST', { data });
+    return this.ajax(url, 'POST', { data }).then((resp) => {
+      // keep the id stable if the response omits issuer_id; only set it when
+      // present so `undefined` is never pushed
+      const updatedData = { ...resp.data };
+      if (issuerId) {
+        updatedData.issuer_id = issuerId;
+      }
+      return { ...resp, data: updatedData };
+    });
   }
 
   query(store, type, query) {

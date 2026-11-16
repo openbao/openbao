@@ -1,0 +1,3 @@
+```release-note:improvement
+core/metrics: Report `vault.core.unsealed=0` when OpenBao is sealed via dedicated metrics loop.
+```

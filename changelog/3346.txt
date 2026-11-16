@@ -1,0 +1,3 @@
+```release-note:bug
+command/server: Revoke the transient root token after declarative self-initialization, including failure paths.
+```

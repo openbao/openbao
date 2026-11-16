@@ -1,0 +1,3 @@
+```release-note:bug
+core: Prevent recovered panic in request handler due to uncancelled active context between initialization and standby/active enablement.
+```

@@ -4,13 +4,12 @@ See the information about community membership roles to learn about the role of 
 
 ## Organization-Level Maintainers
 
-| Name          | Email                        | GitHub                                     |
-|---------------|------------------------------|--------------------------------------------|
-| Alex Scheel   | alexander.m.scheel@gmail.com | [@cipherboy](https://github.com/cipherboy) |
-| Dan Ghita     | dghita@wallix.com            | [@DanGhita](https://github.com/DanGhita)   |
-| Jan Martens   | jan@martens.eu.org           | [@JanMa](https://github.com/JanMa)         |
-| Nathan Phelps | naphelps@us.ibm.com          | [@naphelps](https://github.com/naphelps)   |
-| Jonas Köhnen  | jonas@satoqz.net             | [@satoqz](https://github.com/satoqz)       |
+| Name         | Email                        | GitHub                                     |
+|--------------|------------------------------|--------------------------------------------|
+| Alex Scheel  | alexander.m.scheel@gmail.com | [@cipherboy](https://github.com/cipherboy) |
+| Dan Ghita    | dghita@wallix.com            | [@DanGhita](https://github.com/DanGhita)   |
+| Jan Martens  | jan@martens.eu.org           | [@JanMa](https://github.com/JanMa)         |
+| Jonas Köhnen | jonas@satoqz.net             | [@satoqz](https://github.com/satoqz)       |
 
 ## Repository-Level Committers
 
@@ -48,6 +47,7 @@ See the information about community membership roles to learn about the role of 
 | Michael Hofer   | [@karras](https://github.com/karras)                     |
 | Klaus Kiefer    | [@klaus-sap](https://github.com/klaus-sap)               |
 | Tero Saarni     | [@tsaarni](https://github.com/tsaarni)                   |
+| Valentin Weber  | [@weberval](https://github.com/weberval)                 |
 
 # OpenBao Community Roles
 

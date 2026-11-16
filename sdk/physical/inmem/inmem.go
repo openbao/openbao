@@ -315,8 +315,8 @@ func (i *InmemBackend) ListPaginatedInternal(ctx context.Context, prefix string,
 
 func (i *InmemBackend) listPaginatedInternal(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
 	var out []string
-	seen := make(map[string]interface{})
-	walkFn := func(s string, v interface{}) bool {
+	seen := make(map[string]any)
+	walkFn := func(s string, v any) bool {
 		if limit > 0 && len(out) >= limit {
 			// We've seen enough entries; exit early.
 			return true

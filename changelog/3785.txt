@@ -1,0 +1,3 @@
+```release-note:bug
+sys/workflows: Allow unauthenticated workflow execution without authentification
+```

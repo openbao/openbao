@@ -21,6 +21,11 @@ export default Controller.extend({
       return;
     }
 
+    // Rollback any dirty attributes before unloading to avoid memory leaks
+    if (model.hasDirtyAttributes && typeof model.rollbackAttributes === 'function') {
+      model.rollbackAttributes();
+    }
+
     // controllers are singletons — always unset
     this.model = null;
 

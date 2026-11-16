@@ -15,7 +15,7 @@
       <ToolbarLink
         @route="issuers.issuer.cross-sign"
         @type="pen-tool"
-        @model={{@newRootModel.issuerId}}
+        @models={{array (current-mount-path) @newRootModel.issuerId}}
         data-test-pki-issuer-cross-sign
       >
         Cross-sign issuers
@@ -23,7 +23,7 @@
       <ToolbarLink
         @route="issuers.issuer.sign"
         @type="pen-tool"
-        @model={{@newRootModel.issuerId}}
+        @models={{array (current-mount-path) @newRootModel.issuerId}}
         data-test-pki-issuer-sign-int
       >
         Sign Intermediate
@@ -67,7 +67,11 @@
           </nav>
         </D.Content>
       </BasicDropdown>
-      <ToolbarLink @route="issuers.issuer.edit" @model={{@newRootModel.issuerId}} data-test-pki-issuer-configure>
+      <ToolbarLink
+        @route="issuers.issuer.edit"
+        @models={{array (current-mount-path) @newRootModel.issuerId}}
+        data-test-pki-issuer-configure
+      >
         Configure
       </ToolbarLink>
     </ToolbarActions>
@@ -86,7 +90,11 @@
       If you’re ready, you can begin cross-signing issuers now. If not, the option to cross-sign is available when you use
       this certificate.
       <br />
-      <LinkTo class="is-marginless" @route="issuers.issuer.cross-sign" @model={{@newRootModel.issuerId}}>
+      <LinkTo
+        class="is-marginless"
+        @route="issuers.issuer.cross-sign"
+        @models={{array (current-mount-path) @newRootModel.issuerId}}
+      >
         Cross-sign issuers
       </LinkTo>
     </AlertBanner>

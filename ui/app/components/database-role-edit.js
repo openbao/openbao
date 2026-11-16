@@ -7,6 +7,7 @@ import Component from '@glimmer/component';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 const LIST_ROOT_ROUTE = 'vault.cluster.secrets.backend.list-root';
 const SHOW_ROUTE = 'vault.cluster.secrets.backend.show';
@@ -53,7 +54,7 @@ export default class DatabaseRoleEdit extends Component {
 
   @action
   generateCreds(roleId, roleType = '') {
-    this.router.transitionTo('vault.cluster.secrets.backend.credentials', roleId, {
+    transitionToSafe(this.router, 'vault.cluster.secrets.backend.credentials', roleId, {
       queryParams: { roleType },
     });
   }
@@ -66,7 +67,7 @@ export default class DatabaseRoleEdit extends Component {
       .destroyRecord()
       .then(() => {
         try {
-          this.router.transitionTo(LIST_ROOT_ROUTE, backend, { queryParams: { tab: 'role' } });
+          transitionToSafe(this.router, LIST_ROOT_ROUTE, backend, { queryParams: { tab: 'role' } });
         } catch (e) {
           console.debug(e); // eslint-disable-line
         }
@@ -93,7 +94,7 @@ export default class DatabaseRoleEdit extends Component {
       .save()
       .then(() => {
         try {
-          this.router.transitionTo(SHOW_ROUTE, `role/${secretId}`);
+          transitionToSafe(this.router, SHOW_ROUTE, `role/${secretId}`);
         } catch (e) {
           console.debug(e); // eslint-disable-line
         }

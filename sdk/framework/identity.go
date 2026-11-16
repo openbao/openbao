@@ -15,6 +15,9 @@ import (
 // instance of system view. It will query system view for information about the
 // entity and use the resulting identity information to populate the template
 // string.
+//
+// Deprecated: This function does not expose all options of
+// [identitytpl.PopulateString] consider inlining
 func PopulateIdentityTemplate(tpl string, entityID string, sysView logical.SystemView) (string, error) {
 	entity, err := sysView.EntityInfo(entityID)
 	if err != nil {

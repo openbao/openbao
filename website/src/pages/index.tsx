@@ -10,7 +10,7 @@ import FAQSection from "@site/src/components/FAQSection";
 
 import styles from "./index.module.css";
 import Contributing from "@site/src/components/Contributing";
-import Supporters from "../components/Supporters";
+import Supporters from "../../content/ecosystem/contents/_supporters.mdx";
 
 function HomepageHeader() {
   const { siteConfig } = useDocusaurusContext();
@@ -63,7 +63,26 @@ export default function Home(): JSX.Element {
         <HomepageFeatures />
         <FAQSection />
         <Contributing />
-        <Supporters />
+        <div className="container">
+          <div className="row supporters">
+            <div className="col col--8 col--offset-2">
+              <Heading as="h2" className="hero__title text--center">
+                Supporters
+              </Heading>
+
+              <p>
+                Companies, individuals or other entities who actively sponsor
+                the development of OpenBao, either via direct code or non-code
+                contributions or indirectly via financial support or gifting
+                premium features on their platforms.
+                <br /><br />
+                See more on our <a href="/ecosystem">Ecosystem page</a>.
+              </p>
+
+              <Supporters />
+            </div>
+          </div>
+        </div>
       </main>
     </Layout>
   );

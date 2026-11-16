@@ -45,7 +45,8 @@ flags](../index.mdx) included on all commands.
 
 ### Command options
 
-- `-sha256` `(string: <required>)` - Checksum (SHA256) of the plugin binary.
+- `-sha256` `(string: <required>)` - Expected SHA-256 digest of the plugin binary.
+  Must be a 64-character hexadecimal string.
 
 - `-args` `(string: "")` - List of arguments to pass to the binary plugin during
   each invocation. Specify multiple arguments with commas.

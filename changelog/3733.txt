@@ -1,0 +1,3 @@
+```release-note:bug
+command/agent: Fix file sink chown failing unconditionally on Windows.
+```

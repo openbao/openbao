@@ -5,18 +5,18 @@ description: |-
   validating OpenBao configuration. It is similar to "bao operator diagnose",
   but it only validates the config and not the system it is running on (e.g. it
   will not check that the raft directory is writable). This allows it to be
-  used on an operators Laptop or in CI validations.
+  used on an operator's laptop or in CI validations.
 
 ---
 
-# validate-config
+# operator validate-config
 
-The operator diagnose command should be used primarily before the configuration
-is copied to the OpenBao nodes. For example on the operators Laptop and/or in
+The `operator validate-config` command should be used primarily before the configuration
+is copied to the OpenBao nodes. For example on the operator's laptop and/or in
 CI validations, if you manage your configuration with git.
 You might also want to run it on the OpenBao node after updating the configuration
 and before restarting the node.
-In case your OpenBao nodes does not start, running [`bao operator disgnose`](
+In case your OpenBao nodes do not start, running [`bao operator diagnose`](
 ../diagnose) should be preferred.
 
 ## Usage
@@ -32,5 +32,5 @@ flags](../index.mdx) included on all commands.
 
 ### Command options
 
-- `-config` `(string; "")` - The paths to the OpenBao configuration files used by
+- `-config` `(string: "")` - The paths to the OpenBao configuration files used by
 the OpenBao server on startup. See the [server `-config` option](../../server#command-options) for more details.

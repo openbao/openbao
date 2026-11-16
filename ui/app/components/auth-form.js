@@ -221,7 +221,11 @@ export default Component.extend(DEFAULTS, {
           })
         );
         next(() => {
-          store.unloadAll('auth-method');
+          try {
+            store.unloadAll('auth-method');
+          } catch {
+            // unloadAll may fail in ember-data 4.12 if graph is torn down
+          }
         });
       } catch (e) {
         this.set('error', `There was an error fetching Auth Methods: ${e.errors[0]}`);

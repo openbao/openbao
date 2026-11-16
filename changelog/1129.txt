@@ -1,3 +1,0 @@
-```release-note:bug
-vault: addresses a timing issue revealed in OIDC_PeriodicFunc test
-```

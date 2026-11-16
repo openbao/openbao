@@ -20,7 +20,7 @@ functionality was dropped in OpenBao v2.4.0.
 :::tip
 
 **High Availability** – the PostgreSQL storage backend supports High
-Availability.
+Availability and Horizontal Scalability (as of OpenBao v2.7.0).
 
 :::
 
@@ -138,6 +138,19 @@ CREATE TABLE openbao_ha_locks (
   CONSTRAINT openbao_ha_locks_pkey PRIMARY KEY (ha_key)
 );
 ```
+
+## Horizontal scalability
+
+Since OpenBao v2.7.0, the PostgreSQL storage backend supports horizontal
+scalability. This requires an active cluster GRPC connection; ensure
+`cluster_address` is provided in at least one `listener` block and
+`cluster_addr` is set in the configuration file. When successfully enabled,
+log messages like:
+
+> [DEBUG] setting up GRPC-backed streaming of invalidations
+> [DEBUG] read-only unseal starting
+
+will be visible on standby nodes.
 
 [golang_setmaxidleconns]: https://golang.org/pkg/database/sql/#DB.SetMaxIdleConns
 [postgresql]: https://www.postgresql.org/

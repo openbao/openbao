@@ -1,0 +1,3 @@
+```release-note:improvement
+physical/raft: Automatically create the storage directory if it does not exist.
+```

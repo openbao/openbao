@@ -1,0 +1,3 @@
+```release-note:bug
+storage/raft: Fix performance regression caused by second transaction during batch application to write last applied log index.
+```

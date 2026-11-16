@@ -40,7 +40,7 @@ func ToMap(in any) (map[string]any, error) {
 	out := make(map[string]any)
 	md2, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		Result: &out,
-		DecodeHook: func(from reflect.Type, to reflect.Type, data interface{}) (interface{}, error) {
+		DecodeHook: func(from reflect.Type, to reflect.Type, data any) (any, error) {
 			if from.Kind() != reflect.Slice || from.Elem().Kind() != reflect.Uint8 {
 				return data, nil
 			}

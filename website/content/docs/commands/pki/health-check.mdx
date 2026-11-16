@@ -138,8 +138,8 @@ This health check will check each issuer in the mount for validity status, retur
    to check for CAs that are about to expire.
 1. Migrate from expiring CAs to new CAs.
 1. Delete any expired CAs with one of the following options:
-  - Run [tidy](/api-docs/secret/pki#tidy) manually with `bao write <mount>/tidy tidy_expired_issuers=true`.
-  - Use the OpenBao API to call [delete issuer](/api-docs/secret/pki#delete-issuer).
+  - Run [tidy](../../api/secret/pki.mdx#tidy) manually with `bao write <mount>/tidy tidy_expired_issuers=true`.
+  - Use the OpenBao API to call [delete issuer](../../api/secret/pki.mdx#delete-issuer).
 
 ### CRL validity period
 
@@ -272,7 +272,7 @@ to `true`.
 1. Update none-ACME roles with `no_store=false`. **NOTE**: Roles used for ACME
    issuance must have `no_store`  set to `true`.
 1. Set your certificate lifetimes as short as possible.
-1. Use [BYOC revocations](/api-docs/secret/pki#revoke-certificate) to
+1. Use [BYOC revocations](../../api/secret/pki.mdx#revoke-certificate) to
    revoke certificates as needed.
 
 ### Accessibility of audit information
@@ -481,7 +481,7 @@ This health check verifies that this cluster has a reasonable number of certific
    lifetimes should reflect the expected usage of the certificate. If the TTL is
    set appropriately, most certificates renew at approximately 2/3 of their
    lifespan.
-1. Consider setting the `no_store` field for all roles to `true` and use [BYOC revocations](/api-docs/secret/pki#revoke-certificate) to avoid storage.
+1. Consider setting the `no_store` field for all roles to `true` and use [BYOC revocations](../../api/secret/pki.mdx#revoke-certificate) to avoid storage.
 
 ### Enable ACME issuance
 
@@ -498,7 +498,7 @@ This health check verifies that this cluster has a reasonable number of certific
 
 This health check verifies that ACME is enabled within a mount that contains an intermediary issuer, as this is considered a best-practice to support a self-rotating PKI infrastructure.
 
-Review the [ACME Certificate Issuance](/api-docs/secret/pki#acme-certificate-issuance)
+Review the [ACME Certificate Issuance](../../api/secret/pki.mdx#acme-certificate-issuance)
 API documentation to learn about enabling ACME support in OpenBao.
 
 ### ACME response headers

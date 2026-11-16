@@ -1,0 +1,1047 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+package valkey
+
+import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"net/netip"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/mediocregopher/radix/v4"
+	"github.com/moby/moby/api/types/network"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/ory/dockertest/v4"
+	"github.com/stretchr/testify/require"
+)
+
+var pre6dot5 = false // check for Pre 6.5.0 Valkey
+
+const (
+	defaultUsername        = "default"
+	defaultPassword        = "default-pa55w0rd"
+	adminUsername          = "Administrator"
+	adminPassword          = "password"
+	aclCat                 = "+@admin"
+	testValkeyRole         = `["%s"]`
+	testValkeyGroup        = `["+@all"]`
+	testValkeyRoleAndGroup = `["%s"]`
+)
+
+var valkeyTls = false
+
+func prepareValkeyTestContainer(t *testing.T) (string, int) {
+	if os.Getenv("TEST_VALKEY_TLS") != "" {
+		valkeyTls = true
+	}
+	if os.Getenv("TEST_VALKEY_HOST") != "" {
+		return os.Getenv("TEST_VALKEY_HOST"), 6379
+	}
+	// redver should match a valkey repository tag. Default to latest.
+	redver := os.Getenv("VALKEY_VERSION")
+	if redver == "" {
+		redver = "latest"
+	}
+
+	pool := dockertest.NewPoolT(t, "")
+	p, err := network.ParsePort("6379")
+	require.NoError(t, err)
+
+	_ = pool.RunT(
+		t,
+		"docker.io/valkey/valkey",
+		dockertest.WithTag(redver),
+		dockertest.WithPortBindings(
+			network.PortMap{
+				p: {
+					{HostIP: netip.IPv4Unspecified(), HostPort: p.Port()},
+				},
+			},
+		),
+	)
+
+	address := "127.0.0.1:6379"
+	if err = pool.Retry(t.Context(), 10*time.Second, func() error {
+		t.Log("Waiting for the database to start...")
+		poolConfig := radix.PoolConfig{}
+		_, err := poolConfig.New(t.Context(), "tcp", address)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
+		t.Fatalf("Could not connect to valkey: %s", err)
+	}
+	time.Sleep(3 * time.Second)
+	return "0.0.0.0", 6379
+}
+
+func TestDriver(t *testing.T) {
+	var err error
+	var caCert []byte
+	if os.Getenv("TEST_VALKEY_TLS") != "" {
+		caCertFile := os.Getenv("CA_CERT_FILE")
+		caCert, err = os.ReadFile(caCertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", caCertFile, err))
+		}
+	}
+
+	// Spin up valkey
+	host, port := prepareValkeyTestContainer(t)
+
+	err = createUser(t.Context(), host, port, valkeyTls, caCert, defaultUsername, defaultPassword, "Administrator", "password",
+		aclCat)
+	if err != nil {
+		t.Fatalf("Failed to create Administrator user using 'default' user: %s", err)
+	}
+	err = createUser(t.Context(), host, port, valkeyTls, caCert, adminUsername, adminPassword, "rotate-root", "rotate-rootpassword",
+		aclCat)
+	if err != nil {
+		t.Fatalf("Failed to create rotate-root test user: %s", err)
+	}
+	err = createUser(t.Context(), host, port, valkeyTls, caCert, adminUsername, adminPassword, "vault-edu", "password",
+		aclCat)
+	if err != nil {
+		t.Fatalf("Failed to create vault-edu test user: %s", err)
+	}
+
+	t.Run("Init", func(t *testing.T) { testValkeyDBInitialize_NoTLS(t, host, port) })
+	t.Run("Init", func(t *testing.T) { testValkeyDBInitialize_TLS(t, host, port) })
+	t.Run("Init", func(t *testing.T) { testValkeyDBInitialize_ConnectionURL(t, host, port) })
+	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser(t, host, port) })
+	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser_WithCreationStatements(t, host, port) })
+	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser_DefaultRule(t, host, port) })
+	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser_plusRole(t, host, port) })
+	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser_groupOnly(t, host, port) })
+	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser_roleAndGroup(t, host, port) })
+	t.Run("Rotate", func(t *testing.T) { testValkeyDBRotateRootCredentials(t, host, port) })
+	t.Run("Creds", func(t *testing.T) { testValkeyDBSetCredentials(t, host, port) })
+	t.Run("Secret", func(t *testing.T) { testConnectionProducerSecretValues(t) })
+	t.Run("TimeoutCalc", func(t *testing.T) { testComputeTimeout(t) })
+}
+
+func setupValkeyDBInitialize(t *testing.T, connectionDetails map[string]any) (err error) {
+	initReq := dbplugin.InitializeRequest{
+		Config:           connectionDetails,
+		VerifyConnection: true,
+	}
+
+	db := new()
+	_, err = db.Initialize(t.Context(), initReq)
+	if err != nil {
+		return err
+	}
+
+	if !db.Initialized {
+		t.Fatal("Database should be initialized")
+	}
+
+	err = db.Close()
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	return nil
+}
+
+func testValkeyDBInitialize_NoTLS(t *testing.T, host string, port int) {
+	if valkeyTls {
+		t.Skip("skipping plain text Init() test in TLS mode")
+	}
+
+	t.Log("Testing plain text Init()")
+
+	connectionDetails := map[string]any{
+		"host":     host,
+		"port":     port,
+		"username": adminUsername,
+		"password": adminPassword,
+	}
+	err := setupValkeyDBInitialize(t, connectionDetails)
+	if err != nil {
+		t.Fatalf("Testing Init() failed: error: %s", err)
+	}
+}
+
+func testValkeyDBInitialize_TLS(t *testing.T, host string, port int) {
+	if !valkeyTls {
+		t.Skip("skipping TLS Init() test in plain text mode")
+	}
+
+	CACertFile := os.Getenv("CA_CERT_FILE")
+	CACert, err := os.ReadFile(CACertFile)
+	if err != nil {
+		t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+	}
+
+	t.Log("Testing TLS Init()")
+
+	connectionDetails := map[string]any{
+		"host":         host,
+		"port":         port,
+		"username":     adminUsername,
+		"password":     adminPassword,
+		"tls":          true,
+		"ca_cert":      CACert,
+		"insecure_tls": true,
+	}
+	err = setupValkeyDBInitialize(t, connectionDetails)
+	if err != nil {
+		t.Fatalf("Testing TLS Init() failed: error: %s", err)
+	}
+}
+
+func testValkeyDBInitialize_ConnectionURL(t *testing.T, host string, port int) {
+	if valkeyTls {
+		t.Skip("skipping plain text Init() test in TLS mode")
+	}
+
+	t.Log("Testing Connection URL Init()")
+
+	connectionURL := fmt.Sprintf("valkey://%s:%s@%s:%d", adminUsername, adminPassword, host, port)
+	connectionDetails := map[string]any{
+		"connection_url": connectionURL,
+	}
+	err := setupValkeyDBInitialize(t, connectionDetails)
+	if err != nil {
+		t.Fatalf("Testing Init() with connection_url failed: error: %s", err)
+	}
+}
+
+func testValkeyDBCreateUser(t *testing.T, address string, port int) {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
+		t.SkipNow()
+	}
+
+	t.Log("Testing CreateUser()")
+
+	connectionDetails := map[string]any{
+		"host":     address,
+		"port":     port,
+		"username": adminUsername,
+		"password": adminPassword,
+	}
+
+	if valkeyTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
+		connectionDetails["tls"] = true
+		connectionDetails["ca_cert"] = CACert
+		connectionDetails["insecure_tls"] = true
+	}
+
+	initReq := dbplugin.InitializeRequest{
+		Config:           connectionDetails,
+		VerifyConnection: true,
+	}
+
+	db := new()
+	_, err := db.Initialize(t.Context(), initReq)
+	if err != nil {
+		t.Fatalf("Failed to initialize database: %s", err)
+	}
+
+	if !db.Initialized {
+		t.Fatal("Database should be initialized")
+	}
+
+	password := "y8fva_sdVA3rasf"
+
+	createReq := dbplugin.NewUserRequest{
+		UsernameConfig: dbplugin.UsernameMetadata{
+			DisplayName: "test",
+			RoleName:    "test",
+		},
+		Statements: dbplugin.Statements{
+			Commands: []string{},
+		},
+		Password:   password,
+		Expiration: time.Now().Add(time.Minute),
+	}
+
+	userResp, err := db.NewUser(t.Context(), createReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close db: %v", err)
+	}
+
+	if err := checkCredsExist(t, userResp.Username, password, address, port); err != nil {
+		t.Fatalf("Could not connect with new credentials: %s", err)
+	}
+
+	err = revokeUser(t, userResp.Username, address, port)
+	if err != nil {
+		t.Fatalf("Could not revoke user %q: %v", userResp.Username, err)
+	}
+
+	err = revokeUser(t, userResp.Username, address, port) // revoke again https://openbao.org/docs/plugins/plugin-authors-guide/#revoke-operations-should-ignore-not-found-errors
+	if err != nil {
+		t.Fatalf("Could not revoke non-existing user %q: %v", userResp.Username, err)
+	}
+}
+
+func testValkeyDBCreateUser_WithCreationStatements(t *testing.T, address string, port int) {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
+		t.SkipNow()
+	}
+	t.Log("Testing CreateUser() with creation statements")
+
+	connectionDetails := map[string]any{
+		"host":     address,
+		"port":     port,
+		"username": adminUsername,
+		"password": adminPassword,
+	}
+
+	if valkeyTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
+		connectionDetails["tls"] = true
+		connectionDetails["ca_cert"] = CACert
+		connectionDetails["insecure_tls"] = true
+	}
+
+	initReq := dbplugin.InitializeRequest{
+		Config:           connectionDetails,
+		VerifyConnection: true,
+	}
+
+	db := new()
+
+	_, err := db.Initialize(t.Context(), initReq)
+	if err != nil {
+		t.Fatalf("Failed to initialize database: %s", err)
+	}
+
+	if !db.Initialized {
+		t.Fatal("Database should be initialized")
+	}
+
+	password := "y8fva_sdVA3rasf"
+	createReq := dbplugin.NewUserRequest{
+		UsernameConfig: dbplugin.UsernameMetadata{
+			DisplayName: "test",
+			RoleName:    "test",
+		},
+		Statements: dbplugin.Statements{
+			Commands: []string{"+@read", "~*"},
+		},
+		Password:   password,
+		Expiration: time.Now().Add(time.Minute),
+	}
+
+	userResp, err := db.NewUser(t.Context(), createReq)
+
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Fatalf("failed to close DB connection during cleanup: %v", err)
+		}
+	}()
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if err := checkRuleAllowed(t, userResp.Username, password, address, port, "get", []string{"somekey"}); err != nil {
+		t.Fatalf("get command should be allowed with +@read rule, but failed: %s", err)
+	}
+
+	if err := checkRuleAllowed(t, userResp.Username, password, address, port, "set", []string{"somekey", "value"}); err == nil {
+		t.Fatal("set command should be denied, but it was allowed")
+	}
+
+	err = revokeUser(t, userResp.Username, address, port)
+	if err != nil {
+		t.Fatalf("Could not revoke user: %s", userResp.Username)
+	}
+}
+
+func checkCredsExist(t *testing.T, username, password, address string, port int) error {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
+		t.SkipNow()
+	}
+
+	t.Log("Testing checkCredsExist()")
+
+	connectionDetails := map[string]any{
+		"host":     address,
+		"port":     port,
+		"username": username,
+		"password": password,
+	}
+
+	if valkeyTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
+		connectionDetails["tls"] = true
+		connectionDetails["ca_cert"] = CACert
+		connectionDetails["insecure_tls"] = true
+	}
+
+	initReq := dbplugin.InitializeRequest{
+		Config:           connectionDetails,
+		VerifyConnection: true,
+	}
+
+	db := new()
+	_, err := db.Initialize(t.Context(), initReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if !db.Initialized {
+		t.Fatal("Database should be initialized")
+	}
+
+	return nil
+}
+
+func checkRuleAllowed(t *testing.T, username, password, address string, port int, cmd string, rules []string) error {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
+		t.SkipNow()
+	}
+
+	t.Log("Testing checkRuleAllowed()")
+
+	connectionDetails := map[string]any{
+		"host":     address,
+		"port":     port,
+		"username": username,
+		"password": password,
+	}
+
+	if valkeyTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
+		connectionDetails["tls"] = true
+		connectionDetails["ca_cert"] = CACert
+		connectionDetails["insecure_tls"] = true
+	}
+
+	initReq := dbplugin.InitializeRequest{
+		Config:           connectionDetails,
+		VerifyConnection: true,
+	}
+
+	db := new()
+	_, err := db.Initialize(t.Context(), initReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if !db.Initialized {
+		t.Fatal("Database should be initialized")
+	}
+	var response string
+	err = db.client.Do(t.Context(), radix.Cmd(&response, cmd, rules...))
+
+	return err
+}
+
+func revokeUser(t *testing.T, username, address string, port int) error {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
+		t.SkipNow()
+	}
+
+	t.Log("Testing RevokeUser()")
+
+	connectionDetails := map[string]any{
+		"host":     address,
+		"port":     port,
+		"username": adminUsername,
+		"password": adminPassword,
+	}
+
+	if valkeyTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
+		connectionDetails["tls"] = true
+		connectionDetails["ca_cert"] = CACert
+		connectionDetails["insecure_tls"] = true
+	}
+
+	initReq := dbplugin.InitializeRequest{
+		Config:           connectionDetails,
+		VerifyConnection: true,
+	}
+
+	db := new()
+	_, err := db.Initialize(t.Context(), initReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if !db.Initialized {
+		t.Fatal("Database should be initialized")
+	}
+
+	delUserReq := dbplugin.DeleteUserRequest{Username: username}
+
+	_, err = db.DeleteUser(t.Context(), delUserReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	return nil
+}
+
+func testValkeyDBCreateUser_DefaultRule(t *testing.T, address string, port int) {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
+		t.SkipNow()
+	}
+
+	t.Log("Testing CreateUser_DefaultRule()")
+
+	connectionDetails := map[string]any{
+		"host":     address,
+		"port":     port,
+		"username": adminUsername,
+		"password": adminPassword,
+	}
+
+	if valkeyTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
+		connectionDetails["tls"] = true
+		connectionDetails["ca_cert"] = CACert
+		connectionDetails["insecure_tls"] = true
+	}
+
+	initReq := dbplugin.InitializeRequest{
+		Config:           connectionDetails,
+		VerifyConnection: true,
+	}
+
+	db := new()
+	_, err := db.Initialize(t.Context(), initReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if !db.Initialized {
+		t.Fatal("Database should be initialized")
+	}
+
+	username := "test"
+	password := "y8fva_sdVA3rasf"
+
+	createReq := dbplugin.NewUserRequest{
+		UsernameConfig: dbplugin.UsernameMetadata{
+			DisplayName: username,
+			RoleName:    username,
+		},
+		Statements: dbplugin.Statements{
+			Commands: []string{},
+		},
+		Password:   password,
+		Expiration: time.Now().Add(time.Minute),
+	}
+
+	userResp, err := db.NewUser(t.Context(), createReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if err := checkCredsExist(t, userResp.Username, password, address, port); err != nil {
+		t.Fatalf("Could not connect with new credentials: %s", err)
+	}
+	rules := []string{"foo"}
+	if err := checkRuleAllowed(t, userResp.Username, password, address, port, "get", rules); err != nil {
+		t.Fatalf("get failed with +@read rule: %s", err)
+	}
+
+	rules = []string{"foo", "bar"}
+	if err = checkRuleAllowed(t, userResp.Username, password, address, port, "set", rules); err == nil {
+		t.Fatalf("set did not fail with +@read rule: %s", err)
+	}
+
+	err = revokeUser(t, userResp.Username, address, port)
+	if err != nil {
+		t.Fatalf("Could not revoke user: %s", username)
+	}
+
+	db.Close()
+}
+
+func testValkeyDBCreateUser_plusRole(t *testing.T, address string, port int) {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
+		t.SkipNow()
+	}
+
+	t.Log("Testing CreateUser_plusRole()")
+
+	connectionDetails := map[string]any{
+		"host":             address,
+		"port":             port,
+		"username":         adminUsername,
+		"password":         adminPassword,
+		"protocol_version": 4,
+	}
+
+	if valkeyTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
+		connectionDetails["tls"] = true
+		connectionDetails["ca_cert"] = CACert
+		connectionDetails["insecure_tls"] = true
+	}
+
+	initReq := dbplugin.InitializeRequest{
+		Config:           connectionDetails,
+		VerifyConnection: true,
+	}
+
+	db := new()
+	_, err := db.Initialize(t.Context(), initReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if !db.Initialized {
+		t.Fatal("Database should be initialized")
+	}
+
+	password := "y8fva_sdVA3rasf"
+
+	createReq := dbplugin.NewUserRequest{
+		UsernameConfig: dbplugin.UsernameMetadata{
+			DisplayName: "test",
+			RoleName:    "test",
+		},
+		Statements: dbplugin.Statements{
+			Commands: []string{fmt.Sprintf(testValkeyRole, aclCat)},
+		},
+		Password:   password,
+		Expiration: time.Now().Add(time.Minute),
+	}
+
+	userResp, err := db.NewUser(t.Context(), createReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	db.Close()
+
+	if err := checkCredsExist(t, userResp.Username, password, address, port); err != nil {
+		t.Fatalf("Could not connect with new credentials: %s", err)
+	}
+
+	err = revokeUser(t, userResp.Username, address, port)
+	if err != nil {
+		t.Fatalf("Could not revoke user: %s", userResp.Username)
+	}
+}
+
+// g1 & g2 must exist in the database.
+func testValkeyDBCreateUser_groupOnly(t *testing.T, address string, port int) {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
+		t.SkipNow()
+	}
+
+	if pre6dot5 {
+		t.Log("Skipping as groups are not supported pre6.5.0")
+		t.SkipNow()
+	}
+	t.Log("Testing CreateUser_groupOnly()")
+
+	connectionDetails := map[string]any{
+		"host":             address,
+		"port":             port,
+		"username":         adminUsername,
+		"password":         adminPassword,
+		"protocol_version": 4,
+	}
+
+	if valkeyTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
+		connectionDetails["tls"] = true
+		connectionDetails["ca_cert"] = CACert
+		connectionDetails["insecure_tls"] = true
+	}
+
+	initReq := dbplugin.InitializeRequest{
+		Config:           connectionDetails,
+		VerifyConnection: true,
+	}
+
+	db := new()
+	_, err := db.Initialize(t.Context(), initReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if !db.Initialized {
+		t.Fatal("Database should be initialized")
+	}
+
+	password := "y8fva_sdVA3rasf"
+
+	createReq := dbplugin.NewUserRequest{
+		UsernameConfig: dbplugin.UsernameMetadata{
+			DisplayName: "test",
+			RoleName:    "test",
+		},
+		Statements: dbplugin.Statements{
+			Commands: []string{testValkeyGroup},
+		},
+		Password:   password,
+		Expiration: time.Now().Add(time.Minute),
+	}
+
+	userResp, err := db.NewUser(t.Context(), createReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	db.Close()
+
+	if err := checkCredsExist(t, userResp.Username, password, address, port); err != nil {
+		t.Fatalf("Could not connect with new credentials: %s", err)
+	}
+
+	err = revokeUser(t, userResp.Username, address, port)
+	if err != nil {
+		t.Fatalf("Could not revoke user: %s", userResp.Username)
+	}
+}
+
+func testValkeyDBCreateUser_roleAndGroup(t *testing.T, address string, port int) {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
+		t.SkipNow()
+	}
+
+	if pre6dot5 {
+		t.Log("Skipping as groups are not supported pre6.5.0")
+		t.SkipNow()
+	}
+	t.Log("Testing CreateUser_roleAndGroup()")
+
+	connectionDetails := map[string]any{
+		"host":             address,
+		"port":             port,
+		"username":         adminUsername,
+		"password":         adminPassword,
+		"protocol_version": 4,
+	}
+
+	if valkeyTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
+		connectionDetails["tls"] = true
+		connectionDetails["ca_cert"] = CACert
+		connectionDetails["insecure_tls"] = true
+	}
+
+	initReq := dbplugin.InitializeRequest{
+		Config:           connectionDetails,
+		VerifyConnection: true,
+	}
+
+	db := new()
+	_, err := db.Initialize(t.Context(), initReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if !db.Initialized {
+		t.Fatal("Database should be initialized")
+	}
+
+	password := "y8fva_sdVA3rasf"
+
+	createReq := dbplugin.NewUserRequest{
+		UsernameConfig: dbplugin.UsernameMetadata{
+			DisplayName: "test",
+			RoleName:    "test",
+		},
+		Statements: dbplugin.Statements{
+			Commands: []string{fmt.Sprintf(testValkeyRoleAndGroup, aclCat)},
+		},
+		Password:   password,
+		Expiration: time.Now().Add(time.Minute),
+	}
+
+	userResp, err := db.NewUser(t.Context(), createReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	db.Close()
+
+	if err := checkCredsExist(t, userResp.Username, password, address, port); err != nil {
+		t.Fatalf("Could not connect with new credentials: %s", err)
+	}
+
+	err = revokeUser(t, userResp.Username, address, port)
+	if err != nil {
+		t.Fatalf("Could not revoke user: %s", userResp.Username)
+	}
+}
+
+func testValkeyDBRotateRootCredentials(t *testing.T, address string, port int) {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
+		t.SkipNow()
+	}
+
+	t.Log("Testing RotateRootCredentials()")
+
+	connectionDetails := map[string]any{
+		"host":     address,
+		"port":     port,
+		"username": "rotate-root",
+		"password": "rotate-rootpassword",
+	}
+
+	if valkeyTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
+		connectionDetails["tls"] = true
+		connectionDetails["ca_cert"] = CACert
+		connectionDetails["insecure_tls"] = true
+	}
+
+	initReq := dbplugin.InitializeRequest{
+		Config:           connectionDetails,
+		VerifyConnection: true,
+	}
+
+	db := new()
+	_, err := db.Initialize(t.Context(), initReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if !db.Initialized {
+		t.Fatal("Database should be initialized")
+	}
+
+	defer db.Close()
+
+	updateReq := dbplugin.UpdateUserRequest{
+		Username: "rotate-root",
+		Password: &dbplugin.ChangePassword{
+			NewPassword: "newpassword",
+		},
+	}
+
+	_, err = db.UpdateUser(t.Context(), updateReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	// defer setting the password back in case the test fails.
+	defer doValkeyDBSetCredentials(t, "rotate-root", "rotate-rootpassword", address, port)
+
+	if err := checkCredsExist(t, db.Username, "newpassword", address, port); err != nil {
+		t.Fatalf("Could not connect with new RotatedRootcredentials: %s", err)
+	}
+}
+
+func doValkeyDBSetCredentials(t *testing.T, username, password, address string, port int) {
+	t.Log("Testing SetCredentials()")
+
+	connectionDetails := map[string]any{
+		"host":     address,
+		"port":     port,
+		"username": adminUsername,
+		"password": adminPassword,
+	}
+
+	if valkeyTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
+		connectionDetails["tls"] = true
+		connectionDetails["ca_cert"] = CACert
+		connectionDetails["insecure_tls"] = true
+	}
+
+	initReq := dbplugin.InitializeRequest{
+		Config:           connectionDetails,
+		VerifyConnection: true,
+	}
+
+	db := new()
+	_, err := db.Initialize(t.Context(), initReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if !db.Initialized {
+		t.Fatal("Database should be initialized")
+	}
+
+	// test that SetCredentials fails if the user does not exist...
+	updateReq := dbplugin.UpdateUserRequest{
+		Username: "userThatDoesNotExist",
+		Password: &dbplugin.ChangePassword{
+			NewPassword: "goodPassword",
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), 5000*time.Millisecond)
+	defer cancel()
+	_, err = db.UpdateUser(ctx, updateReq)
+	if err == nil {
+		t.Fatalf("err: did not error on setting password for userThatDoesNotExist")
+	}
+
+	updateReq = dbplugin.UpdateUserRequest{
+		Username: username,
+		Password: &dbplugin.ChangePassword{
+			NewPassword: password,
+		},
+	}
+
+	_, err = db.UpdateUser(t.Context(), updateReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	db.Close()
+
+	if err := checkCredsExist(t, username, password, address, port); err != nil {
+		t.Fatalf("Could not connect with rotated credentials: %s", err)
+	}
+}
+
+func testValkeyDBSetCredentials(t *testing.T, address string, port int) {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
+		t.SkipNow()
+	}
+
+	doValkeyDBSetCredentials(t, "vault-edu", "password", address, port)
+}
+
+func testConnectionProducerSecretValues(t *testing.T) {
+	t.Log("Testing valkeyDBConnectionProducer.secretValues()")
+
+	cp := &valkeyDBConnectionProducer{
+		Username: "USR",
+		Password: "PWD",
+	}
+
+	if cp.secretValues()["USR"] != "[username]" &&
+		cp.secretValues()["PWD"] != "[password]" {
+		t.Fatal("valkeyDBConnectionProducer.secretValues() test failed.")
+	}
+}
+
+func testComputeTimeout(t *testing.T) {
+	t.Log("Testing computeTimeout")
+	if computeTimeout(t.Context()) != defaultTimeout {
+		t.Fatalf("Background timeout not set to %s milliseconds.", defaultTimeout)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), defaultTimeout)
+	defer cancel()
+	if computeTimeout(ctx) == defaultTimeout {
+		t.Fatal("WithTimeout failed")
+	}
+}
+
+func createUser(ctx context.Context, hostname string, port int, valkeyTls bool, CACert []byte, adminuser, adminpassword, username, password, aclRule string) (err error) {
+	var poolConfig radix.PoolConfig
+
+	if valkeyTls {
+		rootCAs := x509.NewCertPool()
+		ok := rootCAs.AppendCertsFromPEM(CACert)
+		if !ok {
+			return fmt.Errorf("failed to parse root certificate")
+		}
+
+		poolConfig = radix.PoolConfig{
+			Dialer: radix.Dialer{
+				AuthUser: adminuser,
+				AuthPass: adminpassword,
+				NetDialer: &tls.Dialer{
+					Config: &tls.Config{
+						RootCAs:            rootCAs,
+						InsecureSkipVerify: true,
+					},
+				},
+			},
+		}
+	} else {
+		poolConfig = radix.PoolConfig{
+			Dialer: radix.Dialer{
+				AuthUser: adminuser,
+				AuthPass: adminpassword,
+			},
+		}
+	}
+
+	addr := fmt.Sprintf("%s:%d", hostname, port)
+	client, err := poolConfig.New(ctx, "tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	var response string
+	err = client.Do(ctx, radix.Cmd(&response, "ACL", "SETUSER", username, "on", ">"+password, aclRule))
+
+	fmt.Printf("Response in createUser: %s\n", response)
+
+	if err != nil {
+		return err
+	}
+
+	if client != nil {
+		if err = client.Close(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

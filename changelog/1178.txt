@@ -1,3 +1,0 @@
-```release-note:bug
-oidc: add some buffer time after calling oidcPeriodicFunc in test, to prevent flakiness
-```

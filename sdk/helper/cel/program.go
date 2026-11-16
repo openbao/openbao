@@ -179,7 +179,7 @@ func JSONProgramFromRequest(data *framework.FieldData) (*Program, error) {
 }
 
 // parseCompileAndEvaluateExpression parses, compiles, and evaluates a CEL expression
-func parseCompileAndEvaluateExpression(ctx context.Context, env *cel.Env, expression string, evaluationData map[string]interface{}) (ref.Val, error) {
+func parseCompileAndEvaluateExpression(ctx context.Context, env *cel.Env, expression string, evaluationData map[string]any) (ref.Val, error) {
 	// Parse the expression
 	ast, issues := env.Parse(expression)
 	if issues != nil && issues.Err() != nil {
@@ -202,7 +202,7 @@ func parseCompileAndEvaluateExpression(ctx context.Context, env *cel.Env, expres
 	return result, nil
 }
 
-func (v *Variable) Evaluate(ctx context.Context, env *cel.Env, evalData map[string]interface{}) (*cel.Env, error) {
+func (v *Variable) Evaluate(ctx context.Context, env *cel.Env, evalData map[string]any) (*cel.Env, error) {
 	result, err := parseCompileAndEvaluateExpression(ctx, env, v.Expression, evalData)
 	if err != nil {
 		return nil, err
@@ -217,7 +217,7 @@ func (v *Variable) Evaluate(ctx context.Context, env *cel.Env, evalData map[stri
 	)
 }
 
-func (p *Program) EvaluateVars(ctx context.Context, env *cel.Env, evalData map[string]interface{}) (*cel.Env, error) {
+func (p *Program) EvaluateVars(ctx context.Context, env *cel.Env, evalData map[string]any) (*cel.Env, error) {
 	var err error
 	for index, variable := range p.Variables {
 		env, err = variable.Evaluate(ctx, env, evalData)
@@ -229,7 +229,7 @@ func (p *Program) EvaluateVars(ctx context.Context, env *cel.Env, evalData map[s
 	return env, nil
 }
 
-func (p *Program) Evaluate(ctx context.Context, config *EvalConfig, evalData map[string]interface{}) (ref.Val, error) {
+func (p *Program) Evaluate(ctx context.Context, config *EvalConfig, evalData map[string]any) (ref.Val, error) {
 	env, err := config.ToEnv()
 	if err != nil {
 		return nil, fmt.Errorf("failed to render config to CEL environment: %w", err)

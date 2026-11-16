@@ -21,7 +21,7 @@
               {{#if (and attr.options.masked value)}}
                 <MaskedInput @value={{value}} @displayOnly={{true}} @allowCopy={{true}} />
               {{else if (eq attr.name "keyId")}}
-                <LinkTo @route="keys.key.details" @model={{@model.keyId}}>
+                <LinkTo @route="keys.key.details" @models={{array (current-mount-path) @model.keyId}}>
                   {{@model.keyId}}
                 </LinkTo>
               {{else}}

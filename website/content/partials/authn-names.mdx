@@ -3,12 +3,12 @@ OpenBao supports many standardized authentication methods by default.
 
 | AuthN method                                                            | Unique ID                                    | Configured with
 | ----------------------------------------------------------------------- | -------------------------------------------- | ----------------
-| [AppRole](/api-docs/auth/approle#create-update-approle)           | Role ID                                      | Not configurable
-| [JWT/OIDC](/api-docs/auth/jwt#create-role)                        | The presented claims (no default value)      | `user_claim`
+| [AppRole](/docs/api/auth/approle#create-update-approle)           | Role ID                                      | Not configurable
+| [JWT/OIDC](/docs/api/auth/jwt#create-role)                        | The presented claims (no default value)      | `user_claim`
 | [Kerberos](/docs/auth/kerberos)                                   | Username                                     | Not configurable
-| [Kubernetes](/api-docs/auth/kubernetes#create-role)               | Service account UID                          | Not configurable
+| [Kubernetes](/docs/api/auth/kubernetes#create-role)               | Service account UID                          | Not configurable
 | [LDAP](/docs/auth/ldap)                                           | Username                                     | Not configurable
 | [RADIUS](/docs/auth/radius)                                       | Username                                     | Not configurable
-| [TLS Certificate](/api-docs/auth/cert#create-ca-certificate-role) | Subject CommonName                           | Not configurable
+| [TLS Certificate](/docs/api/auth/cert#create-ca-certificate-role) | Subject CommonName                           | Not configurable
 | [Token](/docs/auth/token)                                         | `entity_alias`                               | Not configurable
-| [Username/Password](/api-docs/auth/userpass#create-update-user)   | Username                                     | Not configurable
+| [Username/Password](/docs/api/auth/userpass#create-update-user)   | Username                                     | Not configurable

@@ -64,7 +64,7 @@ func (c *Sys) GenerateRootInitWithContext(ctx context.Context, otp, pgpKey strin
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"otp":     otp,
 		"pgp_key": pgpKey,
 	}
@@ -91,7 +91,7 @@ func (c *Sys) GenerateRecoveryOperationTokenInitWithContext(ctx context.Context,
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"otp":     otp,
 		"pgp_key": pgpKey,
 	}
@@ -153,7 +153,7 @@ func (c *Sys) GenerateRootUpdateWithContext(ctx context.Context, shard, nonce st
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"key":   shard,
 		"nonce": nonce,
 	}
@@ -180,7 +180,7 @@ func (c *Sys) GenerateRecoveryOperationTokenUpdateWithContext(ctx context.Contex
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"key":   shard,
 		"nonce": nonce,
 	}

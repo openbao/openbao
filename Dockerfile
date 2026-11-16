@@ -1,8 +1,24 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: MPL-2.0
 
-# This is {docker.io,quay.io,ghcr.io}/openbao/openbao{,-hsm}.
-FROM alpine:3.23.4 AS default
+# This is a helper stage that ensures the binary layer is always the same, no
+# matter which base image it is copied into:
+#
+# 1. Always use /usr/bin/bao, not /bin/bao etc.
+# 2. Apply the same file permissions across the /usr and /usr/bin directories.
+#    Specifically, UBI is missing an u+w bit on /usr/bin that Alpine and
+#    Distroless have.
+#
+# Together with SOURCE_DATE_EPOCH and rewrite-timestamp, this results in an
+# identical binary layer digest across all distributions below, i.e., a given
+# release binary is only ever pushed to a registry once, even if there is more
+# than one container image flavor packaging it.
+FROM scratch AS bin
+ARG TARGETARCH
+COPY --chmod=555 bin/${TARGETARCH}/bao /usr/bin/bao
+
+# This is {docker.io,quay.io,ghcr.io}/openbao/openbao.
+FROM alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS default
 
 COPY LICENSE /licenses/mozilla.txt
 
@@ -11,11 +27,9 @@ RUN addgroup openbao && adduser -S -G openbao openbao
 
 RUN apk add --no-cache ca-certificates libcap su-exec dumb-init tzdata gcompat
 
-# The OpenBao binary is built externally in CI and copied into the container
-# build.
-ARG TARGETARCH
-COPY bin/${TARGETARCH}/bao /bin/
-RUN ln -s /bin/bao /bin/vault
+# Copy the binary stage.
+COPY --from=bin . /
+RUN ln -s /usr/bin/bao /usr/bin/vault
 
 # /openbao/logs is made available to use as a location to store audit logs, if
 # desired; /openbao/file is made available to use as a location with the file
@@ -26,14 +40,6 @@ RUN mkdir -p /openbao/logs && \
     mkdir -p /openbao/file && \
     mkdir -p /openbao/config && \
     chown -R openbao:openbao /openbao
-
-# Expose the logs directory as a volume since there's potentially long-running
-# state in there
-VOLUME /openbao/logs
-
-# Expose the file directory as a volume since there's potentially long-running
-# state in there
-VOLUME /openbao/file
 
 # 8200/tcp is the primary interface that applications use to interact with
 # OpenBao.
@@ -52,10 +58,15 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["server", "-dev", "-dev-no-store-token"]
 
 
-# This is {docker.io,quay.io,ghcr.io}/openbao/openbao{,-hsm}-ubi.
-FROM registry.access.redhat.com/ubi10-minimal:10.2 AS ubi
+# This is {docker.io,quay.io,ghcr.io}/openbao/openbao-ubi.
+FROM registry.access.redhat.com/ubi10-minimal:10.2@sha256:1e429ea364534f7baf494bac5cc54996b9b9d300f1da90e7b1dfa0ce455bfe39 AS ubi
 
 COPY LICENSE /licenses/mozilla.txt
+
+# Overwrite Red Hat-specific labels present on the UBI base image.
+LABEL io.k8s.description="OpenBao is a tool for securely accessing secrets" \
+      io.k8s.display-name="OpenBao" \
+      io.openshift.expose-services="8200/tcp:https"
 
 # Set up ca-certificates & base tooling.
 RUN microdnf install -y ca-certificates gnupg openssl libcap tzdata procps shadow-utils util-linux
@@ -65,11 +76,9 @@ RUN groupadd --gid 1000 openbao && \
     adduser --uid 100 --system -g openbao openbao && \
     usermod -a -G root openbao
 
-# The OpenBao binary is built externally in CI and copied into the container
-# build.
-ARG TARGETARCH
-COPY bin/${TARGETARCH}/bao /bin/
-RUN ln -s /bin/bao /bin/vault
+# Copy the binary stage.
+COPY --from=bin . /
+RUN ln -s /usr/bin/bao /usr/bin/vault
 
 # /openbao/logs is made available to use as a location to store audit logs, if
 # desired; /openbao/file is made available to use as a location with the file
@@ -84,14 +93,6 @@ RUN mkdir -p /openbao/logs && \
     chown -R openbao /openbao && chown -R openbao $HOME && \
     chgrp -R 0 $HOME && chmod -R g+rwX $HOME && \
     chgrp -R 0 /openbao && chmod -R g+rwX /openbao
-
-# Expose the logs directory as a volume since there's potentially long-running
-# state in there
-VOLUME /openbao/logs
-
-# Expose the file directory as a volume since there's potentially long-running
-# state in there
-VOLUME /openbao/file
 
 # 8200/tcp is the primary interface that applications use to interact with
 # OpenBao.
@@ -111,14 +112,12 @@ CMD ["server", "-dev", "-dev-no-store-token"]
 
 
 # This is {docker.io,quay.io,ghcr.io}/openbao/openbao-distroless.
-FROM gcr.io/distroless/static:nonroot@sha256:963fa6c544fe5ce420f1f54fb88b6fb01479f054c8056d0f74cc2c6000df5240 AS distroless
+FROM gcr.io/distroless/static:nonroot@sha256:f7f8f729987ad0fdf6b05eeeae94b26e6a0f613bdf46feea7fc40f7bd72953e6 AS distroless
 
 COPY LICENSE /licenses/mozilla.txt
 
-# The OpenBao binary is built externally in CI and copied into the container
-# build.
-ARG TARGETARCH
-COPY bin/${TARGETARCH}/bao /bin/
+# Copy the binary stage.
+COPY --from=bin . /
 
 # 8200/tcp is the primary interface that applications use to interact with
 # OpenBao.
@@ -126,5 +125,5 @@ EXPOSE 8200
 
 # By default you'll get a single-node development server that stores everything
 # in RAM and bootstraps itself. Don't use this configuration for production.
-ENTRYPOINT ["/bin/bao"]
+ENTRYPOINT ["/usr/bin/bao"]
 CMD ["server", "-dev", "-dev-no-store-token"]

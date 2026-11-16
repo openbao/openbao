@@ -13,4 +13,9 @@ export default class OidcProviderClientsRoute extends Route {
     const { allowedClientIds } = this.modelFor('vault.cluster.access.oidc.providers.provider');
     return await this.store.query('oidc/client', { paramKey: 'client_id', filterFor: allowedClientIds });
   }
+
+  setupController(controller, model) {
+    super.setupController(controller, model);
+    controller.set('providerName', this.paramsFor('vault.cluster.access.oidc.providers.provider').name);
+  }
 }

@@ -65,6 +65,7 @@ module('Acceptance | pki configuration test', function (hooks) {
       assert.dom(SELECTORS.configuration.deleteAllIssuerModal).exists();
       await fillIn(SELECTORS.configuration.deleteAllIssuerInput, 'delete-all');
       await click(SELECTORS.configuration.deleteAllIssuerButton);
+      await waitUntil(() => !find(SELECTORS.configuration.deleteAllIssuerModal));
       assert.dom(SELECTORS.configuration.deleteAllIssuerModal).doesNotExist();
       assert.strictEqual(currentURL(), `/vault/secrets/${this.mountPath}/pki/configuration`);
     });
@@ -87,7 +88,7 @@ module('Acceptance | pki configuration test', function (hooks) {
       assert.dom(SELECTORS.configuration.deleteAllIssuerModal).exists();
       await fillIn(SELECTORS.configuration.deleteAllIssuerInput, 'delete-all');
       await click(SELECTORS.configuration.deleteAllIssuerButton);
-      await isSettled();
+      await waitUntil(() => !find(SELECTORS.configuration.deleteAllIssuerModal));
       assert.dom(SELECTORS.configuration.deleteAllIssuerModal).doesNotExist();
       assert.strictEqual(currentURL(), `/vault/secrets/${this.mountPath}/pki/configuration`);
       await isSettled();
@@ -154,7 +155,7 @@ module('Acceptance | pki configuration test', function (hooks) {
       assert.dom(SELECTORS.configuration.deleteAllIssuerModal).exists();
       await fillIn(SELECTORS.configuration.deleteAllIssuerInput, 'delete-all');
       await click(SELECTORS.configuration.deleteAllIssuerButton);
-      await isSettled();
+      await waitUntil(() => !find(SELECTORS.configuration.deleteAllIssuerModal));
       assert.dom(SELECTORS.configuration.deleteAllIssuerModal).doesNotExist();
       assert.strictEqual(currentURL(), `/vault/secrets/${this.mountPath}/pki/configuration`);
       await isSettled();
@@ -211,7 +212,7 @@ module('Acceptance | pki configuration test', function (hooks) {
       await fillIn(SELECTORS.configuration.inputByName('keyType'), 'ed25519');
       await click(SELECTORS.configuration.generateRootSave);
 
-      const issuerId = find(SELECTORS.configuration.saved.issuerLink).innerHTML;
+      const issuerId = find(SELECTORS.configuration.saved.issuerLink).innerHTML.trim();
       await visit(`/vault/secrets/${this.mountPath}/pki/issuers`);
       assert.dom(SELECTORS.issuerListItem(issuerId)).exists();
       assert

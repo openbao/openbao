@@ -1,12 +1,12 @@
 <Toolbar>
   <ToolbarActions>
     {{#if @canImportKey}}
-      <ToolbarLink @route="keys.import" @type="download" data-test-pki-key-import>
+      <ToolbarLink @route="keys.import" @type="download" data-test-pki-key-import @model={{(current-mount-path)}}>
         Import
       </ToolbarLink>
     {{/if}}
     {{#if @canGenerateKey}}
-      <ToolbarLink @route="keys.create" @type="add" data-test-pki-key-generate>
+      <ToolbarLink @route="keys.create" @type="add" data-test-pki-key-generate @model={{(current-mount-path)}}>
         Generate
       </ToolbarLink>
     {{/if}}
@@ -41,7 +41,7 @@
                   <li>
                     <LinkTo
                       @route="keys.key.details"
-                      @model={{pkiKey.keyId}}
+                      @models={{array (current-mount-path) pkiKey.keyId}}
                       @disabled={{not @canRead}}
                       data-test-key-menu-link="details"
                     >
@@ -51,7 +51,7 @@
                   <li>
                     <LinkTo
                       @route="keys.key.edit"
-                      @model={{pkiKey.keyId}}
+                      @models={{array (current-mount-path) pkiKey.keyId}}
                       @disabled={{not @canEdit}}
                       data-test-key-menu-link="edit"
                     >

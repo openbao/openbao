@@ -1,0 +1,364 @@
+---
+description: The `/sys/external-keys` endpoint is used to configure external keys in OpenBao.
+---
+
+# `/sys/external-keys`
+
+The `/sys/external-keys` endpoint is used to configure external keys in OpenBao.
+
+## Manage configs
+
+A config is a container for a set of KMS key mappings that share a common set of
+configuration. This includes the name of the KMS plugin that the keys are backed
+by and provider-specific top-level options such as authentication credentials
+and API endpoints.
+
+### List configs
+
+This endpoint lists all configs in a namespace.
+
+| Method | Path                         |
+| :----- | :--------------------------- |
+| `LIST` | `/sys/external-keys/configs` |
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X LIST --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs
+```
+
+#### Sample response
+
+```json
+{
+  "keys": ["my-transit-config", "my-pkcs11-config"]
+}
+```
+
+### Create/Update/Patch config
+
+This endpoint creates, updates or patches a config.
+
+| Method                 | Path                               |
+| :--------------------- | :--------------------------------- |
+| `POST`, `PUT`, `PATCH` | `/sys/external-keys/configs/:name` |
+
+#### Generic parameters
+
+- `name` `(string: <required>)` - Specifies the name of the config. This is
+  specified as part of the request URL.
+
+- `plugin` `(string: <required>)` - Specifies the name of the KMS plugin to use,
+  e.g., `"transit"` or `"pkcs11"`.
+
+- `verify` `(bool: true)` - Verify that the configured plugin is available and
+  validate the given parameters against it before writing the update. The exact
+  checks performed depend on the plugin. This parameter is not persisted and
+  applies on a per-request basis.
+
+#### Plugin-specific parameters
+
+In addition to generic parameters, this endpoint takes plugin-specific
+parameters.
+
+{
+  // TODO(satoqz): Link to per-provider documentation here once that exists.
+}
+
+#### Notes on PATCH
+
+When modifying via `PATCH`, a JSON merge patch is performed and only parameters
+that should change need to be supplied, not all otherwise required ones. To
+fully replace a config's parameters, prefer `POST` or `PUT`.
+
+#### Sample payload
+
+E.g., when using the Transit plugin:
+
+```json
+{
+    "plugin": "transit",
+    "address": "https://openbao.example.com",
+    "mount_path": "my-transit-engine",
+    "token": "s.yaEiIRFNnkPhzDyvShmVspTS"
+}
+```
+
+or when using the PKCS#11 plugin:
+
+```json
+{
+    "plugin": "pkcs11",
+    "lib": "softhsm",
+    "pin": "hunter2",
+    "slot": 5
+}
+```
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X POST --header "X-Vault-Token: ..." \
+    --data @payload.json \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs/my-config
+```
+
+### Read config
+
+This endpoint returns a config's parameters as previously set. Any sensitive
+parameters (as determined by the config's driving plugin) are returned in
+redacted form, rewritten as `(redacted)`.
+
+| Method | Path                               |
+| :----- | :--------------------------------- |
+| `GET`  | `/sys/external-keys/configs/:name` |
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X GET --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs/my-config
+```
+
+#### Sample response
+
+E.g., when using the Transit plugin:
+
+```json
+{
+  "data": {
+    "address": "https://openbao.example.com",
+    "mount_path": "my-transit-engine",
+    "plugin": "transit",
+    "token": "(redacted)"
+  }
+}
+```
+
+### Delete config
+
+This endpoint deletes a config, including all of its keys. Notably, it does not
+delete the underlying KMS keys, only the mappings in OpenBao.
+
+| Method   | Path                               |
+| :------- | :--------------------------------- |
+| `DELETE` | `/sys/external-keys/configs/:name` |
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X DELETE --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs/my-config
+```
+
+## Manage keys
+
+A key is a virtual mapping to a single version of key material in a KMS. Each
+key is nested within a config (`:config_name` URL path component). See [Manage
+configs](#manage-configs) for more information on configs.
+
+### List keys
+
+This endpoint lists all keys under a given config.
+
+| Method | Path                                           |
+| :----- | :--------------------------------------------- |
+| `LIST` | `/sys/external-keys/configs/:config_name/keys` |
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X LIST --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs/my-config/keys
+```
+
+#### Sample response
+
+```json
+{
+  "keys": ["my-key-1", "my-key-2"]
+}
+```
+
+### Create/Update/Patch key
+
+This endpoint creates, updates or patches a key.
+
+| Method                 | Path                                                     |
+| :--------------------- | :------------------------------------------------------- |
+| `POST`, `PUT`, `PATCH` | `/sys/external-keys/configs/:config_name/keys/:key_name` |
+
+#### Generic parameters
+
+- `config_name` `(string: <required>)` - Specifies the name of the containing
+  config. This is specified as part of the request URL.
+
+- `key_name` `(string: <required>)` - Specifies the name of the key. This is
+  specified as part of the request URL.
+
+- `verify` `(bool: true)` - Verify that the configured plugin is available and
+  validate the given parameters against it before writing the update. The exact
+  checks performed depend on the plugin. This parameter is not persisted and
+  applies on a per-request basis.
+
+#### Plugin-specific parameters
+
+In addition to generic parameters, this endpoint takes plugin-specific
+parameters.
+
+{
+  // TODO(satoqz): Link to per-provider documentation here once that exists.
+}
+
+#### Notes on PATCH
+
+When modifying via `PATCH`, a JSON merge patch is performed and only parameters
+that should change need to be supplied, not all otherwise required ones. To
+fully replace a key's parameters, prefer `POST` or `PUT`.
+
+#### Sample payload
+
+E.g., when using the Transit plugin:
+
+```json
+{
+    "name": "my-transit-key",
+    "version": 3
+}
+```
+
+or when using the PKCS#11 plugin:
+
+```json
+{
+    "label": "my-pkcs11-key-label"
+}
+```
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X POST --header "X-Vault-Token: ..." \
+    --data @payload.json \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs/my-config/keys/my-key
+```
+
+### Read key
+
+This endpoint returns a key's parameters as previously set. Any sensitive
+parameters (as determined by the key's driving plugin) are returned in redacted
+form, rewritten as `(redacted)`.
+
+| Method | Path                                                     |
+| :----- | :------------------------------------------------------- |
+| `GET`  | `/sys/external-keys/configs/:config_name/keys/:key_name` |
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X GET --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs/my-config/keys/my-key
+```
+
+#### Sample response
+
+E.g., when using the Transit plugin:
+
+```json
+{
+  "data": {
+    "name": "my-transit-key",
+    "version": 3
+  }
+}
+```
+
+### Delete key
+
+This endpoint deletes a key. Notably, it does not delete the underlying KMS key,
+only the mapping in OpenBao.
+
+| Method   | Path                                                     |
+| :------- | :------------------------------------------------------- |
+| `DELETE` | `/sys/external-keys/configs/:config_name/keys/:key_name` |
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X DELETE --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs/my-config/keys/my-key
+```
+
+## Manage grants
+
+A grant is a path to a secrets or auth engine mount that is allowed to use the
+key it is placed on. Paths are relative to the key's namespace, i.e., a key can
+only be used by engines present in the same namespace.
+
+### List grants
+
+This endpoint lists all grants on a key. All returned paths are normalized to
+end in a slash.
+
+| Method | Path                                                            |
+| :----- | :-------------------------------------------------------------- |
+| `LIST` | `/sys/external-keys/configs/:config_name/keys/:key_name/grants` |
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X LIST --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs/my-config/keys/my-key/grants
+```
+
+#### Sample response
+
+```json
+{
+  "keys": ["pki/"]
+}
+```
+
+### Create grant
+
+This endpoint adds a grant to a key. The grant may already be present, resulting
+in a no-op.
+
+| Method        | Path                                                                        |
+| :------------ | :-------------------------------------------------------------------------- |
+| `POST`, `PUT` | `/sys/external-keys/configs/:config_name/keys/:key_name/grants/:mount-path` |
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X POST --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs/my-config/keys/my-key/grants/pki
+```
+
+### Delete grant
+
+This endpoint removes a grant from a key. The grant may already be absent,
+resulting in a no-op.
+
+| Method   | Path                                                                        |
+| :------- | :-------------------------------------------------------------------------- |
+| `DELETE` | `/sys/external-keys/configs/:config_name/keys/:key_name/grants/:mount-path` |
+
+#### Sample request
+
+```shell-session
+$ curl \
+    -X DELETE --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/external-keys/configs/my-config/keys/my-key/grants/pki
+```

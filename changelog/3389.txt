@@ -1,0 +1,3 @@
+```release-note:security
+core/policies: Prevent LIST operations bypassing `capabilities = ["deny"]` from a more specific wildcard ACL grant. GHSA-xp3c-3jw3-4vcr.
+```

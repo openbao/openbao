@@ -7,6 +7,7 @@ import Component from '@glimmer/component';
 import { action } from '@ember/object';
 import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 /**
  * @module SecretEditMetadata
@@ -40,7 +41,7 @@ export default class SecretEditMetadata extends Component {
       this.error = e;
       return;
     }
-    this.router.transitionTo('vault.cluster.secrets.backend.metadata', this.args.model.id);
+    transitionToSafe(this.router, 'vault.cluster.secrets.backend.metadata', this.args.model.id);
   }
 
   @action

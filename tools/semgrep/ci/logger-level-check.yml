@@ -1,0 +1,26 @@
+# Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
+# SPDX-License-Identifier: MPL-2.0
+
+rules:
+  - id: logger-level-check
+    patterns:
+      - pattern: |
+          if $LOGGER.$CHECK() {
+            $LOGGER.$LOG(...)
+          }
+
+      - metavariable-regex:
+          metavariable: $LOGGER
+          regex: '^.*[Ll]ogger.*$'
+
+      - metavariable-regex:
+          metavariable: $CHECK
+          regex: '^Is(Debug|Info|Warn|Error|Trace|Fatal)$'
+
+      - metavariable-regex:
+          metavariable: $LOG
+          regex: '^(Debug|Info|Warn|Error|Trace|Fatal)$'
+
+    message: "Log guarded by level check of the same level"
+    languages: [go]
+    severity: ERROR

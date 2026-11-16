@@ -14,7 +14,7 @@
         </button>
         <div class="toolbar-separator"></div>
       {{/if}}
-      <ToolbarLink @route="configuration.edit">
+      <ToolbarLink @route="configuration.edit" @model={{(current-mount-path)}}>
         Edit configuration
       </ToolbarLink>
     </ToolbarActions>
@@ -95,7 +95,7 @@
 {{else}}
   <Toolbar>
     <ToolbarActions>
-      <ToolbarLink @route="configuration.create" data-test-configure-pki-button>
+      <ToolbarLink @route="configuration.create" data-test-configure-pki-button @model={{(current-mount-path)}}>
         Configure
       </ToolbarLink>
     </ToolbarActions>

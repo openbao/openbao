@@ -13,8 +13,8 @@ module.exports = {
   },
 
   postBuild(result) {
-    // We gitignore the contents of our output directory http/web_ui
-    // but we need to keep the folder structure for the Vault build
+    // We gitignore the contents of our output directory internal/http/web_ui
+    // but we need to keep the folder structure for the Vault build.
     fs.writeFileSync(result.directory + '/.gitkeep', '');
   },
 };

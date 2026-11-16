@@ -20,7 +20,7 @@
 {{else}}
   <Toolbar />
   <EmptyState @title="PKI not configured" @message={{this.notConfiguredMessage}}>
-    <LinkTo @route="configuration.create">
+    <LinkTo @route="configuration.create" @model={{(current-mount-path)}}>
       Configure PKI
     </LinkTo>
   </EmptyState>

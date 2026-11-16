@@ -133,6 +133,10 @@ export default class SecretEngineModel extends Model {
     return !LIST_EXCLUDED_BACKENDS.includes(this.engineType);
   }
 
+  get isInternal() {
+    return this.path === 'cubbyhole/';
+  }
+
   get isSupportedBackend() {
     return LINKED_BACKENDS.includes(this.engineType);
   }

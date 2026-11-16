@@ -5,7 +5,7 @@
   @breadcrumbs={{@breadcrumbs}}
 >
   {{#unless @promptConfig}}
-    <ToolbarLink @route="roles.create" @type="add" data-test-toolbar-roles-action>
+    <ToolbarLink @route="roles.create" @type="add" data-test-toolbar-roles-action @model={{(current-mount-path)}}>
       Create role
     </ToolbarLink>
   {{/unless}}
@@ -22,7 +22,7 @@
       @title="No roles yet"
       @message="When created, roles will be listed here. Create a role to start generating service account tokens."
     >
-      <LinkTo class="has-top-margin-xs" @route="roles.create">
+      <LinkTo class="has-top-margin-xs" @route="roles.create" @model={{(current-mount-path)}}>
         Create role
       </LinkTo>
     </EmptyState>
@@ -48,7 +48,7 @@
                 class="has-text-black has-text-weight-semibold"
                 data-test-details
                 @route="roles.role.details"
-                @model={{role}}
+                @models={{array (current-mount-path) role}}
                 @disabled={{eq role.canRead false}}
               >
                 Details
@@ -59,7 +59,7 @@
                 class="has-text-black has-text-weight-semibold"
                 data-test-edit
                 @route="roles.role.edit"
-                @model={{role}}
+                @models={{array (current-mount-path) role}}
                 @disabled={{not role.canEdit}}
               >
                 Edit

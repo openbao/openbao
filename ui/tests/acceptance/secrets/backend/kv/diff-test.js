@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { click, settled, fillIn } from '@ember/test-helpers';
+import { click, settled, fillIn, waitUntil } from '@ember/test-helpers';
 import { create } from 'ember-cli-page-object';
 import { module, test } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
@@ -60,6 +60,7 @@ module('Acceptance | kv2 diff view', function (hooks) {
     assert.dom('[data-test-view-diff]').exists('does show diff view with two versions');
 
     await click('[data-test-view-diff]');
+    await waitUntil(() => document.querySelector('.jsondiffpatch-added'));
 
     const diffBetweenVersion2and1 = document.querySelector('.jsondiffpatch-added').innerText;
     assert.strictEqual(diffBetweenVersion2and1, 'version2"world!"', 'shows the correct added part');
@@ -67,6 +68,7 @@ module('Acceptance | kv2 diff view', function (hooks) {
     await click('[data-test-popup-menu-trigger="right-version"]');
 
     await click('[data-test-rightSide-version="2"]');
+    await waitUntil(() => document.querySelector('.diff-status'));
 
     assert.dom('.diff-status').exists('shows States Match');
   });

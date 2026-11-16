@@ -4,7 +4,6 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [OpenBao UI](#openbao-ui)
-  - [Ember CLI Version Matrix](#ember-cli-version-matrix)
   - [Prerequisites](#prerequisites)
   - [Running an OpenBao Server](#running-an-openbao-server)
   - [Running / Development](#running--development)
@@ -107,7 +106,7 @@ This can be done by running these commands from the root directory run:
 
 This will result in an OpenBao binary that has the UI built-in - though in a
 non-dev setup it will still need to be enabled via the `ui` config or setting
-`VAULT_UI` environment variable.
+`BAO_UI` environment variable.
 
 ## Further Reading / Useful Links
 

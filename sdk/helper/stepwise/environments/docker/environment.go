@@ -533,22 +533,22 @@ func (n *dockerClusterNode) start(cli *docker.Client, caDir, netName string, net
 		return err
 	}
 
-	vaultCfg := map[string]interface{}{
-		"listener": map[string]interface{}{
-			"tcp": map[string]interface{}{
+	vaultCfg := map[string]any{
+		"listener": map[string]any{
+			"tcp": map[string]any{
 				"address":       fmt.Sprintf("%s:%d", "0.0.0.0", 8200),
 				"tls_cert_file": "/openbao/config/cert.pem",
 				"tls_key_file":  "/openbao/config/key.pem",
-				"telemetry": map[string]interface{}{
+				"telemetry": map[string]any{
 					"unauthenticated_metrics_access": true,
 				},
 			},
 		},
-		"telemetry": map[string]interface{}{
+		"telemetry": map[string]any{
 			"disable_hostname": true,
 		},
-		"storage": map[string]interface{}{
-			"raft": map[string]interface{}{
+		"storage": map[string]any{
+			"raft": map[string]any{
 				"path":    "/openbao/file",
 				"node_id": n.NodeID,
 			},

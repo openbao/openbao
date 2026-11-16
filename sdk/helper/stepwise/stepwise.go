@@ -106,7 +106,7 @@ type Step struct {
 
 	// Arguments to pass in the request. These arguments represent payloads sent
 	// to the API.
-	Data map[string]interface{}
+	Data map[string]any
 
 	// Assert is a function that is called after this step is executed in order to
 	// test that the step executed successfully. If this is not set, then the next
@@ -315,8 +315,8 @@ func checkShouldRun(tt TestT) {
 //
 // Users should just use a *testing.T object, which implements this.
 type TestT interface {
-	Error(args ...interface{})
-	Fatal(args ...interface{})
-	Skip(args ...interface{})
+	Error(args ...any)
+	Fatal(args ...any)
+	Skip(args ...any)
 	Helper()
 }

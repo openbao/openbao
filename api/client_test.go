@@ -643,7 +643,7 @@ func TestClientConfigureTLS(t *testing.T) {
 		{
 			name:      "invalid CA cert returns error",
 			tlsConfig: &TLSConfig{CACert: "/nonexistent/ca.pem"},
-			wantErr: func(t assert.TestingT, err error, _ ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, _ ...any) bool {
 				return assert.ErrorContains(t, err, "Error loading CA File")
 			},
 		},
@@ -954,8 +954,8 @@ func TestSetHeadersRaceSafe(t *testing.T) {
 		t.Fatalf("NewClient failed: %v", err1)
 	}
 
-	start := make(chan interface{})
-	done := make(chan interface{})
+	start := make(chan any)
+	done := make(chan any)
 
 	testPairs := map[string]string{
 		"soda":    "rootbeer",

@@ -323,11 +323,30 @@ export default Service.extend({
           // Build and add validations on model
           // NOTE: For initial phase, initialize validations only for user pass auth
           if (backend === 'userpass') {
+            const exclusivePairs = { password: 'passwordHash', passwordHash: 'password' };
             const validations = fieldGroups.reduce((obj, element) => {
               if (element.default) {
                 element.default.forEach((v) => {
                   const key = v.options.fieldValue || v.name;
-                  obj[key] = [{ type: 'presence', message: `${v.name} can't be blank` }];
+                  if (exclusivePairs[key]) {
+                    const otherKey = exclusivePairs[key];
+                    obj[key] = [
+                      {
+                        validator: (model) => {
+                          return !!(model[key] || model[otherKey]);
+                        },
+                        message: `Either ${v.name} or ${otherKey} value must be provided.`,
+                      },
+                      {
+                        validator: (model) => {
+                          return !(model[key] && model[otherKey]);
+                        },
+                        message: `Only one of password or password hash may be provided.`,
+                      },
+                    ];
+                  } else {
+                    obj[key] = [{ type: 'presence', message: `${v.name} can't be blank` }];
+                  }
                 });
               }
               return obj;

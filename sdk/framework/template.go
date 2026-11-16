@@ -11,9 +11,9 @@ import (
 	"text/template"
 )
 
-func executeTemplate(tpl string, data interface{}) (string, error) {
+func executeTemplate(tpl string, data any) (string, error) {
 	// Define the functions
-	funcs := map[string]interface{}{
+	funcs := map[string]any{
 		"indent": funcIndent,
 	}
 

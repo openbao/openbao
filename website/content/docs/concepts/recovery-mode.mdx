@@ -73,3 +73,95 @@ and re-join them to the recovered node, or use the
 [Manual Recovery Using peers.json](integrated-storage/index.mdx#manual-recovery-using-peersjson)
 approach to get all nodes to agree on what nodes are part of the cluster.
 
+## Usage
+
+:::warning
+
+Be very careful when modifying or deleting keys in recovery mode. Always have a snapshot ready.
+
+:::
+
+### Pre-requisite
+
+* Take a snapshot before entering recovery mode
+* Have the recovery/unseal keys ready
+
+### Step-by-step process
+
+1. **Restart the OpenBao server in recovery mode**
+
+To start OpenBao in recovery mode, add the `-recovery` flag to your `bao` startup command:
+```shell-session
+$ bao server -config /path/to/config.hcl -recovery
+```
+
+When OpenBao is started in recovery mode, `Recovery Mode: true` will be visible in the logs:
+```shell-session
+==> OpenBao server configuration:
+
+               Seal Type: static
+       Static KMS Key ID: 20260302-1
+         Cluster Address: https://openbao-0.openbao-internal:8201
+              Go Version: go1.25.7
+               Log Level: trace
+           Recovery Mode: true # This line
+                 Storage: raft
+                 Version: OpenBao v2.0.0-HEAD, built 2026-04-15T08:16:37Z
+             Version Sha: 21db149765f9b3db983557e40c006bed37e7d8f6
+```
+
+2. **Generate a recovery token**
+
+In recovery mode, every request to OpenBao needs to be authenticated with a recovery token. Such
+tokens can be generated similarly to a root token. Only one recovery token can be generated for a
+given session; restart the server to generate a new one and invalidate the existing one.
+
+Start by generating an OTP:
+```shell-session
+$ bao operator generate-root -generate-otp -recovery-token
+```
+
+Initiate the recovery token generation using the OTP:
+```shell-session
+$ bao operator generate-root -init -otp=<otp> -recovery-token
+```
+
+This will print a `nonce` that will need to be submitted in the following steps.
+```shell-session
+Nonce         9e2de75b-e1aa-b358-eaaf-c97dbd02fc31
+Started       true
+Progress      0/3
+Complete      false
+OTP Length    28
+```
+
+Submit a threshold of recovery/unseal key shares:
+```shell-session
+$ bao operator generate-root -nonce <nonce> -recovery-token <recovery/unseal-key>
+```
+
+Once a threshold of keys has been submitted, OpenBao will return an encoded token:
+```shell-session
+Nonce            9e2de75b-e1aa-b358-eaaf-c97dbd02fc31
+Started          true
+Progress         1/1
+Complete         true
+Encoded Token    JxIFaxFAIncVI0QfdC8tEXYBEAgeADwPfDclFA
+```
+
+Decode the token:
+```shell-session
+$ bao operator generate-root -decode=<encoded-token> -otp=<otp> -recovery-token
+```
+
+From that point, the token can be used to send requests against `sys/raw`:
+```shell-session
+$ export BAO_TOKEN=<recovery-token> 
+$ bao list sys/raw
+Keys
+----
+auth/
+core/
+logical/
+sys/
+```

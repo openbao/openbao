@@ -1,0 +1,3 @@
+```release-note:improvement
+packaging/container: Remove all `VOLUME` instructions.
+```

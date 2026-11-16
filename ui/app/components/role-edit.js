@@ -11,6 +11,7 @@ import Component from '@ember/component';
 import { set } from '@ember/object';
 import { schedule } from '@ember/runloop';
 import keys from 'vault/lib/keycodes';
+import transitionToSafe from 'vault/utils/transition-to-safe';
 
 const LIST_ROOT_ROUTE = 'vault.cluster.secrets.backend.list-root';
 const SHOW_ROUTE = 'vault.cluster.secrets.backend.show';
@@ -61,7 +62,7 @@ export default Component.extend({
     .cancelOn('willDestroyElement'),
 
   transitionToRoute() {
-    this.router.transitionTo(...arguments);
+    return transitionToSafe(this.router, ...arguments);
   },
 
   onEscape(e) {

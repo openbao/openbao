@@ -7,7 +7,7 @@ echo "==> Checking that code complies with gofumpt..."
 files=$(echo $1 | xargs)
 if [[ -n "$files" ]]; then
     echo "Checking changed files..."
-    gofmt_files="$(echo $1 | grep -v 'pb\\.go' | xargs go tool -modfile=tools/go.mod gofumpt -l)"
+    gofmt_files="$(echo $1 | grep -F -v .pb.go | xargs go tool -modfile=tools/go.mod gofumpt -l)"
 else
     echo "Checking all files..."
     gofmt_files="$(go tool -modfile=tools/go.mod gofumpt -l .)"

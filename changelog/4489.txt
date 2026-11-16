@@ -1,0 +1,3 @@
+```release-note:deprecation
+secrets/transit: Deprecate SHA-1 for RSA-OAEP key wrapping, with removal in v2.9.0.
+```

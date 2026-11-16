@@ -43,7 +43,7 @@ func (b *backend) pathBYOKExportKeys() *framework.Path {
 			},
 			"hash": {
 				Type:        framework.TypeString,
-				Description: "Hash function to use for inner OAEP encryption. Defaults to SHA256.",
+				Description: "Hash function to use for inner OAEP encryption. Defaults to SHA256. SHA1 is deprecated and will be removed in v2.9.0.",
 				Default:     "SHA256",
 			},
 		},

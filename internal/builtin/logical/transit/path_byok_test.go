@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTransit_BYOKExportImport(t *testing.T) {
@@ -92,9 +93,11 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 		Storage:   s,
 	}
 	resp, err = b.HandleRequest(t.Context(), backupReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("resp: %#v\nerr: %v", resp, err)
-	}
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.False(t, resp.IsError())
+	require.Empty(t, resp.Warnings)
+
 	keys := resp.Data["keys"].(map[string]string)
 
 	// Import the key to a new name.
@@ -229,4 +232,19 @@ func testBYOKExportImport(t *testing.T, keyType, feature string) {
 
 	// Ensure the original key is functional
 	validationFunc("test-source")
+
+	sha1ExportReq := &logical.Request{
+		Path:      "byok-export/wrapper/test-source",
+		Operation: logical.ReadOperation,
+		Storage:   s,
+		Data: map[string]any{
+			"hash": "sha1",
+		},
+	}
+
+	resp, err = b.HandleRequest(t.Context(), sha1ExportReq)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.False(t, resp.IsError())
+	require.Equal(t, []string{sha1KeyWrappingDeprecationWarning}, resp.Warnings)
 }

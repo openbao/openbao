@@ -25,10 +25,6 @@ import (
 
 const EncryptedKeyBytes = 512
 
-const sha1KeyWrappingDeprecationWarning = "SHA-1 for RSA-OAEP key wrapping " +
-	"is deprecated and will be removed in v2.9.0. " +
-	"Use SHA256 or another supported hash algorithm instead."
-
 func (b *backend) pathImport() *framework.Path {
 	return &framework.Path{
 		Pattern: "keys/" + framework.GenericNameRegex("name") + "/import",
@@ -60,8 +56,7 @@ The type of key being imported. Currently, "aes128-gcm96" , "aes256-gcm96",
 				Default: "SHA256",
 				Description: `The hash function used as a random oracle in the OAEP wrapping of the user-generated,
 ephemeral AES key. Can be one of "SHA1", "SHA224", "SHA256" (default), "SHA384", or "SHA512".
-"SHA1" is deprecated and will no longer be accepted starting with v2.9.0.
-Use "SHA256" or another supported hash instead.`,
+"SHA1" is deprecated and will be removed in v2.9.0. Use "SHA256" or another supported hash function instead.`,
 			},
 			"ciphertext": {
 				Type: framework.TypeString,
@@ -151,9 +146,8 @@ with the wrapping key and then concatenated with the import key, wrapped by the 
 				Type:    framework.TypeString,
 				Default: "SHA256",
 				Description: `The hash function used as a random oracle in the OAEP wrapping of the user-generated,
-ephemeral AES key. Can be one of "SHA1", "SHA224", "SHA256" (default), "SHA384", or "SHA512.
-"SHA1" is deprecated and will no longer be accepted starting with v2.9.0.
-Use "SHA256" or another supported hash instead.`,
+ephemeral AES key. Can be one of "SHA1", "SHA224", "SHA256" (default), "SHA384", or "SHA512".
+"SHA1" is deprecated and will be removed in v2.9.0. Use "SHA256" or another supported hash function instead.`,
 			},
 			"version": {
 				Type: framework.TypeInt,
@@ -468,3 +462,7 @@ const pathImportVersionWriteSyn = "Imports an externally-generated key into an "
 const pathImportVersionWriteDesc = "This path is used to import a new version of an " +
 	"externally-generated key into an existing import key. The import_version endpoint " +
 	"only supports importing key material into existing imported keys."
+
+const sha1KeyWrappingDeprecationWarning = "SHA-1 for RSA-OAEP key wrapping " +
+	"is deprecated and will be removed in v2.9.0. " +
+	"Use SHA256 or another supported hash function instead."

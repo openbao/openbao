@@ -23,12 +23,15 @@ concerning OpenBao feature deprecations.
 
 > Announced **11/2026**, Deprecated in: **v2.8.0**, Removal: **v2.9.0**
 
-Support for SHA-1 as the RSA-OAEP hash for key wrapping on
-`/transit/keys/:name/import`, `/transit/keys/:name/import_version`, and
-`/transit/byok-export/:destination/:source(/:version)` will be removed.
+Support for SHA-1 as the RSA-OAEP hash function will be removed.
+This applies to `ciphertext` imports and BYOK exports via the following
+endpoints:
 
-Set hash function to `SHA256` (default) or another supported hash function
-instead.
+- `/transit/keys/:name/import`
+- `/transit/keys/:name/import_version`
+- `/transit/byok-export/:destination/:source(/:version)`
+
+Use `SHA256` (default) or another supported hash function instead.
 
 Also see:
 

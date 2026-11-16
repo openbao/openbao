@@ -403,9 +403,8 @@ func (sm *SealManager) getUnsealKey(ctx context.Context, seal Seal, ns *namespac
 
 	switch {
 	case sm.core.isRaftUnseal():
-		// Ignore follower's seal config and refer to leader's barrier
-		// configuration.
-		sealConfig = raftInfo.leaderBarrierConfig
+		// Ignore follower's seal config and refer to leader's configuration.
+		sealConfig = raftInfo.leaderSealConfig
 	default:
 		sealConfig, err = seal.Config(ctx)
 	}

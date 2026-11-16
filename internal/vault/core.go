@@ -181,11 +181,11 @@ type activeAdvertisement struct {
 }
 
 type raftInformation struct {
-	challenge           *wrapping.BlobInfo
-	leaderClient        *api.Client
-	leaderBarrierConfig *SealConfig
-	nonVoter            bool
-	joinInProgress      bool
+	challenge        *wrapping.BlobInfo
+	leaderClient     *api.Client
+	leaderSealConfig *SealConfig
+	nonVoter         bool
+	joinInProgress   bool
 }
 
 type migrationInformation struct {

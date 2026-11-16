@@ -168,7 +168,7 @@ func TestReadCommand_Run(t *testing.T) {
 		assertNoTabs(t, cmd)
 	})
 
-	t.Run("gh_issue_4367_non_json_response", func(t *testing.T) {
+	t.Run("non_json_response", func(t *testing.T) {
 		t.Parallel()
 		type testCase struct {
 			name         string

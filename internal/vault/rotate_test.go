@@ -219,7 +219,8 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 
 		// Should be progress
 		if i < 2 {
-			require.Equal(t, c.sealManager.RotationProgress(ns.UUID, recovery, false), i+1)
+			_, progress := c.sealManager.RotationConfigWithProgress(ns.UUID, recovery, false)
+			require.Equal(t, progress, i+1)
 		}
 	}
 

@@ -392,6 +392,17 @@ func (b *SystemBackend) handleRaftBootstrapChallengeWrite() framework.OperationF
 			return nil, err
 		}
 
+		// For auto-unseal leaders we need to return a synthetic
+		// compatibility configuration containing stub seal config.
+		if b.Core.seal.RecoveryKeySupported() {
+			sealConfig = &SealConfig{
+				Type:            b.Core.seal.WrapperType().String(),
+				Purpose:         Primary,
+				SecretShares:    1,
+				SecretThreshold: 1,
+			}
+		}
+
 		return &logical.Response{
 			Data: map[string]any{
 				"challenge":   base64.StdEncoding.EncodeToString(protoBlob),

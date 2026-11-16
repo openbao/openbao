@@ -836,9 +836,9 @@ func (c *Core) getRaftChallenge(leaderInfo *raft.LeaderJoinInfo) (*raftInformati
 	}
 
 	return &raftInformation{
-		challenge:           eBlob,
-		leaderClient:        apiClient,
-		leaderBarrierConfig: &sealConfig,
+		challenge:        eBlob,
+		leaderClient:     apiClient,
+		leaderSealConfig: &sealConfig,
 	}, nil
 }
 
@@ -929,7 +929,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, wg *sync.WaitGroup, leaderIn
 		// false.
 		if c.seal.WrapperType() == seal.WrapperTypeShamir && !c.isRaftHAOnly() {
 			c.raftInfo.Store(raftInfo)
-			if err := c.seal.SetConfig(ctx, raftInfo.leaderBarrierConfig); err != nil {
+			if err := c.seal.SetConfig(ctx, raftInfo.leaderSealConfig); err != nil {
 				return err
 			}
 

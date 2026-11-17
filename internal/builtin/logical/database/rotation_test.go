@@ -1818,11 +1818,7 @@ func TestStaticRole_RotationSchedule_Rotates(t *testing.T) {
 		require.Eventually(t, func() bool {
 			b.rotateCredentials(ctx, storage)
 			rotated = requireStaticAccount(t, b, storage, "hashicorp")
-			done := rotated.Password != previous.Password
-			if done {
-				return true
-			}
-			return false
+			return rotated.Password != previous.Password
 		}, 11*time.Second, 100*time.Millisecond)
 
 		// Not rotated before the schedule fired

@@ -446,7 +446,7 @@ func TestIsDue_IterationCap(t *testing.T) {
 	// due, and next catches back up with now.
 	d.SetNext(at(12, 0).Add(-30 * 24 * 365 * time.Hour))
 	require.False(t, d.IsDue())
-	require.Equal(t, at(14, 00), d.GetNext())
+	require.Equal(t, at(14, 0), d.GetNext())
 }
 
 func TestIsDue(t *testing.T) {
@@ -492,6 +492,7 @@ func TestIsDue_AfterHapening(t *testing.T) {
 	d.Occurrence()
 	require.False(t, d.IsDue())
 }
+
 func TestUnsetScheduler(t *testing.T) {
 	d := newTestScheduler(t)
 

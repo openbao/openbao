@@ -15,7 +15,7 @@ import (
 )
 
 // maxWindowIterations bounds the number of occurrences to walks through when
-// computing if an occurence is due, i.e. still in a window after `next` occurrence.
+// computing if an occurrence is due, i.e. still in a window after `next` occurrence.
 const maxWindowIterations = 100_000
 
 // parseOptions accepts standard 5-field cron expressions, an optional leading
@@ -24,11 +24,10 @@ const parseOptions = cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | 
 
 // Scheduler creates schedules and computes their occurrences.
 type Scheduler interface {
-
 	// NextOccurrence returns time when next occurrence is expected
 	NextOccurrence() time.Time
 
-	// IsDue returns True if scheduled occurence must happen.
+	// IsDue returns True if scheduled occurrence must happen.
 	IsDue() bool
 
 	// Called when occurrence happens, returns next expected occurrence.
@@ -224,12 +223,12 @@ func (d *DefaultScheduler) IsDue() bool {
 		return false
 	}
 
-	// should have happend, no window set,
+	// should have happened, no window set,
 	if d.GetWindow() == 0 && now.After(d.GetNext()) {
 		return true
 	}
 
-	// should have happend, but within given window
+	// should have happened, but within given window
 	if d.GetWindow() > 0 && now.After(d.GetNext()) {
 		occ := d.GetNext()
 		for i := 0; !occ.After(now); i++ {

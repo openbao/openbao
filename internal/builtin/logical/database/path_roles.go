@@ -903,30 +903,39 @@ type staticAccount struct {
 func (s *staticAccount) GetPeriod() time.Duration {
 	return s.RotationPeriod
 }
+
 func (s *staticAccount) SetPeriod(period time.Duration) {
 	s.RotationPeriod = period
 }
+
 func (s *staticAccount) GetCronExpr() string {
 	return s.RotationSchedule
 }
+
 func (s *staticAccount) SetCronExpr(cronExpr string) {
 	s.RotationSchedule = cronExpr
 }
+
 func (s *staticAccount) GetWindow() time.Duration {
 	return s.RotationWindow
 }
+
 func (s *staticAccount) SetWindow(window time.Duration) {
 	s.RotationWindow = window
 }
+
 func (s *staticAccount) GetNext() time.Time {
 	return s.NextVaultRotation
 }
+
 func (s *staticAccount) SetNext(next time.Time) {
 	s.NextVaultRotation = next
 }
+
 func (s *staticAccount) GetLast() time.Time {
 	return s.LastVaultRotation
 }
+
 func (s *staticAccount) SetLast(last time.Time) {
 	s.LastVaultRotation = last
 }

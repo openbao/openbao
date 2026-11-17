@@ -1,0 +1,3 @@
+```release-note:bug
+core/ha:  notify standby status when post-unseal setup fails
+```

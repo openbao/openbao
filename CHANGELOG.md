@@ -11,7 +11,6 @@ SECURITY:
 
 IMPROVEMENTS:
 
-* command/read: output raw secret for non-JSON responses. [[GH-4463](https://github.com/openbao/openbao/pull/4463)]
 * ui: Add fields to configure external keys in PKI. [[GH-4306](https://github.com/openbao/openbao/pull/4306)]
 
 BUG FIXES:

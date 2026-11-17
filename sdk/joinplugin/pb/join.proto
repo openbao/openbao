@@ -1,3 +1,6 @@
+// Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
+// SPDX-License-Identifier: MPL-2.0
+
 syntax = "proto3";
 package join;
 
@@ -7,21 +10,21 @@ import "google/protobuf/struct.proto";
 
 message Empty {}
 
-message CandidateArgs {
+message CandidatesArgs {
     google.protobuf.Struct config = 1;
 }
 
-message Candidate {
+message JoinCandidate {
     string host = 1;
     string scheme = 2;
     uint32 port = 3;
 }
 
-message Candidates {
-    repeated Candidate candidates = 1;
+message JoinCandidates {
+    repeated JoinCandidate candidates = 1;
 }
 
 service Join {
-    rpc candidates(CandidateArgs) returns (Candidates);
-    rpc cleanup(Empty) returns (Empty);
+    rpc Candidates(CandidatesArgs) returns (JoinCandidates);
+    rpc Cleanup(Empty) returns (Empty);
 }

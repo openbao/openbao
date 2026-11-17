@@ -16,7 +16,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/v2/internal/command/server"
 	"github.com/openbao/openbao/v2/internal/helper/osutil"
-	cataloghelper "github.com/openbao/openbao/v2/internal/helper/pluginutil/catalog"
 	"github.com/stretchr/testify/require"
 )
 
@@ -177,7 +176,7 @@ func TestReloadWrapper(t *testing.T) {
 	require.NoError(t, err, "should encrypt plaintext")
 
 	// Kill the underlying plugin process that serves both wrappers:
-	cataloghelper.TestKillClient(t, w1.(*remoteWrapper).client)
+	w1.(*remoteWrapper).client.Kill()
 
 	output, err := w1.Decrypt(ctx, blob)
 	require.NoError(t, err, "should decrypt blob with reloaded wrapper")

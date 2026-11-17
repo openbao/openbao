@@ -345,6 +345,11 @@ func (c *Client) Close() {
 	}
 }
 
+// Kill kills a client's backing process, to simulate a client crash.
+func (c *Client) Kill() {
+	c.process.Kill()
+}
+
 func (c *Client) Reload() (*Client, error) {
 	return c.catalog.reloadClient(c)
 }

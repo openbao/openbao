@@ -15,7 +15,6 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster/docker"
 	"github.com/openbao/openbao/v2/internal/command/server"
-	cataloghelper "github.com/openbao/openbao/v2/internal/helper/pluginutil/catalog"
 	"github.com/stretchr/testify/require"
 )
 
@@ -151,7 +150,7 @@ func TestKMS(t *testing.T) {
 		require.NoError(t, err)
 
 		// Simulate a crashed plugin.
-		cataloghelper.TestKillClient(t, s1.(*remoteKMS).client)
+		s1.(*remoteKMS).client.Kill()
 
 		// Check that both keys recover.
 		_, err = k1.Sign(ctx, &kms.SignOptions{Data: []byte("foo")})
@@ -162,7 +161,7 @@ func TestKMS(t *testing.T) {
 		// Kill again, but this time dispatch a KMS-level request before
 		// touching the key so the key must be re-fetched but the plugin was
 		// already reloaded.
-		cataloghelper.TestKillClient(t, s1.(*remoteKMS).client)
+		s1.(*remoteKMS).client.Kill()
 
 		// KMS-level request, this should reload the KMS but no keys.
 		_, err = s1.GetKey(ctx, &kms.KeyOptions{

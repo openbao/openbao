@@ -1043,7 +1043,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, wg *sync.WaitGroup, leaderIn
 	joinPlugins := make(map[string]joinsdk.Join, 0)
 	cleanupPlugins := func() {
 		for name, plugin := range joinPlugins {
-			go func() {
+			go func(plugin joinsdk.Join, name string) {
 				// The main context will already be cancelled during shutdown.
 				cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
@@ -1051,7 +1051,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, wg *sync.WaitGroup, leaderIn
 				if err := plugin.Cleanup(cleanupCtx); err != nil {
 					c.logger.Error("error cleaning up join plugin", "name", name, "error", err.Error())
 				}
-			}()
+			}(plugin, name)
 		}
 	}
 

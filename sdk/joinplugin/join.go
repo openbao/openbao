@@ -1,3 +1,6 @@
+// Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
+// SPDX-License-Identifier: MPL-2.0
+
 package joinplugin
 
 import (
@@ -51,17 +54,17 @@ var PluginSets = map[int]plugin.PluginSet{
 	1: {"join": &joinPlugin{}},
 }
 
-func (g *gRPCServer) Candidates(ctx context.Context, args *pb.CandidateArgs) (*pb.Candidates, error) {
+func (g *gRPCServer) Candidates(ctx context.Context, args *pb.CandidatesArgs) (*pb.JoinCandidates, error) {
 	v, err := g.impl.Candidates(ctx, args.Config.AsMap())
 	if err != nil {
 		return nil, err
 	}
-	candidates := make([]*pb.Candidate, 0, len(v))
+	candidates := make([]*pb.JoinCandidate, 0, len(v))
 	for _, c := range v {
-		candidate := &pb.Candidate{Scheme: c.Scheme, Host: c.Host, Port: uint32(c.Port)}
+		candidate := &pb.JoinCandidate{Scheme: c.Scheme, Host: c.Host, Port: uint32(c.Port)}
 		candidates = append(candidates, candidate)
 	}
-	return &pb.Candidates{Candidates: candidates}, nil
+	return &pb.JoinCandidates{Candidates: candidates}, nil
 }
 
 func (g *gRPCServer) Cleanup(ctx context.Context, args *pb.Empty) (*pb.Empty, error) {
@@ -77,7 +80,7 @@ func (g *gRPCClient) Candidates(ctx context.Context, config map[string]any) ([]A
 	if err != nil {
 		return nil, err
 	}
-	reply, err := g.JoinClient.Candidates(ctx, &pb.CandidateArgs{Config: structConfig})
+	reply, err := g.JoinClient.Candidates(ctx, &pb.CandidatesArgs{Config: structConfig})
 	if err != nil {
 		return nil, err
 	}

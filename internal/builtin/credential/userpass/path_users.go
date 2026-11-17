@@ -191,6 +191,8 @@ func (b *backend) pathUserResolvePath(ctx context.Context, req *logical.Request,
 	username, err := getUsername(d)
 	if err != nil {
 		return nil, err
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", logical.ErrInvalidRequest, err)
 	}
 	return logical.ResolvePathResponse("users/" + username)
 }
@@ -213,7 +215,7 @@ func (b *backend) pathUserList(ctx context.Context, req *logical.Request, data *
 func (b *backend) pathUserDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	username, err := getUsername(d)
 	if err != nil {
-		return nil, err
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
 	err = req.Storage.Delete(ctx, "user/"+username)
@@ -227,7 +229,7 @@ func (b *backend) pathUserDelete(ctx context.Context, req *logical.Request, d *f
 func (b *backend) pathUserRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	username, err := getUsername(d)
 	if err != nil {
-		return nil, err
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
 	user, err := b.user(ctx, req.Storage, username)
@@ -278,7 +280,7 @@ func (b *backend) pathUserWrite(ctx context.Context, req *logical.Request, d *fr
 
 	username, err := getUsername(d)
 	if err != nil {
-		return nil, err
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
 	userEntry, err := b.user(ctx, req.Storage, username)

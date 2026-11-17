@@ -203,7 +203,7 @@ func (c *OperatorMigrateCommand) Run(args []string) int {
 
 func snapshotFactory(config map[string]string, logger log.Logger) (physical.Backend, error) {
 	path, ok := config["path"]
-	if !ok {
+	if !ok || path == "" {
 		return nil, fmt.Errorf("path variable is required")
 	}
 

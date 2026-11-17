@@ -1,6 +1,7 @@
+
 ---
 description: |-
-  Describes how to set up a standalone OpenBao with audit storage
+  Describes how to set up a standalone OpenBao server with audit storage.
 ---
 
 # Standalone server with audit storage
@@ -11,9 +12,7 @@ description: |-
 
 :::
 
-
-The below `values.yaml` can be used to set up a single server OpenBao cluster with
-auditing enabled.
+The following `values.yaml` configures a standalone OpenBao server with file-based audit logging enabled.
 
 ```yaml
 server:
@@ -30,15 +29,20 @@ server:
         path = "/openbao/data"
       }
 
+      audit "file" "file" {
+        description = "File audit log on the audit PVC"
+        options {
+          file_path = "/openbao/audit/openbao_audit.log"
+        }
+      }
+
   service:
     enabled: true
-
   dataStorage:
     enabled: true
     size: 10Gi
     storageClass: null
     accessMode: ReadWriteOnce
-
   auditStorage:
     enabled: true
     size: 10Gi
@@ -46,9 +50,12 @@ server:
     accessMode: ReadWriteOnce
 ```
 
-After OpenBao has been deployed, initialized and unsealed, auditing can be enabled
-by running the following command against the OpenBao pod:
+After deploying, initializing, and unsealing OpenBao, the file audit device is enabled automatically through the server configuration.
+
+To verify that auditing is enabled, run the following command against the OpenBao pod:
 
 ```shell-session
-$ kubectl exec -ti <POD NAME> --  bao audit enable file file_path=/openbao/audit/openbao_audit.log
+$ kubectl exec <POD NAME> -- bao audit list
 ```
+
+The output should include `file/`. Audit logs are written to `/openbao/audit/openbao_audit.log` on the audit persistent volume.

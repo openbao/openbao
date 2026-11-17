@@ -278,15 +278,18 @@ func NewManager(logger log.Logger, ms *metricsutil.ClusterMetricSink, detectDead
 	}
 
 	manager := &Manager{
-		db:                   db,
-		logger:               logger,
-		metricSink:           ms,
-		rateLimitPathManager: pathmanager.New(),
-		config:               new(Config),
-		quotaLock:            &locking.SyncRWMutex{},
-		quotaConfigLock:      &locking.SyncRWMutex{},
-		dbAndCacheLock:       &locking.SyncRWMutex{},
+		db:              db,
+		logger:          logger,
+		metricSink:      ms,
+		config:          new(Config),
+		quotaLock:       &locking.SyncRWMutex{},
+		quotaConfigLock: &locking.SyncRWMutex{},
+		dbAndCacheLock:  &locking.SyncRWMutex{},
 	}
+
+	// Setup replaces these with the stored configuration during post-unseal.
+	// Until then, defaultExemptPaths are exempt.
+	manager.setRateLimitExemptPathsLocked(defaultExemptPaths)
 
 	if detectDeadlocks {
 		logger.Debug("enabling deadlock detection")

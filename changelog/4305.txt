@@ -1,0 +1,3 @@
+```release-note:bug
+ui: Fix blank "key bits" dropdown when generating an ML-DSA key in PKI.
+```

@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"reflect"
 	"strconv"
@@ -25,6 +26,7 @@ import (
 	auditFile "github.com/openbao/openbao/v2/internal/builtin/audit/file"
 	kv "github.com/openbao/openbao/v2/internal/builtin/logical/kv"
 	"github.com/openbao/openbao/v2/internal/command/server"
+	"github.com/openbao/openbao/v2/internal/helper/buffer"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/v2/internal/physical/inmem"
@@ -673,6 +675,51 @@ func TestLogical_Audit_invalidWrappingToken(t *testing.T) {
 		if noop.ReqErrs[1] != nil || noop.ReqErrs[2] != nil {
 			t.Fatalf("bad: %#v", noop.RespErrs)
 		}
+	}
+}
+
+func TestLogical_ParseBodyData(t *testing.T) {
+	const formCT = "application/x-www-form-urlencoded"
+	const jsonCT = "application/json"
+
+	tt := map[string]struct {
+		content        string
+		contentType    string
+		expectedData   map[string]any
+		expectedStatus int
+		gotErr         bool
+	}{
+		"json":            {`{"a":"42"}`, jsonCT, map[string]any{"a": "42"}, 0, false},
+		"form":            {"a=42&b=dog", formCT, map[string]any{"a": "42", "b": "dog"}, 0, false},
+		"form w/wrong CT": {"a=42&b=dog", jsonCT, nil, 400, true},
+		"empty form":      {"", formCT, nil, 0, false},
+		"json w/wrong CT": {"\n{\"a\":\"42\"}", formCT, map[string]any{"a": "42"}, 0, false},
+	}
+
+	for name, tc := range tt {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			body, _ := buffer.NewSeekableReader(strings.NewReader(tc.content))
+			req := &http.Request{
+				Method: "POST",
+				Body:   body,
+				Header: http.Header{"Content-Type": []string{tc.contentType}},
+				URL:    &url.URL{Path: "/login"},
+			}
+			data, status, err := parseBodyData(req)
+			require.Equal(t, tc.expectedStatus, status)
+			require.Equal(t, tc.expectedData, data)
+			if tc.gotErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.False(t, req.Body == nil, "body should have been left intact for re-parse")
+				data2, status2, err2 := parseBodyData(req)
+				require.NoError(t, err2)
+				require.Equal(t, tc.expectedStatus, status2)
+				require.Equal(t, tc.expectedData, data2)
+			}
+		})
 	}
 }
 

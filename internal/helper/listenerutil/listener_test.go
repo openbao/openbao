@@ -8,10 +8,12 @@ import (
 	"math"
 	"os"
 	osuser "os/user"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -97,4 +99,71 @@ func TestUnixSocketListener(t *testing.T) {
 			t.Fatal("failed to set permissions on the socket file")
 		}
 	})
+}
+
+func TestSetFilePermissions(t *testing.T) {
+	currentUID := strconv.Itoa(os.Getuid())
+	currentGID := strconv.Itoa(os.Getgid())
+
+	tests := []struct {
+		name         string
+		user         string
+		group        string
+		mode         string
+		expectErr    bool
+		expectedMode os.FileMode // Checked only when mode is specified
+	}{
+		{
+			name:         "user+group+mode",
+			user:         currentUID,
+			group:        currentGID,
+			mode:         "0644",
+			expectErr:    false,
+			expectedMode: 0o644,
+		},
+		{
+			name:      "empty",
+			user:      "",
+			group:     "",
+			mode:      "",
+			expectErr: false,
+		},
+		{
+			name:         "mode",
+			user:         "",
+			group:        "",
+			mode:         "0600",
+			expectErr:    false,
+			expectedMode: 0o600,
+		},
+		{
+			name:      "user+group",
+			user:      currentUID,
+			group:     currentGID,
+			mode:      "",
+			expectErr: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create a temporary file for each test case
+			tmpDir := t.TempDir()
+			tmpFile := filepath.Join(tmpDir, "testfile")
+
+			err := os.WriteFile(tmpFile, []byte("content"), 0o666)
+			require.NoError(t, err)
+
+			err = setFilePermissions(tmpFile, tc.user, tc.group, tc.mode)
+			require.NoError(t, err)
+			require.Equal(t, tc.expectErr, err != nil)
+
+			// Verify file mode when a mode was set
+			if tc.mode != "" {
+				info, err := os.Stat(tmpFile)
+				require.NoError(t, err)
+				assert.Equal(t, tc.expectedMode, info.Mode().Perm())
+			}
+		})
+	}
 }

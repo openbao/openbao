@@ -463,7 +463,9 @@ func (b *databaseBackend) connectionWriteHandler() framework.OperationFunc {
 		}
 		initResp, err := dbw.Initialize(ctx, initReq)
 		if err != nil {
-			dbw.Close()
+			if closeErr := dbw.Close(); closeErr != nil {
+				b.Logger().Warn("error closing database connection after initialization failure", "error", closeErr)
+			}
 			return logical.ErrorResponse("error creating database object: %s", err), nil
 		}
 		config.ConnectionDetails = initResp.Config
@@ -477,7 +479,9 @@ func (b *databaseBackend) connectionWriteHandler() framework.OperationFunc {
 			id:       id,
 		})
 		if oldConn != nil {
-			oldConn.Close()
+			if err := oldConn.Close(); err != nil {
+				b.Logger().Warn("error closing old database connection", "error", err)
+			}
 		}
 
 		// 1.12.0 and 1.12.1 stored builtin plugins in storage, but 1.12.2 reverted

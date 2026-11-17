@@ -33,10 +33,13 @@ func PopulateIdentityTemplate(tpl string, entityID string, sysView logical.Syste
 	}
 
 	input := identitytpl.PopulateStringInput{
-		String: tpl,
-		Entity: entity,
-		Groups: groups,
-		Mode:   identitytpl.ACLTemplating,
+		String:               tpl,
+		Entity:               entity,
+		Groups:               groups,
+		Mode:                 identitytpl.ACLTemplating,
+		BlockedSubstitutions: []string{
+			// if you inline this, make sure to fill this array
+		},
 	}
 
 	_, out, err := identitytpl.PopulateString(input)

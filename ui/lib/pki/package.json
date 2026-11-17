@@ -1,10 +1,10 @@
 {
   "name": "pki",
-  "keywords": ["ember-addon", "ember-engine"],
+  "keywords": [
+    "ember-addon",
+    "ember-engine"
+  ],
   "dependencies": {
-    "ember-cli-babel": "*",
-    "ember-cli-htmlbars": "*",
-    "ember-cli-typescript": "*",
     "@hashicorp/design-system-components": "*",
     "@types/ember": "latest",
     "@types/ember-data": "latest",
@@ -29,9 +29,15 @@
     "@types/ember__test": "latest",
     "@types/ember__utils": "latest",
     "@types/qunit": "latest",
-    "@types/rsvp": "latest"
+    "@types/rsvp": "latest",
+    "ember-cli-babel": "*",
+    "ember-cli-htmlbars": "*",
+    "ember-cli-typescript": "*",
+    "ember-engines": "*"
   },
   "ember-addon": {
-    "paths": ["../core"]
+    "paths": [
+      "../core"
+    ]
   }
 }

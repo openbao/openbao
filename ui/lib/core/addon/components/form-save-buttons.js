@@ -5,7 +5,7 @@
 
 import Component from '@ember/component';
 import { computed } from '@ember/object';
-import layout from '../templates/components/form-save-buttons';
+import layout from './form-save-buttons';
 
 /**
  * @module FormSaveButtons

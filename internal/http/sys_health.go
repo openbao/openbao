@@ -62,7 +62,9 @@ func handleSysHealthGet(core *vault.Core, w http.ResponseWriter, r *http.Request
 
 	// Generate the response
 	enc := json.NewEncoder(w)
-	enc.Encode(body)
+	if err := enc.Encode(body); err != nil {
+		core.Logger().Error("error writing health response", "error", err)
+	}
 }
 
 func handleSysHealthHead(core *vault.Core, w http.ResponseWriter, r *http.Request) {

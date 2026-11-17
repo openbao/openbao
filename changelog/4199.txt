@@ -1,0 +1,3 @@
+```release-note:bug
+auth/oidc: Fix login in direct callback mode by including the namespace in the redirect URI.
+```

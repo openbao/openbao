@@ -695,7 +695,7 @@ func (b *SystemBackend) handleStorageRaftSnapshotWrite(force bool) framework.Ope
 			// it's in an unknown state
 			defer func() {
 				if retErr != nil {
-					if err := b.Core.sealInternalWithOptions(false); err != nil {
+					if err := b.Core.sealInternalWithOptions(sealOptions{preSeal: true}); err != nil {
 						b.Core.logger.Error("failed to seal node", "error", err)
 					}
 				}

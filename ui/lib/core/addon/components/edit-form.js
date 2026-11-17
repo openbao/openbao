@@ -7,7 +7,7 @@ import AdapterError from '@ember-data/adapter/error';
 import { inject as service } from '@ember/service';
 import Component from '@ember/component';
 import { task } from 'ember-concurrency';
-import layout from '../templates/components/edit-form';
+import layout from './edit-form';
 import { next } from '@ember/runloop';
 import { waitFor } from '@ember/test-waiters';
 

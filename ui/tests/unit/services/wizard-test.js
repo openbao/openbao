@@ -348,25 +348,26 @@ module('Unit | Service | wizard', function (hooks) {
       }
 
       const result = wizard[testCase.method](...testCase.args);
-      if (testCase.expectedResults.props) {
-        testCase.expectedResults.props.forEach((property) => {
-          assert.deepEqual(
-            wizard.get(property.prop),
-            property.value,
-            `${testCase.method} creates correct value for ${property.prop}`
-          );
-        });
-      }
-      if (testCase.expectedResults.storage) {
-        testCase.expectedResults.storage.forEach((item) => {
-          assert.deepEqual(
-            wizard.storage().getItem(item.key),
-            item.value,
-            `${testCase.method} creates correct storage state for ${item.key}`
-          );
-        });
-      }
-      if (testCase.expectedResults.value !== null && testCase.expectedResults.value !== undefined) {
+      const expectedProps = testCase.expectedResults.props || [];
+      expectedProps.forEach((property) => {
+        assert.deepEqual(
+          wizard.get(property.prop),
+          property.value,
+          `${testCase.method} creates correct value for ${property.prop}`
+        );
+      });
+      const expectedStorage = testCase.expectedResults.storage || [];
+      expectedStorage.forEach((item) => {
+        assert.deepEqual(
+          wizard.storage().getItem(item.key),
+          item.value,
+          `${testCase.method} creates correct storage state for ${item.key}`
+        );
+      });
+      const hasExpectedValue =
+        testCase.expectedResults.value !== null && testCase.expectedResults.value !== undefined;
+      if (hasExpectedValue) {
+        // eslint-disable-next-line qunit/no-conditional-assertions
         assert.strictEqual(result, testCase.expectedResults.value, `${testCase.method} gives correct value`);
       }
     });

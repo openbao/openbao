@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package kv
 
 import (
@@ -654,10 +657,10 @@ func (b *versionedKVBackend) pathDataDelete() framework.OperationFunc {
 			}
 		}
 
-		lv.DeletionTime = timestamppb.Now()
-
-		err = b.writeKeyMetadata(ctx, req.Storage, meta)
-		if err != nil {
+		now := timestamppb.Now()
+		lv.DeletionTime = now
+		meta.UpdatedTime = now
+		if err := b.writeKeyMetadata(ctx, req.Storage, meta); err != nil {
 			return nil, err
 		}
 
@@ -695,10 +698,14 @@ func (k *KeyMetadata) AddVersion(createdTime, deletionTime *timestamppb.Timestam
 	}
 
 	var maxVersions uint32
-	switch {
-	case max(k.MaxVersions, configMaxVersions) > 0:
-		maxVersions = max(k.MaxVersions, configMaxVersions)
-	default:
+	if k.MaxVersions > 0 {
+		// Key metadata takes highest precedence
+		maxVersions = k.MaxVersions
+	} else if configMaxVersions > 0 {
+		// Fallback to engine configuration if key is 0 (unset)
+		maxVersions = configMaxVersions
+	} else {
+		// Fallback to default if neither are set
 		maxVersions = defaultMaxVersions
 	}
 

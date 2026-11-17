@@ -26,12 +26,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
-	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/cenkalti/backoff/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/hashicorp/go-cleanhttp"
@@ -722,23 +722,10 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 	// Copy any additional files.
 	maps.Copy(copyFromTo, opts.CopyFromTo)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	var seenLogs atomic.Bool
 	logConsumer := func(s string) {
 		n.Logger.Trace(s)
 	}
 	logStdout := &LogConsumerWriter{func(s string) {
-		// HACK: The first message printed to stdout implies that listeners are
-		// ready, or that startup failed. We use this to time the rotation of
-		// the initial certificate, such that:
-		// 1. SIGHUP is not sent too early.
-		// 2. We don't cause a race condition on the file system where OpenBao
-		//    will see either no cert or a mismatched cert/key.
-		if seenLogs.CompareAndSwap(false, true) {
-			n.Logger.Info("saw logs from process")
-			wg.Done()
-		}
 		n.Logger.Trace(s)
 	}}
 	logStderr := &LogConsumerWriter{func(s string) {
@@ -754,6 +741,8 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 	if opts.Root {
 		env = append(env, "BAO_SKIP_DROP_ROOT=true")
 	}
+
+	var containerID, realIP string
 
 	r, err := dockhelper.NewServiceRunner(dockhelper.RunOptions{
 		ImageRepo: n.ImageRepo,
@@ -777,17 +766,9 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 		LogStderr:       logStderr,
 		PreDelete:       true,
 		DoNotAutoRemove: true,
-		PostStart: func(containerID string, realIP string) error {
-			err := n.setupCert(realIP)
-			if err != nil {
-				return err
-			}
-
-			// If we signal Vault before it installs its sighup handler, it'll die.
-			n.Logger.Trace("awaiting poststart", "containerID", containerID, "IP", realIP)
-			wg.Wait()
-			n.Logger.Trace("running poststart", "containerID", containerID, "IP", realIP)
-			return n.Runner.RefreshFiles(ctx, containerID)
+		PostStart: func(id, ip string) error {
+			containerID, realIP = id, ip
+			return nil
 		},
 		Capabilities:      []string{"NET_ADMIN"},
 		OmitLogTimestamps: true,
@@ -808,19 +789,63 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 			return err
 		}
 	}
+
+	var certUpdated bool
+
+	// If starting up in recovery mode, OpenBao does not support listener cert
+	// reloads via SIGHUP, so don't bother with it. Specifically, a probe for
+	// the updated SAN would never succeed, failing startup.
+	isRecoveryMode := slices.Contains(opts.Args, "-recovery")
+
 	svc, _, err := r.StartNewService(ctx, false, false, func(ctx context.Context, host string, port int) (dockhelper.ServiceConfig, error) {
 		config, err := n.apiConfig()
 		if err != nil {
 			return nil, err
 		}
+
+		// Note that given the networking parameters we invoke NewServiceRunner
+		// and StartNewService with, host is always the loopback address here,
+		// not a container IP. Thus, the container's initial cert not containing
+		// a SAN for its IP is sufficient to make this call.
 		config.Address = fmt.Sprintf("https://%s:%d", host, port)
+
+		// ... however, if we've already updated the node's cert in an earlier
+		// iteration, confirm that the node has finished reloading listeners
+		// and picked up the new cert by setting the TLS server name to the
+		// container's internal IP, requiring that we match the desired SAN.
+		if certUpdated {
+			if err := config.ConfigureTLS(&api.TLSConfig{
+				TLSServerName: realIP,
+			}); err != nil {
+				return nil, err
+			}
+		}
+
 		client, err := api.NewClient(config)
 		if err != nil {
 			return nil, err
 		}
-		err = probe(client)
-		if err != nil {
+		if err := probe(client); err != nil {
 			return nil, err
+		}
+
+		// After verifying that the node is able to serve requests, set up a
+		// cert covering the container's IP, too, and send a SIGHUP such that
+		// the listener picks it up. The additional SAN is only required for
+		// communication between containers, i.e., usually Raft. It is important
+		// that we make this update only after ensuring initial connectivity to
+		// avoid racing on the file system and to avoid sending SIGHUP before a
+		// signal handler was installed.
+		if !certUpdated && !isRecoveryMode {
+			certUpdated = true
+			if err := n.setupCert(realIP); err != nil {
+				return nil, backoff.Permanent(err)
+			}
+			if err := n.Runner.RefreshFiles(ctx, containerID); err != nil {
+				return nil, backoff.Permanent(err)
+			}
+			// Retry immediately.
+			return nil, backoff.RetryAfter(0)
 		}
 
 		return dockhelper.NewServiceHostPort(host, port), nil

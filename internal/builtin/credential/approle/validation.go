@@ -65,6 +65,11 @@ type secretIDStorageEntry struct {
 	SecretIDNumUsesDeprecated int `json:"SecretIDNumUses" mapstructure:"SecretIDNumUses"`
 }
 
+// expired checks if a expiration time is set and has expired or not
+func (entry *secretIDStorageEntry) expired() bool {
+	return !entry.ExpirationTime.IsZero() && time.Now().After(entry.ExpirationTime)
+}
+
 // Represents the payload of the storage entry of the accessor that maps to a
 // unique SecretID. Note that SecretIDs should never be stored in plaintext
 // anywhere in the backend. SecretIDHMAC will be used as an index to fetch the

@@ -51,6 +51,7 @@ func handleHelp(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 		Operation:  logical.HelpOperation,
 		Path:       r.URL.Path[len("/v1/"):],
 		Connection: getConnection(r),
+		Headers:    r.Header,
 	}
 	requestAuth(r, req)
 

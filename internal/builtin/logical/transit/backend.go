@@ -244,6 +244,12 @@ func (b *backend) autoRotateKeys(ctx context.Context, req *logical.Request) erro
 	var errs *multierror.Error
 
 	for _, key := range keys {
+		// Storage listings include directories, such as import/ for the
+		// wrapping key. Such entries would fail to load below.
+		if strings.HasSuffix(key, "/") {
+			continue
+		}
+
 		p, _, err := b.GetPolicyExclusive(ctx, keysutil.PolicyRequest{
 			Storage: req.Storage,
 			Name:    key,

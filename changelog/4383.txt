@@ -1,0 +1,3 @@
+```release-note:improvement
+storage/raft: Add `max_append_entries` and `max_rpcs_in_flight` as options to the raft storage stanza.
+```

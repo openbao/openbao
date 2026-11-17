@@ -8,7 +8,7 @@ import { gt } from '@ember/object/computed';
 import { camelize } from '@ember/string';
 import Component from '@ember/component';
 import { get, computed } from '@ember/object';
-import layout from '../templates/components/shamir-flow';
+import layout from './shamir-flow';
 import { A } from '@ember/array';
 
 const pgpKeyFileDefault = () => ({ value: '' });

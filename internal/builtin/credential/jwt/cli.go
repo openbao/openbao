@@ -107,7 +107,11 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 	callbackPort, ok := m[FieldCallbackPort]
 	if !ok {
 		if serverURL != nil {
-			callbackPort = serverURL.Port() + "/v1/auth/" + mount
+			ns := strings.Trim(c.Namespace(), "/")
+			if ns == "root" {
+				ns = ""
+			}
+			callbackPort = serverURL.Port() + path.Join("/v1", ns, "auth", mount)
 		} else {
 			callbackPort = port
 		}
@@ -195,7 +199,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 		if err != nil {
 			return nil, err
 		}
-		defer listener.Close()
+		defer listener.Close() //nolint:errcheck
 	}
 
 	// Open the default browser to the callback URL.
@@ -267,7 +271,9 @@ func callbackHandler(c *api.Client, mount string, clientNonce string, doneCh cha
 		var err error
 
 		defer func() {
-			w.Write([]byte(response))
+			if _, err := w.Write([]byte(response)); err != nil {
+				fmt.Fprintf(os.Stderr, "Error writing callback response: %s\n", err)
+			}
 			doneCh <- loginResp{secret, err}
 		}()
 
@@ -291,7 +297,7 @@ func callbackHandler(c *api.Client, mount string, clientNonce string, doneCh cha
 				response = errorHTML(summary, detail)
 				return
 			}
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck
 
 			// An id_token will never be part of a redirect GET, so remove it here too.
 			delete(data, "id_token")
@@ -423,7 +429,7 @@ Configuration:
   %s=<string>
     Optional port to use in OIDC redirect_uri (default: the value set for
     port in client callback mode, else the port from $BAO_ADDR or $VAULT_ADDR
-    with an added /v1/auth/<path> where <path> is from the login -path option).
+    with an added /v1/<namespace>/auth/<path> where <path> is from the login -path option).
 
   %s=<bool>
     Toggle the automatic launching of the default browser to the login URL. (default: false).

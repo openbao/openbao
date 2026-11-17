@@ -41,6 +41,7 @@ interface BitOptions {
 const KEY_BITS_OPTIONS: BitOptions = {
   rsa: ['2048', '3072', '4096', '0'],
   ec: ['256', '224', '384', '521', '0'],
+  mldsa: ['44', '65', '87'],
   ed25519: ['0'],
   any: ['0'],
 };

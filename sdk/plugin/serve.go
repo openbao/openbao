@@ -20,12 +20,17 @@ import (
 // dispensed from the plugin server.
 const BackendPluginName = "backend"
 
+// Deprecated: This will be removed in a future release.
 type TLSProviderFunc func() (*tls.Config, error)
 
 type ServeOpts struct {
 	BackendFactoryFunc logical.Factory
-	TLSProviderFunc    TLSProviderFunc
 	Logger             log.Logger
+
+	// Deprecated: This field will be removed in a future release. Plugin
+	// authors do not need to set it as OpenBao will establish an mTLS
+	// connection to the plugin automatically.
+	TLSProviderFunc TLSProviderFunc
 }
 
 // Serve is a helper function used to serve a backend plugin. This
@@ -42,22 +47,6 @@ func Serve(opts *ServeOpts) error {
 
 	// pluginMap is the map of plugins we can dispense.
 	pluginSets := map[int]plugin.PluginSet{
-		// Version 3 used to supports both protocols. We want to keep it around
-		// since it's possible old plugins built against this version will still
-		// work with gRPC. There is currently no difference between version 3
-		// and version 4.
-		3: {
-			"backend": &GRPCBackendPlugin{
-				Factory: opts.BackendFactoryFunc,
-				Logger:  logger,
-			},
-		},
-		4: {
-			"backend": &GRPCBackendPlugin{
-				Factory: opts.BackendFactoryFunc,
-				Logger:  logger,
-			},
-		},
 		5: {
 			"backend": &GRPCBackendPlugin{
 				Factory:             opts.BackendFactoryFunc,
@@ -75,7 +64,6 @@ func Serve(opts *ServeOpts) error {
 	serveOpts := &plugin.ServeConfig{
 		HandshakeConfig:  HandshakeConfig,
 		VersionedPlugins: pluginSets,
-		TLSProvider:      opts.TLSProviderFunc,
 		Logger:           logger,
 
 		// A non-nil value here enables gRPC serving for this plugin...
@@ -105,22 +93,6 @@ func ServeMultiplex(opts *ServeOpts) error {
 
 	// pluginMap is the map of plugins we can dispense.
 	pluginSets := map[int]plugin.PluginSet{
-		// Version 3 used to supports both protocols. We want to keep it around
-		// since it's possible old plugins built against this version will still
-		// work with gRPC. There is currently no difference between version 3
-		// and version 4.
-		3: {
-			"backend": &GRPCBackendPlugin{
-				Factory: opts.BackendFactoryFunc,
-				Logger:  logger,
-			},
-		},
-		4: {
-			"backend": &GRPCBackendPlugin{
-				Factory: opts.BackendFactoryFunc,
-				Logger:  logger,
-			},
-		},
 		5: {
 			"backend": &GRPCBackendPlugin{
 				Factory:             opts.BackendFactoryFunc,
@@ -146,10 +118,6 @@ func ServeMultiplex(opts *ServeOpts) error {
 			opts = append(opts, grpc.MaxSendMsgSize(math.MaxInt32))
 			return plugin.DefaultGRPCServer(opts)
 		},
-
-		// TLSProvider is required to support v3 and v4 plugins.
-		// It will be ignored for v5 which uses AutoMTLS
-		TLSProvider: opts.TLSProviderFunc,
 	}
 
 	plugin.Serve(serveOpts)

@@ -320,6 +320,17 @@ func (r *Registry) InvalidateConfig(ctx context.Context, name string) error {
 		return err
 	}
 
+	lockKey := lockKey{
+		config:      name,
+		namespaceID: ns.ID,
+	}
+
+	if err := r.locks.Lock(ctx, lockKey); err != nil {
+		return err
+	}
+
+	defer r.locks.Unlock(lockKey)
+
 	client, ok := r.cachePop(ns, name)
 	if !ok {
 		// Nothing to do.

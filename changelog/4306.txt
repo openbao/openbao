@@ -1,0 +1,3 @@
+```release-note:improvement
+ui: Add fields to configure external keys in PKI.
+```

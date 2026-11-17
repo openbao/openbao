@@ -1,0 +1,3 @@
+```release-note:bug
+core/external-keys: Close race window where standby nodes would miss config updates and keep stale KMS clients.
+```

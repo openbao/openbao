@@ -35,8 +35,9 @@ type backendGRPCPluginClient struct {
 	versionClient logical.PluginVersionClient
 	metadataMode  bool
 
-	system logical.SystemView
-	logger log.Logger
+	storage *GRPCStorageServer
+	system  logical.SystemView
+	logger  log.Logger
 
 	// This is used to signal to the Cleanup function that it can proceed
 	// because we have a defined server
@@ -194,6 +195,12 @@ func (b *backendGRPCPluginClient) Cleanup(ctx context.Context) {
 	if server := b.server.Load(); server != nil {
 		server.GracefulStop()
 	}
+
+	// Ensure that any open transactions are aborted.
+	b.storage.txns.Range(func(_, raw any) bool {
+		_ = raw.(logical.Transaction).Rollback(ctx)
+		return true
+	})
 }
 
 func (b *backendGRPCPluginClient) InvalidateKey(ctx context.Context, key string) {
@@ -219,8 +226,9 @@ func (b *backendGRPCPluginClient) Setup(ctx context.Context, config *logical.Bac
 	if b.metadataMode {
 		storageImpl = &NOOPStorage{}
 	}
-	storage := &GRPCStorageServer{
-		impl: storageImpl,
+	b.storage = &GRPCStorageServer{
+		impl:    storageImpl,
+		doneCtx: b.doneCtx,
 	}
 
 	// Shim logical.SystemView
@@ -239,7 +247,7 @@ func (b *backendGRPCPluginClient) Setup(ctx context.Context, config *logical.Bac
 
 		s := grpc.NewServer(opts...)
 		pb.RegisterSystemViewServer(s, sysView)
-		pb.RegisterStorageServer(s, storage)
+		pb.RegisterStorageServer(s, b.storage)
 		b.server.Store(s)
 		close(b.cleanupCh)
 		return s

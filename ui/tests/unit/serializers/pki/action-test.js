@@ -51,8 +51,8 @@ module('Unit | Serializer | pki/action', function (hooks) {
         keyType: 'rsa',
         keyBits: '0',
         keyRef: 'key ref',
-        managedKeyName: 'managed name',
-        managedKeyId: 'managed id',
+        externalKeyConfig: 'config',
+        externalKeyName: 'name',
       };
       this.withDefaults = {
         exclude_cn_from_sans: false,
@@ -168,8 +168,7 @@ module('Unit | Serializer | pki/action', function (hooks) {
         issuer_name: 'my issuer',
         common_name: 'my common name',
         key_name: 'key name',
-        managed_key_name: 'managed name',
-        managed_key_id: 'managed id',
+        external_key_ref: 'config:name',
       };
 
       const serializedRecord = record.serialize(this.actionType);

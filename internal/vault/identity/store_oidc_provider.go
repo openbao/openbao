@@ -148,9 +148,11 @@ func (c *Client) isAuthorizationCodeFlow() bool {
 func (c *Client) isFlowAllowed(credentials GrantType) bool {
 	switch credentials {
 	case AuthorizationCode:
+		// Anyone can use AuthorizationCode flow.
 		return c.isAuthorizationCodeFlow()
 	case ClientCredentials:
-		return c.ClientCredentials
+		// ClientCredentials flow is limited to confidential clients only.
+		return c.ClientCredentials && c.Type == Confidential
 	default:
 		return false
 	}
@@ -1235,6 +1237,10 @@ func (i *IdentityStore) pathOIDCCreateUpdateClient(ctx context.Context, req *log
 		default:
 			return logical.ErrorResponse("invalid client_type %q", clientType), nil
 		}
+	}
+
+	if client.ClientCredentials && client.Type == Public {
+		return logical.ErrorResponse("client_credentials=true is only allowed for client_type=confidential"), nil
 	}
 
 	if client.ClientID == "" {

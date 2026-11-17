@@ -1633,8 +1633,7 @@ func (c *Core) newLogicalBackend(ctx context.Context, entry *routing.MountEntry,
 	conf["plugin_type"] = consts.PluginTypeSecrets.String()
 	conf["plugin_version"] = entry.Version
 
-	backendLogger := c.baseLogger.Named(fmt.Sprintf("secrets.%s.%s", t, entry.Accessor))
-	c.AddLogger(backendLogger)
+	backendLogger := c.WithBaseLogger(fmt.Sprintf("secrets.%s.%s", t, entry.Accessor))
 
 	config := &logical.BackendConfig{
 		StorageView: view,
@@ -2075,7 +2074,7 @@ func (c *Core) reloadMount(ctx context.Context, key string) error {
 		desiredMountEntry = nil
 	}
 
-	return c.reloadMountInternalWithLock(ctx, table, uuid, desiredMountEntry)
+	return c.reloadMountInternal(ctx, table, uuid, desiredMountEntry)
 }
 
 func (c *Core) reloadMountInternal(ctx context.Context, table, uuid string, desiredMountEntry *routing.MountEntry) error {
@@ -2174,26 +2173,18 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 			needReload = true
 		}
 
-		if actualMountEntry.Version != desiredMountEntry.Version {
-			actualMountEntry.Version = desiredMountEntry.Version
+		if actualMountEntry.Reload != desiredMountEntry.Reload {
+			actualMountEntry.Reload = desiredMountEntry.Reload
 			needReload = true
 		}
 
-		if actualMountEntry.RunningVersion != desiredMountEntry.RunningVersion {
-			actualMountEntry.RunningVersion = desiredMountEntry.RunningVersion
-			needReload = true
-		}
+		// A change to the version by itself should not effect a reload; this
+		// is not the case on the primary either. An explicit plugin reload is
+		// required, which will bump the Reload field handled above.
+		actualMountEntry.Version = desiredMountEntry.Version
 
-		if actualMountEntry.RunningSha256 != desiredMountEntry.RunningSha256 {
-			actualMountEntry.RunningSha256 = desiredMountEntry.RunningSha256
-			needReload = true
-		}
-
-		if needReload {
-			err := c.reloadBackendCommon(ctx, desiredMountEntry, table == routing.CredentialTableType)
-			if err != nil {
-				return err
-			}
+		if needReload && !slices.Contains(singletonMounts, actualMountEntry.Type) {
+			return c.reloadBackendCommon(ctx, actualMountEntry, table == routing.CredentialTableType, false)
 		}
 	}
 

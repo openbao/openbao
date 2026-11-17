@@ -200,7 +200,7 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, dat
 		if err != nil {
 			return nil, err
 		}
-		if entry == nil {
+		if entry == nil || entry.expired() {
 			return logical.ErrorResponse("invalid role or secret ID"), logical.ErrInvalidCredentials
 		}
 

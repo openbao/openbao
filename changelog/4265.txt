@@ -1,0 +1,3 @@
+```release-note:bug
+core: In non-HA setups, start reporting a status of "unsealed" (via logs, metrics &co) already before post-unseal setup completes, aligning with HA mode behavior.
+```

@@ -263,8 +263,7 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 func (c *Core) setupNamespaceStore(ctx context.Context) error {
 	// Create the Namespace store
 	var err error
-	nsLogger := c.baseLogger.Named("namespace")
-	c.AddLogger(nsLogger)
+	nsLogger := c.WithBaseLogger("namespace")
 	c.namespaceStore, err = NewNamespaceStore(ctx, c, nsLogger)
 	return err
 }
@@ -1130,8 +1129,10 @@ func (ns *NamespaceStore) unsealNamespace(ctx context.Context, namespaceToUnseal
 		if err != nil {
 			// If any step fails, the namespace is sealed back to avoid a dirty
 			// partial state.
-			if err := ns.SealNamespace(ns.core.activeContext.Load(), namespaceToUnseal.Path); err != nil {
-				ns.logger.Error("failed to re-seal namespace after failed unseal", "namespace", namespaceToUnseal.Path)
+			ns.lock.Lock()
+			defer ns.lock.Unlock()
+			if err := ns.sealNamespaceLocked(ns.core.activeContext.Load(), namespaceToUnseal); err != nil {
+				ns.logger.Error("failed to re-seal namespace after failed unseal", "namespace", namespaceToUnseal.Path, "error", err)
 			}
 		}
 	}()
@@ -1217,13 +1218,7 @@ func (ns *NamespaceStore) postNamespaceUnseal(ctx context.Context, unsealedNames
 	}
 
 	// load expirations
-	if err := ns.core.expiration.RestoreNamespace(unsealedNamespace, func() {
-		go func() {
-			if err := ns.SealNamespace(ns.core.activeContext.Load(), unsealedNamespace.Path); err != nil {
-				ns.logger.Error("failed to re-seal namespace after erring loading leases", "err", err)
-			}
-		}()
-	}); err != nil {
+	if err := ns.core.expiration.RestoreNamespace(unsealedNamespace); err != nil {
 		return err
 	}
 

@@ -487,7 +487,7 @@ func ValidateTLSALPN01Challenge(domain string, token string, thumbprint string, 
 	// > connection. ... Because of this, an ACME server MAY choose to
 	// > withhold authorization if either the certificate signature is
 	// > invalid or the handshake doesn't fully complete.
-	defer client.Close()
+	defer client.Close() //nolint:errcheck
 
 	// We wish to put time bounds on the total time the handshake can
 	// stall for, so build a connection context here.

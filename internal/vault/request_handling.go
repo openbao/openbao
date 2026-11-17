@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/textproto"
 	"slices"
 	"strconv"
 	"strings"
@@ -608,7 +609,8 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	stop := context.AfterFunc(httpCtx, cancel)
 	defer stop()
 
-	nsHeader := namespace.HeaderFromContext(httpCtx)
+	nsHeader := textproto.MIMEHeader(req.Headers).Get(consts.NamespaceHeaderName)
+
 	contextNS, err := namespace.FromContext(httpCtx)
 	haveContextNS := err == nil
 
@@ -2058,7 +2060,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 		// for new role-based quotas upon creation, rather than counting old leases toward
 		// the total.
 		if reqRole == nil && requiresLease && !c.impreciseLeaseRoleTracking {
-			role = c.DetermineRoleFromLoginRequest(ctx, req.MountPoint, req.Data)
+			role = c.DetermineRoleFromLoginRequest(ctx, req.MountPoint, req.Data, req.Connection)
 		}
 
 		_, respTokenCreate, errCreateToken := c.LoginCreateToken(ctx, ns, req.Path, source, role, resp, req.IsInlineAuth, userLockoutInfo)

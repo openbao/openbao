@@ -40,11 +40,13 @@ const OIDC_AUTH_RESPONSE = {
 
 const renderIt = async (context, path = 'jwt') => {
   const handler = (data, e) => {
-    if (e && e.preventDefault) e.preventDefault();
+    const event = data && typeof data.preventDefault === 'function' ? data : e;
+    if (event && typeof event.preventDefault === 'function') {
+      event.preventDefault();
+    }
     return resolve();
   };
-  const fake = fakeWindow.create();
-  context.set('window', fake);
+  context.set('window', fakeWindow.create());
   context.set('handler', sinon.spy(handler));
   context.set('roleName', '');
   context.set('selectedAuthPath', path);
@@ -57,10 +59,10 @@ const renderIt = async (context, path = 'jwt') => {
       @onLoading={{action (mut this.isLoading)}}
       @onNamespace={{action (mut this.namespace)}}
       @onSelectedAuth={{action (mut this.selectedAuth)}}
-      @onSubmit={{action this.handler}}
+      @onSubmit={{this.handler}}
       @onRoleName={{action (mut this.roleName)}}
     />
-    `);
+  `);
 };
 module('Integration | Component | auth jwt', function (hooks) {
   setupRenderingTest(hooks);
@@ -123,7 +125,9 @@ module('Integration | Component | auth jwt', function (hooks) {
 
   test('jwt: it calls passed action on login', async function (assert) {
     await renderIt(this);
+    await settled();
     await component.login();
+    await settled();
     assert.ok(this.handler.calledOnce);
   });
 

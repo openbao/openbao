@@ -1,0 +1,3 @@
+```release-note:bug
+kms/transit: Respect the `version` parameter when exporting a public key instead of fetching the latest version's one.
+```

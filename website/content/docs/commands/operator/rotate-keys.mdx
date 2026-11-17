@@ -16,13 +16,14 @@ The `operator rotate-keys` command is available from version `v2.4.0`.
 
 :::
 
-The `operator rotate-keys` command generates a new set of unseal keys.
+The `operator rotate-keys` command generates a new set of unseal keys or recovery keys.
+
 This can optionally change the total number of key shares or the required
 threshold to reconstruct the root key. The rotation does not introduce
 downtime, but it requires the OpenBao instance to be unsealed and a quorum
-of existing unseal keys to be provided.
+of existing unseal/recovery keys to be provided.
 
-An unseal key may be provided directly on the command line as an argument to the
+An unseal/recovery key may be provided directly on the command line as an argument to the
 command. If key is specified as "-", the command will read from stdin. If a TTY
 is available, the command will prompt for text.
 
@@ -37,7 +38,26 @@ $ bao operator rotate-keys \
     -key-threshold=9
 ```
 
-Initialize a rotation when Auto Unseal is used for the OpenBao cluster:
+Next, provide the previous unseal keys. Re-run this command multiple times, up to the previous key threshold:
+
+```shell-session
+$ bao operator rotate-keys
+
+rotation nonce: 37cffafb-008b-34c0-4b60-c29436abc25d
+Unseal Key (will be hidden):
+Key                      Value
+---                      -----
+Nonce                    37cffafb-008b-34c0-4b60-c29436abc25d
+Started                  true
+Progress                 1/3
+New Shares               5
+New Threshold            3
+Verification Required    false
+```
+
+Once enough shares are provided, OpenBao returns a new set of keys.
+
+Initialize a recovery key rotation (when Auto Unseal is used for the OpenBao cluster):
 
 ```shell-session
 $ bao operator rotate-keys \

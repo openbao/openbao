@@ -225,8 +225,7 @@ func (c *Core) startPeriodicRaftTLSRotate(ctx context.Context) error {
 	}
 
 	c.raftTLSRotationStopCh = make(chan struct{})
-	logger := c.logger.Named("raft")
-	c.AddLogger(logger)
+	logger := c.WithNamedLogger("raft")
 
 	if c.isRaftHAOnly() {
 		return c.raftTLSRotateDirect(ctx, logger, c.raftTLSRotationStopCh)
@@ -658,7 +657,7 @@ func (c *Core) raftSnapshotRestoreCallback(grabLock bool, sealNode bool) func(co
 			// it's in an unknown state
 			defer func() {
 				if retErr != nil {
-					if err := c.sealInternalWithOptions(false); err != nil {
+					if err := c.sealInternalWithOptions(sealOptions{preSeal: true}); err != nil {
 						c.logger.Error("failed to seal node", "error", err)
 					}
 				}

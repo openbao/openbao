@@ -152,13 +152,14 @@ func (i *influxdbConnectionProducer) Close() error {
 	i.Lock()
 	defer i.Unlock()
 
+	var err error
 	if i.client != nil {
-		i.client.Close()
+		err = i.client.Close()
 	}
 
 	i.client = nil
 
-	return nil
+	return err
 }
 
 func (i *influxdbConnectionProducer) createClient() (influx.Client, error) {

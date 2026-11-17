@@ -34,6 +34,9 @@ Usage: bao operator raft snapshot restore <snapshot_file>
 
 	  $ bao operator raft snapshot restore raft.snap
 
+  Note that this command does not follow redirects and must be performed
+  directly against the active node.
+
 ` + c.Flags().Help()
 
 	return strings.TrimSpace(helpText)

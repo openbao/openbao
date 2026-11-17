@@ -13,7 +13,7 @@ export function keyParamsByType(type) {
   if (type === 'existing') {
     fields = ['keyRef'];
   } else if (type === 'kms') {
-    fields = ['keyName', 'managedKeyName', 'managedKeyId'];
+    fields = ['keyName', 'externalKeyConfig', 'externalKeyName'];
   } else if (type === 'exported') {
     fields = [...fields, 'privateKeyFormat'];
   }

@@ -7,7 +7,7 @@ import { inject as service } from '@ember/service';
 import Component from '@ember/component';
 import { task } from 'ember-concurrency';
 import { computed } from '@ember/object';
-import layout from '../templates/components/list-item';
+import layout from './list-item';
 
 export default Component.extend({
   layout,

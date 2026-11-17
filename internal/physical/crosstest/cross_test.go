@@ -1,3 +1,6 @@
+// Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
+// SPDX-License-Identifier: MPL-2.0
+
 // We wish to build a backend cross-testing framework which allows us to find
 // differences in the way various storage interfaces behave. This will also
 // ultimately allow us to compose and stack various layers to ensure we have
@@ -272,44 +275,44 @@ func allPhysical(t *testing.T) (map[string]physical.Backend, func()) {
 	epsqlc := physical.NewStorageEncoding(cpsqle)
 
 	return map[string]physical.Backend{
-			"pure-raft": prb,
+		"pure-raft": prb,
 
-			"raft":                rb,
-			"raft+cache":          crb,
-			"raft+encoding":       erb,
-			"raft+cache+encoding": erbc,
+		"raft":                rb,
+		"raft+cache":          crb,
+		"raft+encoding":       erb,
+		"raft+cache+encoding": erbc,
 
-			"raft-in-tx":          rt,
-			"raft-in-tx+cache":    crt,
-			"raft-in-tx+encoding": ert,
+		"raft-in-tx":          rt,
+		"raft-in-tx+cache":    crt,
+		"raft-in-tx+encoding": ert,
 
-			"raft+cache-in-tx":    ctxr,
-			"raft+encoding-in-tx": etxr,
+		"raft+cache-in-tx":    ctxr,
+		"raft+encoding-in-tx": etxr,
 
-			"file":                fb,
-			"file+cache":          cfb,
-			"file+encoding":       efb,
-			"file+cache+encoding": efbc,
+		"file":                fb,
+		"file+cache":          cfb,
+		"file+encoding":       efb,
+		"file+cache+encoding": efbc,
 
-			"inmem":                inm,
-			"inmem+cache":          cinm,
-			"inmem+encoding":       einm,
-			"inmem+cache+encoding": einmc,
+		"inmem":                inm,
+		"inmem+cache":          cinm,
+		"inmem+encoding":       einm,
+		"inmem+cache+encoding": einmc,
 
-			"txinmem": txinm,
+		"txinmem": txinm,
 
-			"txinmtx": txinmtx,
+		"txinmtx": txinmtx,
 
-			"psql":                psql,
-			"psql+cache":          cpsql,
-			"psql+encoding":       epsql,
-			"psql+cache+encoding": epsqlc,
-		}, func() {
-			psqlCleanup()
-			psqlcCleanup()
-			psqleCleanup()
-			psqlceCleanup()
-		}
+		"psql":                psql,
+		"psql+cache":          cpsql,
+		"psql+encoding":       epsql,
+		"psql+cache+encoding": epsqlc,
+	}, func() {
+		psqlCleanup()
+		psqlcCleanup()
+		psqleCleanup()
+		psqlceCleanup()
+	}
 }
 
 func allTransactionalPhysical(t *testing.T) map[string]physical.TransactionalBackend {

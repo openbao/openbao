@@ -1816,55 +1816,21 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 		return err
 	}
 
-	// Do post-unseal setup if HA is not enabled
-	if c.ha == nil {
-		runPostUnseal := func(context.Context) error {
-			// We still need to set up cluster info even if it's not part of a
-			// cluster right now. This also populates the cached cluster object.
-			if err := c.setupCluster(ctx); err != nil {
-				c.logger.Error("cluster setup failed", "error", err)
-				return err
-			}
+	// Success!
+	c.sealed.Store(false)
+	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 1, nil)
+	c.logger.Info("vault is unsealed")
 
-			if err := c.migrateSeal(ctx); err != nil {
-				c.logger.Error("seal migration error", "error", err)
-				return err
-			}
-
-			ctx, ctxCancel := context.WithCancel(namespace.RootContext(context.Background()))
-			if err := c.postUnseal(ctx, ctxCancel, standardUnsealStrategy{}); err != nil {
-				c.logger.Error("post-unseal setup failed", "error", err)
-				return err
-			}
-			return nil
-		}
-
-		if err := runPostUnseal(ctx); err != nil {
-			err = errors.Join(err, c.sealManager.sealAll())
-			c.logger.Warn("OpenBao is sealed")
-			return err
-		}
-
-		// Force a cache bust here, which will also run migration code
-		if c.seal.RecoveryKeySupported() {
-			c.seal.SetRecoveryConfig(ctx, nil)
-		}
-
-		c.standby.Store(false)
-	} else {
-		// Go to standby mode, wait until we are active to unseal
+	// Launch the HA loop in the background if in HA mode. We schedule this
+	// before calling into service registration just to parallelize a little
+	// better.
+	if c.ha != nil {
 		c.haLoopDoneCh = make(chan struct{})
 		c.manualStepDownCh = make(chan struct{}, 1)
 		c.haLoopStopCh.Store(make(chan struct{}, 1))
 		c.haLoopRestartCh.Store(make(chan struct{}, 1))
 		go c.runHALoop(c.haLoopDoneCh, c.manualStepDownCh, c.haLoopStopCh.Load().(chan struct{}), c.haLoopRestartCh.Load().(chan struct{}))
 	}
-
-	// Success!
-	c.sealed.Store(false)
-	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 1, nil)
-
-	c.logger.Info("vault is unsealed")
 
 	if c.serviceRegistration != nil {
 		if err := c.serviceRegistration.NotifySealedStateChange(false); err != nil {
@@ -1874,6 +1840,45 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 			c.logger.Warn("failed to notify initialized status", "error", err)
 		}
 	}
+
+	if c.ha != nil {
+		// We're done here in HA mode and will wait for the HA subsystem to
+		// eventually trigger the right post-unseal procedure.
+		return nil
+	}
+
+	// Do post-unseal setup if HA is not enabled.
+	if err := func() error {
+		// We still need to set up cluster info even if it's not part of a
+		// cluster right now. This also populates the cached cluster object.
+		if err := c.setupCluster(ctx); err != nil {
+			c.logger.Error("cluster setup failed", "error", err)
+			return err
+		}
+
+		if err := c.migrateSeal(ctx); err != nil {
+			c.logger.Error("seal migration error", "error", err)
+			return err
+		}
+
+		ctx, ctxCancel := context.WithCancel(namespace.RootContext(context.Background()))
+		if err := c.postUnseal(ctx, ctxCancel, standardUnsealStrategy{}); err != nil {
+			c.logger.Error("post-unseal setup failed", "error", err)
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Join(err, c.sealInternalWithOptions(sealOptions{
+			// We don't want to grab the state lock, neither do we need to
+			// repeat preSeal since a postUnseal failure already runs it.
+		}))
+	}
+
+	// Force a cache bust here, which will also run migration code
+	_ = c.seal.SetRecoveryConfig(ctx, nil)
+
+	c.standby.Store(false)
+
 	return nil
 }
 
@@ -2066,10 +2071,18 @@ func (c *Core) UIHeaders() (http.Header, error) {
 // sealInternal is an internal method used to seal the vault.  It does not do
 // any authorization checking.
 func (c *Core) sealInternal() error {
-	return c.sealInternalWithOptions(true)
+	return c.sealInternalWithOptions(sealOptions{
+		preSeal:       true,
+		grabStateLock: true,
+	})
 }
 
-func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
+type sealOptions struct {
+	preSeal       bool
+	grabStateLock bool
+}
+
+func (c *Core) sealInternalWithOptions(opts sealOptions) error {
 	// Mark sealed, and if already marked return
 	if swapped := c.sealed.CompareAndSwap(false, true); !swapped {
 		return nil
@@ -2105,26 +2118,17 @@ func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 		activeCtxCancel()
 	}
 
-	// Do pre-seal teardown if HA is not enabled
+	// If we are keeping the lock we already have the state write lock held.
+	// Otherwise grab it here so that when stopCh is triggered we are locked.
+	if opts.grabStateLock {
+		cancelCtxAndLock()
+		defer c.stateLock.Unlock()
+	}
+
 	if c.ha == nil {
-		if grabStateLock {
-			cancelCtxAndLock()
-			defer c.stateLock.Unlock()
-		}
-		// Even in a non-HA context we key off of this for some things
+		// Even in a non-HA context we key off of this for some things.
 		c.standby.Store(true)
-
-		// Stop requests from processing
-		activeCtxCancel()
 	} else {
-		// If we are keeping the lock we already have the state write lock
-		// held. Otherwise grab it here so that when stopCh is triggered we are
-		// locked.
-		if grabStateLock {
-			cancelCtxAndLock()
-			defer c.stateLock.Unlock()
-		}
-
 		// If we are trying to acquire the lock, force it to return with nil so
 		// runHALoop will exit. If we are active, signal the standby goroutine
 		// to shut down and wait for completion. We have the state lock here so
@@ -2135,15 +2139,17 @@ func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 		// Wait for runHALoop to stop.
 		<-c.haLoopDoneCh
 		c.logger.Debug("runHALoop done")
-
-		// Stop requests from processing.
-		activeCtxCancel()
 	}
 
-	// Stop all running subsystems.
-	if err := c.preSeal(); err != nil {
-		c.logger.Error("pre-seal teardown failed", "error", err)
-		return errors.New("internal error")
+	// Stop requests from processing.
+	activeCtxCancel()
+
+	if opts.preSeal {
+		// Stop all running subsystems.
+		if err := c.preSeal(); err != nil {
+			c.logger.Error("pre-seal teardown failed", "error", err)
+			return errors.New("internal error")
+		}
 	}
 
 	// Perform additional cleanup upon sealing.
@@ -2191,6 +2197,18 @@ type standardUnsealStrategy struct {
 
 func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c *Core) error {
 	c.logger.Debug("standard unseal starting")
+
+	// Force a refresh of seal configs to account for e.g., rotations or
+	// snapshot restores. Notably, we do not do this when unsealing a standby
+	// because seal migration may be pending, in which case we want to keep
+	// the cached configs specially prepared by adjustForSealMigration around.
+	// Refreshing configs normally may otherwise error on standbys in seal
+	// migration mode due to a mismatch between instantiated seal type and
+	// stored seal type.
+	_ = c.seal.SetBarrierConfig(ctx, nil)
+	if c.seal.RecoveryKeySupported() {
+		_ = c.seal.SetRecoveryConfig(ctx, nil)
+	}
 
 	// Clear forwarding clients; we're active
 	c.clearForwardingClients()
@@ -2267,13 +2285,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	if err := c.setupNamespaceStore(ctx); err != nil {
 		return err
 	}
-
-	{
-		logger := c.baseLogger.Named("external-keys")
-		c.AddLogger(logger)
-		c.externalKeys = ek.NewRegistry(c.kmsPluginCatalog, logger)
-	}
-
+	c.externalKeys = ek.NewRegistry(c.kmsPluginCatalog, c.WithBaseLogger("external-keys"))
 	if err := c.loadMounts(ctx, standby); err != nil {
 		return err
 	}
@@ -2307,7 +2319,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	if err := c.setupExpiration(expireLeaseStrategyFairsharing, standby); err != nil {
 		return err
 	}
-	if err := c.setupAudits(ctx); err != nil {
+	if err := c.setupAudits(ctx, standby); err != nil {
 		return err
 	}
 	// Adding new audit devices only occurs on the active node. Standby nodes
@@ -2360,12 +2372,6 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 	c.physicalCache.Purge(ctx)
 	if !c.cachingDisabled {
 		c.physicalCache.SetEnabled(true)
-	}
-
-	// Purge these for safety in case of a rotation
-	_ = c.seal.SetBarrierConfig(ctx, nil)
-	if c.seal.RecoveryKeySupported() {
-		_ = c.seal.SetRecoveryConfig(ctx, nil)
 	}
 
 	// Load prior un-updated store into version history cache to compare
@@ -2808,6 +2814,18 @@ func (c *Core) AddLogger(logger log.Logger) {
 	c.allLoggers = append(c.allLoggers, logger)
 }
 
+func (c *Core) WithNamedLogger(name string) log.Logger {
+	logger := c.logger.Named(name)
+	c.AddLogger(logger)
+	return logger
+}
+
+func (c *Core) WithBaseLogger(name string) log.Logger {
+	logger := c.baseLogger.Named(name)
+	c.AddLogger(logger)
+	return logger
+}
+
 // SetLogLevel sets logging level for all tracked loggers to the level provided
 func (c *Core) SetLogLevel(level log.Level) {
 	c.allLoggersLock.RLock()
@@ -3033,6 +3051,11 @@ func (c *Core) setupQuotas(ctx context.Context) error {
 	}
 
 	return c.quotaManager.Setup(ctx, c.systemBarrierView)
+}
+
+// RateLimitPathExempt reports whether the path is exempt from rate limit quotas.
+func (c *Core) RateLimitPathExempt(path string) bool {
+	return c.quotaManager == nil || c.quotaManager.RateLimitPathExempt(path)
 }
 
 // ApplyRateLimitQuota checks the request against all the applicable quota rules.
@@ -3565,48 +3588,23 @@ func (c *Core) LoadNodeID() (string, error) {
 	return hostname, nil
 }
 
-// DetermineRoleFromLoginRequest will determine the role that should be applied to a quota for a given
-// login request
-func (c *Core) DetermineRoleFromLoginRequest(ctx context.Context, mountPoint string, data map[string]any) string {
+// DetermineRoleFromLoginRequest will determine the role that should be applied
+// to a quota for a given login request.
+func (c *Core) DetermineRoleFromLoginRequest(ctx context.Context, mountPoint string, data map[string]any, conn *logical.Connection) string {
 	c.authLock.RLock()
 	defer c.authLock.RUnlock()
 	matchingBackend := c.router.MatchingBackend(ctx, mountPoint)
 	if matchingBackend == nil || matchingBackend.Type() != logical.TypeCredential {
-		// Role based quotas do not apply to this request
-		return ""
-	}
-	return c.doResolveRoleLocked(ctx, mountPoint, matchingBackend, data)
-}
-
-// DetermineRoleFromLoginRequestFromReader will determine the role that should
-// be applied to a quota for a given login request. The reader will only be
-// consumed if the matching backend for the mount point exists and is a secret
-// backend
-func (c *Core) DetermineRoleFromLoginRequestFromReader(ctx context.Context, mountPoint string, reader io.Reader) string {
-	c.authLock.RLock()
-	defer c.authLock.RUnlock()
-	matchingBackend := c.router.MatchingBackend(ctx, mountPoint)
-	if matchingBackend == nil || matchingBackend.Type() != logical.TypeCredential {
-		// Role based quotas do not apply to this request
+		// Role based quotas do not apply to this request.
 		return ""
 	}
 
-	data := make(map[string]any)
-	err := jsonutil.DecodeJSONFromReader(reader, &data)
-	if err != nil {
-		return ""
-	}
-	return c.doResolveRoleLocked(ctx, mountPoint, matchingBackend, data)
-}
-
-// doResolveRoleLocked does a login and resolve role request on the matching
-// backend. Callers should have a read lock on c.authLock
-func (c *Core) doResolveRoleLocked(ctx context.Context, mountPoint string, matchingBackend logical.Backend, data map[string]any) string {
 	resp, err := matchingBackend.HandleRequest(ctx, &logical.Request{
 		MountPoint: mountPoint,
 		Path:       "login",
 		Operation:  logical.ResolveRoleOperation,
 		Data:       data,
+		Connection: conn,
 		Storage:    c.router.MatchingStorageByAPIPath(ctx, mountPoint+"login"),
 	})
 	if err != nil || resp == nil || resp.Data == nil || resp.Data["role"] == nil {
@@ -3895,7 +3893,8 @@ func (c *Core) refreshRequestForwardingConnection(ctx context.Context, clusterAd
 	// ALPN header right. It's just "insecure" because GRPC isn't managing
 	// the TLS state.
 	dctx, cancelFunc := context.WithCancel(ctx)
-	rpcClientConn, err := grpc.NewClient(fmt.Sprintf("passthrough:///%s", clusterURL.Host),
+	rpcClientConn, err := grpc.NewClient(
+		fmt.Sprintf("passthrough:///%s", clusterURL.Host),
 		grpc.WithContextDialer(clusterListener.GetContextDialerFunc(ctx, consts.RequestForwardingALPN)),
 		grpc.WithTransportCredentials(
 			insecure.NewCredentials(), // it's not, we handle it in the dialer
@@ -4065,9 +4064,7 @@ func (c *Core) setupPolicyStore(ctx context.Context, standby bool) error {
 	// Create the policy store
 	var err error
 	sysView := &dynamicSystemView{core: c}
-	psLogger := c.baseLogger.Named("policy")
-	c.AddLogger(psLogger)
-	c.policyStore, err = policy.NewStore(ctx, c, c.systemBarrierView, sysView, psLogger)
+	c.policyStore, err = policy.NewStore(ctx, c, c.systemBarrierView, sysView, c.WithBaseLogger("policy"))
 	if err != nil {
 		return err
 	}

@@ -1,0 +1,3 @@
+```release-note:bug
+secrets/pki: Fix intermediate CSR generation for type `kms` not using the provided external key and generating an internally-stored private key instead.
+```

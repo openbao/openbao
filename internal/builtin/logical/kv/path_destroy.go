@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package kv
 
 import (
@@ -6,6 +9,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // pathDestroy returns the path configuration for the destroy endpoint
@@ -69,6 +73,7 @@ func (b *versionedKVBackend) pathDestroyWrite() framework.OperationFunc {
 			return nil, nil
 		}
 
+		persistChanges := false
 		for _, verNum := range versions {
 			// If there is no version, or the version is already destroyed,
 			// continue
@@ -77,12 +82,18 @@ func (b *versionedKVBackend) pathDestroyWrite() framework.OperationFunc {
 				continue
 			}
 
+			persistChanges = true
 			lv.Destroyed = true
 		}
 
+		// no-op
+		if !persistChanges {
+			return nil, nil
+		}
+
 		// Write the metadata key before deleting the versions
-		err = b.writeKeyMetadata(ctx, req.Storage, meta)
-		if err != nil {
+		meta.UpdatedTime = timestamppb.Now()
+		if err := b.writeKeyMetadata(ctx, req.Storage, meta); err != nil {
 			return nil, err
 		}
 
@@ -93,8 +104,7 @@ func (b *versionedKVBackend) pathDestroyWrite() framework.OperationFunc {
 				return nil, err
 			}
 
-			err = req.Storage.Delete(ctx, versionKey)
-			if err != nil {
+			if err = req.Storage.Delete(ctx, versionKey); err != nil {
 				return nil, err
 			}
 		}

@@ -182,7 +182,9 @@ func (rs *Responder) ServeHTTP(response http.ResponseWriter, request *http.Reque
 	if err != nil {
 		rs.log.Log("Error decoding request body", b64Body)
 		response.WriteHeader(http.StatusBadRequest)
-		response.Write(malformedRequestErrorResponse)
+		if _, errWrite := response.Write(malformedRequestErrorResponse); errWrite != nil {
+			rs.log.Log("error writing error response for malformed request", errWrite)
+		}
 		if rs.stats != nil {
 			rs.stats.ResponseStatus(ocsp.Malformed)
 		}
@@ -267,7 +269,9 @@ func (rs *Responder) ServeHTTP(response http.ResponseWriter, request *http.Reque
 		}
 	}
 	response.WriteHeader(http.StatusOK)
-	response.Write(ocspResponse)
+	if _, err := response.Write(ocspResponse); err != nil {
+		rs.log.Log("error writing OCSP response", err)
+	}
 	if rs.stats != nil {
 		rs.stats.ResponseStatus(ocsp.Success)
 	}

@@ -140,6 +140,65 @@ func TestWorkflow_DenyUnauthed(t *testing.T) {
 	require.ErrorContains(t, err, "permission denied")
 }
 
+func TestWorkflow_ListWithPrefix(t *testing.T) {
+	t.Parallel()
+
+	coreConfig := &vault.CoreConfig{
+		DisableCache:                  true,
+		AllowUnauthenticatedWorkflows: false,
+		CredentialBackends: map[string]logical.Factory{
+			"userpass": userpass.Factory,
+		},
+		LogicalBackends: map[string]logical.Factory{
+			"kv-v2": logicalKv.VersionedKVFactory,
+		},
+	}
+
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+		NumCores:    1,
+	})
+
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	cores := cluster.Cores
+
+	vault.TestWaitActive(t, cores[0].Core)
+
+	client := cores[0].Client
+
+	_, err := client.Logical().Write("sys/workflows/manage/normal", map[string]any{
+		"workflow":              sealStatusWorkflow,
+		"allow_unauthenticated": false,
+	})
+	require.NoError(t, err)
+
+	_, err = client.Logical().Write("sys/workflows/manage/nest/nested", map[string]any{
+		"workflow":              sealStatusWorkflow,
+		"allow_unauthenticated": false,
+	})
+	require.NoError(t, err)
+
+	_, err = client.Logical().Write("sys/workflows/manage/nest/deepnest/deepnested", map[string]any{
+		"workflow":              sealStatusWorkflow,
+		"allow_unauthenticated": false,
+	})
+	require.NoError(t, err)
+
+	resp, err := client.Logical().List("sys/workflows/manage")
+	require.ElementsMatch(t, []string{"normal", "nest/"}, resp.Data["keys"])
+	require.NoError(t, err)
+
+	resp, err = client.Logical().List("sys/workflows/manage/nest")
+	require.ElementsMatch(t, []string{"nest/nested", "nest/deepnest/"}, resp.Data["keys"])
+	require.NoError(t, err)
+
+	resp, err = client.Logical().List("sys/workflows/manage/nest/deepnest")
+	require.ElementsMatch(t, []string{"nest/deepnest/deepnested"}, resp.Data["keys"])
+	require.NoError(t, err)
+}
+
 func testWorkflowAcceptance(t *testing.T, client *api.Client) {
 	// No workflows to start.
 	resp, err := client.Logical().List("sys/workflows/manage")

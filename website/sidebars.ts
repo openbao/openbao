@@ -101,6 +101,7 @@ const sidebars: SidebarsConfig = {
                     Unsealing: [
                         {
                             "PKCS#11": [
+                                "guides/unseal/pkcs11/generic",
                                 "guides/unseal/pkcs11/securosys",
                                 "guides/unseal/pkcs11/utimaco",
                                 "guides/unseal/pkcs11/duokey",
@@ -139,6 +140,7 @@ const sidebars: SidebarsConfig = {
                         "configuration/seal/ocikms",
                         "configuration/seal/ovhcloud",
                         "configuration/seal/pkcs11",
+                        "configuration/seal/securosys",
                         "configuration/seal/static",
                         "configuration/seal/tcloudpublic",
                         "configuration/seal/transit",
@@ -195,6 +197,7 @@ const sidebars: SidebarsConfig = {
                         "commands/kv/patch",
                         "commands/kv/put",
                         "commands/kv/rollback",
+                        "commands/kv/subkeys",
                         "commands/kv/undelete",
                     ],
                     lease: [
@@ -603,6 +606,7 @@ const sidebars: SidebarsConfig = {
                             "Plugins": [
                                 "api/system/external-keys/plugins/index",
                                 "api/system/external-keys/plugins/pkcs11",
+                                "api/system/external-keys/plugins/securosys",
                                 "api/system/external-keys/plugins/transit",
                             ],
                         },

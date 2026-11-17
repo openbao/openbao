@@ -1,13 +1,15 @@
+// Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
+// SPDX-License-Identifier: MPL-2.0
+
 package api
 
 import (
-	"os"
 	"testing"
 )
 
 func TestReadBaoVariable_Vault(t *testing.T) {
 	actual := "example_value"
-	os.Setenv("VAULT_TEST", actual)
+	t.Setenv("VAULT_TEST", actual)
 	expected := ReadBaoVariable("BAO_TEST")
 	if actual != expected {
 		t.Fatalf("bad: Failed to Read Environment Variable actual: %s expected: %s", actual, expected)
@@ -16,7 +18,7 @@ func TestReadBaoVariable_Vault(t *testing.T) {
 
 func TestReadBaoVariable_Bao(t *testing.T) {
 	actual := "example_value"
-	os.Setenv("BAO_TEST", actual)
+	t.Setenv("BAO_TEST", actual)
 	expected := ReadBaoVariable("BAO_TEST")
 	if actual != expected {
 		t.Fatalf("bad: Failed to Read Environment Variable actual: %s expected: %s", actual, expected)
@@ -25,8 +27,8 @@ func TestReadBaoVariable_Bao(t *testing.T) {
 
 func TestReadBaoVariable_BothSame(t *testing.T) {
 	actual := "example_value"
-	os.Setenv("VAULT_TEST", actual)
-	os.Setenv("BAO_TEST", actual)
+	t.Setenv("VAULT_TEST", actual)
+	t.Setenv("BAO_TEST", actual)
 	expected := ReadBaoVariable("BAO_TEST")
 	if actual != expected {
 		t.Fatalf("bad: Failed to Read Environment Variable actual: %s expected: %s", actual, expected)
@@ -35,8 +37,8 @@ func TestReadBaoVariable_BothSame(t *testing.T) {
 
 func TestReadBaoVariable_BaoWins(t *testing.T) {
 	actual := "example_value"
-	os.Setenv("VAULT_TEST", actual+"not_valid")
-	os.Setenv("BAO_TEST", actual)
+	t.Setenv("VAULT_TEST", actual+"not_valid")
+	t.Setenv("BAO_TEST", actual)
 	expected := ReadBaoVariable("BAO_TEST")
 	if actual != expected {
 		t.Fatalf("bad: Failed to Read Environment Variable actual: %s expected: %s", actual, expected)

@@ -43,7 +43,7 @@ module('Integration | Component | PkiGenerateToggleGroups', function (hooks) {
       exported: ['keyName', 'keyType', 'keyBits', 'privateKeyFormat'],
       internal: ['keyName', 'keyType', 'keyBits'],
       existing: ['keyRef'],
-      kms: ['keyName', 'managedKeyName', 'managedKeyId'],
+      kms: ['keyName', 'externalKeyConfig', 'externalKeyName'],
     };
     for (const type in fields) {
       this.model.type = type;

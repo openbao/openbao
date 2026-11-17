@@ -67,12 +67,15 @@ export default Component.extend({
       try {
         role = yield this.store.findRecord('role-jwt', id, { adapterOptions: { namespace: this.namespace } });
       } catch (e) {
-        // throwing here causes failures in tests
         if ((!e.httpStatus || e.httpStatus !== 400) && !Ember.testing) {
           throw e;
         }
         if (e.errors && e.errors.length > 0) {
-          this.set('errorMessage', e.errors[0]);
+          const rawError = e.errors[0];
+          const message =
+            typeof rawError === 'string' ? rawError : rawError?.detail || rawError?.title || rawError;
+
+          this.set('errorMessage', message);
         }
       }
       this.set('role', role);

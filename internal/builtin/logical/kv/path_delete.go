@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package kv
 
 import (
@@ -103,12 +106,15 @@ func (b *versionedKVBackend) pathUndeleteWrite() framework.OperationFunc {
 			return nil, nil
 		}
 
+		persistChanges := false
 		for _, verNum := range versions {
 			// If there is no version or the version is destroyed continue
 			lv := meta.Versions[uint64(verNum)]
 			if lv == nil || lv.Destroyed {
 				continue
 			}
+
+			persistChanges = true
 			lv.DeletionTime = nil
 
 			if !config.IsDeleteVersionAfterDisabled() {
@@ -120,8 +126,14 @@ func (b *versionedKVBackend) pathUndeleteWrite() framework.OperationFunc {
 				}
 			}
 		}
-		err = b.writeKeyMetadata(ctx, req.Storage, meta)
-		if err != nil {
+
+		// no-op
+		if !persistChanges {
+			return nil, nil
+		}
+
+		meta.UpdatedTime = timestamppb.Now()
+		if err := b.writeKeyMetadata(ctx, req.Storage, meta); err != nil {
 			return nil, err
 		}
 
@@ -172,6 +184,7 @@ func (b *versionedKVBackend) pathDeleteWrite() framework.OperationFunc {
 			return nil, nil
 		}
 
+		persistChanges := false
 		for _, verNum := range versions {
 			// If there is no latest version, or the latest version is already
 			// deleted or destroyed continue
@@ -191,11 +204,17 @@ func (b *versionedKVBackend) pathDeleteWrite() framework.OperationFunc {
 				}
 			}
 
+			persistChanges = true
 			lv.DeletionTime = timestamppb.Now()
 		}
 
-		err = b.writeKeyMetadata(ctx, req.Storage, meta)
-		if err != nil {
+		// no-op
+		if !persistChanges {
+			return nil, nil
+		}
+
+		meta.UpdatedTime = timestamppb.Now()
+		if err := b.writeKeyMetadata(ctx, req.Storage, meta); err != nil {
 			return nil, err
 		}
 

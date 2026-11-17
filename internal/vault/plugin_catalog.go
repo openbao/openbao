@@ -644,55 +644,36 @@ func (c *PluginCatalog) getBackendPluginType(ctx context.Context, pluginRunner *
 		Wrapper:         c.wrapper,
 	}
 
-	var client logical.Backend
-	var attemptV4 bool
-	// First, attempt to run as backend V5 plugin
 	c.logger.Debug("attempting to load backend plugin", "name", pluginRunner.Name)
 	pc, err := c.newPluginClient(ctx, pluginRunner, config)
-	if err == nil {
-		// we spawned a subprocess, so make sure to clean it up
-		key, err := makeExternalPluginsKey(pluginRunner)
-		if err != nil {
-			return consts.PluginTypeUnknown, err
-		}
-		defer func() {
-			// Close the client and cleanup the plugin process
-			err = c.cleanupExternalPlugin(key, pc.id, pluginRunner.Command)
-			if err != nil {
-				c.logger.Error("error closing plugin client", "error", err)
-			}
-		}()
-
-		// dispense the plugin so we can get its type
-		client, err = backendplugin.Dispense(pc.ClientProtocol, pc)
-		if err != nil {
-			merr = multierror.Append(merr, fmt.Errorf("failed to dispense plugin as backend v5: %w", err))
-			c.logger.Debug("failed to dispense v5 backend plugin", "name", pluginRunner.Name)
-			attemptV4 = true
-		} else {
-			c.logger.Debug("successfully dispensed v5 backend plugin", "name", pluginRunner.Name)
-		}
-	} else {
-		attemptV4 = true
-	}
-
-	if attemptV4 {
-		c.logger.Debug("failed to dispense v5 backend plugin", "name", pluginRunner.Name)
-		config.AutoMTLS = false
-		config.IsMetadataMode = true
-		// attempt to run as a v4 backend plugin
-		client, err = backendplugin.NewPluginClient(ctx, c.wrapper, pluginRunner, log.NewNullLogger(), true)
-		if err != nil {
-			merr = multierror.Append(merr, fmt.Errorf("failed to dispense v4 backend plugin: %w", err))
-			c.logger.Debug("failed to dispense v4 backend plugin", "name", pluginRunner.Name, "error", merr)
-			return consts.PluginTypeUnknown, merr.ErrorOrNil()
-		}
-		c.logger.Debug("successfully dispensed v4 backend plugin", "name", pluginRunner.Name)
-		defer client.Cleanup(ctx)
-	}
-
-	err = client.Setup(ctx, &logical.BackendConfig{})
 	if err != nil {
+		c.logger.Debug("failed to spawn v5 backend plugin", "name", pluginRunner.Name)
+		return consts.PluginTypeUnknown, fmt.Errorf("failed to spawn v5 backend plugin: %w", err)
+	}
+
+	// We spawned a subprocess, so make sure to clean it up.
+	key, err := makeExternalPluginsKey(pluginRunner)
+	if err != nil {
+		return consts.PluginTypeUnknown, err
+	}
+	defer func() {
+		// Close the client and cleanup the plugin process.
+		err = c.cleanupExternalPlugin(key, pc.id, pluginRunner.Command)
+		if err != nil {
+			c.logger.Error("error closing plugin client", "error", err)
+		}
+	}()
+
+	// Dispense the plugin so we can get its type.
+	client, err := backendplugin.Dispense(pc.ClientProtocol, pc)
+	if err != nil {
+		c.logger.Debug("failed to dispense v5 backend plugin", "name", pluginRunner.Name)
+		return consts.PluginTypeUnknown, fmt.Errorf("failed to dispense v5 backend plugin: %w", err)
+	} else {
+		c.logger.Debug("successfully dispensed v5 backend plugin", "name", pluginRunner.Name)
+	}
+
+	if err := client.Setup(ctx, &logical.BackendConfig{}); err != nil {
 		return consts.PluginTypeUnknown, err
 	}
 	backendType := client.Type()
@@ -722,7 +703,6 @@ func (c *PluginCatalog) getBackendPluginType(ctx context.Context, pluginRunner *
 
 // getBackendRunningVersion attempts to get the plugin version
 func (c *PluginCatalog) getBackendRunningVersion(ctx context.Context, pluginRunner *pluginutil.PluginRunner) (logical.PluginVersion, error) {
-	merr := &multierror.Error{}
 	// Attempt to run as backend plugin
 	config := pluginutil.PluginClientConfig{
 		Name:            pluginRunner.Name,
@@ -734,60 +714,43 @@ func (c *PluginCatalog) getBackendRunningVersion(ctx context.Context, pluginRunn
 		Wrapper:         c.wrapper,
 	}
 
-	var client logical.Backend
-	// First, attempt to run as backend V5 plugin
 	c.logger.Debug("attempting to load backend plugin", "name", pluginRunner.Name)
 	pc, err := c.newPluginClient(ctx, pluginRunner, config)
-	if err == nil {
-		// we spawned a subprocess, so make sure to clean it up
-		key, err := makeExternalPluginsKey(pluginRunner)
-		if err != nil {
-			return logical.EmptyPluginVersion, err
-		}
-		defer func() {
-			// Close the client and cleanup the plugin process
-			err = c.cleanupExternalPlugin(key, pc.id, pluginRunner.Command)
-			if err != nil {
-				c.logger.Error("error closing plugin client", "error", err)
-			}
-		}()
-
-		// dispense the plugin so we can get its version
-		client, err = backendplugin.Dispense(pc.ClientProtocol, pc)
-		if err == nil {
-			c.logger.Debug("successfully dispensed v5 backend plugin", "name", pluginRunner.Name)
-
-			err = client.Setup(ctx, &logical.BackendConfig{})
-			if err != nil {
-				return logical.EmptyPluginVersion, nil
-			}
-			if versioner, ok := client.(logical.PluginVersioner); ok {
-				return versioner.PluginVersion(), nil
-			}
-			return logical.EmptyPluginVersion, nil
-		}
-		merr = multierror.Append(merr, fmt.Errorf("failed to dispense plugin as backend v5: %w", err))
-	}
-	c.logger.Debug("failed to dispense v5 backend plugin", "name", pluginRunner.Name, "error", err)
-	config.AutoMTLS = false
-	config.IsMetadataMode = true
-	// attempt to run as a v4 backend plugin
-	client, err = backendplugin.NewPluginClient(ctx, c.wrapper, pluginRunner, log.NewNullLogger(), true)
 	if err != nil {
-		merr = multierror.Append(merr, fmt.Errorf("failed to dispense v4 backend plugin: %w", err))
-		c.logger.Debug("failed to dispense v4 backend plugin", "name", pluginRunner.Name, "error", merr)
-		return logical.EmptyPluginVersion, merr.ErrorOrNil()
+		c.logger.Debug("failed to spawn v5 backend plugin", "name", pluginRunner.Name)
+		return logical.EmptyPluginVersion, fmt.Errorf("failed to spawn v5 backend plugin: %w", err)
 	}
-	c.logger.Debug("successfully dispensed v4 backend plugin", "name", pluginRunner.Name)
-	defer client.Cleanup(ctx)
 
-	err = client.Setup(ctx, &logical.BackendConfig{})
+	// We spawned a subprocess, so make sure to clean it up.
+	key, err := makeExternalPluginsKey(pluginRunner)
 	if err != nil {
 		return logical.EmptyPluginVersion, err
 	}
+	defer func() {
+		// Close the client and cleanup the plugin process.
+		err = c.cleanupExternalPlugin(key, pc.id, pluginRunner.Command)
+		if err != nil {
+			c.logger.Error("error closing plugin client", "error", err)
+		}
+	}()
+
+	// Dispense the plugin so we can get its version.
+	client, err := backendplugin.Dispense(pc.ClientProtocol, pc)
+	if err != nil {
+		c.logger.Debug("failed to dispense v5 backend plugin", "name", pluginRunner.Name)
+		return logical.EmptyPluginVersion, fmt.Errorf("failed to dispense v5 backend plugin: %w", err)
+	} else {
+		c.logger.Debug("successfully dispensed v5 backend plugin", "name", pluginRunner.Name)
+	}
+
+	if err := client.Setup(ctx, &logical.BackendConfig{}); err != nil {
+		return logical.EmptyPluginVersion, nil
+	}
+
 	if versioner, ok := client.(logical.PluginVersioner); ok {
 		return versioner.PluginVersion(), nil
 	}
+
 	return logical.EmptyPluginVersion, nil
 }
 

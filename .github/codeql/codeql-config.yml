@@ -1,0 +1,4 @@
+query-filters:
+  # https://docs.github.com/en/code-security/tutorials/customize-code-scanning/create-query-suites#examples-of-filtering-which-queries-are-run
+  - exclude:
+      id: "go/clear-text-logging" # this has produced a lot of false positives for us https://codeql.github.com/codeql-query-help/go/go-clear-text-logging/

@@ -6,6 +6,9 @@ package transit
 import (
 	"context"
 	"errors"
+	"fmt"
+	"path"
+	"regexp"
 	"strings"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -49,6 +52,8 @@ func (b *backend) pathRestore() *framework.Path {
 	}
 }
 
+var policyNamePattern = regexp.MustCompile("^" + framework.GenericNameRegex("name") + "$")
+
 func (b *backend) pathRestoreUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	backupB64 := d.Get("backup").(string)
 	force := d.Get("force").(bool)
@@ -63,7 +68,18 @@ func (b *backend) pathRestoreUpdate(ctx context.Context, req *logical.Request, d
 		return nil, ErrInvalidKeyName
 	}
 
-	return nil, b.lm.RestorePolicy(ctx, req.Storage, keyName, backupB64, force)
+	return nil, b.lm.RestorePolicy(ctx, req.Storage, keyName, backupB64, force, func(name string) error {
+		if strings.Contains(name, "/") || name != path.Clean(name) {
+			return fmt.Errorf("entry would not be accessible")
+		}
+
+		matches := policyNamePattern.MatchString(name)
+		if !matches {
+			return fmt.Errorf("name does not match framework.GenericNameRegex")
+		}
+
+		return nil
+	})
 }
 
 const (

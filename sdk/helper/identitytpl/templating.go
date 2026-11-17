@@ -37,7 +37,7 @@ type PopulateStringInput struct {
 	NamespaceID          string
 	Mode                 int       // processing mode, ACLTemplate or JSONTemplating
 	Now                  time.Time // optional, defaults to current time
-	BlockedSubstitutions []string  // optional, defaults to ["*", "+"] if (.Mode == ACLTemplate) and [] otherwise
+	BlockedSubstitutions []string  // optional, defaults to []
 
 	templateHandler templateHandlerFunc
 	groupIDs        []string

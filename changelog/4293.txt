@@ -1,0 +1,3 @@
+```release-note:bug
+core: Fix rate limit exempt paths being unresponsive during post-unseal.
+```

@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -194,8 +195,8 @@ func (c *Sys) RaftSnapshotWithContext(ctx context.Context, snapWriter io.Writer)
 	dup := io.TeeReader(resp.Body, wPipe)
 	go func() {
 		defer func() {
-			io.Copy(io.Discard, rPipe)
-			rPipe.Close()
+			io.Copy(io.Discard, rPipe) //nolint:errcheck
+			rPipe.Close()              //nolint:errcheck
 			wg.Done()
 		}()
 
@@ -227,7 +228,7 @@ func (c *Sys) RaftSnapshotWithContext(ctx context.Context, snapWriter io.Writer)
 	// Copy bytes from dup to snapWriter.  This will have a side effect that
 	// everything read from dup will be written to wPipe.
 	_, err = io.Copy(snapWriter, dup)
-	wPipe.Close()
+	wPipe.Close() //nolint:errcheck
 	if err != nil {
 		rPipe.CloseWithError(err)
 		return err
@@ -245,8 +246,10 @@ func (c *Sys) RaftSnapshotRestore(snapReader io.Reader, force bool) error {
 	return c.RaftSnapshotRestoreWithContext(context.Background(), snapReader, force)
 }
 
-// RaftSnapshotRestoreWithContext reads the snapshot from the io.Reader and installs that
-// snapshot, returning the cluster to the state defined by it.
+// RaftSnapshotRestoreWithContext reads the snapshot from the io.Reader and
+// installs that snapshot, returning the cluster to the state defined by
+// it. Note that this method does not follow redirects and must be performed
+// directly against the active node.
 func (c *Sys) RaftSnapshotRestoreWithContext(ctx context.Context, snapReader io.Reader, force bool) error {
 	path := "/v1/sys/storage/raft/snapshot"
 	if force {
@@ -261,6 +264,12 @@ func (c *Sys) RaftSnapshotRestoreWithContext(ctx context.Context, snapReader io.
 		return err
 	}
 	defer resp.Body.Close() //nolint:errcheck
+
+	// Since httpRequestWithContext doesn't follow redirects, ensure the above
+	// actually *worked* and did not just yield a 3xx.
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("unexpected status code: %s", resp.Status)
+	}
 
 	return nil
 }

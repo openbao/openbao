@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -159,7 +158,7 @@ func (b *backend) tidySecretIDinternal(s logical.Storage) {
 			}
 
 			// ExpirationTime not being set indicates non-expiring SecretIDs
-			if !result.ExpirationTime.IsZero() && time.Now().After(result.ExpirationTime) {
+			if result.expired() {
 				logger.Trace("found expired secret ID")
 				// Clean up the accessor of the secret ID first
 				err = b.deleteSecretIDAccessorEntry(ctx, s, result.SecretIDAccessor, secretIDPrefixToUse)

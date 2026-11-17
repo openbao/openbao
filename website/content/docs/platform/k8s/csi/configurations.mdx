@@ -33,7 +33,7 @@ If installing via the helm chart, they can be set using e.g.
   generating secret version hashes.
 
 - `-openbao-addr` `(string: "https://127.0.0.1:8200")` - Default address
-  for connecting to OpenBao. Can also be specified via the `OPENBAO_ADDR` environment
+  for connecting to OpenBao. Can also be specified via the `BAO_ADDR` environment
   variable. **Note:** It is highly recommended to only set the OpenBao address when
   installing the helm chart. The helm chart will install OpenBao Agent as a sidecar
   to the OpenBao CSI Provider for caching and renewals, but setting `-openbao-addr`
@@ -44,33 +44,33 @@ If installing via the helm chart, they can be set using e.g.
   object.
 
 - `-openbao-namespace` `(string: "")` - (v1.1.0+) Default OpenBao namespace for OpenBao
-  requests. Can also be specified via the `OPENBAO_NAMESPACE` environment variable.
+  requests. Can also be specified via the `BAO_NAMESPACE` environment variable.
 
 - `-openbao-tls-ca-cert` `(string: "")` - (v1.1.0+) Path on disk to a single
   PEM-encoded CA certificate to trust for OpenBao. Takes precedence over
-  `-openbao-tls-ca-directory`. Can also be specified via the `OPENBAO_CACERT`
+  `-openbao-tls-ca-directory`. Can also be specified via the `BAO_CACERT`
   environment variable.
 
 - `-openbao-tls-ca-directory` `(string: "")` - (v1.1.0+) Path on disk to a
   directory of PEM-encoded CA certificates to trust for OpenBao. Can also be
-  specified via the `OPENBAO_CAPATH` environment variable.
+  specified via the `BAO_CAPATH` environment variable.
 
 - `-openbao-tls-server-name` `(string: "")` - (v1.1.0+) Name to use as the SNI
   host when connecting to OpenBao via TLS. Can also be specified via the
-  `OPENBAO_TLS_SERVER_NAME` environment variable.
+  `BAO_TLS_SERVER_NAME` environment variable.
 
 - `-openbao-tls-client-cert` `(string: "")` - (v1.1.0+) Path on disk to a
   PEM-encoded client certificate for mTLS communication with OpenBao. If set,
   also requires `-openbao-tls-client-key`. Can also be specified via the
-  `OPENBAO_CLIENT_CERT` environment variable.
+  `BAO_CLIENT_CERT` environment variable.
 
 - `-openbao-tls-client-key` `(string: "")` - (v1.1.0+) Path on disk to a
   PEM-encoded client key for mTLS communication with OpenBao. If set, also
   requires `-openbao-tls-client-cert`. Can also be specified via the
-  `OPENBAO_CLIENT_KEY` environment variable.
+  `BAO_CLIENT_KEY` environment variable.
 
 - `-openbao-tls-skip-verify` `(bool: false)` - (v1.1.0+) Disable verification of
-  TLS certificates. Can also be specified via the `OPENBAO_SKIP_VERIFY` environment
+  TLS certificates. Can also be specified via the `BAO_SKIP_VERIFY` environment
   variable.
 
 - `-version` `(bool: false)` - print version information and exit.

@@ -8,7 +8,7 @@ import Component from '@ember/component';
 import { computed } from '@ember/object';
 import { range } from 'ember-composable-helpers/helpers/range';
 import { A } from '@ember/array';
-import layout from '../templates/components/list-pagination';
+import layout from './list-pagination';
 
 // In non-dev mode, the pagination defaults to the config/environment variable. Set to 100.
 

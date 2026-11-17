@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -25,7 +26,7 @@ func testHTTPServer(
 	require.NoError(t, err)
 
 	server := &http.Server{Handler: handler}
-	go server.Serve(ln)
+	go server.Serve(ln) //nolint:errcheck
 
 	config := api.DefaultConfig()
 	config.Address = fmt.Sprintf("http://%s", ln.Addr())
@@ -34,8 +35,8 @@ func testHTTPServer(
 }
 
 func init() {
-	os.Setenv("BAO_TOKEN", "")
-	os.Setenv("VAULT_TOKEN", "")
+	_ = os.Unsetenv("BAO_TOKEN")
+	_ = os.Unsetenv("VAULT_TOKEN")
 }
 
 func TestLogin(t *testing.T) {
@@ -43,18 +44,12 @@ func TestLogin(t *testing.T) {
 	allowedPassword := "6hrtL!*bro!ywbQbvDwW"
 
 	content := []byte(allowedPassword)
-	tmpfile, err := os.CreateTemp("./", "file-containing-password")
-	require.NoError(t, err)
-	defer os.Remove(tmpfile.Name()) // clean up
-	err = os.Setenv(passwordEnvVar, allowedPassword)
+
+	passwordFilePath := filepath.Join(t.TempDir(), "file-containing-password")
+	err := os.WriteFile(passwordFilePath, content, 0o600)
 	require.NoError(t, err)
 
-	if _, err := tmpfile.Write(content); err != nil {
-		t.Fatalf("error writing to temp file: %v", err)
-	}
-	if err := tmpfile.Close(); err != nil {
-		t.Fatalf("error closing temp file: %v", err)
-	}
+	t.Setenv(passwordEnvVar, allowedPassword)
 
 	// a response to return if the correct values were passed to login
 	authSecret := &api.Secret{
@@ -71,19 +66,19 @@ func TestLogin(t *testing.T) {
 		err := json.NewDecoder(req.Body).Decode(&payload)
 		require.NoError(t, err)
 		if payload["password"] == allowedPassword {
-			w.Write(authBytes)
+			_, _ = w.Write(authBytes)
 		}
 	}
 
 	config, ln := testHTTPServer(t, http.HandlerFunc(handler))
-	defer ln.Close()
+	defer ln.Close() //nolint:errcheck
 
 	config.Address = strings.ReplaceAll(config.Address, "127.0.0.1", "localhost")
 	client, err := api.NewClient(config)
 	require.NoError(t, err)
 
 	// Password fromFile test
-	authFromFile, err := NewLDAPAuth("my-ldap-username", &Password{FromFile: tmpfile.Name()})
+	authFromFile, err := NewLDAPAuth("my-ldap-username", &Password{FromFile: passwordFilePath})
 	require.NoError(t, err)
 
 	loginRespFromFile, err := client.Auth().Login(t.Context(), authFromFile)

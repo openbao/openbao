@@ -1,0 +1,18 @@
+```release-note:security
+auth/kubernetes: Ensure Service Account JWT is validated on renewal, preventing post-revoke usage. GHSA-gf3j-hm38-jhh5.
+```
+```release-note:security
+core: Prevent disclosure of `tls_acme_eab_mac_key` from `sys/config/state/sanitized`. GHSA-3237-j65r-m5rp.
+```
+```release-note:security
+auth/approle: Ensure Secret ID cannot be used for authentication after expiration but before tidy is called. GHSA-7m59-mp95-w6ph.
+```
+```release-note:security
+auth/approle: Fix incorrect JSON-decode path when parsing login requests with form data bodies. GHSA-5v22-543h-wg96.
+```
+```release-note:security
+auth/cert: Fix omission of TLS connection propagation when calculating role-based quota. GHSA-5v22-543h-wg96.
+```
+```release-note:security
+audit: The unauthenticated "Root Token Generation" and "Rekey" endpoints (which are disabled by default) returned their response, even if audit logging failed. GHSA-q74w-hv5x-6hxf.
+```

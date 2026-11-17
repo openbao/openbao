@@ -3183,7 +3183,7 @@ func TestCore_ServiceRegistration_PostUnsealFailure(t *testing.T) {
 		RedirectAddr:        redirectAddr,
 	})
 	require.NoError(t, err)
-	defer core.Shutdown()
+	defer core.Shutdown() //nolint:errcheck
 
 	// Initialize and unseal the core
 	keys, root := TestCoreInit(t, core)

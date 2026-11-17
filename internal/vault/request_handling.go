@@ -955,6 +955,24 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 						if c.Standby() {
 							return nil, logical.ErrPerfStandbyPleaseForward
 						}
+
+						// Consume the wrapping token before executing the deferred
+						// request. This branch returns without ever reaching the
+						// ordinary unwrap path (handleWrappingUnwrap), so without
+						// this the token would stay valid until its TTL expired and
+						// the approved request could be replayed by anyone holding
+						// the token, minting a new credential on every unwrap.
+						// UseToken decrements the use count under the token's write
+						// lock, so a concurrent unwrap loses the race and is refused.
+						if _, err := c.tokenStore.UseTokenByID(ctx, tokenEntry.ID); err != nil {
+							return nil, consts.ErrInvalidWrappingToken
+						}
+						defer func() {
+							if err := c.tokenStore.revokeOrphan(ctx, tokenEntry.ID); err != nil {
+								c.logger.Error("error revoking wrapping token", "error", err)
+							}
+						}()
+
 						deferredReq.ForwardedFrom = forwardedFromDeferral
 						deferredReqNS, err := c.NamespaceByID(ctx, tokenEntry.NamespaceID)
 						if err != nil {

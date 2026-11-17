@@ -28,7 +28,7 @@ func TestResponseIsJSON(t *testing.T) {
 		resp := Response{&r}
 		assert.True(t, resp.IsJSON())
 	})
-	t.Run("text_plan_is_not_json", func(t *testing.T) {
+	t.Run("text_plain_is_not_json", func(t *testing.T) {
 		r := http.Response{Header: make(http.Header)}
 		r.Header.Set("Content-Type", "text/plain")
 		resp := Response{&r}

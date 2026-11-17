@@ -1,3 +1,6 @@
+// Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
+// SPDX-License-Identifier: MPL-2.0
+
 // We wish to build a backend cross-testing framework which allows us to find
 // differences in the way various storage interfaces behave. This will also
 // ultimately allow us to compose and stack various layers to ensure we have

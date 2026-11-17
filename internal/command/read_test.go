@@ -189,7 +189,7 @@ func TestReadCommand_Run(t *testing.T) {
 		}
 		const pemBody = "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n"
 
-		var testCases = []testCase{
+		testCases := []testCase{
 			{
 				name: "non_json_non_404_response_parsed_as_raw",
 				srv: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

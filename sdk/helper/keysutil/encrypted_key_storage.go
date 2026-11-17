@@ -5,7 +5,6 @@ package keysutil
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"math/big"
 	paths "path"
@@ -218,13 +217,7 @@ func (s *encryptedKeyStorage) ListPage(ctx context.Context, prefix string, after
 		}
 
 		// Decrypt the data with the object's key policy.
-		encodedPlaintext, err := s.policy.Decrypt(context, nil, string(decoded[:]))
-		if err != nil {
-			return nil, err
-		}
-
-		// The plaintext is still base64 encoded, decode it.
-		decoded, err = base64.StdEncoding.DecodeString(encodedPlaintext)
+		decoded, err := s.policy.DecryptRaw(context, nil, string(decoded[:]))
 		if err != nil {
 			return nil, err
 		}
@@ -323,8 +316,7 @@ func (s *encryptedKeyStorage) encryptPath(path string) (string, error) {
 	encPath := s.prefix
 	context := strings.TrimSuffix(s.prefix, "/")
 	for _, p := range parts {
-		encoded := base64.StdEncoding.EncodeToString([]byte(p))
-		ciphertext, err := s.policy.Encrypt(0, []byte(context), nil, encoded)
+		ciphertext, err := s.policy.EncryptRaw(0, []byte(context), nil, []byte(p))
 		if err != nil {
 			return "", err
 		}

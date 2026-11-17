@@ -26,7 +26,7 @@ will not allow starting the server if a migration is in progress.
 Migrate all keys:
 
 ```shell-session
-$ bao operator migrate -config migrate.hcl
+$ bao operator migrate -config=migrate.hcl
 
 2018-09-20T14:23:23.656-0700 [INFO ] copied key: data/core/seal-config
 2018-09-20T14:23:23.657-0700 [INFO ] copied key: data/core/wrapping/jwtkey
@@ -40,7 +40,7 @@ exits before completion (e.g. due to a connection error with a storage backend),
 it may be resumed from an arbitrary key prefix:
 
 ```shell-session
-$ bao operator migrate -config migrate.hcl -start "data/logical/fd"
+$ bao operator migrate -config=migrate.hcl -start="data/logical/fd"
 ```
 
 Alternatively, you can specify the configuration path using the `BAO_MIGRATE_CONFIG_PATH` environment variable. If the `-config` flag is provided, the environment variable is ignored.
@@ -49,7 +49,7 @@ Alternatively, you can specify the configuration path using the `BAO_MIGRATE_CON
 
 ```shell-session
 $ export BAO_MIGRATE_CONFIG_PATH=/etc/openbao/migrate.hcl
-$ bao operator migrate -start "data/logical/fd"
+$ bao operator migrate -start="data/logical/fd"
 ```
 
 ## Configuration
@@ -67,7 +67,7 @@ storage_destination "file" {
 }
 ```
 
-## Migrating to integrated raft storage
+## Migrating to or from integrated raft storage
 
 ### Example configurations
 
@@ -119,13 +119,32 @@ storage_destination "postgresql" {
 cluster_addr = "http://127.0.0.1:8201"
 ```
 
+#### Raft snapshot as source
+
+A Raft snapshot can be used as the `storage_source` for storage migration.
+The storage type `raft_snapshot` is only available as a source and
+running with the `-reset` flag return an error, because a snapshot file has no migration lock.
+An example configuration that uses a snapshot as the source:
+
+```hcl
+storage_source "raft_snapshot" {
+  path = "/path/to/raft.snapshot"
+}
+
+storage_destination "raft" {
+  path = "/path/to/raft/data"
+  node_id = "raft_node_1"
+}
+cluster_addr = "http://127.0.0.1:8201"
+```
+
 ### Run the migration
 
 OpenBao will need to be offline during the migration process. First, stop OpenBao.
-Then, run the migration on the server you wish to become a the new OpenBao node.
+Then, run the migration on the server you wish to become the new OpenBao node.
 
 ```shell-session
-$ bao operator migrate -config migrate.hcl
+$ bao operator migrate -config=migrate.hcl
 
 2018-09-20T14:23:23.656-0700 [INFO ] copied key: data/core/seal-config
 2018-09-20T14:23:23.657-0700 [INFO ] copied key: data/core/wrapping/jwtkey

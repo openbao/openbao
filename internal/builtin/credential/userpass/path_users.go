@@ -190,8 +190,6 @@ func (b *backend) setUser(ctx context.Context, s logical.Storage, username strin
 func (b *backend) pathUserResolvePath(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	username, err := getUsername(d)
 	if err != nil {
-		return nil, err
-	if err != nil {
 		return nil, fmt.Errorf("%w: %v", logical.ErrInvalidRequest, err)
 	}
 	return logical.ResolvePathResponse("users/" + username)

@@ -1095,41 +1095,45 @@ func (p *Policy) convergentVersion(ver int) int {
 	return convergentVersion
 }
 
-func (p *Policy) Encrypt(ver int, context, nonce []byte, value string) (string, error) {
-	return p.EncryptWithFactory(ver, context, nonce, value, nil)
-}
-
 func (p *Policy) Decrypt(context, nonce []byte, value string) (string, error) {
-	return p.DecryptWithFactory(context, nonce, value, nil)
+	return p.DecryptWithFactory(context, nonce, value)
 }
 
 func (p *Policy) DecryptWithFactory(derivationContext, nonce []byte, value string, factories ...any) (string, error) {
+	plain, err := p.DecryptRaw(derivationContext, nonce, value, factories...)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(plain), nil
+}
+
+func (p *Policy) DecryptRaw(derivationContext, nonce []byte, value string, factories ...any) ([]byte, error) {
 	if p.SoftDeleted {
-		return "", errutil.UserError{Err: ErrSoftDeleted}
+		return nil, errutil.UserError{Err: ErrSoftDeleted}
 	}
 
 	if !p.Type.DecryptionSupported() {
-		return "", errutil.UserError{Err: fmt.Sprintf("message decryption not supported for key type %v", p.Type)}
+		return nil, errutil.UserError{Err: fmt.Sprintf("message decryption not supported for key type %v", p.Type)}
 	}
 
 	tplParts, err := p.getTemplateParts()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Verify the prefix
 	if !strings.HasPrefix(value, tplParts[0]) {
-		return "", errutil.UserError{Err: "invalid ciphertext: no prefix"}
+		return nil, errutil.UserError{Err: "invalid ciphertext: no prefix"}
 	}
 
 	splitVerCiphertext := strings.SplitN(strings.TrimPrefix(value, tplParts[0]), tplParts[1], 2)
 	if len(splitVerCiphertext) != 2 {
-		return "", errutil.UserError{Err: "invalid ciphertext: wrong number of fields"}
+		return nil, errutil.UserError{Err: "invalid ciphertext: wrong number of fields"}
 	}
 
 	ver, err := strconv.Atoi(splitVerCiphertext[0])
 	if err != nil {
-		return "", errutil.UserError{Err: "invalid ciphertext: version number could not be decoded"}
+		return nil, errutil.UserError{Err: "invalid ciphertext: version number could not be decoded"}
 	}
 
 	if ver == 0 {
@@ -1139,22 +1143,22 @@ func (p *Policy) DecryptWithFactory(derivationContext, nonce []byte, value strin
 	}
 
 	if ver > p.LatestVersion {
-		return "", errutil.UserError{Err: "invalid ciphertext: version is too new"}
+		return nil, errutil.UserError{Err: "invalid ciphertext: version is too new"}
 	}
 
 	if p.MinDecryptionVersion > 0 && ver < p.MinDecryptionVersion {
-		return "", errutil.UserError{Err: ErrTooOld}
+		return nil, errutil.UserError{Err: ErrTooOld}
 	}
 
 	convergentVersion := p.convergentVersion(ver)
 	if p.ConvergentEncryption && convergentVersion < currentConvergentVersion && convergentVersion > 0 {
-		return "", errutil.UserError{Err: fmt.Sprintf("refusing to support decryption with old convergent encryption key: version %d", convergentVersion)}
+		return nil, errutil.UserError{Err: fmt.Sprintf("refusing to support decryption with old convergent encryption key: version %d", convergentVersion)}
 	}
 
 	// Decode the base64
 	decoded, err := base64.StdEncoding.DecodeString(splitVerCiphertext[1])
 	if err != nil {
-		return "", errutil.UserError{Err: "invalid ciphertext: could not decode base64"}
+		return nil, errutil.UserError{Err: "invalid ciphertext: could not decode base64"}
 	}
 
 	var plain []byte
@@ -1168,11 +1172,11 @@ func (p *Policy) DecryptWithFactory(derivationContext, nonce []byte, value strin
 
 		encKey, err := p.GetKey(derivationContext, ver, numBytes)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		if len(encKey) != numBytes {
-			return "", errutil.InternalError{Err: "could not derive enc key, length not correct"}
+			return nil, errutil.InternalError{Err: "could not derive enc key, length not correct"}
 		}
 
 		symopts := SymmetricOpts{
@@ -1187,34 +1191,34 @@ func (p *Policy) DecryptWithFactory(derivationContext, nonce []byte, value strin
 			case AssociatedDataFactory:
 				symopts.AdditionalData, err = factory.GetAssociatedData()
 				if err != nil {
-					return "", errutil.InternalError{Err: fmt.Sprintf("unable to get associated_data/additional_data from factory[%d]: %v", index, err)}
+					return nil, errutil.InternalError{Err: fmt.Sprintf("unable to get associated_data/additional_data from factory[%d]: %v", index, err)}
 				}
 			default:
-				return "", errutil.InternalError{Err: fmt.Sprintf("unknown type of factory[%d]: %T", index, rawFactory)}
+				return nil, errutil.InternalError{Err: fmt.Sprintf("unknown type of factory[%d]: %T", index, rawFactory)}
 			}
 		}
 
 		plain, err = p.SymmetricDecryptRaw(encKey, decoded, symopts)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	case KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096:
 		keyEntry, err := p.safeGetKeyEntry(ver)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		key := keyEntry.RSAKey
 		if key == nil {
-			return "", errutil.InternalError{Err: "cannot decrypt ciphertext, key version does not have a private counterpart"}
+			return nil, errutil.InternalError{Err: "cannot decrypt ciphertext, key version does not have a private counterpart"}
 		}
 		plain, err = rsa.DecryptOAEP(sha256.New(), rand.Reader, key, decoded, nil)
 		if err != nil {
-			return "", errutil.InternalError{Err: fmt.Sprintf("failed to RSA decrypt the ciphertext: %v", err)}
+			return nil, errutil.InternalError{Err: fmt.Sprintf("failed to RSA decrypt the ciphertext: %v", err)}
 		}
 	case KeyType_ExternalKey:
 		keyEntry, err := p.safeGetKeyEntry(ver)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		var ctx context.Context
@@ -1230,22 +1234,22 @@ func (p *Policy) DecryptWithFactory(derivationContext, nonce []byte, value strin
 			case ExternalKeyFactory:
 				ctx, key, err = typed.GetExternalKey(keyEntry.ExternalKeyRef)
 				if err != nil {
-					return "", fmt.Errorf("factory[%d] failed to fetch external key: %w", index, err)
+					return nil, fmt.Errorf("factory[%d] failed to fetch external key: %w", index, err)
 				} else if key == nil {
-					return "", fmt.Errorf("factory[%d] returned nil key with no error; key not found", index)
+					return nil, fmt.Errorf("factory[%d] returned nil key with no error; key not found", index)
 				}
 			case AssociatedDataFactory:
 				aad, err = typed.GetAssociatedData()
 				if err != nil {
-					return "", errutil.InternalError{Err: fmt.Sprintf("unable to get associated_data/additional_data from factory[%d]: %v", index, err)}
+					return nil, errutil.InternalError{Err: fmt.Sprintf("unable to get associated_data/additional_data from factory[%d]: %v", index, err)}
 				}
 			default:
-				return "", errutil.InternalError{Err: fmt.Sprintf("unknown type of factory[%d]: %T", index, factory)}
+				return nil, errutil.InternalError{Err: fmt.Sprintf("unknown type of factory[%d]: %T", index, factory)}
 			}
 		}
 
 		if key == nil {
-			return "", fmt.Errorf("external key not found or no factory provided to request it")
+			return nil, fmt.Errorf("external key not found or no factory provided to request it")
 		}
 
 		opts := &kms.CipherOptions{
@@ -1255,14 +1259,14 @@ func (p *Policy) DecryptWithFactory(derivationContext, nonce []byte, value strin
 
 		plain, err = key.Decrypt(ctx, opts)
 		if err != nil {
-			return "", fmt.Errorf("failed to decrypt with external key: %w", err)
+			return nil, fmt.Errorf("failed to decrypt with external key: %w", err)
 		}
 
 	default:
-		return "", errutil.InternalError{Err: fmt.Sprintf("unsupported key type %v", p.Type)}
+		return nil, errutil.InternalError{Err: fmt.Sprintf("unsupported key type %v", p.Type)}
 	}
 
-	return base64.StdEncoding.EncodeToString(plain), nil
+	return plain, nil
 }
 
 func (p *Policy) HMACKey(version int) ([]byte, error) {
@@ -2381,19 +2385,25 @@ func (p *Policy) SymmetricDecryptRaw(encKey, ciphertext []byte, opts SymmetricOp
 	return plain, nil
 }
 
+func (p *Policy) Encrypt(ver int, context, nonce []byte, value string) (string, error) {
+	return p.EncryptWithFactory(ver, context, nonce, value)
+}
+
 func (p *Policy) EncryptWithFactory(ver int, derivationContext []byte, nonce []byte, value string, factories ...any) (string, error) {
+	plaintext, err := base64.StdEncoding.DecodeString(value)
+	if err != nil {
+		return "", errutil.UserError{Err: err.Error()}
+	}
+	return p.EncryptRaw(ver, derivationContext, nonce, plaintext, factories...)
+}
+
+func (p *Policy) EncryptRaw(ver int, derivationContext, nonce, plaintext []byte, factories ...any) (string, error) {
 	if p.SoftDeleted {
 		return "", errutil.UserError{Err: ErrSoftDeleted}
 	}
 
 	if !p.Type.EncryptionSupported() {
 		return "", errutil.UserError{Err: fmt.Sprintf("message encryption not supported for key type %v", p.Type)}
-	}
-
-	// Decode the plaintext value
-	plaintext, err := base64.StdEncoding.DecodeString(value)
-	if err != nil {
-		return "", errutil.UserError{Err: err.Error()}
 	}
 
 	switch {

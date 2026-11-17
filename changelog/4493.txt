@@ -1,0 +1,3 @@
+```release-note:bug
+ui: Fix underlined space before secret names in the secrets list view.
+```

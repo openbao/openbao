@@ -1324,6 +1324,15 @@ func newBoolPtr(b bool) *bool {
 // rotation_schedule and rotation_window testing
 //
 
+// TestMain makes rotation schedules without a time zone (no CRON_TZ= or TZ=
+// prefix) fall back to UTC instead of the local time zone of the machine
+// running the tests, so that results do not depend on it nor on its DST clock
+// changes.
+func TestMain(m *testing.M) {
+	time.Local = time.UTC
+	os.Exit(m.Run())
+}
+
 // dailyScheduleAt returns a cron expression firing every day at the hour and
 // minute of the given time, along with that occurrence.
 func dailyScheduleAt(at time.Time) (string, time.Time) {
@@ -1467,6 +1476,17 @@ func TestStaticRole_RotationSchedule_Validation(t *testing.T) {
 			wantSchedule: "0 0 * * SAT",
 		},
 		{
+			name:         "schedule window shorter than min interval",
+			data:         map[string]any{"rotation_schedule": "0 */2 * * *", "rotation_window": "1h59m"},
+			wantSchedule: "0 */2 * * *",
+		},
+		{
+			// Without time zone, 02:30 falls back to UTC, which has no DST
+			name:         "schedule window without time zone",
+			data:         map[string]any{"rotation_schedule": "30 2 * * *", "rotation_window": "2h"},
+			wantSchedule: "30 2 * * *",
+		},
+		{
 			name: "period with window",
 			data: map[string]any{"rotation_period": "2h", "rotation_window": "1h"},
 		},
@@ -1528,6 +1548,22 @@ func TestStaticRole_RotationSchedule_Validation(t *testing.T) {
 		{
 			name:    "schedule with negative window",
 			data:    map[string]any{"rotation_schedule": "0 0 * * SAT", "rotation_window": -3600},
+			wantErr: true,
+		},
+		{
+			name:    "schedule window equal to min interval",
+			data:    map[string]any{"rotation_schedule": "0 */2 * * *", "rotation_window": "2h"},
+			wantErr: true,
+		},
+		{
+			name:    "schedule window longer than min interval",
+			data:    map[string]any{"rotation_schedule": "0 */2 * * *", "rotation_window": "3h"},
+			wantErr: true,
+		},
+		{
+			// 02:30 happens twice, one hour apart, when Paris clocks go back
+			name:    "schedule window longer than min interval across DST",
+			data:    map[string]any{"rotation_schedule": "CRON_TZ=Europe/Paris 30 2 * * *", "rotation_window": "2h"},
 			wantErr: true,
 		},
 		{

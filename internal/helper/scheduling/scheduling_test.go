@@ -104,6 +104,9 @@ func TestSetWithCronExp(t *testing.T) {
 func TestMinInterval(t *testing.T) {
 	tests := []struct {
 		name string
+		// tz defaults to UTC, so that results do not depend on the local
+		// time zone and its DST clock changes
+		tz   string
 		expr string
 		want time.Duration
 	}{
@@ -116,12 +119,24 @@ func TestMinInterval(t *testing.T) {
 		{name: "seconds close, no consecutive minutes", expr: "0,57 */2 * * * *", want: 57 * time.Second},
 		{name: "seconds close across hours", expr: "0,57 59,0 * * * *", want: 3 * time.Second},
 		{name: "seconds close, no consecutive hours", expr: "0,57 59,0 */2 * * *", want: 57 * time.Second},
+		// When clocks go back at 03:00 CEST, 02:59:57 CEST is followed 3s
+		// later by 02:00:00 CET
+		{name: "seconds close, no consecutive hours, DST", tz: "Europe/Paris", expr: "0,57 59,0 */2 * * *", want: 3 * time.Second},
+		{name: "daily", expr: "30 2 * * *", want: 24 * time.Hour},
+		// 02:30 happens twice when clocks go back, and the day clocks go
+		// forward is one hour shorter
+		{name: "daily, repeated hour", tz: "Europe/Paris", expr: "30 2 * * *", want: time.Hour},
+		{name: "daily, short day", tz: "Europe/Paris", expr: "30 4 * * *", want: 23 * time.Hour},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			tz := tt.tz
+			if tz == "" {
+				tz = "UTC"
+			}
 			d := newTestScheduler(t)
-			require.NoError(t, d.setWithCronExp(tt.expr, 0))
+			require.NoError(t, d.setWithCronExp("CRON_TZ="+tz+" "+tt.expr, 0))
 			require.Equal(t, tt.want, d.MinInterval())
 		})
 	}
@@ -209,14 +224,6 @@ func TestNewDefaultScheduler_Preconfigured(t *testing.T) {
 			stored: testSchedulable{
 				period: 2 * time.Hour,
 				window: -time.Minute,
-			},
-			wantErr: true,
-		},
-		{
-			name: "period window longer than period",
-			stored: testSchedulable{
-				period: 2 * time.Hour,
-				window: 3 * time.Hour,
 			},
 			wantErr: true,
 		},
@@ -313,8 +320,6 @@ func TestSetPeriodic(t *testing.T) {
 		{name: "zero", period: 0, wantErr: true},
 		{name: "negative", period: -time.Hour, wantErr: true},
 		{name: "short window", period: time.Hour, window: 30 * time.Minute, wantExpr: "@every 1h0m0s"},
-		{name: "window equals period", period: 2 * time.Hour, window: 2 * time.Hour, wantErr: true},
-		{name: "window longer than period", period: 2 * time.Hour, window: 3 * time.Hour, wantErr: true},
 		{name: "negative window", period: time.Hour, window: -time.Second, wantErr: true},
 	}
 

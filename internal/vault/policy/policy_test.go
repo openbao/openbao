@@ -140,6 +140,12 @@ path "test/control_group" {
 				approvals = 1
 			}
 		}
+		factor "other-approval" {
+			identity = {
+				group_names = ["other"]
+				approvals = 3
+			}
+		}
 	}
 }
 `)
@@ -439,6 +445,13 @@ func validatePolicy(t *testing.T, p *Policy) {
 						Identity: ControlGroupIdentity{
 							GroupNames: []string{"admin"},
 							Approvals:  1,
+						},
+					},
+					{
+						Name: "other-approval",
+						Identity: ControlGroupIdentity{
+							GroupNames: []string{"other"},
+							Approvals:  3,
 						},
 					},
 				},

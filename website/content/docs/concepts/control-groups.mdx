@@ -105,19 +105,17 @@ Control Groups can verify the following factors:
 
 ### Controlled capabilities
 
-Control group factors can be configured to trigger the control group
-workflow on specific capabilities. This is done with the
-`controlled_capabilities` field.  Not specifying the
-`controlled_capabilities` field will necessitate the factor to be
-checked for all operations to the specified policy path. The
-`controlled_capabilities` field can differ per factor, so that
-different factors can be required for different operations.
+Control group factors can be configured to trigger the control group workflow
+on specific capabilities. This is done with the `controlled_capabilities`
+field. Not specifying the `controlled_capabilities` field or setting it to
+an empty list will necessitate the factor to be checked for all operations to
+the specified policy path. The `controlled_capabilities` field can differ per
+factor, so that different factors can be required for different operations.
 
-Finally, the capabilities in the `controlled_capabilities` stanza must
-be a subset of the `capabilities` specified in the policy itself. For
-example, a policy giving only `read` access to the path `secret/foo`
-cannot specify a control group factor with `list` as a controlled
-capability.
+Finally, the capabilities in the `controlled_capabilities` stanza must be a
+subset of the `capabilities` specified in the policy itself. For example, a
+policy giving only `read` access to the path `secret/foo` cannot specify a
+control group factor with `list` as a controlled capability.
 
 Please see the following section for example ACL Policies.
 

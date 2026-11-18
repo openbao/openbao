@@ -307,7 +307,7 @@ storage_destination "dest_type2" {
 		err = raftBackend.Snapshot(tmpfile, nil)
 		require.NoError(t, err)
 
-		tmpfile.Close()
+		_ = tmpfile.Close()
 
 		from, err := snapshotFactory(map[string]string{"path": tmpfile.Name()}, log.NewNullLogger())
 		require.NoError(t, err)

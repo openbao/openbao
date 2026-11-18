@@ -123,8 +123,6 @@ cluster_addr = "http://127.0.0.1:8201"
 #### Raft snapshot as source
 
 A Raft snapshot can be used as the `storage_source` for storage migration.
-The storage type `raft_snapshot` is only available as a source and
-running with the `-reset` flag return an error, because a snapshot file has no migration lock.
 An example configuration that uses a snapshot as the source:
 
 ```hcl
@@ -139,6 +137,11 @@ storage_destination "raft" {
 
 cluster_addr = "http://127.0.0.1:8201"
 ```
+
+:::info
+The storage type `raft_snapshot` is only available as a source and
+running with the `-reset` flag returns an error, because a snapshot file has no migration lock.
+:::
 
 ### Run the migration
 

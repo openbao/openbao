@@ -3067,7 +3067,7 @@ type mockServiceRegistration struct {
 	notifyPerfCount   int
 	notifyInitCount   int
 	runDiscoveryCount int
-	lastActive        bool
+	activeStates      []bool
 }
 
 func (m *mockServiceRegistration) Run(shutdownCh <-chan struct{}, wait *sync.WaitGroup, redirectAddr string) error {
@@ -3075,17 +3075,19 @@ func (m *mockServiceRegistration) Run(shutdownCh <-chan struct{}, wait *sync.Wai
 	return nil
 }
 
-func (m *mockServiceRegistration) activeState() (int, bool) {
+func (m *mockServiceRegistration) drainActiveStates() []bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.notifyActiveCount, m.lastActive
+	activeStates := m.activeStates
+	m.activeStates = nil
+	return activeStates
 }
 
 func (m *mockServiceRegistration) NotifyActiveStateChange(isActive bool) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.notifyActiveCount++
-	m.lastActive = isActive
+	m.activeStates = append(m.activeStates, isActive)
 	return nil
 }
 
@@ -3199,32 +3201,35 @@ func TestCore_ServiceRegistration_PostUnsealFailure(t *testing.T) {
 	// Wait for core to become active
 	TestWaitActive(t, core)
 
-	count, active := sr.activeState()
-	require.True(t, active)
-	require.Equal(t, 1, count)
-
-	view := core.NamespaceView(namespace.RootNamespace)
-	err = view.Put(t.Context(), &logical.StorageEntry{
-		Key:   "core/mounts",
-		Value: []byte("{not valid json}"),
-	})
-	require.NoError(t, err)
+	require.Equal(t, []bool{true}, sr.drainActiveStates())
 
 	req := &logical.Request{
 		ClientToken: root,
 		Path:        "sys/step-down",
 	}
 
-	// Create an identifier for the request
-	req.ID, err = uuid.GenerateUUID()
-	require.NoErrorf(t, err, "failed to generate identifier for the request: path: %s err: %v", req.Path, err)
-
 	// Step down core
 	err = core.StepDown(namespace.RootContext(t.Context()), req)
 	require.NoError(t, err)
+	var seen []bool
 	require.Eventually(t, func() bool {
-		count, active := sr.activeState()
-		return count >= 4 && !active
+		seen = append(seen, sr.drainActiveStates()...)
+		return len(seen) == 1 && !seen[0]
+	},
+		30*time.Second, 100*time.Millisecond,
+	)
+
+	err = inm.Put(t.Context(), &physical.Entry{
+		Key:   "core/mounts",
+		Value: []byte("{not valid json}"),
+	})
+	require.NoError(t, err)
+
+	seen = nil
+
+	require.Eventually(t, func() bool {
+		seen = append(seen, sr.drainActiveStates()...)
+		return len(seen) >= 2 && seen[0] && !seen[1]
 	},
 		30*time.Second, 100*time.Millisecond,
 	)

@@ -1,0 +1,3 @@
+```release-note:bug
+sys/rotate: Fix `/sys/rotate/(root|recovery)/verify` not identifying provision of duplicate key shares.
+```

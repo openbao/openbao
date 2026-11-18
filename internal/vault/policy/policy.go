@@ -536,10 +536,6 @@ func parsePath(result *Policy, key string, item *ast.ObjectItem, performTemplati
 				factor.Identity.GroupNamesHCL = nil
 			}
 
-			if len(factor.ControlledCapabilities) == 0 {
-				return fmt.Errorf("factor %d: missing controlled capabilities", i)
-			}
-
 			if factor.Identity.Approvals <= 0 {
 				return fmt.Errorf("factor %d: missing required approvals", i)
 			}

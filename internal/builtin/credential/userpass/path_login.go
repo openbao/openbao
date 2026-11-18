@@ -62,9 +62,6 @@ func (b *backend) pathLoginAliasLookahead(ctx context.Context, req *logical.Requ
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
-	if username == "" {
-		return nil, errors.New("missing username")
-	}
 
 	return &logical.Response{
 		Auth: &logical.Auth{

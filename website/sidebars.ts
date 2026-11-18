@@ -116,7 +116,10 @@ const sidebars: SidebarsConfig = {
                     ],
                     Migrations: [
                         "guides/migrations/k8s-pebbledb"
-                    ]
+                    ],
+                    Integrations: [
+                        "guides/integrations/gitlab"
+                    ],
                 },
             ],
             Configuration: [

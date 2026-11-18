@@ -1,0 +1,3 @@
+```release-note:bug
+core/policies: Accept empty or omitted `controlled_capabilities` in Control Group factors and treat either case as applying to all operations.
+```

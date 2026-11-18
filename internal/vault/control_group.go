@@ -205,8 +205,9 @@ func (c *Core) validateControlGroup(ctx context.Context, tokenEntry *logical.Tok
 	passingControlGroups := 0
 	for _, factor := range cg.Factors {
 
-		// does factor apply? yes when ControlledCapabilities is nil or request operation matches
-		if factor.ControlledCapabilities == nil ||
+		// Does factor apply? Yes when ControlledCapabilities is empty or
+		// request operation matches.
+		if len(factor.ControlledCapabilities) == 0 ||
 			slices.Contains(factor.ControlledCapabilities, requestCapability) {
 			applicableControlGroups++
 		} else {

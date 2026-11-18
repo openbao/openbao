@@ -186,7 +186,7 @@ This change is [already proposed for inclusion](https://github.com/openbao/openb
 OpenBao's `postgresql` storage backend includes its own `PermitPool`,
 ensuring `max_parallel` is enforced at the storage layer. However, it
 also calls `db.SetMaxOpenConns(...)` which internally uses channels to
-achive the same thing. We can remove the outer permit pool and rely
+achieve the same thing. We can remove the outer permit pool and rely
 strictly on Go's implementation.
 
 This change is [already proposed for inclusion](https://github.com/openbao/openbao/pull/1299).

@@ -558,17 +558,12 @@ func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		seal := b.Core.sealManager.NamespaceSeal(ns.UUID)
+		seal := b.Core.sealManager.NamespaceSeal(ns.UUID, "default")
 		if seal == nil {
 			return handleError(ErrNotSealable)
 		}
 
-		var config *SealConfig
-		if recovery || seal.RecoveryKeySupported() {
-			config, err = seal.RecoveryConfig(ctx)
-		} else {
-			config, err = seal.BarrierConfig(ctx)
-		}
+		config, err := seal.Config(ctx)
 		if err != nil {
 			return handleError(logical.CodedError(http.StatusInternalServerError, "unable to look up config: %w", err))
 		}
@@ -582,13 +577,13 @@ func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 			},
 		}
 
-		rotConf := b.Core.sealManager.RotationConfig(ns.UUID, recovery)
+		rotConf, progress := b.Core.sealManager.RotationConfigWithProgress(ns.UUID, recovery, false)
 		if rotConf != nil {
 			resp.Data["nonce"] = rotConf.Nonce
 			resp.Data["started"] = true
 			resp.Data["t"] = rotConf.SecretThreshold
 			resp.Data["n"] = rotConf.SecretShares
-			resp.Data["progress"] = len(rotConf.RotationProgress)
+			resp.Data["progress"] = progress
 			resp.Data["verification_required"] = rotConf.VerificationRequired
 			resp.Data["verification_nonce"] = rotConf.VerificationNonce
 			if len(rotConf.PGPKeys) != 0 {
@@ -655,15 +650,13 @@ func (b *SystemBackend) handleRotateInitPut() framework.OperationFunc {
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		result, err := b.Core.sealManager.InitRotation(ctx, ns, rotateConf, recovery)
+		result, err := b.Core.sealManager.InitRotation(ctx, ns, rotateConf, recovery, true)
 		if err != nil {
 			return handleError(err)
 		}
-
-		// this can only happen in case of autoseal recovery rotation
-		// due to keys not existing before, as the instance was initialized
-		// with recovery config secret shares set to 0
 		if result != nil {
+			// If we've initialized the instance without generating recovery
+			// key shares then return the keys immediately.
 			keys := make([]string, 0, len(result.SecretShares))
 			keysB64 := make([]string, 0, len(result.SecretShares))
 			for _, k := range result.SecretShares {
@@ -699,9 +692,7 @@ func (b *SystemBackend) handleRotateInitDelete() framework.OperationFunc {
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		if err := b.Core.sealManager.CancelRotation(ctx, ns.UUID, recovery); err != nil {
-			return handleError(err)
-		}
+		b.Core.sealManager.CancelRotation(ns.UUID, recovery)
 		return nil, nil
 	}
 }
@@ -795,18 +786,17 @@ func (b *SystemBackend) handleRotateVerifyGet() framework.OperationFunc {
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		rotConf := b.Core.sealManager.RotationConfig(ns.UUID, recovery)
+		rotConf, progress := b.Core.sealManager.RotationConfigWithProgress(ns.UUID, recovery, true)
 		if rotConf == nil {
 			return handleError(errors.New("no rotation configuration found"))
 		}
-
 		return &logical.Response{
 			Data: map[string]any{
 				"nonce":    rotConf.VerificationNonce,
 				"started":  len(rotConf.VerificationKey) > 0,
 				"t":        rotConf.SecretThreshold,
 				"n":        rotConf.SecretShares,
-				"progress": len(rotConf.VerificationProgress),
+				"progress": progress,
 			},
 		}, nil
 	}
@@ -889,9 +879,7 @@ func (b *SystemBackend) handleRotateVerifyDelete() framework.OperationFunc {
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		if err := b.Core.sealManager.RestartRotationVerification(ns.UUID, recovery); err != nil {
-			return handleError(err)
-		}
+		b.Core.sealManager.RestartRotationVerification(ns.UUID, recovery)
 		return b.handleRotateVerifyGet()(ctx, req, data)
 	}
 }

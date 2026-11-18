@@ -4530,31 +4530,30 @@ func (c *Core) GetSealStatus(ctx context.Context, lock bool) (*CoreSealStatusRes
 		return nil, err
 	}
 
-	var sealConfig *SealConfig
-	var recoveryType string
+	// TODO:
 	sealAccess := c.SealAccess()
-	if sealAccess.RecoveryKeySupported() {
-		sealConfig, err = sealAccess.RecoveryConfig(ctx)
-		recoveryType = sealAccess.RecoveryType()
-	} else {
-		sealConfig, err = sealAccess.BarrierConfig(ctx)
-	}
+	sealConfig, err := sealAccess.Config(ctx)
 	if err != nil {
 		return nil, err
 	}
 
+	// RecoverySealType is deprecated, but left here for backwards compatibility.
+	var recoverySealType string
+	isRecoverySeal := sealAccess.RecoveryKeySupported()
+	if isRecoverySeal {
+		recoverySealType = "shamir"
+	}
+
 	cssr := &CoreSealStatusResponse{
-		SealStatusResponse: SealStatusResponse{
-			Type:             sealAccess.BarrierType().String(),
-			Initialized:      initialized,
-			Sealed:           sealed,
-			RecoverySeal:     sealAccess.RecoveryKeySupported(),
-			RecoverySealType: recoveryType,
-		},
-		StorageType: c.StorageType(),
-		Version:     version.GetVersion().VersionNumber(),
-		CommitDate:  version.CommitDate,
-		Migration:   c.IsInSealMigrationMode(lock) && !c.IsSealMigrated(lock),
+		Type:             sealAccess.WrapperType().String(),
+		Initialized:      initialized,
+		Sealed:           sealed,
+		RecoverySeal:     isRecoverySeal,
+		RecoverySealType: recoverySealType,
+		StorageType:      c.StorageType(),
+		Version:          version.GetVersion().VersionNumber(),
+		CommitDate:       version.CommitDate,
+		Migration:        c.IsInSealMigrationMode(lock) && !c.IsSealMigrated(lock),
 	}
 
 	if sealConfig == nil {
@@ -4572,7 +4571,7 @@ func (c *Core) GetSealStatus(ctx context.Context, lock bool) (*CoreSealStatusRes
 		cssr.ClusterID = cluster.ID
 	}
 
-	info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID)
+	info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID, "default")
 	if info != nil {
 		cssr.Progress, cssr.Nonce = len(info.Parts), info.Nonce
 	}

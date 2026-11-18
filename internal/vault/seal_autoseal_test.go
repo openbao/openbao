@@ -87,7 +87,7 @@ func TestAutoSeal_UpgradeKeys(t *testing.T) {
 	// Set initial encryption key.
 	changeKey("kaz")
 
-	autoSeal, err := NewAutoSeal(testSeal)
+	autoSeal, err := NewAutoSeal(testSeal, "default")
 	require.NoError(t, err)
 
 	autoSeal.SetCore(core)
@@ -154,7 +154,7 @@ func TestAutoSeal_UpgradeKeys(t *testing.T) {
 
 	t.Run("no recovery key", func(t *testing.T) {
 		// Emulate a recovery config with zero key shares and no recovery key stored.
-		require.NoError(t, autoSeal.SetRecoveryConfig(ctx, &SealConfig{Type: "static"}))
+		require.NoError(t, autoSeal.SetConfig(ctx, &SealConfig{Type: "static"}))
 
 		// Nothing to upgrade while the encryption key hasn't changed.
 		require.NoError(t, autoSeal.UpgradeKeys(ctx))
@@ -164,7 +164,7 @@ func TestAutoSeal_UpgradeKeys(t *testing.T) {
 		changeKey("primanti")
 		require.NoError(t, autoSeal.UpgradeKeys(ctx))
 
-		keysBlob := pBackend.entries[StoredBarrierKeysPath]
+		keysBlob := pBackend.entries[encryptedRootPath(autoSeal.Name())]
 		require.Equal(t, 2, len(keysBlob))
 
 		blobInfo := &wrapping.BlobInfo{}
@@ -195,6 +195,7 @@ func TestAutoSeal_HealthCheck(t *testing.T) {
 	})
 	autoSeal, err := NewAutoSealWithHealthCheck(
 		testSealAccess,
+		"default",
 		true,
 		time.Minute,
 		10*time.Millisecond,

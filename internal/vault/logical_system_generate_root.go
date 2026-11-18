@@ -369,24 +369,17 @@ func (b *SystemBackend) generateRootStatus(ctx context.Context, otp string) (*lo
 		return handleError(err)
 	}
 
-	seal := b.Core.sealManager.NamespaceSeal(ns.UUID)
+	seal := b.Core.sealManager.NamespaceSeal(ns.UUID, "default")
 	if seal == nil {
 		return handleError(ErrNotSealable)
 	}
 
-	sealConfig, err := seal.BarrierConfig(ctx)
+	sealConfig, err := seal.Config(ctx)
 	if err != nil {
 		return handleError(err)
 	}
 	if sealConfig == nil {
 		return handleError(ErrNotInit)
-	}
-
-	if seal.RecoveryKeySupported() {
-		sealConfig, err = seal.RecoveryConfig(ctx)
-		if err != nil {
-			return handleError(err)
-		}
 	}
 
 	// expecting state lock to already be held by switchedLockHandleRequest

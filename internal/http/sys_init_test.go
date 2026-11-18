@@ -113,7 +113,7 @@ func TestSysInit_put(t *testing.T) {
 		keySlice, err := hex.DecodeString(key.(string))
 		require.NoError(t, err)
 
-		if _, err := core.Unseal(keySlice); err != nil {
+		if _, err := vault.TestCoreUnseal(core, keySlice); err != nil {
 			t.Fatalf("bad: %s", err)
 		}
 	}
@@ -144,7 +144,7 @@ func TestSysInit_Put_ValidateParams(t *testing.T) {
 
 func TestSysInit_Put_AutoUnseal(t *testing.T) {
 	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
-	autoSeal, err := vault.NewAutoSeal(testSeal)
+	autoSeal, err := vault.NewAutoSeal(testSeal, "default")
 	require.NoError(t, err)
 
 	conf := &vault.CoreConfig{
@@ -180,7 +180,7 @@ func TestSysInit_Put_AutoUnseal(t *testing.T) {
 
 func TestSysInit_Put_ValidateParams_AutoUnseal(t *testing.T) {
 	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Wrapper: "potato"})
-	autoSeal, err := vault.NewAutoSeal(testSeal)
+	autoSeal, err := vault.NewAutoSeal(testSeal, "default")
 	require.NoError(t, err)
 
 	conf := &vault.CoreConfig{

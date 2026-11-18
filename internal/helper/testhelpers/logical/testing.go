@@ -204,13 +204,12 @@ func Test(tt TestT, c TestCase) {
 	}
 
 	ctx := namespace.RootContext(context.Background())
-	// Initialize the core
 	init, err := core.Initialize(ctx, &vault.InitParams{
-		BarrierConfig: &vault.SealConfig{
+		SealConfig: &vault.SealConfig{
+			Purpose:         vault.Primary,
 			SecretShares:    1,
 			SecretThreshold: 1,
 		},
-		RecoveryConfig: nil,
 	})
 	if err != nil {
 		tt.Fatal("error initializing core: ", err)
@@ -218,7 +217,7 @@ func Test(tt TestT, c TestCase) {
 	}
 
 	// Unseal the core
-	if unsealed, err := core.Unseal(init.SecretShares[0]); err != nil {
+	if unsealed, err := core.Unseal(init.SecretShares[0], "default", false); err != nil {
 		tt.Fatal("error unsealing core: ", err)
 		return
 	} else if !unsealed {

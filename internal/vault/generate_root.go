@@ -47,7 +47,7 @@ func (g generateStandardRootToken) authenticate(ctx context.Context, c *Core, co
 		return err
 	}
 
-	return c.sealManager.AuthenticateRootKey(ctx, ns, combinedKey)
+	return c.sealManager.AuthenticateRootKey(ctx, ns, "default", combinedKey)
 }
 
 func (g generateStandardRootToken) generate(ctx context.Context, c *Core) (string, func(), error) {
@@ -295,19 +295,12 @@ func (c *Core) lockedGenerateRootUpdate(ctx context.Context, key []byte, nonce s
 		return nil, &ErrInvalidKey{fmt.Sprintf("key is longer than maximum %d bytes", max)}
 	}
 
-	seal := c.sealManager.NamespaceSeal(ns.UUID)
+	seal := c.sealManager.NamespaceSeal(ns.UUID, "default")
 	if seal == nil {
 		return nil, ErrNotSealable
 	}
 
-	// Get the seal configuration
-	var config *SealConfig
-	if seal.RecoveryKeySupported() {
-		config, err = seal.RecoveryConfig(ctx)
-	} else {
-		config, err = seal.BarrierConfig(ctx)
-	}
-
+	config, err := seal.Config(ctx)
 	if err != nil {
 		return nil, err
 	}

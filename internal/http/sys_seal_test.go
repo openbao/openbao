@@ -163,11 +163,8 @@ func TestSysUnseal(t *testing.T) {
 func subtestBadSingleKey(t *testing.T, seal vault.Seal) {
 	core := vault.TestCoreWithSeal(t, seal, false)
 	_, err := core.Initialize(namespace.RootContext(t.Context()), &vault.InitParams{
-		BarrierConfig: &vault.SealConfig{
-			SecretShares:    1,
-			SecretThreshold: 1,
-		},
-		RecoveryConfig: &vault.SealConfig{
+		SealConfig: &vault.SealConfig{
+			Purpose:         vault.Primary,
 			SecretShares:    1,
 			SecretThreshold: 1,
 		},
@@ -246,11 +243,8 @@ func subtestBadMultiKey(t *testing.T, seal vault.Seal) {
 
 	core := vault.TestCoreWithSeal(t, seal, false)
 	_, err := core.Initialize(namespace.RootContext(t.Context()), &vault.InitParams{
-		BarrierConfig: &vault.SealConfig{
-			SecretShares:    numKeys,
-			SecretThreshold: numKeys,
-		},
-		RecoveryConfig: &vault.SealConfig{
+		SealConfig: &vault.SealConfig{
+			Purpose:         vault.Primary,
 			SecretShares:    numKeys,
 			SecretThreshold: numKeys,
 		},
@@ -558,7 +552,7 @@ func TestHA_UnsealLeaderThenStandbys_SharedKeys(t *testing.T) {
 
 	// Unseal leader
 	for _, share := range keys {
-		_, err := initCore.Unseal(share)
+		_, err := initCore.Unseal(vault.TestKeyCopy(share), "default", false)
 		require.NoError(t, err)
 	}
 	require.False(t, initCore.Sealed(), "initCore should be unsealed")
@@ -578,7 +572,7 @@ func TestHA_UnsealLeaderThenStandbys_SharedKeys(t *testing.T) {
 		}
 
 		for _, k := range keys {
-			_, err := c.Unseal(k)
+			_, err := c.Unseal(vault.TestKeyCopy(k), "default", false)
 			require.NoError(t, err)
 		}
 		require.False(t, c.Sealed(), "standby core should be unsealed")

@@ -386,7 +386,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 	var sealConfigError error
 
 	infoKeys := make([]string, 0)
-	barrierSeal, barrierWrapper, unwrapSeal, seals, sealConfigError, err := setSeal(server, config, kms, &infoKeys, make(map[string]string))
+	barrierSeal, barrierWrapper, emergencySeal, unwrapSeal, seals, sealConfigError, err := setSeal(server, config, kms, &infoKeys, make(map[string]string))
 	// Check error here
 	if err != nil {
 		diagnose.Advise(ctx, "For assistance with the seal stanza, see the Vault configuration documentation.")
@@ -407,7 +407,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 		seal := seal // capture range variable
 		// Ensure that the seal finalizer is called, even if using verify-only
 		defer func(seal *vault.Seal) {
-			sealType := diagnose.CapitalizeFirstLetter((*seal).BarrierType().String())
+			sealType := diagnose.CapitalizeFirstLetter((*seal).WrapperType().String())
 			finalizeSealContext, finalizeSealSpan := diagnose.StartSpan(ctx, "Finalize "+sealType+" Seal")
 			err = (*seal).Finalize(finalizeSealContext)
 			if err != nil {
@@ -479,7 +479,7 @@ SEALFAIL:
 		return nil
 	})
 
-	coreConfig := createCoreConfig(server, config, *backend, configSR, barrierSeal, unwrapSeal, kms, metricsHelper, metricSink)
+	coreConfig := createCoreConfig(server, config, *backend, configSR, barrierSeal, emergencySeal, unwrapSeal, kms, metricsHelper, metricSink)
 
 	var disableClustering bool
 	_ = diagnose.Test(ctx, "HA Storage", func(ctx context.Context) error {
@@ -600,7 +600,7 @@ SEALFAIL:
 			//nolint:staticcheck // user-facing error
 			return errors.New("Diagnose could not create a barrier seal object.")
 		}
-		if barrierSeal.BarrierType() == seal.WrapperTypeShamir {
+		if barrierSeal.WrapperType() == seal.WrapperTypeShamir {
 			diagnose.Skipped(ctx, "Skipping barrier encryption test. Only supported for auto-unseal.")
 			return nil
 		}

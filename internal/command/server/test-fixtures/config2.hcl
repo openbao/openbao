@@ -37,10 +37,6 @@ telemetry {
     prometheus_retention_time = "30s"
 }
 
-entropy "seal" {
-    mode = "augmentation"
-}
-
 sentinel {
     additional_enabled_modules = []
 }

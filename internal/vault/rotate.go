@@ -438,9 +438,10 @@ func (sm *SealManager) performRootRotation(ctx context.Context, ns *namespace.Na
 			}
 		}
 
-		// Unset VerificationKey and Nonce as we finished rotation.
+		// Unset VerificationKey and Nonces as we finished rotation.
 		rotationConfig.VerificationKey = nil
 		rotationConfig.Nonce = ""
+		rotationConfig.VerificationNonce = ""
 
 		if err := seal.SetBarrierConfig(ctx, rotationConfig); err != nil {
 			sm.logger.Error("error saving rotate seal configuration", "error", err)
@@ -461,6 +462,7 @@ func (sm *SealManager) performRecoveryRotation(ctx context.Context, newRootKey [
 	// Unset VerificationKey and Nonce as we finished rotation.
 	rotationConfig.VerificationKey = nil
 	rotationConfig.Nonce = ""
+	rotationConfig.VerificationNonce = ""
 
 	if err := seal.SetRecoveryConfig(ctx, rotationConfig); err != nil {
 		sm.logger.Error("error saving rotate seal configuration", "error", err)
@@ -717,7 +719,7 @@ func (sm *SealManager) VerifyRotation(ctx context.Context, ns *namespace.Namespa
 
 	// Check if we already have this piece
 	found := false
-	for _, existing := range rotationConfig.RotationProgress {
+	for _, existing := range rotationConfig.VerificationProgress {
 		found = found || subtle.ConstantTimeCompare(existing, key) == 1
 		if found {
 			return nil, errors.New("given key has already been provided during this verify operation")

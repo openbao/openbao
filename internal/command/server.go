@@ -1312,14 +1312,13 @@ func (c *ServerCommand) Run(args []string) int {
 	// This needs to happen before we first unseal, so before we trigger dev
 	// mode if it's set
 	core.SetClusterListenerAddrs(clusterAddrs)
+	listeners := make([]*configutil.Listener, 0, len(lns))
+	for _, ln := range lns {
+		listeners = append(listeners, ln.Config)
+	}
 	core.SetClusterHandler(vaulthttp.Handler.Handler(&vault.HandlerProperties{
-		Core: core,
-		// The cluster handler allows all endpoints to support forwarding.
-		// The decision to disable unauthed endpoints is made by external-facing listeners, so this is safe.
-		ListenerConfig: &configutil.Listener{
-			DisableUnauthedGenerateRootEndpoints: new(false),
-			DisableUnauthedRekeyEndpoints:        new(false),
-		},
+		Core:           core,
+		ListenerConfig: clusterListenerConfig(listeners),
 	}))
 
 	// Attempt unsealing in a background goroutine. This is needed for when a
@@ -1700,6 +1699,33 @@ func (c *ServerCommand) notifySystemd(status string) {
 			c.logger.Debug("would have sent systemd notification (systemd not present)", "notification", status)
 		}
 	}
+}
+
+func clusterListenerConfig(listeners []*configutil.Listener) *configutil.Listener {
+	// The cluster handler allows all endpoints to support forwarding.
+	// The decision to disable unauthed endpoints is made by external-facing listeners, so this is safe.
+	lnBase := &configutil.Listener{
+		DisableUnauthedGenerateRootEndpoints: new(false),
+		DisableUnauthedRekeyEndpoints:        new(false),
+	}
+	// Standbys already enforced their own listener limits, so use the most permissive.
+	for _, ln := range listeners {
+		if ln == nil || ln.Role == "metrics_only" {
+			continue
+		}
+		lnBase.MaxRequestSize = setMaxLimit(lnBase.MaxRequestSize, ln.MaxRequestSize)
+		lnBase.MaxRequestJsonMemory = setMaxLimit(lnBase.MaxRequestJsonMemory, ln.MaxRequestJsonMemory)
+		lnBase.MaxRequestJsonStrings = setMaxLimit(lnBase.MaxRequestJsonStrings, ln.MaxRequestJsonStrings)
+		lnBase.MaxRequestDuration = max(lnBase.MaxRequestDuration, ln.MaxRequestDuration)
+	}
+	return lnBase
+}
+
+func setMaxLimit(current, next int64) int64 {
+	if current < 0 || next < 0 {
+		return -1
+	}
+	return max(next, current)
 }
 
 func (c *ServerCommand) waitForLeader(core *vault.Core) (bool, error) {

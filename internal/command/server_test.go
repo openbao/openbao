@@ -16,6 +16,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	physInmem "github.com/openbao/openbao/v2/internal/physical/inmem"
 	"github.com/stretchr/testify/require"
 )
@@ -403,5 +404,105 @@ func TestConfigureDevTLS(t *testing.T) {
 		}
 		require.Equal(t, testcase.CertPathEmpty, len(certPath) == 0, "test description %s", testcase.TestDescription)
 		require.Equal(t, testcase.ErrNotNil, (err != nil), "test description %s", testcase.TestDescription)
+	}
+}
+
+func TestSetMaxLimit(t *testing.T) {
+	testcases := []struct {
+		name     string
+		current  int64
+		next     int64
+		expected int64
+	}{
+		{"both zero", 0, 0, 0},
+		{"next larger", 10, 20, 20},
+		{"current larger", 30, 20, 30},
+		{"equal", 15, 15, 15},
+		{"current unlimited", -1, 20, -1},
+		{"next unlimited", 20, -1, -1},
+		{"both unlimited", -1, -1, -1},
+		{"current other negative", -5, 20, -1},
+		{"next other negative", 20, -5, -1},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expected, setMaxLimit(tc.current, tc.next))
+		})
+	}
+}
+
+func TestClusterListenerConfig(t *testing.T) {
+	testcases := []struct {
+		name         string
+		listeners    []*configutil.Listener
+		expectedSize int64
+		expectedMem  int64
+		expectedStr  int64
+		expectedDur  time.Duration
+	}{
+		{
+			name:      "nil listeners",
+			listeners: nil,
+		},
+		{
+			name:      "nil entries skipped",
+			listeners: []*configutil.Listener{nil, nil},
+		},
+		{
+			name: "single listener",
+			listeners: []*configutil.Listener{
+				{MaxRequestSize: 100, MaxRequestJsonMemory: 200, MaxRequestJsonStrings: 300, MaxRequestDuration: 5 * time.Second},
+			},
+			expectedSize: 100,
+			expectedMem:  200,
+			expectedStr:  300,
+			expectedDur:  5 * time.Second,
+		},
+		{
+			name: "takes max across listeners",
+			listeners: []*configutil.Listener{
+				{MaxRequestSize: 100, MaxRequestJsonMemory: 500, MaxRequestJsonStrings: 10, MaxRequestDuration: 5 * time.Second},
+				{MaxRequestSize: 300, MaxRequestJsonMemory: 200, MaxRequestJsonStrings: 30, MaxRequestDuration: 2 * time.Second},
+			},
+			expectedSize: 300,
+			expectedMem:  500,
+			expectedStr:  30,
+			expectedDur:  5 * time.Second,
+		},
+		{
+			name: "unlimited wins",
+			listeners: []*configutil.Listener{
+				{MaxRequestSize: -1, MaxRequestJsonMemory: 200, MaxRequestJsonStrings: -1},
+				{MaxRequestSize: 300, MaxRequestJsonMemory: -1, MaxRequestJsonStrings: 30},
+			},
+			expectedSize: -1,
+			expectedMem:  -1,
+			expectedStr:  -1,
+		},
+		{
+			name: "metrics_only listeners ignored",
+			listeners: []*configutil.Listener{
+				{MaxRequestSize: 100, MaxRequestDuration: 1 * time.Second},
+				{Role: "metrics_only", MaxRequestSize: -1, MaxRequestJsonMemory: 999, MaxRequestDuration: 50 * time.Second},
+			},
+			expectedSize: 100,
+			expectedDur:  1 * time.Second,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			ln := clusterListenerConfig(tc.listeners)
+			require.NotNil(t, ln)
+			require.NotNil(t, ln.DisableUnauthedGenerateRootEndpoints)
+			require.False(t, *ln.DisableUnauthedGenerateRootEndpoints)
+			require.NotNil(t, ln.DisableUnauthedRekeyEndpoints)
+			require.False(t, *ln.DisableUnauthedRekeyEndpoints)
+			require.Equal(t, tc.expectedSize, ln.MaxRequestSize)
+			require.Equal(t, tc.expectedMem, ln.MaxRequestJsonMemory)
+			require.Equal(t, tc.expectedStr, ln.MaxRequestJsonStrings)
+			require.EqualValues(t, tc.expectedDur, ln.MaxRequestDuration)
+		})
 	}
 }

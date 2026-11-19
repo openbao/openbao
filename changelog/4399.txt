@@ -1,0 +1,3 @@
+```release-note:bug
+core: Forwarded requests from standby nodes now honour the configured listener request limits instead of the defaults.
+```

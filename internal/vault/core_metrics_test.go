@@ -19,6 +19,7 @@ import (
 	ident "github.com/openbao/openbao/v2/internal/vault/identity"
 	"github.com/openbao/openbao/v2/internal/vault/routing"
 	"github.com/openbao/openbao/v2/internal/version"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -260,29 +261,23 @@ func TestCoreMetrics_BuildInfoMetric(t *testing.T) {
 	t.Parallel()
 
 	_, _, _, inm := TestCoreUnsealedWithMetrics(t)
-
 	v := version.GetVersion()
 
-	require.Eventually(t, func() bool {
+	require.EventuallyWithT(t, func(t *assert.CollectT) {
 		data := inm.Data()
-		if len(data) == 0 {
-			return false
-		}
+		require.GreaterOrEqual(t, len(data), 1)
 
 		for _, gauge := range data[0].Gauges {
-			if strings.Contains(gauge.Name, "build_info") {
-				labels := make(map[string]string)
-				for _, l := range gauge.Labels {
-					labels[l.Name] = l.Value
-				}
-
-				return gauge.Value == float32(1.0) &&
-					labels["version"] == v.VersionNumber() &&
-					labels["revision"] == v.Revision
+			if gauge.Name != "build_info" {
+				continue
 			}
+			require.Equal(t, float32(1), gauge.Value)
+			require.Contains(t, gauge.Labels, metrics.Label{Name: "version", Value: v.VersionNumber()})
+			require.Contains(t, gauge.Labels, metrics.Label{Name: "revision", Value: v.Revision})
+			return
 		}
-		return false
-	}, 3*time.Second, 50*time.Millisecond, "build_info metric was not emitted to the sink within timeout")
+		require.Fail(t, "build_info gauge not found")
+	}, 3*time.Second, 50*time.Millisecond)
 }
 
 func TestCoreMetrics_EntityGauges(t *testing.T) {

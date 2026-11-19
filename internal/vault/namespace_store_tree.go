@@ -14,6 +14,9 @@ import (
 type namespaceTree struct {
 	root *namespaceNode
 	size int
+
+	createHook func(*namespace.Namespace) error
+	deleteHook func(*namespace.Namespace) error
 }
 
 type namespaceNode struct {
@@ -193,6 +196,15 @@ func (nt *namespaceTree) Insert(entry *namespace.Namespace) error {
 			if i != l-1 {
 				return errors.New("can't insert namespace with missing parent")
 			}
+
+			if nt.createHook != nil {
+				// Call createHook before mutating the tree below so we don't
+				// need code to undo the mutation on hook failure.
+				if err := nt.createHook(entry); err != nil {
+					return err
+				}
+			}
+
 			node.children[segment] = &namespaceNode{
 				children: make(map[string]*namespaceNode),
 				entry:    entry,
@@ -238,6 +250,12 @@ func (nt *namespaceTree) Delete(path string) error {
 
 	delete(parent.children, segments[len(segments)-1])
 	nt.size -= 1
+
+	if nt.deleteHook != nil {
+		if err := nt.deleteHook(node.entry); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

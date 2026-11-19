@@ -108,7 +108,7 @@ func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *rout
 
 	// Check for conflicts according to the router
 	if conflict := c.router.MountConflict(ctx, routing.CredentialRoutePrefix+entry.Path); conflict != "" {
-		return logical.CodedError(409, "existing mount at %s", conflict)
+		return logical.CodedError(409, "path in use at %s", conflict)
 	}
 
 	// Generate a new UUID and view
@@ -167,7 +167,17 @@ func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *rout
 		return fmt.Errorf("cannot mount %q of type %q as an auth backend", entry.Type, backendType)
 	}
 
-	// Update the auth table
+	// Reserve our mount in the router before committing it to storage. This
+	// ensures that it is conflict-free, and we do not end up in a situation
+	// where we've persisted the mount but subsequent router mounting fails due
+	// to conflicts.
+	mount, cancel, err := c.router.Reserve(backend, routing.CredentialRoutePrefix+entry.Path, entry, view)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+
+	// Update the auth table.
 	newTable := c.auth.ShallowClone()
 	newTable.Entries = append(newTable.Entries, entry)
 	if updateStorage {
@@ -176,12 +186,9 @@ func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *rout
 			return fmt.Errorf("failed to update auth table: %w", err)
 		}
 	}
-
 	c.auth = newTable
 
-	if err := c.router.Mount(backend, routing.CredentialRoutePrefix+entry.Path, entry, view); err != nil {
-		return err
-	}
+	mount()
 
 	// Mark as writable again and ensure Initialize can write to the view if
 	// necessary.

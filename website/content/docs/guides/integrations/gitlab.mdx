@@ -110,9 +110,11 @@ test the integration.
 From the CLI, run the following commands to enable the JWT auth method and
 configure it to trust GitLab's ID tokens.
 
-Make sure the following environment variable is set:
+Make sure the following environment variables are set:
 
 - `BAO_ADDR` must be set to your OpenBao API address.
+- `BAO_TOKEN` must be set to a token with the permissions from
+  [Before you start](#before-you-start).
 
 ```shell-session
 $ bao auth enable jwt
@@ -123,7 +125,8 @@ $ bao write auth/jwt/config \
 
 `bound_issuer` must match the `iss` claim in the GitLab ID token exactly.
 
-If GitLab uses a private CA, also set `jwks_ca_pem`.
+If GitLab uses a private CA that the OpenBao host does not already trust through
+its system certificates, also set `jwks_ca_pem`.
 
 ## Step 2: Create a secret and write a policy
 
@@ -143,7 +146,7 @@ Create the secret that the GitLab job will read:
 $ bao kv put -mount=secret ci/test-app password="example-password"
 ```
 
-Save this as `gitlab-ci.hcl`:
+Save this policy as `gitlab-ci.hcl`:
 
 ```hcl
 path "secret/data/ci/test-app" {

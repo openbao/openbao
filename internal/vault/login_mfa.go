@@ -26,8 +26,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/go-multierror"
-	"github.com/okta/okta-sdk-golang/v2/okta"
-	"github.com/okta/okta-sdk-golang/v2/okta/query"
+	"github.com/okta/okta-sdk-golang/v9/okta"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/identitytpl"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -1219,38 +1218,47 @@ func (c *Core) validateOkta(ctx context.Context, mConfig *mfa.Config, username s
 		return err
 	}
 
-	ctx, client, err := okta.NewClient(
-		ctx,
+	config, err := okta.NewConfiguration(
 		okta.WithToken(oktaConfig.APIToken),
 		okta.WithOrgUrl(orgURL.String()),
 		// Do not use cache or polling MFA will not refresh
 		okta.WithCache(false),
 	)
 	if err != nil {
-		return fmt.Errorf("error creating client: %s", err)
+		return fmt.Errorf("error creating configuration: %s", err)
 	}
 
 	filterField := "profile.login"
 	if oktaConfig.PrimaryEmail {
 		filterField = "profile.email"
 	}
-	filterQuery := fmt.Sprintf("%s eq %q", filterField, username)
-	filter := query.NewQueryParams(query.WithFilter(filterQuery))
 
-	users, _, err := client.User.ListUsers(ctx, filter)
+	filterQuery := fmt.Sprintf("%s eq %q", filterField, username)
+	client := okta.NewAPIClient(config)
+	users, _, err := client.UserAPI.ListUsers(ctx).Filter(filterQuery).Execute()
 	if err != nil {
 		return err
 	}
+
 	switch {
 	case len(users) == 0:
+		if strings.Contains(filterField, "login") {
+			return errors.New("no users found for login")
+		}
 		return errors.New("no users found for e-mail address")
 	case len(users) > 1:
+		if strings.Contains(filterField, "login") {
+			return errors.New("more than one user found for login")
+		}
 		return errors.New("more than one user found for e-mail address")
 	}
 
-	user := users[0]
+	userID := users[0].GetId()
+	if userID == "" {
+		return errors.New("missing id of found user")
+	}
 
-	factors, _, err := client.UserFactor.ListFactors(ctx, user.Id)
+	factors, _, err := client.UserFactorAPI.ListFactors(ctx, userID).Execute()
 	if err != nil {
 		return err
 	}
@@ -1259,68 +1267,74 @@ func (c *Core) validateOkta(ctx context.Context, mConfig *mfa.Config, username s
 		return errors.New("no MFA factors found for user")
 	}
 
-	var factorFound bool
-	var userFactor *okta.UserFactor
+	var userFactorID string
 	for _, factor := range factors {
-		if factor.IsUserFactorInstance() {
-			userFactor = factor.(*okta.UserFactor)
-			if userFactor.FactorType == "push" {
-				factorFound = true
-				break
-			}
+		if factor.UserFactorPush != nil && factor.UserFactorPush.GetFactorType() == "push" {
+			userFactorID = factor.UserFactorPush.GetId()
+			break
 		}
 	}
 
-	if !factorFound {
+	if userFactorID == "" {
 		return errors.New("no push-type MFA factor found for user")
 	}
 
-	result, _, err := client.UserFactor.VerifyFactor(ctx, user.Id, userFactor.Id, okta.VerifyFactorRequest{}, userFactor, nil)
+	result, _, err := client.UserFactorAPI.VerifyFactor(ctx, userID, userFactorID).Body(okta.UserFactorVerifyRequest{}).Execute()
+	if err != nil {
+		return err
+	}
+	if result == nil {
+		return errors.New("encountered nil user factor verify response")
+	}
+
+	if result.GetFactorResult() != "WAITING" {
+		return fmt.Errorf("expected WAITING status for push status, got %q", result.GetFactorResult())
+	}
+
+	if result.GetLinks().Poll == nil {
+		return errors.New("failed to retrieve links poll")
+	}
+
+	href := result.GetLinks().Poll.GetHref()
+	if href == "" {
+		return errors.New("polling href is empty")
+	}
+
+	pollURL, err := url.Parse(href)
 	if err != nil {
 		return err
 	}
 
-	if result.FactorResult != "WAITING" {
-		return fmt.Errorf("expected WAITING status for push status, got %q", result.FactorResult)
+	if pollURL.Host != orgURL.Host || pollURL.Scheme != orgURL.Scheme {
+		return errors.New("polling url doesn't match organization url")
 	}
 
-	// Parse links to get polling link
-	type linksObj struct {
-		Poll struct {
-			Href string `mapstructure:"href"`
-		} `mapstructure:"poll"`
+	if pollURL.User != nil || pollURL.RawQuery != "" || pollURL.ForceQuery || pollURL.Fragment != "" || pollURL.Path == "" {
+		return errors.New("invalid polling url")
 	}
-	links := new(linksObj)
-	if err := mapstructure.WeakDecode(result.Links, links); err != nil {
-		return err
-	}
-	// Strip the org URL from the fully qualified poll URL
-	url, err := url.Parse(strings.Replace(links.Poll.Href, orgURL.String(), "", 1))
-	if err != nil {
-		return err
+
+	prefix := fmt.Sprintf("/api/v1/users/%s/factors/%s/transactions/", userID, userFactorID)
+	transactionID, found := strings.CutPrefix(pollURL.Path, prefix)
+	if !found || transactionID == "" || strings.Contains(transactionID, "/") {
+		return fmt.Errorf("invalid transaction id: %s", transactionID)
 	}
 
 	for {
-		// Okta provides an SDK method `GetFactorTransactionStatus` but does not provide the transaction id in
-		// the VerifyFactor response. This code effectively reimplements that method.
-		rq := client.CloneRequestExecutor()
-		req, err := rq.WithAccept("application/json").WithContentType("application/json").NewRequest("GET", url.String(), nil)
+		result, _, err := client.UserFactorAPI.GetFactorTransactionStatus(ctx, userID, userFactorID, transactionID).Execute()
 		if err != nil {
 			return err
 		}
-		var result *okta.VerifyUserFactorResponse
-		_, err = rq.Do(ctx, req, &result)
-		if err != nil {
-			return err
+		if result == nil {
+			return errors.New("encountered nil factor transaction status response")
 		}
 
-		switch result.FactorResult {
-		case "WAITING":
-		case "SUCCESS":
+		switch {
+		case result.UserFactorPushTransactionWaitingNMC != nil, result.UserFactorPushTransactionWaitingNoNMC != nil:
+		case result.UserFactorPushTransaction != nil && result.UserFactorPushTransaction.GetFactorResult() == "SUCCESS":
 			return nil
-		case "REJECTED":
+		case result.UserFactorPushTransactionRejected != nil:
 			return errors.New("push verification explicitly rejected")
-		case "TIMEOUT":
+		case result.UserFactorPushTransactionTimeout != nil:
 			return errors.New("push verification timed out")
 		default:
 			return errors.New("unknown status code")

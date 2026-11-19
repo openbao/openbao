@@ -141,8 +141,8 @@ func testRotateLifecycleCommon(t *testing.T, sm *SealManager, ns *namespace.Name
 	}
 	require.NoError(t, err)
 	require.NotNil(t, sealConf)
+	newConf.VerificationNonce = result.VerificationNonce
 	newConf.Nonce = ""
-	newConf.VerificationNonce = ""
 	require.Equal(t, newConf, sealConf)
 }
 

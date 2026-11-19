@@ -446,6 +446,7 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 	// Provide the final new key
 	vuStatus, err := verificationUpdateFunc(ctx, newKeys[2], verificationNonce)
 	require.NoError(t, err)
+	require.Equalf(t, vuStatus.Nonce, verificationNonce, "unexpected nonce, expected %q, got %q", verificationNonce, vuStatus.Nonce)
 	require.True(t, vuStatus.Complete)
 
 	if !recovery {

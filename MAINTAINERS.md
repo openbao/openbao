@@ -32,7 +32,7 @@ See the information about community membership roles to learn about the role of 
 | Tomasz Madej     | [@tomek-securosys](https://github.com/tomek-securosys) | [`go-kms-wrapping/{kms,wrapper}/securosyshsm`][g-k-w]                                             |
 | Toni Tauro       | [@eyenx](https://github.com/eyenx)                     | [helm], [csi-provider], [k8s], [secrets-operator], and [openbao-plugins `secrets/consul/`]        |
 | Valentin Weber   | [@weberval](https://github.com/weberval)               | [dependency-vulnerabilities]                                                                      |
-| Wojciech Slabosz | [@wslabosz-reply](https://github.com/wslabosz-reply)   | [`vault/`]                                                                                        |
+| Wojciech Slabosz | [@wslabosz-reply](https://github.com/wslabosz-reply)   | [`vault/`] and [`go-kms-wrapping`][g-k-w]                                                         |
 | Yannis           | [@Nerkho](https://github.com/Nerkho)                   | [helm], [csi-provider], [k8s], [secrets-operator], and [openbao-plugins `secrets/consul/`]        |
 
 [`vault/`]: https://github.com/openbao/openbao/tree/main/internal/vault

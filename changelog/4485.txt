@@ -1,0 +1,6 @@
+```release-note:bug
+audit/http: Do not follow redirects when delivering audit entries; a 3xx response is now treated as a failed delivery instead of silently dropping the entry.
+```
+```release-note:bug
+audit/http: Fix a deadlock when reloading the HTTP audit device.
+```

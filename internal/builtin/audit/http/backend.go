@@ -269,26 +269,26 @@ func (b *Backend) getClient() (*http.Client, error) {
 	b.clientLock.Lock()
 	defer b.clientLock.Unlock()
 
-	if b.client != nil {
-		return client, nil
+	if b.client == nil {
+		b.client = newClient()
 	}
 
-	// TODO (ascheel): use a different HTTP client.
-	b.client = http.DefaultClient
-
 	return b.client, nil
+}
+
+func newClient() *http.Client {
+	return &http.Client{
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 }
 
 func (b *Backend) Reload(_ context.Context) error {
 	b.clientLock.Lock()
 	defer b.clientLock.Unlock()
 
-	b.client = nil
-
-	_, err := b.getClient()
-	if err != nil {
-		return err
-	}
+	b.client = newClient()
 
 	return nil
 }

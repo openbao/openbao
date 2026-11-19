@@ -2119,6 +2119,10 @@ func TestExpiration_revokeEntry_token(t *testing.T) {
 		t.Fatal("should not have found a secondary index entry after revocation")
 	}
 
+	_, leaseHash, ok := strings.Cut(indexEntry.Key, "/")
+	require.True(t, ok)
+	require.True(t, strings.HasPrefix(leaseHash, hmacStorageKeyPrefix))
+
 	out, err := exp.tokenStore.Lookup(ctx, le.ClientToken)
 	require.NoError(t, err)
 	if out != nil {
@@ -3279,5 +3283,113 @@ func TestExpiration_listIrrevocableLeases_includeAll(t *testing.T) {
 	numLeases := numLeasesRaw.(int)
 	if numLeases != expectedNumLeases {
 		t.Errorf("bad lease count. expected %d, got %d", expectedNumLeases, numLeases)
+	}
+}
+
+func TestExpiration_MigrateLeaseIndexKey(t *testing.T) {
+	type expected struct {
+		migrationResults []bool
+		sha1Exists       bool
+		hmacExists       bool
+	}
+
+	tokenID := "token-12345"
+	leaseID := "foo/bar/12345"
+
+	testCases := []struct {
+		name               string
+		sourceEntryMissing bool
+		storedUnderHMACKey bool
+		expected           expected
+	}{
+		{
+			name: "legacy entry is migrated only once",
+			expected: expected{
+				migrationResults: []bool{true, false},
+				sha1Exists:       false,
+				hmacExists:       true,
+			},
+		},
+		{
+			name:               "entry with HMAC key is skipped",
+			storedUnderHMACKey: true,
+			expected: expected{
+				migrationResults: []bool{false},
+				sha1Exists:       false,
+				hmacExists:       true,
+			},
+		},
+		{
+			name:               "missing entry creates no HMAC entry",
+			sourceEntryMissing: true,
+			expected: expected{
+				migrationResults: []bool{false},
+				sha1Exists:       false,
+				hmacExists:       false,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _, _ := TestCoreUnsealed(t)
+			ctx := namespace.RootContext(t.Context())
+			indexView := c.expiration.tokenIndexView(namespace.RootNamespace)
+
+			tokenHash, err := c.tokenStore.SaltID(ctx, tokenID)
+			require.NoError(t, err)
+
+			legacyLeaseHash, err := c.tokenStore.SaltID(ctx, leaseID)
+			require.NoError(t, err)
+
+			hmacLeaseHash, err := c.tokenStore.SaltIDWithHMAC(ctx, leaseID)
+			require.NoError(t, err)
+
+			legacySHA1Key := tokenHash + "/" + legacyLeaseHash
+			expectedHMACKey := tokenHash + "/" + hmacLeaseHash
+
+			sourceKey := legacySHA1Key
+			if tc.storedUnderHMACKey {
+				sourceKey = expectedHMACKey
+			}
+
+			if !tc.sourceEntryMissing {
+				err = indexView.Put(ctx, &logical.StorageEntry{
+					Key:   sourceKey,
+					Value: []byte(leaseID),
+				})
+				require.NoError(t, err)
+			}
+
+			var expectedSHA1Entry *logical.StorageEntry
+			if tc.expected.sha1Exists {
+				expectedSHA1Entry = &logical.StorageEntry{
+					Key:   legacySHA1Key,
+					Value: []byte(leaseID),
+				}
+			}
+
+			var expectedHMACEntry *logical.StorageEntry
+			if tc.expected.hmacExists {
+				expectedHMACEntry = &logical.StorageEntry{
+					Key:   expectedHMACKey,
+					Value: []byte(leaseID),
+				}
+			}
+
+			for _, expectedMigration := range tc.expected.migrationResults {
+				migrated, err := c.expiration.migrateLeaseIndexKey(ctx, indexView, sourceKey)
+				require.NoError(t, err)
+				require.Equal(t, expectedMigration, migrated)
+
+				actualSHA1Entry, err := indexView.Get(ctx, legacySHA1Key)
+				require.NoError(t, err)
+				require.Equal(t, expectedSHA1Entry, actualSHA1Entry)
+
+				actualHMACEntry, err := indexView.Get(ctx, expectedHMACKey)
+				require.NoError(t, err)
+				require.Equal(t, expectedHMACEntry, actualHMACEntry)
+			}
+		})
 	}
 }

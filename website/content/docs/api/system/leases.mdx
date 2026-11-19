@@ -235,6 +235,11 @@ This endpoint cleans up the dangling storage entries for leases: for each lease
 entry in storage, OpenBao will verify that it has an associated valid non-expired
 token in storage, and if not, the lease will be revoked.
 
+When invoked in the root namespace, tidy will migrate the storage keys of legacy
+token-to-lease index entries from salted SHA-1 to HMAC-SHA256. Lease IDs remain
+unchanged. After successful migration, each legacy SHA-1 entry will be deleted.
+Entries already stored under HMAC-SHA256 key will be skipped. 
+
 Generally, running this is not needed unless upgrade notes or support personnel
 suggest it. This may perform a lot of I/O to the storage method so should be
 used sparingly.

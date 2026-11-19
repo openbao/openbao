@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"crypto/fips140"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -538,7 +539,7 @@ func (m *ExpirationManager) Tidy(ctx context.Context) error {
 
 	// Create a cache to keep track of looked up tokens
 	tokenCache := make(map[string]bool)
-	var countLease, revokedCount, deletedCountInvalidToken, deletedCountEmptyToken int64
+	var countLease, revokedCount, deletedCountInvalidToken, deletedCountEmptyToken, migratedCount int64
 
 	tidyFunc := func(leaseID string) {
 		countLease++
@@ -625,12 +626,73 @@ func (m *ExpirationManager) Tidy(ctx context.Context) error {
 		return err
 	}
 
+	if ns.ID == namespace.RootNamespaceID {
+		indexView := m.tokenIndexView(ns)
+
+		if err := logical.ScanView(ctx, indexView, func(oldKey string) {
+			migrated, err := m.migrateLeaseIndexKey(ctx, indexView, oldKey)
+			if err != nil {
+				tidyErrors = multierror.Append(tidyErrors, fmt.Errorf("failed to migrate lease index %q: %w", oldKey, err))
+				return
+			}
+
+			if migrated {
+				migratedCount++
+			}
+		}); err != nil {
+			tidyErrors = multierror.Append(tidyErrors, fmt.Errorf("failed to scan lease index: %w", err))
+		}
+	}
+
 	logger.Info("number of leases scanned", "count", countLease)
 	logger.Info("number of leases which had empty tokens", "count", deletedCountEmptyToken)
 	logger.Info("number of leases which had invalid tokens", "count", deletedCountInvalidToken)
 	logger.Info("number of leases successfully revoked", "count", revokedCount)
+	logger.Info("number of lease index entries successfully migrated", "count", migratedCount)
 
 	return tidyErrors.ErrorOrNil()
+}
+
+func (m *ExpirationManager) migrateLeaseIndexKey(ctx context.Context, view logical.Storage, key string) (bool, error) {
+	tokenHash, leaseHash, ok := strings.Cut(key, "/")
+	if !ok {
+		return false, errors.New("invalid lease index key")
+	}
+	if strings.HasPrefix(leaseHash, hmacStorageKeyPrefix) {
+		return false, nil
+	}
+
+	migrated := false
+	if err := logical.WithTransaction(ctx, view, func(tx logical.Storage) error {
+		legacyEntry, err := tx.Get(ctx, key)
+		if err != nil {
+			return err
+		}
+		if legacyEntry == nil {
+			return nil
+		}
+
+		newHash, err := m.tokenStore.SaltIDWithHMAC(ctx, string(legacyEntry.Value))
+		if err != nil {
+			return err
+		}
+
+		legacyEntry.Key = tokenHash + "/" + newHash
+		if err := tx.Put(ctx, legacyEntry); err != nil {
+			return err
+		}
+
+		if err := tx.Delete(ctx, key); err != nil {
+			return err
+		}
+
+		migrated = true
+		return nil
+	}); err != nil {
+		return false, err
+	}
+
+	return migrated, nil
 }
 
 // Restore is used to recover the lease states when starting.
@@ -2177,7 +2239,7 @@ func (m *ExpirationManager) createIndexByToken(ctx context.Context, le *leaseEnt
 		return err
 	}
 
-	leaseSaltedID, err := m.tokenStore.SaltID(saltCtx, le.LeaseID)
+	leaseSaltedID, err := m.tokenStore.SaltIDWithHMAC(saltCtx, le.LeaseID)
 	if err != nil {
 		return err
 	}
@@ -2214,16 +2276,45 @@ func (m *ExpirationManager) indexByToken(ctx context.Context, le *leaseEntry) (*
 		return nil, err
 	}
 
-	leaseSaltedID, err := m.tokenStore.SaltID(saltCtx, le.LeaseID)
+	leaseSaltedID, err := m.tokenStore.SaltIDWithHMAC(saltCtx, le.LeaseID)
 	if err != nil {
 		return nil, err
 	}
 
-	key := saltedID + "/" + leaseSaltedID
-	entry, err := m.tokenIndexView(tokenNS).Get(ctx, key)
-	if err != nil {
-		return nil, errors.New("failed to look up secondary index entry")
+	newKey := saltedID + "/" + leaseSaltedID
+
+	legacyKey := ""
+	if tokenNS.ID == namespace.RootNamespaceID && !strings.Contains(le.LeaseID, ".") && !fips140.Enforced() {
+		legacyLeaseSaltedID, err := m.tokenStore.SaltID(saltCtx, le.LeaseID)
+		if err != nil {
+			return nil, err
+		}
+		legacyKey = saltedID + "/" + legacyLeaseSaltedID
 	}
+
+	var entry *logical.StorageEntry
+	if err = logical.WithReadOnlyTransaction(ctx, m.tokenIndexView(tokenNS), func(tx logical.Storage) error {
+		var err error
+		entry, err = tx.Get(ctx, newKey)
+		if err != nil {
+			return fmt.Errorf("failed to read HMAC lease index: %w", err)
+		}
+
+		if entry != nil || legacyKey == "" {
+			return nil
+		}
+
+		// Fallback for SHA-1
+		entry, err = tx.Get(ctx, legacyKey)
+		if err != nil {
+			return fmt.Errorf("failed to read legacy lease index: %w", err)
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
 	return entry, nil
 }
 
@@ -2248,16 +2339,32 @@ func (m *ExpirationManager) removeIndexByToken(ctx context.Context, le *leaseEnt
 		return err
 	}
 
-	leaseSaltedID, err := m.tokenStore.SaltID(saltCtx, le.LeaseID)
+	leaseSaltedID, err := m.tokenStore.SaltIDWithHMAC(saltCtx, le.LeaseID)
 	if err != nil {
 		return err
 	}
 
-	key := saltedID + "/" + leaseSaltedID
-	if err := m.tokenIndexView(tokenNS).Delete(ctx, key); err != nil {
-		return fmt.Errorf("failed to delete lease index entry: %w", err)
+	keys := []string{saltedID + "/" + leaseSaltedID}
+
+	// Delete legacy SHA-1
+	if tokenNS.ID == namespace.RootNamespaceID && !strings.Contains(le.LeaseID, ".") && !fips140.Enforced() {
+		legacyLeaseSaltedID, err := m.tokenStore.SaltID(saltCtx, le.LeaseID)
+		if err != nil {
+			return err
+		}
+
+		keys = append(keys, saltedID+"/"+legacyLeaseSaltedID)
 	}
-	return nil
+
+	return logical.WithTransaction(ctx, m.tokenIndexView(tokenNS), func(tx logical.Storage) error {
+		for _, key := range keys {
+			if err := tx.Delete(ctx, key); err != nil {
+				return fmt.Errorf("failed to delete lease index entry: %w", err)
+			}
+		}
+
+		return nil
+	})
 }
 
 // CreateOrFetchRevocationLeaseByToken is used to create or fetch the matching
@@ -2351,50 +2458,40 @@ func (m *ExpirationManager) lookupLeasesByToken(ctx context.Context, te *logical
 		return nil, err
 	}
 
-	tokenView := m.tokenIndexView(tokenNS)
-
-	// Scan via the index for sub-leases
 	prefix := saltedID + "/"
-	subKeys, err := tokenView.List(ctx, prefix)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list leases: %w", err)
-	}
+	leaseIDs := make([]string, 0)
 
-	// Read each index entry
-	leaseIDs := make([]string, 0, len(subKeys))
-	for _, sub := range subKeys {
-		out, err := tokenView.Get(ctx, prefix+sub)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read lease index: %w", err)
-		}
-		if out == nil {
-			continue
-		}
-		leaseIDs = append(leaseIDs, string(out.Value))
-	}
-
-	// Downgrade logic for old-style (V0) leases entries created by a namespace
-	// token that lived in the root namespace.
-	if tokenNS.ID != namespace.RootNamespaceID {
-		tokenView := m.tokenIndexView(namespace.RootNamespace)
-
-		// Scan via the index for sub-leases on the root namespace
-		prefix := saltedID + "/"
-		subKeys, err := tokenView.List(ctx, prefix)
-		if err != nil {
-			return nil, fmt.Errorf("failed to list leases on root namespace: %w", err)
-		}
-
-		for _, sub := range subKeys {
-			out, err := tokenView.Get(ctx, prefix+sub)
+	readIndex := func(view barrier.View) error {
+		return logical.WithReadOnlyTransaction(ctx, view, func(tx logical.Storage) error {
+			subKeys, err := tx.List(ctx, prefix)
 			if err != nil {
-				return nil, fmt.Errorf("failed to read lease index on root namespace: %w", err)
+				return fmt.Errorf("failed to list leases: %w", err)
 			}
-			if out == nil {
-				continue
+
+			for _, sub := range subKeys {
+				entry, err := tx.Get(ctx, prefix+sub)
+				if err != nil {
+					return fmt.Errorf("failed to read lease index: %w", err)
+				}
+				if entry == nil {
+					continue
+				}
+
+				leaseIDs = append(leaseIDs, string(entry.Value))
 			}
-			leaseIDs = append(leaseIDs, string(out.Value))
+
+			return nil
+		})
+	}
+
+	if tokenNS.ID != namespace.RootNamespaceID {
+		if err := readIndex(m.tokenIndexView(namespace.RootNamespace)); err != nil {
+			return nil, fmt.Errorf("root namespace: %w", err)
 		}
+	}
+
+	if err := readIndex(m.tokenIndexView(tokenNS)); err != nil {
+		return nil, err
 	}
 
 	return leaseIDs, nil

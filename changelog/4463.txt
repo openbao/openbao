@@ -1,0 +1,3 @@
+```release-note:improvement
+command/read: Auto output raw bytes for responses returning non-JSON responses.
+```

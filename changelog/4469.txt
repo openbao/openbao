@@ -1,3 +1,3 @@
 ```release-note:bug
-database/cassandra: Use the configured `port` for hosts discovered through the cluster, fixing connections to discovered nodes when TLS listens on a non-default port.
+database/cassandra: Use the configured `port` for hosts discovered through the cluster, fixing connections to discovered nodes when TLS listens on a non-default port. This only affects Cassandra 4.0 or later, which advertises a native port through `system.peers_v2`, and requires all nodes to use the same native transport port.
 ```

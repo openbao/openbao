@@ -16,6 +16,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/metricsutil"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/physical/raft"
+	"github.com/openbao/openbao/v2/internal/version"
 )
 
 func (c *Core) metricsLoop(stopCh chan struct{}) {
@@ -45,7 +46,7 @@ func (c *Core) metricsLoop(stopCh chan struct{}) {
 	// vault.expire.num_leases
 	// vault.identity.num_entities
 	// and the non-telemetry request counters shown in the UI.
-	// vault.core.unsealed is handled by emitUnsealedStatusMetric instead.
+	// vault.core.unsealed is handled by emitStatusMetrics instead.
 	for {
 		select {
 		case <-emitTimer:
@@ -160,10 +161,13 @@ func (c *Core) tokenGaugeTtlCollector(ctx context.Context) ([]metricsutil.GaugeL
 	return ts.gaugeCollectorByTtl(ctx)
 }
 
-// emitUnsealedStatusMetric refreshes vault.core.unsealed every second for the
-// lifetime of the process so that monitoring systems always observe a current
-// value regardless of seal state.
-func (c *Core) emitUnsealedStatusMetric(shutdownCh <-chan struct{}) {
+// emitStatusMetrics refreshes vault.core.unsealed and vault.build_info every
+// second for the lifetime of the process so that monitoring systems always
+// observe a current value regardless of seal state.
+func (c *Core) emitStatusMetrics(shutdownCh <-chan struct{}) {
+	v := version.GetVersion()
+	versionNumber := v.VersionNumber()
+
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	for {
@@ -176,6 +180,14 @@ func (c *Core) emitUnsealedStatusMetric(shutdownCh <-chan struct{}) {
 			} else {
 				c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 1, nil)
 			}
+			c.metricSink.SetGaugeWithLabels(
+				[]string{"build_info"},
+				1,
+				[]metrics.Label{
+					{Name: "version", Value: versionNumber},
+					{Name: "revision", Value: v.Revision},
+				},
+			)
 		}
 	}
 }

@@ -1,0 +1,3 @@
+```release-note:improvement
+telemetry: Add `build_info` gauge metric exposing running OpenBao version and revision.
+```

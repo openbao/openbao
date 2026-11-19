@@ -18,6 +18,8 @@ import (
 	be "github.com/openbao/openbao/v2/internal/vault/backend"
 	ident "github.com/openbao/openbao/v2/internal/vault/identity"
 	"github.com/openbao/openbao/v2/internal/vault/routing"
+	"github.com/openbao/openbao/v2/internal/version"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -253,6 +255,29 @@ func metricLabelsMatch(t *testing.T, actual []metrics.Label, expected map[string
 			t.Errorf("Unexpected label %v", l.Name)
 		}
 	}
+}
+
+func TestCoreMetrics_BuildInfoMetric(t *testing.T) {
+	t.Parallel()
+
+	_, _, _, inm := TestCoreUnsealedWithMetrics(t)
+	v := version.GetVersion()
+
+	require.EventuallyWithT(t, func(t *assert.CollectT) {
+		data := inm.Data()
+		require.GreaterOrEqual(t, len(data), 1)
+
+		for _, gauge := range data[0].Gauges {
+			if gauge.Name != "build_info" {
+				continue
+			}
+			require.Equal(t, float32(1), gauge.Value)
+			require.Contains(t, gauge.Labels, metrics.Label{Name: "version", Value: v.VersionNumber()})
+			require.Contains(t, gauge.Labels, metrics.Label{Name: "revision", Value: v.Revision})
+			return
+		}
+		require.Fail(t, "build_info gauge not found")
+	}, 3*time.Second, 50*time.Millisecond)
 }
 
 func TestCoreMetrics_EntityGauges(t *testing.T) {

@@ -286,6 +286,16 @@ stays valid until its 5-minute TTL ends. It is good practice to revoke
 short-lived tokens as soon as they are no longer needed.
 :::
 
+:::info[GitLab's native Vault integration]
+GitLab Premium and Ultimate also support the `secrets:vault` keyword. It uses an
+ID token to authenticate with HashiCorp Vault and fetch secrets directly into a
+CI job.
+
+This guide does not cover this integration. See the
+[GitLab documentation](https://docs.gitlab.com/ci/secrets/hashicorp_vault/) for
+more details.
+:::
+
 ## Step 5: Testing
 
 Run the job on a protected branch or tag. It should succeed and read the secret.

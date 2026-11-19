@@ -61,6 +61,10 @@ You need:
 You should see a JSON response with the public keys. If not, check your firewall
 and DNS settings.
 
+`gitlab.example.com` is a placeholder for your GitLab domain. If you're using a
+self-hosted GitLab instance, replace it with your actual domain. If you're using
+GitLab.com, use `gitlab.com` instead.
+
 :::info[Compatibility]
 Tested with OpenBao 2.7.2, GitLab CE 19.5.5 and GitLab Runner 19.5.3. This
 works on every GitLab tier.
@@ -116,6 +120,8 @@ Make sure the following environment variables are set:
 - `BAO_TOKEN` must be set to a token with the permissions from
   [Before you start](#before-you-start).
 
+For self-hosted GitLab, replace `gitlab.example.com` with your actual domain.
+
 ```shell-session
 $ bao auth enable jwt
 $ bao write auth/jwt/config \
@@ -127,6 +133,14 @@ $ bao write auth/jwt/config \
 
 If GitLab uses a private CA that the OpenBao host does not already trust through
 its system certificates, also set `jwks_ca_pem`.
+
+For GitLab.com:
+
+```shell-session
+$ bao write auth/jwt/config \
+    jwks_url="https://gitlab.com/oauth/discovery/keys" \
+    bound_issuer="https://gitlab.com"
+```
 
 ## Step 2: Create a secret and write a policy
 

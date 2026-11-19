@@ -166,8 +166,9 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 					Summary:  "Returns a snapshot of the current state of OpenBao.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleStorageRaftSnapshotWrite(false),
-					Summary:  "Installs the provided snapshot, returning the cluster to the state defined in it.",
+					Callback:                  b.handleStorageRaftSnapshotWrite(false),
+					Summary:                   "Installs the provided snapshot, returning the cluster to the state defined in it.",
+					ForwardPerformanceStandby: true,
 				},
 			},
 
@@ -178,8 +179,9 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 			Pattern: "storage/raft/snapshot-force",
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleStorageRaftSnapshotWrite(true),
-					Summary:  "Installs the provided snapshot, returning the cluster to the state defined in it. This bypasses checks ensuring the current Autounseal or Shamir keys are consistent with the snapshot data.",
+					Callback:                  b.handleStorageRaftSnapshotWrite(true),
+					Summary:                   "Installs the provided snapshot, returning the cluster to the state defined in it. This bypasses checks ensuring the current Autounseal or Shamir keys are consistent with the snapshot data.",
+					ForwardPerformanceStandby: true,
 				},
 			},
 

@@ -1,0 +1,3 @@
+```release-note:improvement
+api: name the active-node requirement when a raft snapshot restore is redirected, instead of reporting an unexpected status code.
+```

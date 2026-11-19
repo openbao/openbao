@@ -76,31 +76,32 @@ control list (ACL) policy.
 path "pki/issue/*" {
   capabilities = ["read", "update"]
 
-  control_group = {
+  control_group {
+    # Allow self-authorization when true:
+    self_auth_allowed = false
+
     factor "pki-approvers" {
       controlled_capabilities = ["update"]
+
       identity {
-		# Control groups whose members can authorize access
-		group_names = ["pki-approvers", "security-team"]
-		approvals = 1
-
-		# Max duration for which authorization is valid
-		ttl = "5d"
-
-		# Allow self-authorization when true
-		self_authorization = false
-	  }
-	}
+        # Identity groups whose members can authorize access:
+        group_names = ["pki-approvers", "security-team"]
+        # Required number of approvals:
+        approvals = 1
+        # Max duration for which authorization is valid:
+        ttl = "5d"
+      }
+    }
   }
 }
 ```
 
 Control Groups can verify the following factors:
 
-- _Identity Groups_ - Require an authorizer to be in a specific set of
-  identity groups. The `self_authorization` property indicates
-  whether the original requester can self-authorize if they belong to
-  the control group (default is false).
+- _Identity Groups_ - Require an authorizer to be in a specific set of identity
+  groups. The `self_auth_allowed` property indicates whether the original
+  requester can self-authorize if they belong to the control group (default is
+  false).
 
 ### Controlled capabilities
 
@@ -122,15 +123,15 @@ Please see the following section for example ACL Policies.
 
 ```hcl
 path "secret/foo" {
-    capabilities = ["read"]
-    control_group = {
-        factor "ops_manager" {
-            identity {
-                group_names = ["managers"]
-                approvals = 1
-            }
-        }
+  capabilities = ["read"]
+  control_group {
+    factor "ops_manager" {
+      identity {
+        group_names = ["managers"]
+        approvals   = 1
+      }
     }
+  }
 }
 ```
 
@@ -142,22 +143,22 @@ defaults to false).
 
 ```hcl
 path "secret/foo" {
-    capabilities = ["create", "update"]
-    control_group = {
-        ttl = "4h"
-        factor "tech leads" {
-            identity {
-                group_names = ["managers", "leads"]
-                approvals = 2
-            }
-        }
-        factor "super users" {
-            identity {
-                group_names = ["superusers"]
-                approvals = 1
-            }
-        }
+  capabilities = ["create", "update"]
+  control_group {
+    ttl = "4h"
+    factor "tech leads" {
+      identity {
+        group_names = ["managers", "leads"]
+        approvals   = 2
+      }
     }
+    factor "super users" {
+      identity {
+        group_names = ["superusers"]
+        approvals   = 1
+      }
+    }
+  }
 }
 ```
 
@@ -173,16 +174,16 @@ If an authorizer is a member of both the "managers" or "leads" and the
 
 ```hcl
 path "secret/foo" {
-    capabilities = ["create","update","read"]
-    control_group = {
-        factor "admin" {
-            controlled_capabilities = ["update"]
-            identity {
-                group_names = ["admin"]
-                approvals = 1
-            }
-        }
+  capabilities = ["create", "update", "read"]
+  control_group {
+    factor "admin" {
+      controlled_capabilities = ["update"]
+      identity {
+        group_names = ["admin"]
+        approvals   = 1
+      }
     }
+  }
 }
 ```
 
@@ -193,29 +194,29 @@ request.
 
 ```hcl
 path "kv/*" {
-    capabilities = ["create","update","delete","list","sudo"]
-    control_group = {
-        factor "admin" {
-            controlled_capabilities = ["delete","list","sudo"]
-            identity {
-                group_names = ["admin"]
-                approvals = 1
-            }
-        }
+  capabilities = ["create", "update", "delete", "list", "sudo"]
+  control_group {
+    factor "admin" {
+      controlled_capabilities = ["delete", "list", "sudo"]
+      identity {
+        group_names = ["admin"]
+        approvals   = 1
+      }
     }
-}
-path "kv/*" {
-    capabilities = ["create"]
-    control_group = {
-        factor "superuser" {
-            identity {
-                group_names = ["superuser"]
-                approvals = 2
-            }
-        }
-    }
+  }
 }
 
+path "kv/*" {
+  capabilities = ["create"]
+  control_group {
+    factor "superuser" {
+      identity {
+        group_names = ["superuser"]
+        approvals   = 2
+      }
+    }
+  }
+}
 ```
 
 Because the second path stanza has a control group factor with no
@@ -228,23 +229,23 @@ approval from the `admin` group.
 
 ```hcl
 path "kv/*" {
-    capabilities = ["read","list","create"]
-    control_group = {
-        factor "admin" {
-            controlled_capabilities = ["read"]
-            identity {
-                group_names = ["admin"]
-                approvals = 1
-            }
-        }
-        factor "superuser" {
-            controlled_capabilities = ["create"]
-            identity {
-                group_names = ["superuser"]
-                approvals = 1
-            }
-        }
+  capabilities = ["read", "list", "create"]
+  control_group {
+    factor "admin" {
+      controlled_capabilities = ["read"]
+      identity {
+        group_names = ["admin"]
+        approvals   = 1
+      }
     }
+    factor "superuser" {
+      controlled_capabilities = ["create"]
+      identity {
+        group_names = ["superuser"]
+        approvals   = 1
+      }
+    }
+  }
 }
 ```
 

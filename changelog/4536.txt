@@ -1,0 +1,3 @@
+```release-note:bug
+command/operator/diagnose: Fix panic when `plugin_directory` is set in the configuration but does not exist.
+```

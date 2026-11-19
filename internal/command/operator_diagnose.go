@@ -18,6 +18,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	uuid "github.com/hashicorp/go-uuid"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	bApi "github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	cserver "github.com/openbao/openbao/v2/internal/command/server"
@@ -275,12 +276,6 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 		return nil
 	})
 
-	var kms *kmsplugin.Catalog
-	_ = diagnose.Test(ctx, "Check KMS Plugin Catalog", func(context.Context) (err error) {
-		kms, err = kmsplugin.NewCatalog(server.logger, config)
-		return err
-	})
-
 	var metricSink *metricsutil.ClusterMetricSink
 	var metricsHelper *metricsutil.MetricsHelper
 
@@ -381,12 +376,26 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 		return nil
 	})
 
+	var kms *kmsplugin.Catalog
+	kmsErr := diagnose.Test(ctx, "Check KMS Plugin Catalog", func(context.Context) (err error) {
+		kms, err = kmsplugin.NewCatalog(server.logger, config)
+		return err
+	})
+
 	sealcontext, sealspan := diagnose.StartSpan(ctx, "Create Vault Server Configuration Seals")
 	var seals []vault.Seal
 	var sealConfigError error
+	var barrierSeal vault.Seal
+	var barrierWrapper wrapping.Wrapper
+	var unwrapSeal vault.Seal
+	var err error
 
 	infoKeys := make([]string, 0)
-	barrierSeal, barrierWrapper, unwrapSeal, seals, sealConfigError, err := setSeal(server, config, kms, &infoKeys, make(map[string]string))
+	if kmsErr != nil {
+		diagnose.Fail(sealcontext, "Skipped due to KMS plugin catalog creation failure.")
+		goto SEALFAIL
+	}
+	barrierSeal, barrierWrapper, unwrapSeal, seals, sealConfigError, err = setSeal(server, config, kms, &infoKeys, make(map[string]string))
 	// Check error here
 	if err != nil {
 		diagnose.Advise(ctx, "For assistance with the seal stanza, see the Vault configuration documentation.")

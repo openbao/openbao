@@ -251,6 +251,17 @@ func TestCelRoleAuth(t *testing.T) {
 			wantErr:       true,
 			errorContains: "audience claim does not match",
 		},
+		{
+			name: "Set lease options",
+			celRole: map[string]any{
+				"name":        "testrole",
+				"cel_program": map[string]any{"expression": "pb.Auth{display_name: 'newAuth', lease_options: pb.LeaseOptions{TTL: 600}}"},
+			},
+			jwtClaims: sqjwt.Claims{
+				NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+			},
+			wantErr: false,
+		},
 	}
 
 	cfg := testConfig{

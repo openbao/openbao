@@ -268,6 +268,15 @@ func (c *Sys) RaftSnapshotRestoreWithContext(ctx context.Context, snapReader io.
 	// Since httpRequestWithContext doesn't follow redirects, ensure the above
 	// actually *worked* and did not just yield a 3xx.
 	if resp.StatusCode != http.StatusNoContent {
+		// A standby answers these two paths with a redirect to the active node.
+		// Saying so is the difference between "unexpected status code" and an
+		// operator knowing which node to run the restore against.
+		if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+			if target := resp.Header.Get("Location"); target != "" {
+				return fmt.Errorf("snapshot restore must be performed against the active node (got %s, redirected to %s)", resp.Status, target)
+			}
+			return fmt.Errorf("snapshot restore must be performed against the active node (got %s)", resp.Status)
+		}
 		return fmt.Errorf("unexpected status code: %s", resp.Status)
 	}
 

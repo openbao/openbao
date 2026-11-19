@@ -1,0 +1,3 @@
+```release-note:bug
+core/auth: Ensure control group wrapping tokens are single-use.
+```

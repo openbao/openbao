@@ -959,6 +959,25 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 							return nil, fmt.Errorf("cannot find namespace for token: %w", err)
 						}
 						deferredReqCtx := namespace.ContextWithNamespace(ctx, deferredReqNS)
+						// Consume the wrapping token before executing the
+						// approved request; note that we early-return and
+						// recurse back into handleCancelableRequest with
+						// a separate token which means neither this nor
+						// the following invocation of it will revoke the
+						// one-time-use token as usual.
+						if _, err := c.tokenStore.UseToken(deferredReqCtx, tokenEntry); err != nil {
+							return nil, fmt.Errorf("error decrementing wrapping token's use-count: %w", err)
+						}
+						defer func() {
+							nsActiveCtx := namespace.ContextWithNamespace(c.activeContext.Load(), deferredReqNS)
+							leaseID, err := c.expiration.CreateOrFetchRevocationLeaseByToken(nsActiveCtx, tokenEntry)
+							if err == nil {
+								err = c.expiration.LazyRevoke(nsActiveCtx, leaseID)
+							}
+							if err != nil {
+								c.logger.Error("error revoking wrapping token", "error", err)
+							}
+						}()
 						return c.handleCancelableRequest(deferredReqCtx, deferredReq)
 					}
 				}

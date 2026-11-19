@@ -141,14 +141,20 @@ func ProtoLeaseOptionsToLogicalLeaseOptions(l *LeaseOptions) (logical.LeaseOptio
 		return logical.LeaseOptions{}, nil
 	}
 
-	err := l.IssueTime.CheckValid()
-	return logical.LeaseOptions{
+	opts := logical.LeaseOptions{
 		TTL:       time.Duration(l.TTL),
 		Renewable: l.Renewable,
 		Increment: time.Duration(l.Increment),
-		IssueTime: l.IssueTime.AsTime(),
 		MaxTTL:    time.Duration(l.MaxTTL),
-	}, err
+	}
+
+	var err error
+	if l.IssueTime != nil {
+		err = l.IssueTime.CheckValid()
+		opts.IssueTime = l.IssueTime.AsTime()
+	}
+
+	return opts, err
 }
 
 func LogicalLeaseOptionsToProtoLeaseOptions(l logical.LeaseOptions) (*LeaseOptions, error) {

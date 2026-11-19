@@ -1,0 +1,3 @@
+```release-note:bug
+auth/jwt: Fix CEL roles requiring that `issue_time` is set when setting `lease_options`. This field is not used for login requests and has no effect when set via CEL.
+```

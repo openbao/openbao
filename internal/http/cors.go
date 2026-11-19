@@ -15,9 +15,12 @@ import (
 var allowedMethods = []string{
 	http.MethodDelete,
 	http.MethodGet,
+	http.MethodHead,
 	http.MethodOptions,
+	http.MethodPatch,
 	http.MethodPost,
 	http.MethodPut,
+	"HELP", // HELP is not an official HTTP method, but Vault supports it.
 	"LIST", // LIST is not an official HTTP method, but Vault supports it.
 	"SCAN", // SCAN is not an official HTTP method, but Vault supports it.
 }

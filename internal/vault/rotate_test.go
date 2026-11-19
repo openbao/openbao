@@ -30,12 +30,12 @@ func TestRotateLifecycle(t *testing.T) {
 	require.Lenf(t, rootKeys, 1, "expected %d secret shares for a total of 1 root key, got %d", bc.SecretShares, len(rootKeys))
 
 	ns := &namespace.Namespace{Path: "ns1/"}
-	_ = TestCoreCreateUnsealedNamespaces(t, c, ns)
-	testRotateLifecycleCommon(t, c.sealManager, namespace.RootNamespace, false)
-	testRotateLifecycleCommon(t, c.sealManager, ns, false)
+	unsealShares := TestCoreCreateUnsealedNamespaces(t, c, ns)
+	testRotateLifecycleCommon(t, c.sealManager, namespace.RootNamespace, rootKeys, false)
+	testRotateLifecycleCommon(t, c.sealManager, ns, unsealShares["ns1/"], false)
 }
 
-func testRotateLifecycleCommon(t *testing.T, sm *SealManager, ns *namespace.Namespace, recovery bool) {
+func testRotateLifecycleCommon(t *testing.T, sm *SealManager, ns *namespace.Namespace, unsealKey [][]byte, recovery bool) {
 	barrier := sm.NamespaceBarrier(ns.Path)
 	require.NotNil(t, barrier)
 	min, _ := barrier.KeyLength()
@@ -51,9 +51,9 @@ func testRotateLifecycleCommon(t *testing.T, sm *SealManager, ns *namespace.Name
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
-	rotationResult, err := sm.InitRotation(ctx, ns, newConf, recovery)
+	result, err := sm.InitRotation(ctx, ns, newConf, recovery)
 	require.NoError(t, err)
-	require.Empty(t, rotationResult)
+	require.Empty(t, result)
 
 	conf := sm.RotationConfig(ns.UUID, recovery)
 	newConf.Nonce = conf.Nonce
@@ -61,6 +61,89 @@ func testRotateLifecycleCommon(t *testing.T, sm *SealManager, ns *namespace.Name
 
 	require.NoError(t, sm.CancelRotation(ctx, ns.UUID, recovery))
 	require.Empty(t, sm.RotationConfig(ns.UUID, recovery))
+
+	seal := sm.NamespaceSeal(ns.UUID)
+	require.NotNil(t, seal)
+	var prevSealConf *SealConfig
+	if recovery {
+		prevSealConf, err = seal.RecoveryConfig(ctx)
+	} else {
+		prevSealConf, err = seal.BarrierConfig(ctx)
+	}
+	require.NoError(t, err)
+	require.NotNil(t, prevSealConf)
+
+	newConf = &SealConfig{
+		Type:                 "shamir",
+		SecretThreshold:      3,
+		SecretShares:         5,
+		VerificationRequired: true,
+	}
+	result, err = sm.InitRotation(ctx, ns, newConf, recovery)
+	require.NoError(t, err)
+	require.Empty(t, result)
+
+	conf = sm.RotationConfig(ns.UUID, recovery)
+	newConf.Nonce = conf.Nonce
+	require.Equal(t, conf, newConf)
+
+	for _, share := range unsealKey {
+		result, err = sm.UpdateRotation(ctx, ns, share, newConf.Nonce, recovery)
+		require.NoError(t, err)
+		if result != nil {
+			break
+		}
+	}
+	require.NotNil(t, result)
+	require.NotNil(t, sm.RotationConfig(ns.UUID, recovery))
+
+	var sealConf *SealConfig
+	if recovery {
+		sealConf, err = seal.RecoveryConfig(ctx)
+	} else {
+		sealConf, err = seal.BarrierConfig(ctx)
+	}
+	require.NoError(t, err)
+	// Config rotation has been delayed due to verification.
+	require.NotNil(t, sealConf)
+	require.Equal(t, prevSealConf, sealConf)
+
+	for i, share := range result.SecretShares {
+		verifyRes, err := sm.VerifyRotation(ctx, ns, share, result.VerificationNonce, recovery)
+		require.NoError(t, err)
+
+		// Test the duplicate key share provision.
+		if i == 0 {
+			verifyRes, err = sm.VerifyRotation(ctx, ns, share, result.VerificationNonce, recovery)
+			require.ErrorContains(t, err, "given key has already been provided during this verify operation")
+			require.Nil(t, verifyRes)
+			conf = sm.RotationConfig(ns.UUID, recovery)
+			require.Len(t, conf.VerificationProgress, 1)
+			require.Equal(t, result.VerificationNonce, conf.VerificationNonce)
+		}
+
+		if i+1 == conf.SecretThreshold {
+			require.NotEmpty(t, verifyRes)
+			require.True(t, verifyRes.Complete)
+			if verifyRes.Complete {
+				break
+			}
+		}
+		require.Nil(t, verifyRes)
+	}
+
+	require.Empty(t, sm.RotationConfig(ns.UUID, recovery))
+
+	if recovery {
+		sealConf, err = seal.RecoveryConfig(ctx)
+	} else {
+		sealConf, err = seal.BarrierConfig(ctx)
+	}
+	require.NoError(t, err)
+	require.NotNil(t, sealConf)
+	newConf.VerificationNonce = result.VerificationNonce
+	newConf.Nonce = ""
+	require.Equal(t, newConf, sealConf)
 }
 
 func TestInitRotation(t *testing.T) {

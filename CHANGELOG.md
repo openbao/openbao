@@ -1,3 +1,14 @@
+## 2.6.6
+## November 19, 2026
+
+SECURITY:
+
+* core/auth: Entity and group aliases of newly created auth mounts are now case-sensitive by default. GHSA-fgmw-h9wp-wc7g. [[GH-4550](https://github.com/openbao/openbao/pull/4550)]
+* core/auth: Alias case-sensitivity can now be configured per auth mount via `case_sensitive_alias`. [[GH-4550](https://github.com/openbao/openbao/pull/4550)]
+* core/listeners: Correctly handle forwarded client cert headers on the active node when a request was forwarded from a standby. GHSA-h8fh-pmch-cjww. [[GH-4550](https://github.com/openbao/openbao/pull/4550)]
+* core/listeners: Ensure `disable_unauthed_rekey_endpoints` and `disable_unauthed_generate_root_endpoints` are enforced before forwarding a request to the active node. GHSA-h8fh-pmch-cjww. [[GH-4550](https://github.com/openbao/openbao/pull/4550)]
+* core/listeners: Ensure `max_request_size`, `max_request_json_memory`, `max_request_json_strings` and `max_request_duration` continue to be enforced at the configured limit after forwarding a request to the active node. GHSA-h8fh-pmch-cjww. [[GH-4550](https://github.com/openbao/openbao/pull/4550)]
+
 ## 2.6.5
 ## October 26, 2026
 

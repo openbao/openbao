@@ -1288,12 +1288,6 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 
 	maps.Copy(logicalBackends, backends)
 
-	// KV
-	_, ok := logicalBackends[routing.MountTypeKV]
-	if !ok {
-		logicalBackends[routing.MountTypeKV] = PassthroughBackendFactory
-	}
-
 	// Cubbyhole
 	logicalBackends[routing.MountTypeCubbyhole] = CubbyholeBackendFactory
 	logicalBackends[routing.MountTypeNSCubbyhole] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {

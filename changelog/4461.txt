@@ -1,0 +1,3 @@
+```release-note:bug
+core/plugins: Allow using custom, external versions of the `kv` and `database` plugins.
+```

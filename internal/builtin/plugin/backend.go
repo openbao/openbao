@@ -20,15 +20,20 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	if err != nil {
 		return nil, err
 	}
-	if err := b.Setup(ctx, conf); err != nil {
-		return nil, err
+	if isExternal(b) {
+		// Built-in plugins immediately call Setup as part of their individual
+		// Factory, external plugins call both Factory and Setup on the server
+		// by calling Setup on the client.
+		if err := b.Setup(ctx, conf); err != nil {
+			return nil, err
+		}
 	}
 	return b, nil
 }
 
 // Backend returns an instance of the backend, either as a plugin if external
 // or as a concrete implementation if builtin, casted as logical.Backend.
-func Backend(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
+func Backend(ctx context.Context, conf *logical.BackendConfig) (*backend, error) {
 	var b backend
 	name := conf.Config["plugin_name"]
 	pluginType, err := consts.ParsePluginType(conf.Config["plugin_type"])
@@ -80,9 +85,13 @@ func (b *backend) reloadBackend(ctx context.Context, storage logical.Storage) er
 	if err != nil {
 		return err
 	}
-	err = nb.Setup(ctx, b.config)
-	if err != nil {
-		return err
+	if isExternal(nb) {
+		// Built-in plugins immediately call Setup as part of Factory, external
+		// plugins call both Factory and Setup on the server by calling Setup on
+		// the client.
+		if err := nb.Setup(ctx, b.config); err != nil {
+			return err
+		}
 	}
 	b.Backend = nb
 
@@ -171,10 +180,12 @@ func (b *backend) InvalidateKey(ctx context.Context, key string) {
 	b.Backend.InvalidateKey(ctx, key)
 }
 
-func (b *backend) IsExternal() bool {
-	switch b.Backend.(type) {
+func isExternal(b logical.Backend) bool {
+	switch b := b.(type) {
 	case *plugin.BackendPluginClientV5:
 		return true
+	case *backend:
+		return isExternal(b.Backend)
 	}
 	return false
 }

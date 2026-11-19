@@ -346,6 +346,7 @@ func TestPredict_Plugins(t *testing.T) {
 				"approle",
 				"cassandra-database-plugin",
 				"cert",
+				"database",
 				"influxdb-database-plugin",
 				"jwt",
 				"kubernetes",

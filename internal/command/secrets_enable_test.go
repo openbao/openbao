@@ -16,10 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// logicalBackendAdjustmentFactor is set to plus 1 for the database backend
-// which is a plugin but not found in go.mod files.
-var logicalBackendAdjustmentFactor = 1
-
 func testSecretsEnableCommand(tb testing.TB) (*cli.MockUi, *SecretsEnableCommand) {
 	tb.Helper()
 
@@ -234,8 +230,8 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 
 		// backends are found by walking the directory, which includes the database backend,
 		// however, the plugins registry omits that one
-		if len(backends) != len(builtinplugins.Registry.Keys(consts.PluginTypeSecrets))+logicalBackendAdjustmentFactor {
-			t.Fatalf("expected %d logical backends, got %d\n\texpected: %#v\n\tbackends: %v", len(builtinplugins.Registry.Keys(consts.PluginTypeSecrets))+logicalBackendAdjustmentFactor, len(backends), builtinplugins.Registry.Keys(consts.PluginTypeSecrets), backends)
+		if len(backends) != len(builtinplugins.Registry.Keys(consts.PluginTypeSecrets)) {
+			t.Fatalf("expected %d logical backends, got %d\n\texpected: %#v\n\tbackends: %v", len(builtinplugins.Registry.Keys(consts.PluginTypeSecrets)), len(backends), builtinplugins.Registry.Keys(consts.PluginTypeSecrets), backends)
 		}
 
 		for _, b := range backends {

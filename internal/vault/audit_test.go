@@ -105,8 +105,9 @@ func TestCore_EnableAudit(t *testing.T) {
 	}
 
 	conf := &CoreConfig{
-		Physical:      c.physical,
-		AuditBackends: make(map[string]audit.Factory),
+		Physical:        c.physical,
+		AuditBackends:   make(map[string]audit.Factory),
+		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
 	}
 	conf.AuditBackends["noop"] = corehelpers.NoopAuditFactory(nil)
 	c2, err := NewCore(conf)
@@ -300,7 +301,8 @@ func TestCore_DisableAudit(t *testing.T) {
 	}
 
 	conf := &CoreConfig{
-		Physical: c.physical,
+		Physical:        c.physical,
+		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
 	}
 	c2, err := NewCore(conf)
 	require.NoError(t, err)
@@ -330,7 +332,8 @@ func TestCore_DefaultAuditTable(t *testing.T) {
 
 	// Start a second core with same physical
 	conf := &CoreConfig{
-		Physical: c.physical,
+		Physical:        c.physical,
+		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
 	}
 	c2, err := NewCore(conf)
 	require.NoError(t, err)

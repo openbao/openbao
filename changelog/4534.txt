@@ -1,0 +1,3 @@
+```release-note:bug
+storage/raft: Ensure snapshot restore yields a redirect to the active node when attempting to restore on a read-enabled standby node.
+```

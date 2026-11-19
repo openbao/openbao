@@ -590,4 +590,9 @@ path "sys/control-group/request"   { capabilities = ["update"] }
 	if secretResponse.Data["foo"] != "baz" {
 		t.Fatal("secret did not update")
 	}
+
+	// Make sure the token is single-use.
+	client.SetToken(wrapInfo.Token)
+	_, err = client.Logical().Write("sys/wrapping/unwrap", nil)
+	require.Error(t, err)
 }

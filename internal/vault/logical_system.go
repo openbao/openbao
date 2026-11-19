@@ -3401,12 +3401,20 @@ func (b *SystemBackend) responseWrappingUnwrap(ctx context.Context, te *logical.
 	tokenID := te.ID
 	if thirdParty {
 		// Use the token to decrement the use count to avoid a second operation on the token.
-		_, err := b.Core.tokenStore.UseTokenByID(ctx, tokenID)
+		_, err := b.Core.tokenStore.UseToken(ctx, te)
 		if err != nil {
 			return "", fmt.Errorf("error decrementing wrapping token's use-count: %w", err)
 		}
 
-		defer b.Core.tokenStore.revokeOrphan(ctx, tokenID)
+		defer func() {
+			leaseID, err := b.Core.expiration.CreateOrFetchRevocationLeaseByToken(ctx, te)
+			if err == nil {
+				err = b.Core.expiration.LazyRevoke(ctx, leaseID)
+			}
+			if err != nil {
+				b.Core.logger.Error("error revoking wrapping token", "error", err)
+			}
+		}()
 	}
 
 	cubbyReq := &logical.Request{

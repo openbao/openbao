@@ -13,6 +13,16 @@ import TabItem from "@theme/TabItem";
 This guide shows how a GitLab job can read secrets from OpenBao without storing
 a long-lived OpenBao token in GitLab.
 
+:::info[GitLab's native Vault integration]
+GitLab Premium and Ultimate also support the `secrets:vault` keyword. It uses an
+ID token to authenticate with HashiCorp Vault and fetch secrets directly into a
+CI job.
+
+This guide does not cover this integration. See the
+[GitLab documentation](https://docs.gitlab.com/ci/secrets/hashicorp_vault/) for
+more details.
+:::
+
 ## How it works
 
 GitLab and OpenBao use two different tokens during this process:
@@ -298,16 +308,6 @@ The `aud` value must match `bound_audiences` in the role.
 Both jobs revoke the token right after reading the secret. Otherwise, the token
 stays valid until its 5-minute TTL ends. It is good practice to revoke
 short-lived tokens as soon as they are no longer needed.
-:::
-
-:::info[GitLab's native Vault integration]
-GitLab Premium and Ultimate also support the `secrets:vault` keyword. It uses an
-ID token to authenticate with HashiCorp Vault and fetch secrets directly into a
-CI job.
-
-This guide does not cover this integration. See the
-[GitLab documentation](https://docs.gitlab.com/ci/secrets/hashicorp_vault/) for
-more details.
 :::
 
 ## Step 5: Testing

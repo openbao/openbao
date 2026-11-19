@@ -122,6 +122,8 @@ const (
 	// flagNameLogLevel is used to specify the log level applied to logging
 	// Supported log levels: Trace, Debug, Error, Warn, Info
 	flagNameLogLevel = "log-level"
+	// flagNameUseHMACSHA256 is used to specify whether client tokens are salted using HMAC-SHA256.
+	flagNameUseHMACSHA256 = "use-hmac-sha256"
 )
 
 var (

@@ -301,6 +301,7 @@ type MountConfigInput struct {
 	AllowedManagedKeys        []string                `json:"allowed_managed_keys,omitempty" mapstructure:"allowed_managed_keys"`
 	PluginVersion             string                  `json:"plugin_version,omitempty"`
 	UserLockoutConfig         *UserLockoutConfigInput `json:"user_lockout_config,omitempty"`
+	UseHMACSHA256             *bool                   `json:"use_hmac_sha256,omitempty" mapstructure:"use_hmac_sha256"`
 }
 
 type MountOutput struct {
@@ -331,6 +332,7 @@ type MountConfigOutput struct {
 	TokenType                 string                   `json:"token_type,omitempty" mapstructure:"token_type"`
 	AllowedManagedKeys        []string                 `json:"allowed_managed_keys,omitempty" mapstructure:"allowed_managed_keys"`
 	UserLockoutConfig         *UserLockoutConfigOutput `json:"user_lockout_config,omitempty"`
+	UseHMACSHA256             bool                     `json:"use_hmac_sha256" mapstructure:"use_hmac_sha256"`
 }
 
 type UserLockoutConfigInput struct {

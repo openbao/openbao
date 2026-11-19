@@ -939,6 +939,9 @@ func (b *SystemBackend) mountInfo(ctx context.Context, entry *routing.MountEntry
 	if rawVal, ok := entry.SynthesizedConfigCache.Load("allowed_response_headers"); ok {
 		entryConfig["allowed_response_headers"] = rawVal.([]string)
 	}
+	if rawVal, ok := entry.SynthesizedConfigCache.Load("use_hmac_sha256"); ok {
+		entryConfig["use_hmac_sha256"] = rawVal.(bool)
+	}
 	if entry.Table == routing.CredentialTableType {
 		entryConfig["token_type"] = entry.Config.TokenType.String()
 	}
@@ -1009,6 +1012,8 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 	var config routing.MountConfig
 	var apiConfig routing.APIMountConfig
 
+	config.UseHMACSHA256 = true
+
 	configMap := data.Get("config").(map[string]any)
 	// Augmenting configMap for some config options to treat them as comma separated entries
 	err := expandStringValsWithCommas(configMap)
@@ -1026,6 +1031,10 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 				),
 				logical.ErrInvalidRequest
 		}
+	}
+
+	if apiConfig.UseHMACSHA256 != nil && !*apiConfig.UseHMACSHA256 {
+		return logical.ErrorResponse("use_hmac_sha256 cannot be false for new mounts"), logical.ErrInvalidRequest
 	}
 
 	switch apiConfig.DefaultLeaseTTL {
@@ -1532,6 +1541,9 @@ func (b *SystemBackend) handleTuneReadCommon(ctx context.Context, path string) (
 	if rawVal, ok := mountEntry.SynthesizedConfigCache.Load("allowed_response_headers"); ok {
 		resp.Data["allowed_response_headers"] = rawVal.([]string)
 	}
+	if rawVal, ok := mountEntry.SynthesizedConfigCache.Load("use_hmac_sha256"); ok {
+		resp.Data["use_hmac_sha256"] = rawVal.(bool)
+	}
 
 	if mountEntry.Config.UserLockoutConfig != nil {
 		resp.Data["user_lockout_counter_reset_duration"] = int64(mountEntry.Config.UserLockoutConfig.LockoutCounterReset.Seconds())
@@ -1831,6 +1843,22 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 
 	if rawVal, ok := data.GetOk("allowed_response_headers"); ok {
 		defer rollback(&mountEntry.Config.AllowedResponseHeaders, rawVal.([]string), &success)()
+	}
+
+	if rawVal, ok := data.GetOk("use_hmac_sha256"); ok {
+		enabled := rawVal.(bool)
+
+		if enabled && (mountEntry.Type == routing.MountTypeToken || mountEntry.Type == routing.MountTypeNSToken) {
+			return logical.ErrorResponse(
+				"use_hmac_sha256 cannot be set for token or ns_token auth mounts",
+			), logical.ErrInvalidRequest
+		}
+
+		if mountEntry.Config.UseHMACSHA256 && !enabled {
+			return logical.ErrorResponse("use_hmac_sha256 cannot be disabled once enabled"), logical.ErrInvalidRequest
+		}
+
+		defer rollback(&mountEntry.Config.UseHMACSHA256, enabled, &success)()
 	}
 
 	var kvUpgrade bool
@@ -2235,6 +2263,8 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	var config routing.MountConfig
 	var apiConfig routing.APIMountConfig
 
+	config.UseHMACSHA256 = true
+
 	configMap := data.Get("config").(map[string]any)
 	// Augmenting configMap for some config options to treat them as comma separated entries
 	err := expandStringValsWithCommas(configMap)
@@ -2252,6 +2282,10 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 				),
 				logical.ErrInvalidRequest
 		}
+	}
+
+	if apiConfig.UseHMACSHA256 != nil && !*apiConfig.UseHMACSHA256 {
+		return logical.ErrorResponse("use_hmac_sha256 cannot be false for new mounts"), logical.ErrInvalidRequest
 	}
 
 	switch apiConfig.DefaultLeaseTTL {
@@ -5583,6 +5617,10 @@ This path responds to the following HTTP methods.
 	},
 	"listing_visibility": {
 		"Determines the visibility of the mount in the UI-specific listing endpoint. Accepted value are 'unauth' and 'hidden', with the empty default ('') behaving like 'hidden'.",
+		"",
+	},
+	"use_hmac_sha256": {
+		"Use HMAC-SHA256 for client token hashing. Once enabled, this cannot be disabled.",
 		"",
 	},
 	"passthrough_request_headers": {

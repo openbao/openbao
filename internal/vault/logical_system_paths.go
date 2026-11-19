@@ -3283,6 +3283,10 @@ func (b *SystemBackend) authPaths() []*framework.Path {
 					Type:        framework.TypeString,
 					Description: strings.TrimSpace(sysHelp["plugin-catalog_version"][0]),
 				},
+				"use_hmac_sha256": {
+					Type:        framework.TypeBool,
+					Description: strings.TrimSpace(sysHelp["use_hmac_sha256"][0]),
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
@@ -3339,6 +3343,10 @@ func (b *SystemBackend) authPaths() []*framework.Path {
 								},
 								"allowed_response_headers": {
 									Type:     framework.TypeCommaStringSlice,
+									Required: false,
+								},
+								"use_hmac_sha256": {
+									Type:     framework.TypeBool,
 									Required: false,
 								},
 								"user_lockout_counter_reset_duration": {
@@ -4374,6 +4382,10 @@ func (b *SystemBackend) mountPaths() []*framework.Path {
 					Type:        framework.TypeMap,
 					Description: strings.TrimSpace(sysHelp["tune_user_lockout_config"][0]),
 				},
+				"use_hmac_sha256": {
+					Type:        framework.TypeBool,
+					Description: strings.TrimSpace(sysHelp["use_hmac_sha256"][0]),
+				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -4414,6 +4426,11 @@ func (b *SystemBackend) mountPaths() []*framework.Path {
 								"allowed_response_headers": {
 									Type:        framework.TypeCommaStringSlice,
 									Description: strings.TrimSpace(sysHelp["allowed_response_headers"][0]),
+									Required:    false,
+								},
+								"use_hmac_sha256": {
+									Type:        framework.TypeBool,
+									Description: strings.TrimSpace(sysHelp["use_hmac_sha256"][0]),
 									Required:    false,
 								},
 								"options": {

@@ -224,6 +224,7 @@ func TestSystemBackend_mounts(t *testing.T) {
 				"default_lease_ttl": resp.Data["secret/"].(map[string]any)["config"].(map[string]any)["default_lease_ttl"].(int64),
 				"max_lease_ttl":     resp.Data["secret/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 				"force_no_cache":    false,
+				"use_hmac_sha256":   true,
 			},
 			"local":     false,
 			"seal_wrap": false,
@@ -246,6 +247,7 @@ func TestSystemBackend_mounts(t *testing.T) {
 				"max_lease_ttl":               resp.Data["sys/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 				"force_no_cache":              false,
 				"passthrough_request_headers": []string{"Accept"},
+				"use_hmac_sha256":             false,
 			},
 			"local":                  false,
 			"seal_wrap":              true,
@@ -264,6 +266,7 @@ func TestSystemBackend_mounts(t *testing.T) {
 				"default_lease_ttl": resp.Data["cubbyhole/"].(map[string]any)["config"].(map[string]any)["default_lease_ttl"].(int64),
 				"max_lease_ttl":     resp.Data["cubbyhole/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 				"force_no_cache":    false,
+				"use_hmac_sha256":   false,
 			},
 			"local":                  true,
 			"seal_wrap":              false,
@@ -283,6 +286,7 @@ func TestSystemBackend_mounts(t *testing.T) {
 				"max_lease_ttl":               resp.Data["identity/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 				"force_no_cache":              false,
 				"passthrough_request_headers": []string{"Authorization"},
+				"use_hmac_sha256":             false,
 			},
 			"local":                  false,
 			"seal_wrap":              false,
@@ -357,6 +361,7 @@ func TestSystemBackend_mount(t *testing.T) {
 				"default_lease_ttl": resp.Data["secret/"].(map[string]any)["config"].(map[string]any)["default_lease_ttl"].(int64),
 				"max_lease_ttl":     resp.Data["secret/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 				"force_no_cache":    false,
+				"use_hmac_sha256":   true,
 			},
 			"local":     false,
 			"seal_wrap": false,
@@ -379,6 +384,7 @@ func TestSystemBackend_mount(t *testing.T) {
 				"max_lease_ttl":               resp.Data["sys/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 				"force_no_cache":              false,
 				"passthrough_request_headers": []string{"Accept"},
+				"use_hmac_sha256":             false,
 			},
 			"local":                  false,
 			"seal_wrap":              true,
@@ -397,6 +403,7 @@ func TestSystemBackend_mount(t *testing.T) {
 				"default_lease_ttl": resp.Data["cubbyhole/"].(map[string]any)["config"].(map[string]any)["default_lease_ttl"].(int64),
 				"max_lease_ttl":     resp.Data["cubbyhole/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 				"force_no_cache":    false,
+				"use_hmac_sha256":   false,
 			},
 			"local":                  true,
 			"seal_wrap":              false,
@@ -416,6 +423,7 @@ func TestSystemBackend_mount(t *testing.T) {
 				"max_lease_ttl":               resp.Data["identity/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 				"force_no_cache":              false,
 				"passthrough_request_headers": []string{"Authorization"},
+				"use_hmac_sha256":             false,
 			},
 			"local":                  false,
 			"seal_wrap":              false,
@@ -434,6 +442,7 @@ func TestSystemBackend_mount(t *testing.T) {
 				"default_lease_ttl": int64(2100),
 				"max_lease_ttl":     int64(2700),
 				"force_no_cache":    false,
+				"use_hmac_sha256":   true,
 			},
 			"local":     true,
 			"seal_wrap": true,
@@ -1864,6 +1873,7 @@ func TestSystemBackend_authTable(t *testing.T) {
 				"max_lease_ttl":     int64(0),
 				"force_no_cache":    false,
 				"token_type":        "default-service",
+				"use_hmac_sha256":   false,
 			},
 			"local":                  false,
 			"seal_wrap":              false,
@@ -1944,6 +1954,7 @@ func TestSystemBackend_enableAuth(t *testing.T) {
 				"max_lease_ttl":     int64(2700),
 				"force_no_cache":    false,
 				"token_type":        "default-service",
+				"use_hmac_sha256":   true,
 			},
 			"local":                  true,
 			"seal_wrap":              true,
@@ -1963,6 +1974,7 @@ func TestSystemBackend_enableAuth(t *testing.T) {
 				"max_lease_ttl":     int64(0),
 				"force_no_cache":    false,
 				"token_type":        "default-service",
+				"use_hmac_sha256":   false,
 			},
 			"local":                  false,
 			"seal_wrap":              false,
@@ -2042,6 +2054,7 @@ func TestSystemBackend_tuneAuth(t *testing.T) {
 		"max_lease_ttl":     int(2764800),
 		"force_no_cache":    false,
 		"token_type":        "default-service",
+		"use_hmac_sha256":   false,
 	}
 
 	if diff := deep.Equal(resp.Data, exp); diff != nil {
@@ -3940,6 +3953,7 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 					"default_lease_ttl": resp.Data["secret"].(map[string]any)["secret/"].(map[string]any)["config"].(map[string]any)["default_lease_ttl"].(int64),
 					"max_lease_ttl":     resp.Data["secret"].(map[string]any)["secret/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 					"force_no_cache":    false,
+					"use_hmac_sha256":   true,
 				},
 				"local":     false,
 				"seal_wrap": false,
@@ -3962,6 +3976,7 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 					"max_lease_ttl":               resp.Data["secret"].(map[string]any)["sys/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 					"force_no_cache":              false,
 					"passthrough_request_headers": []string{"Accept"},
+					"use_hmac_sha256":             false,
 				},
 				"local":                  false,
 				"seal_wrap":              true,
@@ -3980,6 +3995,7 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 					"default_lease_ttl": resp.Data["secret"].(map[string]any)["cubbyhole/"].(map[string]any)["config"].(map[string]any)["default_lease_ttl"].(int64),
 					"max_lease_ttl":     resp.Data["secret"].(map[string]any)["cubbyhole/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 					"force_no_cache":    false,
+					"use_hmac_sha256":   false,
 				},
 				"local":                  true,
 				"seal_wrap":              false,
@@ -3999,6 +4015,7 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 					"max_lease_ttl":               resp.Data["secret"].(map[string]any)["identity/"].(map[string]any)["config"].(map[string]any)["max_lease_ttl"].(int64),
 					"force_no_cache":              false,
 					"passthrough_request_headers": []string{"Authorization"},
+					"use_hmac_sha256":             false,
 				},
 				"local":                  false,
 				"seal_wrap":              false,
@@ -4016,6 +4033,7 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 					"max_lease_ttl":     int64(0),
 					"force_no_cache":    false,
 					"token_type":        "default-service",
+					"use_hmac_sha256":   false,
 				},
 				"type":                    "token",
 				"external_entropy_access": false,
@@ -6135,4 +6153,154 @@ func TestPolicyStore_Store(t *testing.T) {
 		require.NoError(t, err)
 		require.Nil(t, resp)
 	})
+}
+
+func TestSystemBackend_tuneHMACSHA256(t *testing.T) {
+	disabled, enabled := false, true
+
+	tests := []struct {
+		name         string
+		initialValue bool
+		inputValue   *bool
+		expValue     bool
+	}{
+		{
+			name:         "omitted preserves false",
+			initialValue: false,
+			expValue:     false,
+		},
+		{
+			name:         "enable HMAC",
+			initialValue: false,
+			inputValue:   &enabled,
+			expValue:     true,
+		},
+		{
+			name:         "omitted preserves true",
+			initialValue: true,
+			expValue:     true,
+		},
+		{
+			name:         "true remains true",
+			initialValue: true,
+			inputValue:   &enabled,
+			expValue:     true,
+		},
+		{
+			name:         "reject disabling HMAC",
+			initialValue: true,
+			inputValue:   &disabled,
+			expValue:     true,
+		},
+	}
+
+	for _, mountCase := range []struct {
+		table       string
+		backendType string
+	}{
+		{table: routing.MountTableType, backendType: routing.MountTypeKV},
+		{table: routing.CredentialTableType, backendType: "noop"},
+	} {
+		t.Run(mountCase.table, func(t *testing.T) {
+			for _, tc := range tests {
+				t.Run(tc.name, func(t *testing.T) {
+					c, b, _ := testCoreSystemBackend(t)
+					ctx := namespace.RootContext(t.Context())
+
+					c.credentialBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
+						return &be.Noop{BackendType: logical.TypeCredential}, nil
+					}
+
+					entry := &routing.MountEntry{
+						Table:  mountCase.table,
+						Path:   "foo/",
+						Type:   mountCase.backendType,
+						Config: routing.MountConfig{UseHMACSHA256: tc.initialValue},
+					}
+
+					if mountCase.table == routing.MountTableType {
+						require.NoError(t, c.mount(ctx, entry))
+					} else {
+						require.NoError(t, c.enableCredential(ctx, entry))
+					}
+
+					tunePath := mountCase.table + "/" + entry.Path + "tune"
+
+					checkUseHMACSHA256Value := func(expValue bool) {
+						t.Helper()
+
+						req := logical.TestRequest(t, logical.ReadOperation, tunePath)
+						resp, err := b.HandleRequest(ctx, req)
+						require.NoError(t, err)
+						require.NotNil(t, resp)
+						require.False(t, resp.IsError())
+						require.Contains(t, resp.Data, "use_hmac_sha256")
+						require.Equal(t, expValue, resp.Data["use_hmac_sha256"])
+					}
+
+					checkUseHMACSHA256Value(tc.initialValue)
+
+					req := logical.TestRequest(t, logical.UpdateOperation, tunePath)
+					req.Data["description"] = "HMAC tune test description"
+					if tc.inputValue != nil {
+						req.Data["use_hmac_sha256"] = *tc.inputValue
+					}
+
+					resp, err := b.HandleRequest(ctx, req)
+
+					if tc.inputValue != nil && !*tc.inputValue {
+						require.ErrorIs(t, err, logical.ErrInvalidRequest)
+						require.NotNil(t, resp)
+						require.True(t, resp.IsError())
+					} else {
+						require.NoError(t, err)
+						if resp != nil {
+							require.False(t, resp.IsError())
+						}
+					}
+
+					checkUseHMACSHA256Value(tc.expValue)
+				})
+			}
+		})
+	}
+}
+
+func TestSystemBackend_tuneHMACSHA256ProtectedMounts(t *testing.T) {
+	for _, mount := range []string{
+		routing.MountPathSystem,
+		routing.MountPathIdentity,
+		routing.MountPathCubbyhole,
+	} {
+		t.Run(strings.TrimSuffix(mount, "/"), func(t *testing.T) {
+			_, b, _ := testCoreSystemBackend(t)
+			ctx := namespace.RootContext(t.Context())
+
+			path := "mounts/" + mount + "tune"
+
+			checkUseHMACSHA256Disabled := func() {
+				t.Helper()
+
+				req := logical.TestRequest(t, logical.ReadOperation, path)
+				resp, err := b.HandleRequest(ctx, req)
+				require.NoError(t, err)
+				require.NotNil(t, resp)
+				require.False(t, resp.IsError())
+				require.Contains(t, resp.Data, "use_hmac_sha256")
+				require.Equal(t, false, resp.Data["use_hmac_sha256"])
+			}
+
+			checkUseHMACSHA256Disabled()
+
+			req := logical.TestRequest(t, logical.UpdateOperation, path)
+			req.Data["use_hmac_sha256"] = true
+
+			resp, err := b.HandleRequest(ctx, req)
+			require.Error(t, err)
+			require.NotNil(t, resp)
+			require.True(t, resp.IsError())
+
+			checkUseHMACSHA256Disabled()
+		})
+	}
 }

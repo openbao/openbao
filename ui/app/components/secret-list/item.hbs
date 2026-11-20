@@ -21,7 +21,11 @@
         {{else}}
           <Icon @name={{if @item.isFolder "folder" (or @item.icon "file")}} class="has-text-grey-light" />
         {{/if}}
-        <span class="is-underline">{{if (eq @item.id " ") "(self)" (if @showFullPath @item.id (or @item.keyWithoutParent @item.id))}}</span>
+        <span class="is-underline">{{if
+            (eq @item.id " ")
+            "(self)"
+            (if @showFullPath @item.id (or @item.keyWithoutParent @item.id))
+          }}</span>
       </SecretLink>
     </div>
     <div class="column has-text-right">

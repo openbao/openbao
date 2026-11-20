@@ -287,9 +287,6 @@ func (c *OperatorGenerateRootCommand) generateOTP(client *api.Client, kind gener
 
 // decode decodes the given value using the otp.
 func (c *OperatorGenerateRootCommand) decode(client *api.Client, encoded, otp string, kind generateRootKind) int {
-	encoded = strings.TrimSpace(encoded)
-	otp = strings.TrimSpace(otp)
-
 	if encoded == "" {
 		c.UI.Error("Missing encoded value: use -decode=<string> to supply it")
 		return 1
@@ -315,7 +312,7 @@ func (c *OperatorGenerateRootCommand) decode(client *api.Client, encoded, otp st
 			return 1
 		}
 
-		encoded = strings.TrimSpace(buf.String())
+		encoded = buf.String()
 
 		if encoded == "" {
 			c.UI.Error("Missing encoded value. When using -decode=\"-\" value must be passed via stdin.")

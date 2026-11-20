@@ -277,7 +277,7 @@ func TestOperatorGenerateRootCommand_Run(t *testing.T) {
 			t.Errorf("expected %d to be %d", code, exp)
 		}
 
-		w.Close()
+		require.NoError(t, w.Close())
 		os.Stdout = old
 
 		expected := "4RUmoevJ3lsLni9sTXcNnRE1"
@@ -320,7 +320,7 @@ func TestOperatorGenerateRootCommand_Run(t *testing.T) {
 	t.Run("decode_unauthenticated_from_stdin", func(t *testing.T) {
 		t.Parallel()
 
-		encoded := "Bxg9JQQqOCNKBRICNwMIRzo2J3cWCBRi\n"
+		encoded := "Bxg9JQQqOCNKBRICNwMIRzo2J3cWCBRi"
 		otp := "3JhHkONiyiaNYj14nnD9xZQS"
 
 		client, closer := testVaultServer(t)
@@ -330,8 +330,12 @@ func TestOperatorGenerateRootCommand_Run(t *testing.T) {
 
 		stdinR, stdinW := io.Pipe()
 		go func() {
-			stdinW.Write([]byte(encoded))
-			stdinW.Close()
+			if _, err := stdinW.Write([]byte(encoded)); err != nil {
+				t.Logf("failed to write to pipe: %v", err)
+			}
+			if err := stdinW.Close(); err != nil {
+				t.Logf("failed to close pipe: %v", err)
+			}
 		}()
 
 		ui, cmd := testOperatorGenerateRootCommand(t)
@@ -351,7 +355,7 @@ func TestOperatorGenerateRootCommand_Run(t *testing.T) {
 			t.Errorf("expected %d to be %d", code, exp)
 		}
 
-		w.Close()
+		require.NoError(t, w.Close())
 		os.Stdout = old
 
 		expected := "4RUmoevJ3lsLni9sTXcNnRE1"

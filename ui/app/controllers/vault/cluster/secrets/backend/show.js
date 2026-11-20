@@ -14,6 +14,7 @@ export default Controller.extend({
   type: '',
   itemType: '',
   reset() {
+    this.set('subkeyView', null);
     this.set('tab', '');
     this.set('version', '');
     this.set('type', '');
@@ -32,7 +33,11 @@ export default Controller.extend({
   }),
 
   actions: {
-    refresh: function () {
+    refresh(options) {
+      if (options?.latest && this.version) {
+        this.set('version', '');
+        return;
+      }
       // closure actions don't bubble to routes,
       // so we have to manually bubble here
       this.send('refreshModel');

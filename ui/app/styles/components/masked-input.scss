@@ -69,7 +69,8 @@
 .display-only {
   .button.masked-input-toggle,
   .button.copy-button,
-  .button.download-button {
+  .button.download-button,
+  .button.secret-key-row-action {
     background: transparent;
     height: auto;
     line-height: 1rem;
@@ -88,6 +89,30 @@
       color: $blue;
       border: 0;
       box-shadow: none;
+    }
+  }
+}
+
+.masked-input.display-only .secret-key-row-actions {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+
+  .button.secret-key-row-action {
+    display: inline-flex;
+    justify-content: center;
+    width: $spacing-l;
+    height: $spacing-l;
+    margin: 0;
+    padding: 0;
+
+    &:focus-visible {
+      outline: 2px solid $blue;
+      outline-offset: 1px;
+    }
+
+    > * {
+      margin: 0;
     }
   }
 }

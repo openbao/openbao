@@ -27,6 +27,7 @@ import { tracked } from '@glimmer/tracking';
  * @param {String} [confirmButtonText=Delete] - The confirm button text.
  * @param {String} [cancelButtonText=Cancel] - The cancel button text.
  * @param {String} [buttonClasses] - A string to indicate the button class.
+ * @param {String} [triggerLabel] - Accessible label and tooltip for a trigger displayed as an icon.
  * @param {String} [horizontalPosition=auto-right] - For the position of the dropdown.
  * @param {String} [verticalPosition=below] - For the position of the dropdown.
  * @param {Boolean} [isRunning=false] - If action is still running disable the confirm.

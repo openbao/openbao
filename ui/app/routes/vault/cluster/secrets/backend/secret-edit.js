@@ -151,19 +151,26 @@ export default Route.extend({
     return secretModel;
   },
 
-  async fetchV2VersionModel(secretModel, version, targetVersion) {
+  v2VersionId(targetVersion) {
     const secret = this.secretParam();
     const backend = this.enginePathParam();
+    return JSON.stringify(targetVersion ? [backend, secret, targetVersion] : [backend, secret]);
+  },
 
-    // v2 versions have a composite ID, we generated one here if we need to manually set it
-    // after a failed fetch later;
-    const versionId = targetVersion ? [backend, secret, targetVersion] : [backend, secret];
+  stubV2VersionModel(targetVersion, attributes = {}) {
+    const id = this.v2VersionId(targetVersion);
+    this.store.push({
+      data: { type: 'secret-v2-version', id, attributes: { version: targetVersion, ...attributes } },
+    });
+    return this.store.peekRecord('secret-v2-version', id);
+  },
 
+  async fetchV2VersionModel(secretModel, version, targetVersion) {
     let versionModel;
     try {
       if (secretModel.failedServerRead) {
         // we couldn't read metadata, so we want to directly fetch the version
-        versionModel = await this.store.findRecord('secret-v2-version', JSON.stringify(versionId), {
+        versionModel = await this.store.findRecord('secret-v2-version', this.v2VersionId(targetVersion), {
           reload: true,
         });
       } else {
@@ -182,16 +189,7 @@ export default Route.extend({
           version.set('failedServerRead', true);
           versionModel = version;
         } else {
-          this.store.push({
-            data: {
-              type: 'secret-v2-version',
-              id: JSON.stringify(versionId),
-              attributes: {
-                failedServerRead: true,
-              },
-            },
-          });
-          versionModel = this.store.peekRecord('secret-v2-version', JSON.stringify(versionId));
+          versionModel = this.stubV2VersionModel(targetVersion, { failedServerRead: true });
         }
       } else {
         throw error;

@@ -29,6 +29,7 @@ import autosize from 'autosize';
  * @param [allowCopy=false] {bool} - Whether or not the input should render with a copy button.
  * @param [allowDownload=false] {bool} - Renders a download button that prompts a confirmation modal to download the secret value
  * @param [displayOnly=false] {bool} - Whether or not to display the value as a display only `pre` element or as an input.
+ * @param [onReveal] {Function} - Optional async callback that loads a display-only value before unmasking it.
  *
  */
 export default class MaskedInputComponent extends Component {
@@ -36,6 +37,8 @@ export default class MaskedInputComponent extends Component {
   @tracked showValue = false;
   @tracked modalOpen = false;
   @tracked stringifyDownload = false;
+  @tracked isRevealing = false;
+  @tracked revealError;
 
   get copyValue() {
     const value = this.args.value;
@@ -70,8 +73,34 @@ export default class MaskedInputComponent extends Component {
     }
   }
 
-  @action toggleMask() {
-    this.showValue = !this.showValue;
+  @action async toggleMask() {
+    if (this.showValue || !this.args.onReveal) {
+      this.showValue = !this.showValue;
+      return;
+    }
+    if (this.isRevealing) {
+      return;
+    }
+
+    this.isRevealing = true;
+    this.revealError = null;
+    try {
+      await this.args.onReveal();
+      if (!this.isDestroying) {
+        this.showValue = true;
+      }
+    } catch (error) {
+      if (!this.isDestroying) {
+        this.revealError =
+          error.httpStatus === 403
+            ? 'You do not have permission to read this secret value.'
+            : 'Could not load this secret value. Try again.';
+      }
+    } finally {
+      if (!this.isDestroying) {
+        this.isRevealing = false;
+      }
+    }
   }
 
   @action toggleStringifyDownload(event) {

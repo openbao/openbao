@@ -1,0 +1,3 @@
+```release-note:improvement
+ui: Show KV v2 subkeys before reading secret values and allow users with patch permissions to update or delete individual subkeys.
+```

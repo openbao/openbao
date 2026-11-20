@@ -4,6 +4,7 @@
 
 import { action } from '@ember/object';
 import { guidFor } from '@ember/object/internals';
+import { waitFor } from '@ember/test-waiters';
 import { inject as service } from '@ember/service';
 import Component from '@glimmer/component';
 import { cached, tracked } from '@glimmer/tracking';
@@ -85,6 +86,7 @@ export default class SecretSubkeys extends Component {
   }
 
   @action
+  @waitFor
   async patch(data, key, value) {
     const { backend, path } = this.args;
     if (!this.isCurrentView(data) || !data.patchVersion || this.isSaving) {

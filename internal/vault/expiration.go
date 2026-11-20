@@ -49,6 +49,9 @@ const (
 	// tokenViewPrefix is the prefix used for the token based lookup of leases.
 	tokenViewPrefix = "token/"
 
+	// leaseIndexKeySeparator is the storage path separator used in index keys.
+	leaseIndexKeySeparator = "/"
+
 	// maxRevokeAttempts limits how many revoke attempts are made
 	maxRevokeAttempts = 6
 
@@ -629,10 +632,10 @@ func (m *ExpirationManager) Tidy(ctx context.Context) error {
 	if ns.ID == namespace.RootNamespaceID {
 		indexView := m.tokenIndexView(ns)
 
-		if err := logical.ScanView(ctx, indexView, func(oldKey string) {
-			migrated, err := m.migrateLeaseIndexKey(ctx, indexView, oldKey)
+		if err := logical.ScanView(ctx, indexView, func(key string) {
+			migrated, err := m.migrateLeaseIndexKey(ctx, indexView, key)
 			if err != nil {
-				tidyErrors = multierror.Append(tidyErrors, fmt.Errorf("failed to migrate lease index %q: %w", oldKey, err))
+				tidyErrors = multierror.Append(tidyErrors, fmt.Errorf("failed to migrate lease index %q: %w", key, err))
 				return
 			}
 
@@ -654,7 +657,7 @@ func (m *ExpirationManager) Tidy(ctx context.Context) error {
 }
 
 func (m *ExpirationManager) migrateLeaseIndexKey(ctx context.Context, view logical.Storage, key string) (bool, error) {
-	tokenHash, leaseHash, ok := strings.Cut(key, "/")
+	tokenHash, leaseHash, ok := strings.Cut(key, leaseIndexKeySeparator)
 	if !ok {
 		return false, errors.New("invalid lease index key")
 	}
@@ -677,7 +680,7 @@ func (m *ExpirationManager) migrateLeaseIndexKey(ctx context.Context, view logic
 			return err
 		}
 
-		legacyEntry.Key = tokenHash + "/" + newHash
+		legacyEntry.Key = leaseIndexKey(tokenHash, newHash)
 		if err := tx.Put(ctx, legacyEntry); err != nil {
 			return err
 		}
@@ -2245,7 +2248,7 @@ func (m *ExpirationManager) createIndexByToken(ctx context.Context, le *leaseEnt
 	}
 
 	ent := logical.StorageEntry{
-		Key:   saltedID + "/" + leaseSaltedID,
+		Key:   leaseIndexKey(saltedID, leaseSaltedID),
 		Value: []byte(le.LeaseID),
 	}
 
@@ -2281,15 +2284,15 @@ func (m *ExpirationManager) indexByToken(ctx context.Context, le *leaseEntry) (*
 		return nil, err
 	}
 
-	newKey := saltedID + "/" + leaseSaltedID
+	newKey := leaseIndexKey(saltedID, leaseSaltedID)
 
 	legacyKey := ""
-	if tokenNS.ID == namespace.RootNamespaceID && !strings.Contains(le.LeaseID, ".") && !fips140.Enforced() {
+	if isLegacyRootID(tokenNS, le.LeaseID) && !fips140.Enforced() {
 		legacyLeaseSaltedID, err := m.tokenStore.SaltID(saltCtx, le.LeaseID)
 		if err != nil {
 			return nil, err
 		}
-		legacyKey = saltedID + "/" + legacyLeaseSaltedID
+		legacyKey = leaseIndexKey(saltedID, legacyLeaseSaltedID)
 	}
 
 	var entry *logical.StorageEntry
@@ -2344,27 +2347,28 @@ func (m *ExpirationManager) removeIndexByToken(ctx context.Context, le *leaseEnt
 		return err
 	}
 
-	keys := []string{saltedID + "/" + leaseSaltedID}
-
-	// Delete legacy SHA-1
-	if tokenNS.ID == namespace.RootNamespaceID && !strings.Contains(le.LeaseID, ".") && !fips140.Enforced() {
+	if isLegacyRootID(tokenNS, le.LeaseID) && !fips140.Enforced() {
 		legacyLeaseSaltedID, err := m.tokenStore.SaltID(saltCtx, le.LeaseID)
 		if err != nil {
 			return err
 		}
 
-		keys = append(keys, saltedID+"/"+legacyLeaseSaltedID)
+		legacyKey := leaseIndexKey(saltedID, legacyLeaseSaltedID)
+		if err := m.tokenIndexView(tokenNS).Delete(ctx, legacyKey); err != nil {
+			return fmt.Errorf("failed to delete legacy lease index entry: %w", err)
+		}
 	}
 
-	return logical.WithTransaction(ctx, m.tokenIndexView(tokenNS), func(tx logical.Storage) error {
-		for _, key := range keys {
-			if err := tx.Delete(ctx, key); err != nil {
-				return fmt.Errorf("failed to delete lease index entry: %w", err)
-			}
-		}
+	hmacKey := leaseIndexKey(saltedID, leaseSaltedID)
+	if err := m.tokenIndexView(tokenNS).Delete(ctx, hmacKey); err != nil {
+		return fmt.Errorf("failed to delete HMAC lease index entry: %w", err)
+	}
 
-		return nil
-	})
+	return nil
+}
+
+func leaseIndexKey(saltedTokenID, saltedLeaseID string) string {
+	return saltedTokenID + leaseIndexKeySeparator + saltedLeaseID
 }
 
 // CreateOrFetchRevocationLeaseByToken is used to create or fetch the matching
@@ -2458,7 +2462,7 @@ func (m *ExpirationManager) lookupLeasesByToken(ctx context.Context, te *logical
 		return nil, err
 	}
 
-	prefix := saltedID + "/"
+	prefix := saltedID + leaseIndexKeySeparator
 	leaseIDs := make([]string, 0)
 
 	readIndex := func(view barrier.View) error {

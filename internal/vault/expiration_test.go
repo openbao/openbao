@@ -637,6 +637,15 @@ func TestExpiration_Tidy(t *testing.T) {
 		t.Fatalf("error persisting entry: %v", err)
 	}
 
+	// Create a legacy SHA-1 lease index entry for Tidy to migrate
+	saltedTokenID, err := exp.tokenStore.SaltID(ctx, root.ID)
+	require.NoError(t, err)
+	saltedLeaseID, err := exp.tokenStore.SaltID(ctx, le.LeaseID)
+	require.NoError(t, err)
+
+	legacyKey := leaseIndexKey(saltedTokenID, saltedLeaseID)
+	require.NoError(t, exp.tokenIndexView(namespace.RootNamespace).Put(ctx, &logical.StorageEntry{Key: legacyKey, Value: []byte(le.LeaseID)}))
+
 	// Run the tidy operation
 	err = exp.Tidy(ctx)
 	require.NoError(t, err)
@@ -650,45 +659,20 @@ func TestExpiration_Tidy(t *testing.T) {
 	if count != 1 {
 		t.Fatalf("bad: lease count; expected:1 actual:%d", count)
 	}
+
+	// Verify the index entry was migrated to HMAC-SHA256 key
+	hmacSaltedLeaseID, err := exp.tokenStore.SaltIDWithHMAC(ctx, le.LeaseID)
+	require.NoError(t, err)
+
+	entry, err := exp.tokenIndexView(namespace.RootNamespace).Get(ctx, legacyKey)
+	require.NoError(t, err)
+	require.Nil(t, entry)
+
+	entry, err = exp.tokenIndexView(namespace.RootNamespace).Get(ctx, leaseIndexKey(saltedTokenID, hmacSaltedLeaseID))
+	require.NoError(t, err)
+	require.NotNil(t, entry)
+	require.Equal(t, le.LeaseID, string(entry.Value))
 }
-
-// To avoid pulling in deps for all users of the package, don't leave these
-// uncommented in the public tree
-/*
-func BenchmarkExpiration_Restore_Etcd(b *testing.B) {
-	addr := os.Getenv("PHYSICAL_BACKEND_BENCHMARK_ADDR")
-	randPath := fmt.Sprintf("vault-%d/", time.Now().Unix())
-
-	logger := logging.NewVaultLogger(log.Trace)
-	physicalBackend, err := physEtcd.NewEtcdBackend(map[string]string{
-		"address":      addr,
-		"path":         randPath,
-		"max_parallel": "256",
-	}, logger)
-	if err != nil {
-		b.Fatalf("err: %s", err)
-	}
-
-	benchmarkExpirationBackend(b, physicalBackend, 10000) // 10,000 leases
-}
-
-func BenchmarkExpiration_Restore_Consul(b *testing.B) {
-	addr := os.Getenv("PHYSICAL_BACKEND_BENCHMARK_ADDR")
-	randPath := fmt.Sprintf("vault-%d/", time.Now().Unix())
-
-	logger := logging.NewVaultLogger(log.Trace)
-	physicalBackend, err := physConsul.NewConsulBackend(map[string]string{
-		"address":      addr,
-		"path":         randPath,
-		"max_parallel": "256",
-	}, logger)
-	if err != nil {
-		b.Fatalf("err: %s", err)
-	}
-
-	benchmarkExpirationBackend(b, physicalBackend, 10000) // 10,000 leases
-}
-*/
 
 func BenchmarkExpiration_Restore_InMem(b *testing.B) {
 	logger := logging.NewVaultLogger(log.Trace)
@@ -896,6 +880,18 @@ func TestExpiration_Register(t *testing.T) {
 	if len(id) <= len(req.Path) {
 		t.Fatalf("bad: %s", id)
 	}
+
+	ctx := namespace.RootContext(t.Context())
+
+	saltedTokenID, err := exp.tokenStore.SaltID(ctx, req.ClientToken)
+	require.NoError(t, err)
+	saltedLeaseID, err := exp.tokenStore.SaltIDWithHMAC(ctx, id)
+	require.NoError(t, err)
+
+	entry, err := exp.tokenIndexView(namespace.RootNamespace).Get(ctx, leaseIndexKey(saltedTokenID, saltedLeaseID))
+	require.NoError(t, err)
+	require.NotNil(t, entry)
+	require.Equal(t, id, string(entry.Value))
 }
 
 func TestExpiration_Register_Role(t *testing.T) {
@@ -2101,6 +2097,10 @@ func TestExpiration_revokeEntry_token(t *testing.T) {
 		t.Fatal("err: should have found a secondary index entry")
 	}
 
+	_, leaseHash, ok := strings.Cut(indexEntry.Key, leaseIndexKeySeparator)
+	require.True(t, ok)
+	require.True(t, strings.HasPrefix(leaseHash, hmacStorageKeyPrefix))
+
 	err = exp.revokeEntry(ctx, le)
 	require.NoError(t, err)
 
@@ -2118,10 +2118,6 @@ func TestExpiration_revokeEntry_token(t *testing.T) {
 	if indexEntry != nil {
 		t.Fatal("should not have found a secondary index entry after revocation")
 	}
-
-	_, leaseHash, ok := strings.Cut(indexEntry.Key, "/")
-	require.True(t, ok)
-	require.True(t, strings.HasPrefix(leaseHash, hmacStorageKeyPrefix))
 
 	out, err := exp.tokenStore.Lookup(ctx, le.ClientToken)
 	require.NoError(t, err)

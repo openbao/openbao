@@ -1126,7 +1126,7 @@ func (ts *TokenStore) SaltID(ctx context.Context, id string) (string, error) {
 
 	// For tokens of older format and belonging to the root namespace, use SHA1
 	// hash for salting.
-	if isLegacyRootAccessor(ns, id) {
+	if isLegacyRootID(ns, id) {
 		return s.SaltID(id), nil
 	}
 
@@ -1136,7 +1136,7 @@ func (ts *TokenStore) SaltID(ctx context.Context, id string) (string, error) {
 	return hmacStorageKeyPrefix + s.GetHMAC(id), nil
 }
 
-func isLegacyRootAccessor(ns *namespace.Namespace, id string) bool {
+func isLegacyRootID(ns *namespace.Namespace, id string) bool {
 	return ns.ID == namespace.RootNamespaceID && !strings.Contains(id, ".")
 }
 
@@ -2192,7 +2192,7 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 		}
 
 		var legacyAccessorSaltedID string
-		if isLegacyRootAccessor(tokenNS, entry.Accessor) && !fips140.Enforced() {
+		if isLegacyRootID(tokenNS, entry.Accessor) && !fips140.Enforced() {
 			legacyAccessorSaltedID, err = ts.SaltID(revokeCtx, entry.Accessor)
 			if err != nil {
 				return err
@@ -2448,7 +2448,7 @@ func (ts *TokenStore) lookupByAccessor(ctx context.Context, id string, salted, t
 	}
 
 	fallbackID := ""
-	if isLegacyRootAccessor(ns, id) && !salted && !fips140.Enforced() {
+	if isLegacyRootID(ns, id) && !salted && !fips140.Enforced() {
 		fallbackID, err = ts.SaltID(ctx, id)
 		if err != nil {
 			return nil, err
@@ -2463,7 +2463,7 @@ func (ts *TokenStore) lookupByAccessor(ctx context.Context, id string, salted, t
 		return nil, err
 	}
 
-	if raw == nil && isLegacyRootAccessor(ns, id) && !salted && fips140.Enforced() {
+	if raw == nil && isLegacyRootID(ns, id) && !salted && fips140.Enforced() {
 		return nil, &logical.StatusBadRequest{
 			Err: "legacy SHA-1 accessor lookup is not allowed in FIPS140-only mode",
 		}

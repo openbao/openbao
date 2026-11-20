@@ -73,7 +73,7 @@ type RouteEntry struct {
 	MountEntry    *MountEntry
 	StorageView   barrier.View
 	StoragePrefix string
-	rootPaths     atomic.Pointer[radix.Tree]
+	sudoPaths     atomic.Pointer[radix.Tree]
 	loginPaths    atomic.Pointer[loginPathsEntry]
 }
 
@@ -148,8 +148,8 @@ func (re *RouteEntry) SaltID(id string) string {
 	return salt.SaltID(re.MountEntry.UUID, id, salt.SHA1Hash)
 }
 
-func (re *RouteEntry) SetRootPaths(tree *radix.Tree) {
-	re.rootPaths.Store(tree)
+func (re *RouteEntry) SetSudoPaths(tree *radix.Tree) {
+	re.sudoPaths.Store(tree)
 }
 
 func (re *RouteEntry) SetLoginPaths(lp *loginPathsEntry) {
@@ -273,7 +273,7 @@ func newRouteEntry(backend logical.Backend, prefix string, mountEntry *MountEntr
 		StoragePrefix: storageView.Prefix(),
 		StorageView:   storageView,
 	}
-	re.rootPaths.Store(PathsToRadix(paths.Root))
+	re.sudoPaths.Store(PathsToRadix(paths.SudoRequired))
 	loginPathsEntry, err := ParseUnauthenticatedPaths(paths.Unauthenticated)
 	if err != nil {
 		return nil, err
@@ -1033,8 +1033,8 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 	}
 }
 
-// RootPath checks if the given path requires root privileges
-func (r *Router) RootPath(ctx context.Context, path string) bool {
+// SudoPath checks if the given path requires the sudo capability.
+func (r *Router) SudoPath(ctx context.Context, path string) bool {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return false
@@ -1056,9 +1056,9 @@ func (r *Router) RootPath(ctx context.Context, path string) bool {
 	// Trim to get remaining path
 	remain := strings.TrimPrefix(adjustedPath, mount)
 
-	// Check the rootPaths of this backend
-	rootPaths := re.rootPaths.Load()
-	match, raw, ok := rootPaths.LongestPrefix(remain)
+	// Check the sudoPaths of this backend
+	sudoPaths := re.sudoPaths.Load()
+	match, raw, ok := sudoPaths.LongestPrefix(remain)
 	if !ok {
 		return false
 	}

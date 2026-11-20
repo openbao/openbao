@@ -49,7 +49,7 @@
   }
 
   &:focus:not(:active) {
-    box-shadow: 0 0 0 0.125em rgba(21, 99, 255, 0.25);
+    box-shadow: 0 0 0 0.125em rgba($interactive, 0.25);
   }
 
   &:disabled {
@@ -107,11 +107,11 @@
     background-color: transparent;
     border-color: transparent;
     box-shadow: none;
-    color: $blue;
+    color: $interactive;
     text-decoration: none;
 
     &:hover {
-      color: $blue-500;
+      color: $interactive-500;
       background-color: $grey-lightest;
     }
   }
@@ -142,7 +142,7 @@
   &.is-link {
     background-color: transparent;
     border-color: transparent;
-    color: $blue;
+    color: $interactive;
     text-decoration: none;
     font-weight: $font-weight-semibold;
     box-shadow: none;
@@ -150,8 +150,8 @@
   }
 
   &.is-primary {
-    background-color: $blue;
-    border-color: color.adjust($blue, $lightness: -2%, $space: hsl);
+    background-color: $interactive;
+    border-color: color.adjust($interactive, $lightness: -2%, $space: hsl);
     color: $white;
     font-weight: $font-weight-bold;
     text-shadow: 0 1px 1px rgba($black, 0.25);
@@ -163,20 +163,20 @@
     }
 
     &:hover:not([disabled]) {
-      background-color: color.adjust($blue, $lightness: -5%, $space: hsl);
-      border-color: color.adjust($blue, $lightness: -5%, $space: hsl);
+      background-color: color.adjust($interactive, $lightness: -5%, $space: hsl);
+      border-color: color.adjust($interactive, $lightness: -5%, $space: hsl);
       box-shadow: $box-shadow-middle;
     }
 
     &:active,
     &.is-active {
-      background-color: color.adjust($blue, $lightness: -10%, $space: hsl);
-      border-color: color.adjust($blue, $lightness: -10%, $space: hsl);
+      background-color: color.adjust($interactive, $lightness: -10%, $space: hsl);
+      border-color: color.adjust($interactive, $lightness: -10%, $space: hsl);
       box-shadow: $box-shadow-middle;
     }
 
     &:focus {
-      border-color: color.adjust($blue, $lightness: -10%, $space: hsl);
+      border-color: color.adjust($interactive, $lightness: -10%, $space: hsl);
       box-shadow: $button-box-shadow-standard;
     }
 
@@ -188,29 +188,29 @@
       &:active,
       &.is-active {
         background-color: transparent;
-        border-bottom: 2px solid color.adjust($blue, $lightness: -10%, $space: hsl);
+        border-bottom: 2px solid color.adjust($interactive, $lightness: -10%, $space: hsl);
         border-radius: unset;
-        color: color.adjust($blue, $lightness: -10%, $space: hsl);
+        color: color.adjust($interactive, $lightness: -10%, $space: hsl);
       }
     }
     // is-primary.is-outlined the only is-outlined buttons are primary.
     &.is-outlined {
       background-color: transparent;
-      border-color: $blue;
-      color: $blue;
+      border-color: $interactive;
+      color: $interactive;
 
       &:hover,
       &:focus {
         background-color: transparent;
-        border-color: color.adjust($blue, $lightness: -10%, $space: hsl);
-        color: $blue;
+        border-color: color.adjust($interactive, $lightness: -10%, $space: hsl);
+        color: $interactive;
       }
 
       &:active,
       &.is-active {
         background-color: transparent;
-        border-color: color.adjust($blue, $lightness: -10%, $space: hsl);
-        color: color.adjust($blue, $lightness: -10%, $space: hsl);
+        border-color: color.adjust($interactive, $lightness: -10%, $space: hsl);
+        color: color.adjust($interactive, $lightness: -10%, $space: hsl);
       }
     }
 
@@ -291,7 +291,7 @@
   border: 1px solid $grey-light;
   border-radius: $radius;
   box-shadow: none;
-  color: $blue;
+  color: $interactive;
   display: flex;
   height: auto;
   line-height: 1.2;

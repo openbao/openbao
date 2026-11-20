@@ -125,12 +125,12 @@
 
 // is-success
 .switch[type='checkbox'].is-success:checked + label::before {
-  background: $blue;
+  background: $interactive;
 }
 
 // focus
 .switch[type='checkbox']:focus + label {
-  box-shadow: 0 0 1px $blue;
+  box-shadow: 0 0 1px $interactive;
 }
 
 // disabled

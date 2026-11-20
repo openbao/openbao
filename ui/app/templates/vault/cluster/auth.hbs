@@ -40,6 +40,7 @@
         <h1 class="title is-3">
           {{if (or this.mfaAuthData this.waitingForOktaNumberChallenge) "Authenticate" "Sign in to OpenBao"}}
         </h1>
+        <ThemeToggle />
       </div>
     {{/if}}
   </Page.header>

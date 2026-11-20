@@ -31,26 +31,26 @@
       }
       &.active,
       &.active .tab {
-        border-color: $blue;
-        color: $blue;
+        border-color: $interactive;
+        color: $interactive;
       }
     }
     li {
       // solves for tools -> sub-tabs like "Unwrap data" -> "Data"
       &.is-active {
-        border-bottom: 2px solid $blue;
-        color: $blue;
+        border-bottom: 2px solid $interactive;
+        color: $interactive;
 
         > button {
-          color: $blue;
+          color: $interactive;
         }
       }
       // solves for tabs on auth mounts & secrets engines
       > a {
         &.active {
-          color: $blue;
+          color: $interactive;
           background-color: transparent;
-          border-bottom: 2px solid $blue;
+          border-bottom: 2px solid $interactive;
         }
       }
     }
@@ -63,8 +63,8 @@
     &.active a,
     &.is-active a,
     &.active .tab {
-      border-color: $blue;
-      color: $blue;
+      border-color: $interactive;
+      color: $interactive;
     }
   }
   // important for auth tabs in active state, otherwise the border-bottom will not show.

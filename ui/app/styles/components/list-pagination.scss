@@ -68,7 +68,7 @@
   }
   a:not(.is-current):hover {
     text-decoration: underline;
-    color: $blue;
+    color: $interactive;
   }
   a.is-current {
     background-color: $grey;
@@ -106,8 +106,8 @@
   @extend .is-outlined;
   @extend .is-compact;
   background: $white;
-  border-color: $blue-500;
-  color: $blue-500;
+  border-color: $interactive-500;
+  color: $interactive-500;
   max-width: 8rem;
 
   @include until($mobile) {

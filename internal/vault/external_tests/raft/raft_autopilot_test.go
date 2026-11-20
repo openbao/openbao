@@ -799,7 +799,7 @@ func TestRaft_Autopilot_ManualJoin_NonVoter(t *testing.T) {
 	require.True(t, resp.Joined)
 
 	// Node should report not a voter before unseal
-	require.False(t, cluster.Cores[3].Core.IsRaftVoter())
+	require.False(t, cluster.Cores[3].IsRaftVoter())
 
 	// Unseal the node with Shamir keys
 	cluster.UnsealCore(t, cluster.Cores[3])

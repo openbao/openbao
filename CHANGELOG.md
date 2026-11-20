@@ -1,3 +1,54 @@
+## 2.7.3
+## November 19, 2026
+
+SECURITY:
+
+* core/auth: Entity and group aliases of newly created auth mounts are now case-sensitive by default. GHSA-fgmw-h9wp-wc7g. [[GH-4550](https://github.com/openbao/openbao/pull/4550)]
+* core/auth: Alias case-sensitivity can now be configured per auth mount via `case_sensitive_alias`. [[GH-4550](https://github.com/openbao/openbao/pull/4550)]
+* core/listeners: Correctly handle forwarded client cert headers on the active node when a request was forwarded from a standby. GHSA-h8fh-pmch-cjww. [[GH-4550](https://github.com/openbao/openbao/pull/4550)]
+* core/listeners: Ensure `disable_unauthed_rekey_endpoints` and `disable_unauthed_generate_root_endpoints` are enforced before forwarding a request to the active node. GHSA-h8fh-pmch-cjww. [[GH-4550](https://github.com/openbao/openbao/pull/4550)]
+* core/listeners: Ensure `max_request_size`, `max_request_json_memory`, `max_request_json_strings` and `max_request_duration` continue to be enforced at the configured limit after forwarding a request to the active node. GHSA-h8fh-pmch-cjww. [[GH-4550](https://github.com/openbao/openbao/pull/4550)]
+
+IMPROVEMENTS:
+
+* secrets/transit: Support public key export for keys of type `external-key`. [[GH-4272](https://github.com/openbao/openbao/pull/4272)]
+
+BUG FIXES:
+
+* command/operator/raft: Fix snapshot saving discarding output when redirected to the active node. [[GH-4337](https://github.com/openbao/openbao/pull/4337)]
+* command/operator/raft: Fix snapshot restoration failing silently when redirected to the active node. [[GH-4337](https://github.com/openbao/openbao/pull/4337)]
+* command/operator/diagnose: Fix panic when `plugin_directory` is set in the configuration but does not exist. [[GH-4536](https://github.com/openbao/openbao/pull/4536)]
+* core: Fix router not setting `logical.Request.MountAccessor`. [[GH-4434](https://github.com/openbao/openbao/pull/4434)]
+* core/auth: Ensure control group wrapping tokens are single-use. [[GH-4510](https://github.com/openbao/openbao/pull/4510)]
+* core/mounts: Ensure mount invalidations triggered by namespace creation on the active node do not race on standby nodes and cause double-mount errors. [[GH-4390](https://github.com/openbao/openbao/pull/4390)]
+* core/leases: Ensure revocation of leases in child namespaces when their parent-namespace attributed token is revoked. [[GH-4373](https://github.com/openbao/openbao/pull/4373)]
+* core/policies: Accept empty or omitted `controlled_capabilities` in Control Group factors and treat either case as applying to all operations. [[GH-4508](https://github.com/openbao/openbao/pull/4508)]
+* core/namespaces: Ensure mount creation cannot overlap with a sealed namespace. [[GH-4376](https://github.com/openbao/openbao/pull/4376)]
+* core/namespaces: Ensure mount creation cannot overlap with namespaces due to race conditions. [[GH-4376](https://github.com/openbao/openbao/pull/4376)]
+* core/identity: Fix changes to one namespace’s group data deleting the group data of other namespaces on standby nodes when using `unsafe_cross_namespace_identity`. [[GH-4363](https://github.com/openbao/openbao/pull/4363)]
+* core/external-keys: Close race window where standby nodes would miss config updates and keep stale KMS clients. [[GH-4400](https://github.com/openbao/openbao/pull/4400)]
+* http: Include PATCH, HEAD, and HELP in CORS preflight responses so cross-origin requests using these methods succeed. [[GH-4412](https://github.com/openbao/openbao/pull/4412)]
+* sys/rotate: Fix `/sys/rotate/(root|recovery)/verify` accepting duplicate key shares. [[GH-4495](https://github.com/openbao/openbao/pull/4495)]
+* sys/workflows: Fix LIST and SCAN operations when listing workflows with a prefix. [[GH-4386](https://github.com/openbao/openbao/pull/4386)]
+* storage/raft: Ensure snapshot restore yields a redirect to the active node when attempting to restore on a read-enabled standby node. [[GH-4534](https://github.com/openbao/openbao/pull/4534)]
+* auth/jwt: Fix CEL roles requiring that `issue_time` is set when setting `lease_options`.  `issue_time` is not used for login requests and has no effect when set via CEL. [[GH-4511](https://github.com/openbao/openbao/pull/4511)]
+* secrets/kv: Correctly apply key metadata precedence over the KV mount's global `max_versions` parameter. [[GH-3998](https://github.com/openbao/openbao/pull/3998)]
+* secrets/transit: Ensure internal subdirectories in storage are ignored when listing keys. [[GH-4397](https://github.com/openbao/openbao/pull/4397)]
+* api: Fix Raft snapshot saving discarding output when redirected to the active node. [[GH-4337](https://github.com/openbao/openbao/pull/4337)]
+* api: Fix Raft snapshot restoration failing silently when redirected to the active node. [[GH-4337](https://github.com/openbao/openbao/pull/4337)]
+* ui: Fix namespace selector not working when resizing browser window. Redirects now happen regardless of window size. [[GH-4302](https://github.com/openbao/openbao/pull/4302)]
+
+## 2.6.6
+## November 19, 2026
+
+SECURITY:
+
+* core/auth: Entity and group aliases of newly created auth mounts are now case-sensitive by default. GHSA-fgmw-h9wp-wc7g. [[GH-4550](https://github.com/openbao/openbao/pull/4550)]
+* core/auth: Alias case-sensitivity can now be configured per auth mount via `case_sensitive_alias`. [[GH-4550](https://github.com/openbao/openbao/pull/4550)]
+* core/listeners: Correctly handle forwarded client cert headers on the active node when a request was forwarded from a standby. GHSA-h8fh-pmch-cjww. [[GH-4550](https://github.com/openbao/openbao/pull/4550)]
+* core/listeners: Ensure `disable_unauthed_rekey_endpoints` and `disable_unauthed_generate_root_endpoints` are enforced before forwarding a request to the active node. GHSA-h8fh-pmch-cjww. [[GH-4550](https://github.com/openbao/openbao/pull/4550)]
+* core/listeners: Ensure `max_request_size`, `max_request_json_memory`, `max_request_json_strings` and `max_request_duration` continue to be enforced at the configured limit after forwarding a request to the active node. GHSA-h8fh-pmch-cjww. [[GH-4550](https://github.com/openbao/openbao/pull/4550)]
+
 ## 2.7.2
 ## October 26, 2026
 

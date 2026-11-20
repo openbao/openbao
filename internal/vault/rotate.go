@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -884,4 +885,32 @@ func (sm *SealManager) DeleteRotationBackup(ctx context.Context, nsPath string, 
 	}
 
 	return nil
+}
+
+// ParseShareKey attempts parsing key as hex first, verifying
+// if the decoded length is valid. Otherwise, tries Base64, since
+// a Base64-encoded key may also contain only valid hex characters.
+// Lastly validates the final decoded length and returns valid key.
+func (c *Core) ParseShareKey(nsPath, key string) ([]byte, logical.HTTPCodedError) {
+	barrier := c.sealManager.NamespaceBarrier(nsPath)
+	if barrier == nil {
+		return nil, logical.CodedError(http.StatusBadRequest, ErrNotSealable.Error())
+	}
+
+	min, max := barrier.KeyLength()
+	max += shamir.ShareOverhead
+	decodedKey, err := hex.DecodeString(key)
+	if err != nil || len(decodedKey) < min || len(decodedKey) > max {
+		decodedKey, err = base64.StdEncoding.DecodeString(key)
+		if err != nil {
+			return nil, logical.CodedError(http.StatusBadRequest, "'key' must be a valid hex or base64 string")
+		}
+	}
+	if len(decodedKey) < min {
+		return nil, logical.CodedError(http.StatusBadRequest, "key is shorter than minimum %d bytes", min)
+	}
+	if len(decodedKey) > max {
+		return nil, logical.CodedError(http.StatusBadRequest, "key is longer than maximum %d bytes", max)
+	}
+	return decodedKey, nil
 }

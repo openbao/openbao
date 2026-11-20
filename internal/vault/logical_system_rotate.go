@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
-	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/helper/pgpkeys"
@@ -729,27 +728,14 @@ func (b *SystemBackend) handleRotateUpdate() framework.OperationFunc {
 		}
 		reqNonce := inonce.(string)
 
-		barrier := b.Core.sealManager.NamespaceBarrier(ns.Path)
-		if barrier == nil {
-			return handleError(ErrNotSealable)
-		}
-
-		// We check min and max here to ensure that a string that is base64 encoded
-		// but also valid hex will not be valid and we instead base64 decode it
-		min, max := barrier.KeyLength()
-		max += shamir.ShareOverhead
-		key, err := hex.DecodeString(reqKey)
-		if err != nil || len(key) < min || len(key) > max {
-			key, err = base64.StdEncoding.DecodeString(reqKey)
-			if err != nil {
-				return handleError(errors.New("'key' must be a valid hex or base64 string"))
-			}
+		key, err := b.Core.ParseShareKey(ns.Path, reqKey)
+		if err != nil {
+			return handleError(err)
 		}
 
 		ctx, cancel := context.WithCancel(namespace.ContextWithNamespace(b.Core.activeContext.Load(), ns))
 		defer cancel()
 
-		// Use the key to make progress on rotation (rekey)
 		recovery := strings.Contains(req.Path, "recovery")
 		result, err := b.Core.sealManager.UpdateRotation(ctx, ns, key, reqNonce, recovery)
 		if err != nil {
@@ -834,27 +820,14 @@ func (b *SystemBackend) handleRotateVerifyPut() framework.OperationFunc {
 		}
 		reqNonce := inonce.(string)
 
-		barrier := b.Core.sealManager.NamespaceBarrier(ns.Path)
-		if barrier == nil {
-			return handleError(ErrNotSealable)
-		}
-
-		min, max := barrier.KeyLength()
-		max += shamir.ShareOverhead
-		key, err := hex.DecodeString(reqKey)
-		// We check min and max here to ensure that a string that is base64 encoded
-		// but also valid hex will not be valid and we instead base64 decode it
-		if err != nil || len(key) < min || len(key) > max {
-			key, err = base64.StdEncoding.DecodeString(reqKey)
-			if err != nil {
-				return handleError(errors.New("'key' must be a valid hex or base64 string"))
-			}
+		key, err := b.Core.ParseShareKey(ns.Path, reqKey)
+		if err != nil {
+			return handleError(err)
 		}
 
 		ctx, cancel := context.WithCancel(namespace.ContextWithNamespace(b.Core.activeContext.Load(), ns))
 		defer cancel()
 
-		// Use the key to make progress on rotation (rekey) verification
 		recovery := strings.Contains(req.Path, "recovery")
 		result, err := b.Core.sealManager.VerifyRotation(ctx, ns, key, reqNonce, recovery)
 		if err != nil {

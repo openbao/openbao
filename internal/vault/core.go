@@ -41,7 +41,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
-	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/v2/internal/audit"
@@ -2540,12 +2539,6 @@ func (c *Core) StorageType() string {
 
 func (c *Core) Logger() log.Logger {
 	return c.logger
-}
-
-func (c *Core) BarrierKeyLength() (min, max int) {
-	min, max = c.barrier.KeyLength()
-	max += shamir.ShareOverhead
-	return min, max
 }
 
 func (c *Core) AuditedHeadersConfig() *AuditedHeadersConfig {

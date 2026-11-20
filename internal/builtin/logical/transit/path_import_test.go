@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	uuid "github.com/hashicorp/go-uuid"
@@ -219,6 +220,47 @@ func TestTransit_Import(t *testing.T) {
 			}
 		},
 	)
+
+	t.Run("parallel import of the same key only succeeds once", func(t *testing.T) {
+		keyID, err := uuid.GenerateUUID()
+		require.NoError(t, err)
+
+		targetKey := getKey(t, "aes256-gcm96")
+		importBlob := wrapTargetKeyForImport(t, pubWrappingKey, targetKey, "aes256-gcm96", "SHA256")
+
+		var wg sync.WaitGroup
+		var successes atomic.Int32
+		start := make(chan struct{})
+
+		for range 50 {
+			wg.Go(func() {
+				<-start
+				_, err := b.HandleRequest(t.Context(), &logical.Request{
+					Storage:   s,
+					Operation: logical.UpdateOperation,
+					Path:      fmt.Sprintf("keys/%s/import", keyID),
+					Data:      map[string]any{"ciphertext": importBlob},
+				})
+				if err == nil {
+					successes.Add(1)
+				}
+			})
+		}
+
+		close(start)
+
+		wg.Wait()
+
+		require.EqualValues(t, 1, successes.Load(), "exactly one parallel import should succeed")
+
+		resp, err := b.HandleRequest(t.Context(), &logical.Request{
+			Storage:   s,
+			Operation: logical.ReadOperation,
+			Path:      fmt.Sprintf("keys/%s", keyID),
+		})
+		require.NoError(t, err)
+		require.EqualValues(t, 1, resp.Data["latest_version"])
+	})
 
 	for _, keyType := range keyTypes {
 		priv := getKey(t, keyType)

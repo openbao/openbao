@@ -148,7 +148,7 @@ func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Req
 		return nil, err
 	}
 
-	err = b.lm.ImportPolicy(ctx, polReq, derivedKey, b.GetRandomReader())
+	err = b.lm.ImportPolicy(ctx, polReq, derivedKey, b.GetRandomReader(), true)
 	if err != nil {
 		return nil, err
 	}

@@ -4,8 +4,6 @@
 package http
 
 import (
-	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"io"
 	"net/http"
@@ -150,7 +148,6 @@ func handleSysGenerateRootAttemptDelete(core *vault.Core, w http.ResponseWriter,
 
 func handleSysGenerateRootUpdate(core *vault.Core, generateStrategy vault.GenerateRootStrategy) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Parse the request
 		var req GenerateRootUpdateRequest
 		if err := parseJSONRequest(r, &req); err != nil && !errors.Is(err, io.EOF) {
 			respondError(w, http.StatusBadRequest, err)
@@ -164,27 +161,16 @@ func handleSysGenerateRootUpdate(core *vault.Core, generateStrategy vault.Genera
 			return
 		}
 
-		// Decode the key, which is base64 or hex encoded
 		min, max := core.BarrierKeyLength()
-		key, err := hex.DecodeString(req.Key)
-		// We check min and max here to ensure that a string that is base64
-		// encoded but also valid hex will not be valid and we instead base64
-		// decode it
-		if err != nil || len(key) < min || len(key) > max {
-			key, err = base64.StdEncoding.DecodeString(req.Key)
-			if err != nil {
-				respondError(
-					w, http.StatusBadRequest,
-					errors.New("'key' must be a valid hex or base64 string"),
-				)
-				return
-			}
+		key, httpErr := vault.ParseKeyShare(min, max, req.Key)
+		if httpErr != nil {
+			respondError(w, httpErr.Code(), httpErr)
+			return
 		}
 
 		ctx, cancel := core.GetContext()
 		defer cancel()
 
-		// Use the key to make progress on root generation
 		result, err := core.GenerateRootUpdate(ctx, key, req.Nonce, generateStrategy)
 		if err != nil {
 			respondError(w, http.StatusBadRequest, err)

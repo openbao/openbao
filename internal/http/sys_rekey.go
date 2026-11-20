@@ -67,15 +67,14 @@ func handleSysRekeyInitGet(ctx context.Context, core *vault.Core, recovery bool,
 		Required: sealThreshold,
 	}
 	if rekeyConf != nil {
-		// Get the progress
-		started, progress, err := core.RekeyProgress(recovery, false)
+		progress, err := core.RekeyProgress(recovery, false)
 		if err != nil {
 			respondError(w, err.Code(), err)
 			return
 		}
 
 		status.Nonce = rekeyConf.Nonce
-		status.Started = started
+		status.Started = true
 		status.T = rekeyConf.SecretThreshold
 		status.N = rekeyConf.SecretShares
 		status.Progress = progress
@@ -112,8 +111,7 @@ func handleSysRekeyInitPut(ctx context.Context, core *vault.Core, recovery bool,
 		return
 	}
 
-	// Initialize the rekey
-	err := core.RekeyInit(&vault.SealConfig{
+	err := core.RekeyInit(ctx, &vault.SealConfig{
 		SecretShares:         req.SecretShares,
 		SecretThreshold:      req.SecretThreshold,
 		PGPKeys:              req.PGPKeys,
@@ -138,7 +136,6 @@ func handleSysRekeyInitDelete(ctx context.Context, core *vault.Core, recovery bo
 
 func handleSysRekeyUpdate(core *vault.Core, recovery bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Parse the request
 		var req RekeyUpdateRequest
 		if err := parseJSONRequest(r, &req); err != nil && !errors.Is(err, io.EOF) {
 			respondError(w, http.StatusBadRequest, err)
@@ -152,34 +149,22 @@ func handleSysRekeyUpdate(core *vault.Core, recovery bool) http.Handler {
 			return
 		}
 
-		// Decode the key, which is base64 or hex encoded
 		min, max := core.BarrierKeyLength()
-		key, err := hex.DecodeString(req.Key)
-		// We check min and max here to ensure that a string that is base64
-		// encoded but also valid hex will not be valid and we instead base64
-		// decode it
-		if err != nil || len(key) < min || len(key) > max {
-			key, err = base64.StdEncoding.DecodeString(req.Key)
-			if err != nil {
-				respondError(
-					w, http.StatusBadRequest,
-					errors.New("'key' must be a valid hex or base64 string"),
-				)
-				return
-			}
+		key, httpErr := vault.ParseKeyShare(min, max, req.Key)
+		if httpErr != nil {
+			respondError(w, httpErr.Code(), httpErr)
+			return
 		}
 
 		ctx, cancel := core.GetContext()
 		defer cancel()
 
-		// Use the key to make progress on rekey
 		result, rekeyErr := core.RekeyUpdate(ctx, key, req.Nonce, recovery)
 		if rekeyErr != nil {
 			respondError(w, rekeyErr.Code(), rekeyErr)
 			return
 		}
 
-		// Format the response
 		resp := &RekeyUpdateResponse{}
 		if result != nil {
 			resp.Complete = true
@@ -247,16 +232,14 @@ func handleSysRekeyVerifyGet(ctx context.Context, core *vault.Core, recovery boo
 		return
 	}
 
-	// Get the progress
-	started, progress, err := core.RekeyProgress(recovery, true)
+	progress, err := core.RekeyProgress(recovery, true)
 	if err != nil {
 		respondError(w, err.Code(), err)
 		return
 	}
 
-	// Format the status
 	status := &RekeyVerificationStatusResponse{
-		Started:  started,
+		Started:  len(rekeyConf.VerificationKey) > 0,
 		Nonce:    rekeyConf.VerificationNonce,
 		T:        rekeyConf.SecretThreshold,
 		N:        rekeyConf.SecretShares,
@@ -275,7 +258,6 @@ func handleSysRekeyVerifyDelete(ctx context.Context, core *vault.Core, recovery 
 }
 
 func handleSysRekeyVerifyPut(_ context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
-	// Parse the request
 	var req RekeyVerificationUpdateRequest
 	if err := parseJSONRequest(r, &req); err != nil && !errors.Is(err, io.EOF) {
 		respondError(w, http.StatusBadRequest, err)
@@ -289,34 +271,22 @@ func handleSysRekeyVerifyPut(_ context.Context, core *vault.Core, recovery bool,
 		return
 	}
 
-	// Decode the key, which is base64 or hex encoded
 	min, max := core.BarrierKeyLength()
-	key, err := hex.DecodeString(req.Key)
-	// We check min and max here to ensure that a string that is base64
-	// encoded but also valid hex will not be valid and we instead base64
-	// decode it
-	if err != nil || len(key) < min || len(key) > max {
-		key, err = base64.StdEncoding.DecodeString(req.Key)
-		if err != nil {
-			respondError(
-				w, http.StatusBadRequest,
-				errors.New("'key' must be a valid hex or base64 string"),
-			)
-			return
-		}
+	key, httpErr := vault.ParseKeyShare(min, max, req.Key)
+	if httpErr != nil {
+		respondError(w, httpErr.Code(), httpErr)
+		return
 	}
 
 	ctx, cancel := core.GetContext()
 	defer cancel()
 
-	// Use the key to make progress on rekey
 	result, rekeyErr := core.RekeyVerify(ctx, key, req.Nonce, recovery)
 	if rekeyErr != nil {
 		respondError(w, rekeyErr.Code(), rekeyErr)
 		return
 	}
 
-	// Format the response
 	resp := &RekeyVerificationUpdateResponse{}
 	if result != nil {
 		resp.Complete = true

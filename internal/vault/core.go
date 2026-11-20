@@ -41,7 +41,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
-	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/v2/internal/audit"
@@ -299,13 +298,6 @@ type Core struct {
 	// until we reach enough to verify the root key.
 	namespaceRootGens    map[string]*rootTokenGeneration
 	namespaceRootGenLock sync.RWMutex
-
-	// These variables holds the config and shares we have until we reach
-	// enough to verify the appropriate root key. Note that the same lock is
-	// used; this isn't time-critical so this shouldn't be a problem.
-	rootRotationConfig     *SealConfig
-	recoveryRotationConfig *SealConfig
-	rotationLock           sync.RWMutex
 
 	// mounts is loaded after unseal since it is a protected
 	// configuration
@@ -1473,6 +1465,10 @@ func (c *Core) Unseal(key []byte) (bool, error) {
 	return !c.Sealed(), err
 }
 
+func (c *Core) BarrierKeyLength() (min, max int) {
+	return c.barrier.KeyLength()
+}
+
 // unseal takes a key fragment and attempts to use it to unseal Vault.
 // Vault may remain sealed afterwards even when no error is returned,
 // depending on whether enough key fragments were provided to meet the
@@ -2460,16 +2456,13 @@ func (c *Core) preSeal() error {
 	c.postUnsealFuncs = nil
 	c.activeTime = time.Time{}
 
-	// Clear any rotation progress
-	c.rootRotationConfig = nil
-	c.recoveryRotationConfig = nil
-
 	if c.metricsCh != nil {
 		close(c.metricsCh)
 		c.metricsCh = nil
 	}
 	var result error
 
+	c.sealManager.Reset()
 	c.stopForwarding()
 	c.stopRaftActiveNode()
 	c.cancelNamespaceDeletion()
@@ -2550,12 +2543,6 @@ func (c *Core) StorageType() string {
 
 func (c *Core) Logger() log.Logger {
 	return c.logger
-}
-
-func (c *Core) BarrierKeyLength() (min, max int) {
-	min, max = c.barrier.KeyLength()
-	max += shamir.ShareOverhead
-	return min, max
 }
 
 func (c *Core) AuditedHeadersConfig() *AuditedHeadersConfig {

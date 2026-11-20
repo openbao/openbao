@@ -1,0 +1,6 @@
+```release-note:change
+core/leases: Use HMAC-SHA256 to derive salted lease IDs for index keys.
+```
+```release-note:improvement
+core/leases: Migrate legacy lease index keys from salted SHA-1 to HMAC-SHA256 when running `sys/leases/tidy`.
+```

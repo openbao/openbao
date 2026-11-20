@@ -7,7 +7,7 @@ import { guidFor } from '@ember/object/internals';
 import { inject as service } from '@ember/service';
 import Component from '@glimmer/component';
 import { cached, tracked } from '@glimmer/tracking';
-import keyWhitespaceWarning from 'vault/utils/key-whitespace-warning';
+import keyUtils from 'vault/lib/key-utils';
 
 export default class SecretSubkeys extends Component {
   @service store;
@@ -26,7 +26,7 @@ export default class SecretSubkeys extends Component {
       id: JSON.stringify([viewId, path]),
       path,
       label: path.length === 1 && path[0] ? path[0] : JSON.stringify(path),
-      spaceWarning: keyWhitespaceWarning(path.at(-1)),
+      spaceWarning: keyUtils.keyWhitespaceWarning(path.at(-1)),
     }));
   }
 

@@ -43,10 +43,37 @@ function ancestorKeysForKey(key) {
   return ancestors;
 }
 
+function keyWhitespaceWarning(key) {
+  const leading = key !== key.trimStart();
+  const trailing = key !== key.trimEnd();
+  if (leading && trailing) {
+    return 'key starts and ends with a whitespace';
+  }
+  if (leading) {
+    return 'key starts with a whitespace';
+  }
+  if (trailing) {
+    return 'key ends with a whitespace';
+  }
+  return null;
+}
+
+function subkeyPaths(source, parent = []) {
+  return Object.entries(source || {}).flatMap(([key, value]) => {
+    const path = [...parent, key];
+    if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length) {
+      return subkeyPaths(value, path);
+    }
+    return [path];
+  });
+}
+
 export default {
   keyIsFolder,
   keyPartsForKey,
   parentKeyForKey,
   keyWithoutParentKey,
   ancestorKeysForKey,
+  keyWhitespaceWarning,
+  subkeyPaths,
 };

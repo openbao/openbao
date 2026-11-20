@@ -4,8 +4,8 @@
  */
 
 import { inject as service } from '@ember/service';
+import keyUtils from 'vault/lib/key-utils';
 import EditBase from './secret-edit';
-import subkeyPaths from 'vault/utils/kv-v2-subkey-paths';
 
 export default EditBase.extend({
   store: service(),
@@ -57,7 +57,7 @@ export default EditBase.extend({
           })
         );
       }
-      view.paths = subkeys ? subkeyPaths(subkeys) : null;
+      view.paths = subkeys ? keyUtils.subkeyPaths(subkeys) : null;
     } catch (error) {
       if (error.httpStatus === 403) {
         view.readDenied = true;

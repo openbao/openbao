@@ -8,7 +8,6 @@ import { computed } from '@ember/object';
 import { alias } from '@ember/object/computed';
 import utils from 'vault/lib/key-utils';
 import lazyCapabilities, { apiPath } from 'vault/macros/lazy-capabilities';
-import keyWhitespaceWarning from 'vault/utils/key-whitespace-warning';
 
 export default Model.extend({
   failedServerRead: attr('boolean'),
@@ -72,7 +71,7 @@ export default Model.extend({
     return Object.keys(data).map((key) => ({
       key,
       value: data[key],
-      spaceWarning: keyWhitespaceWarning(key),
+      spaceWarning: utils.keyWhitespaceWarning(key),
     }));
   }),
 

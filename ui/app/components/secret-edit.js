@@ -27,9 +27,9 @@ import { inject as service } from '@ember/service';
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
 import { cached, tracked } from '@glimmer/tracking';
+import keyUtils from 'vault/lib/key-utils';
 import KVObject from 'vault/lib/kv-object';
 import { maybeQueryRecord } from 'vault/macros/maybe-query-record';
-import subkeyPaths from 'vault/utils/kv-v2-subkey-paths';
 
 export default class SecretEdit extends Component {
   @service store;
@@ -192,7 +192,8 @@ export default class SecretEdit extends Component {
     if (!subkeyView || this.modelForData.deleted || this.modelForData.destroyed) {
       return null;
     }
-    const paths = subkeyView.paths ?? (!this.valuesHidden && subkeyPaths(this.modelForData.secretData));
+    const paths =
+      subkeyView.paths ?? (!this.valuesHidden && keyUtils.subkeyPaths(this.modelForData.secretData));
     return paths
       ? {
           view: subkeyView,

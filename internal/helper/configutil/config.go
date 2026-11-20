@@ -4,6 +4,7 @@
 package configutil
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -260,4 +261,25 @@ func (c *SharedConfig) Sanitized() map[string]any {
 func (c *SharedConfig) found(s, k string) {
 	delete(c.UnusedKeys, s)
 	c.FoundKeys = append(c.FoundKeys, k)
+}
+
+// DecodeJSONSingleton decodes a JSON value, that may be bare or wrapped in a
+// one-element array. Mainly intended for handling objects wrapped by HCLv1
+// parsing. `null` values leave the receiver unchanged.
+func DecodeJSONSingleton[T any](b []byte, v *T) error {
+	var arr *[]json.RawMessage
+	err := json.Unmarshal(b, &arr)
+	if err != nil {
+		if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
+			return json.Unmarshal(b, v)
+		}
+		return err
+	}
+	if arr == nil {
+		return nil
+	}
+	if len(*arr) != 1 {
+		return fmt.Errorf("expected item or array of length 1, got array of length %d", len(*arr))
+	}
+	return json.Unmarshal((*arr)[0], v)
 }

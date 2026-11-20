@@ -5,13 +5,13 @@ description: Learn about OpenBao's plugin system.
 
 # Plugin system
 
-OpenBao supports 4 types of plugins: auth methods, secret engines, database
-providers, and Key Management Service (KMS) providers. This concept allows both
-built-in and external plugins to be treated like building blocks and to keep the
-OpenBao core small.
+OpenBao supports 5 types of plugins: auth methods, secret engines, database
+providers, Key Management Service (KMS) providers, and auto-join providers.
+This concept allows both built-in and external plugins to be treated like
+building blocks and to keep the OpenBao core small.
 
 A plugin is uniquely identified by its type (one of `secret`, `auth`,
-`database`, or `kms`), name (e.g. `kv`), and version (e.g `v1.0.0`). An empty
+`database`, `kms`, or `join`), name (e.g. `kv`), and version (e.g `v1.0.0`). An empty
 version implies either the built-in plugin or the single unversioned plugin that
 can be registered.
 Auth method and secrets engine plugin can exist at multiple different mount paths.
@@ -55,7 +55,7 @@ Built-in plugins are registered by default.
 
 The metadata of registered plugins is persisted in OpenBao's storage backend in the plugin catalog.
 This means that OpenBao must be unsealed before these plugins can be used.
-`kms` plugins cannot be (and need not be) registered since they must be available in a sealed state.
+`kms` and `join` plugins cannot be (and need not be) registered since they must be available in a sealed state.
 
 External plugins can be registered with OpenBao in up to two ways, depending on
 the plugin type:
@@ -90,6 +90,7 @@ See their respective documentation for details:
 
 - [`auth`](../auth/index.mdx)
 - [`database`](../secrets/databases/index.mdx)
+- [`join`](../configuration/storage/raft.mdx)
 - [`kms`](../configuration/seal/index.mdx)
 - [`secret`](../secrets/index.mdx)
 

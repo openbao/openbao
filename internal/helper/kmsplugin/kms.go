@@ -13,6 +13,7 @@ import (
 	"github.com/openbao/go-kms-wrapping/kms/transit/v2"
 	gkwplugin "github.com/openbao/go-kms-wrapping/plugin/v2"
 	"github.com/openbao/go-kms-wrapping/v2/kms"
+	"github.com/openbao/openbao/v2/internal/helper/pluginutil/catalog"
 )
 
 var builtinKMSes = map[string]func() kms.KMS{
@@ -22,7 +23,7 @@ var builtinKMSes = map[string]func() kms.KMS{
 // OpenKMS creates a new KMS instance and calls Open with the provided options.
 // This may dispatch to either a builtin KMS or an external pluginized one.
 func (c *Catalog) OpenKMS(ctx context.Context, name string, opts *kms.OpenOptions) (s kms.KMS, err error) {
-	client, ok, err := c.getClient(name)
+	client, ok, err := c.GetClient(name)
 	switch {
 	case err != nil:
 		return nil, err
@@ -38,7 +39,7 @@ func (c *Catalog) OpenKMS(ctx context.Context, name string, opts *kms.OpenOption
 	default:
 		defer func() {
 			if err != nil {
-				client.close()
+				client.Close()
 			}
 		}()
 
@@ -68,7 +69,7 @@ type remoteKMS struct {
 
 	mu sync.RWMutex
 
-	client *client
+	client *catalog.Client
 	kms    kms.KMS
 
 	canary int
@@ -124,7 +125,7 @@ func (s *remoteKMS) reload(ctx context.Context, canary int) error {
 		return nil
 	}
 
-	client, err := s.client.catalog.reloadClient(s.client)
+	client, err := s.client.Reload()
 	if err != nil {
 		return err
 	}
@@ -170,7 +171,7 @@ func (s *remoteKMS) Close(ctx context.Context) error {
 
 	defer func() {
 		s.kms = nil      // Mark as closed.
-		s.client.close() // Release the client reference.
+		s.client.Close() // Release the client reference.
 	}()
 
 	// No need to retry, but ignore any plugin shutdown errors.

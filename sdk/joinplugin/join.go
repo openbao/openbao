@@ -1,0 +1,115 @@
+// Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
+// SPDX-License-Identifier: MPL-2.0
+
+package joinplugin
+
+import (
+	"context"
+
+	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-plugin"
+	"github.com/openbao/openbao/sdk/v2/joinplugin/pb"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/structpb"
+)
+
+type Addr struct {
+	Scheme string
+	Host   string
+	Port   uint16
+}
+
+type Join interface {
+	Candidates(context.Context, map[string]any) ([]Addr, error)
+	Cleanup(context.Context) error
+}
+
+type joinPlugin struct {
+	plugin.NetRPCUnsupportedPlugin
+	factory func() (Join, error)
+}
+
+type JoinConfig struct {
+	Logger hclog.Logger
+}
+
+type Factory func(*JoinConfig) (Join, error)
+
+type gRPCClient struct {
+	pb.JoinClient
+}
+
+type gRPCServer struct {
+	pb.UnimplementedJoinServer
+
+	impl Join
+}
+
+var HandshakeConfig = plugin.HandshakeConfig{
+	MagicCookieKey:   "OPENBAO_JOIN_PLUGIN",
+	MagicCookieValue: "f4204b06-eb34-4f02-8564-a8ba687343a3",
+}
+
+var PluginSets = map[int]plugin.PluginSet{
+	1: {"join": &joinPlugin{}},
+}
+
+func (g *gRPCServer) Candidates(ctx context.Context, args *pb.CandidatesArgs) (*pb.JoinCandidates, error) {
+	v, err := g.impl.Candidates(ctx, args.Config.AsMap())
+	if err != nil {
+		return nil, err
+	}
+	candidates := make([]*pb.JoinCandidate, 0, len(v))
+	for _, c := range v {
+		candidate := &pb.JoinCandidate{Scheme: c.Scheme, Host: c.Host, Port: uint32(c.Port)}
+		candidates = append(candidates, candidate)
+	}
+	return &pb.JoinCandidates{Candidates: candidates}, nil
+}
+
+func (g *gRPCServer) Cleanup(ctx context.Context, args *pb.Empty) (*pb.Empty, error) {
+	err := g.impl.Cleanup(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.Empty{}, err
+}
+
+func (g *gRPCClient) Candidates(ctx context.Context, config map[string]any) ([]Addr, error) {
+	structConfig, err := structpb.NewStruct(config)
+	if err != nil {
+		return nil, err
+	}
+	reply, err := g.JoinClient.Candidates(ctx, &pb.CandidatesArgs{Config: structConfig})
+	if err != nil {
+		return nil, err
+	}
+	candidates := make([]Addr, 0, len(reply.Candidates))
+	for _, c := range reply.Candidates {
+		candidates = append(candidates, Addr{Scheme: c.Scheme, Host: c.Host, Port: uint16(c.Port)})
+	}
+	return candidates, nil
+}
+
+func (g *gRPCClient) Cleanup(ctx context.Context) error {
+	_, err := g.JoinClient.Cleanup(ctx, &pb.Empty{})
+	return err
+}
+
+func (j *joinPlugin) GRPCClient(ctx context.Context, b *plugin.GRPCBroker, c *grpc.ClientConn) (any, error) {
+	return &gRPCClient{JoinClient: pb.NewJoinClient(c)}, nil
+}
+
+func (j *joinPlugin) GRPCServer(b *plugin.GRPCBroker, s *grpc.Server) error {
+	impl, err := j.factory()
+	if err != nil {
+		return err
+	}
+	pb.RegisterJoinServer(s, &gRPCServer{impl: impl})
+	return nil
+}
+
+var (
+	_ plugin.Plugin     = &joinPlugin{}
+	_ plugin.GRPCPlugin = &joinPlugin{}
+)

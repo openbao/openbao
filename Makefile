@@ -185,6 +185,7 @@ proto: bootstrap
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative internal/helper/identity/types.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative internal/helper/forwarding/types.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative internal/helper/storagepacker/types.proto
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative sdk/joinplugin/pb/*.proto
 
 	# No additional sed expressions should be added to this list. Going forward
 	# we should just use the variable names chosen by protobuf. These are left

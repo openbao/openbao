@@ -150,7 +150,7 @@ func TestKMS(t *testing.T) {
 		require.NoError(t, err)
 
 		// Simulate a crashed plugin.
-		s1.(*remoteKMS).client.process.Kill()
+		s1.(*remoteKMS).client.Kill()
 
 		// Check that both keys recover.
 		_, err = k1.Sign(ctx, &kms.SignOptions{Data: []byte("foo")})
@@ -161,7 +161,7 @@ func TestKMS(t *testing.T) {
 		// Kill again, but this time dispatch a KMS-level request before
 		// touching the key so the key must be re-fetched but the plugin was
 		// already reloaded.
-		s1.(*remoteKMS).client.process.Kill()
+		s1.(*remoteKMS).client.Kill()
 
 		// KMS-level request, this should reload the KMS but no keys.
 		_, err = s1.GetKey(ctx, &kms.KeyOptions{

@@ -493,7 +493,7 @@ func RaftClusterJoinNodes(t testing.T, cluster *vault.TestCluster) {
 	for i := 1; i < len(cluster.Cores); i++ {
 		core := cluster.Cores[i]
 		core.UnderlyingRawStorage.(*raft.RaftBackend).SetServerAddressProvider(addressProvider)
-		_, err := core.JoinRaftCluster(namespace.RootContext(context.Background()), leaderInfos, false)
+		_, err := core.JoinRaftCluster(namespace.RootContext(context.Background()), nil, leaderInfos, false)
 		require.NoError(t, err)
 
 		cluster.UnsealCore(t, core)

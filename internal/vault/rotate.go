@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -884,4 +885,27 @@ func (sm *SealManager) DeleteRotationBackup(ctx context.Context, nsPath string, 
 	}
 
 	return nil
+}
+
+// ParseKeyShare attempts to decode a single Shamir key or key share as hex
+// and checks whether the decoded length is valid. If decoding fails or the
+// length is invalid, it tries Base64, since a Base64-encoded key may contain
+// only valid hex characters. It validates the final decoded length before
+// returning the key.
+func ParseKeyShare(min, max int, key string) ([]byte, logical.HTTPCodedError) {
+	max += shamir.ShareOverhead
+	decodedKey, err := hex.DecodeString(key)
+	if err != nil || len(decodedKey) < min || len(decodedKey) > max {
+		decodedKey, err = base64.StdEncoding.DecodeString(key)
+		if err != nil {
+			return nil, logical.CodedError(http.StatusBadRequest, "'key' must be a valid hex or base64 string")
+		}
+	}
+	if len(decodedKey) < min {
+		return nil, logical.CodedError(http.StatusBadRequest, "key is shorter than minimum %d bytes", min)
+	}
+	if len(decodedKey) > max {
+		return nil, logical.CodedError(http.StatusBadRequest, "key is longer than maximum %d bytes", max)
+	}
+	return decodedKey, nil
 }

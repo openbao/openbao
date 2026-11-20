@@ -5,8 +5,6 @@ package http
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"io"
 	"net/http"
@@ -112,25 +110,16 @@ func handleSysUnseal(core *vault.Core) http.Handler {
 			return
 		}
 
-		// Decode the key, which is base64 or hex encoded
 		min, max := core.BarrierKeyLength()
-		key, err := hex.DecodeString(req.Key)
-		// We check min and max here to ensure that a string that is base64
-		// encoded but also valid hex will not be valid and we instead base64
-		// decode it
-		if err != nil || len(key) < min || len(key) > max {
-			key, err = base64.StdEncoding.DecodeString(req.Key)
-			if err != nil {
-				respondError(
-					w, http.StatusBadRequest,
-					errors.New("'key' must be a valid hex or base64 string"),
-				)
-				return
-			}
+		key, httpErr := vault.ParseKeyShare(min, max, req.Key)
+		if httpErr != nil {
+			respondError(w, httpErr.Code(), httpErr)
+			return
 		}
 
-		// Attempt the unseal.  If migrate was specified, the key should correspond
+		// Attempt the unseal. If migrate was specified, the key should correspond
 		// to the old seal.
+		var err error
 		if req.Migrate {
 			_, err = core.UnsealMigrate(key)
 		} else {

@@ -41,7 +41,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
-	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/v2/internal/audit"
@@ -1466,6 +1465,10 @@ func (c *Core) Unseal(key []byte) (bool, error) {
 	return !c.Sealed(), err
 }
 
+func (c *Core) BarrierKeyLength() (min, max int) {
+	return c.barrier.KeyLength()
+}
+
 // unseal takes a key fragment and attempts to use it to unseal Vault.
 // Vault may remain sealed afterwards even when no error is returned,
 // depending on whether enough key fragments were provided to meet the
@@ -2540,12 +2543,6 @@ func (c *Core) StorageType() string {
 
 func (c *Core) Logger() log.Logger {
 	return c.logger
-}
-
-func (c *Core) BarrierKeyLength() (min, max int) {
-	min, max = c.barrier.KeyLength()
-	max += shamir.ShareOverhead
-	return min, max
 }
 
 func (c *Core) AuditedHeadersConfig() *AuditedHeadersConfig {

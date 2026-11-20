@@ -120,6 +120,15 @@ DONELISTHANDLING:
 		ns = namespace.RootNamespace
 		ctx = namespace.ContextWithNamespace(ctx, ns)
 	default:
+		if req.Path == "sys/wrapping/rewrap" {
+			rewrapNS, ok := resp.Data["namespace"].(*namespace.Namespace)
+			if ok &&
+				rewrapNS != nil {
+				ns = rewrapNS
+				ctx = namespace.ContextWithNamespace(ctx, ns)
+				break
+			}
+		}
 		ns, err = namespace.FromContext(ctx)
 		if err != nil {
 			return nil, err

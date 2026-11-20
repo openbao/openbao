@@ -10,6 +10,8 @@ import {
   currentURL,
   currentRouteName,
   fillIn,
+  find,
+  findAll,
   triggerKeyEvent,
   typeIn,
   waitFor,
@@ -471,6 +473,14 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
       'redirects to the show page'
     );
     assert.ok(showPage.editIsPresent, 'shows the edit button');
+    if (find('[data-test-show-secret-values]')) {
+      await click('[data-test-show-secret-values]');
+    } else if (find('[data-test-secret-subkeys]')) {
+      await click('[data-test-secret-subkey] [data-test-button="toggle-masked"]');
+    }
+    if (find('[data-test-secret-subkeys]')) {
+      await click('[data-test-toggle-input="json"]');
+    }
     const savedInstance = document.querySelector('.CodeMirror').CodeMirror;
     assert.strictEqual(
       savedInstance.options.value,
@@ -690,8 +700,176 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     await deleteEngine(enginePath, assert);
   });
 
+  test('KV v2 subkeys can be read without data or patch access', async function (assert) {
+    const backend = `kv-subkeys-${this.uid}`;
+    const path = 'folder/config';
+    const token = await mountEngineGeneratePolicyToken(
+      backend,
+      path,
+      `
+      path "${backend}/subkeys/${path}" {
+        capabilities = ["read"]
+      }
+    `
+    );
+    const adapter = this.owner.lookup('adapter:application');
+    await adapter.ajax(`/v1/${backend}/data/${path}`, 'POST', {
+      data: { data: { key: 'private-value' } },
+    });
+    await logout.visit();
+    await authPage.login(token);
+
+    await visit(`/vault/secrets/${backend}/show/${path}`);
+    assert.dom('[data-test-row-label="key"]').hasText('key');
+    assert.dom('[data-test-secret-subkey="key"] pre').hasText('***********');
+    assert.dom('[data-test-secret-subkeys]').doesNotIncludeText('private-value');
+    assert.dom('[data-test-patch-subkey]').doesNotExist();
+    assert.dom('[data-test-show-secret-values]').doesNotExist();
+    assert.dom('[data-test-secret-edit]').doesNotExist();
+
+    await deleteEngine(backend, assert);
+  });
+
+  test('KV v2 loads subkeys first and fetches values only on request', async function (assert) {
+    const backend = `kv-subkeys-${this.uid}`;
+    const path = 'folder/config';
+    const url = `/v1/${backend}/data/${path}`;
+    const subkeysUrl = `/v1/${backend}/subkeys/${path}`;
+    const adapter = this.owner.lookup('adapter:application');
+    await adapter.ajax(`/v1/sys/mounts/${backend}`, 'POST', {
+      data: { type: 'kv', options: { version: '2' } },
+    });
+    await adapter.ajax(url, 'POST', {
+      data: { data: { key: 'private-value', sibling: 'other-value' } },
+    });
+    const firstRequest = this.server.passthroughRequests.length;
+    const secretReads = () =>
+      this.server.passthroughRequests
+        .slice(firstRequest)
+        .filter((request) => request.method === 'GET')
+        .map((request) => new URL(request.url, window.location.origin).pathname)
+        .filter((path) => path === url || path === subkeysUrl);
+
+    await visit(`/vault/secrets/${backend}/show/${path}`);
+    assert.deepEqual(secretReads(), [subkeysUrl], 'the initial view requests only subkeys');
+    assert.dom('[data-test-row-label="key"]').hasText('key');
+    assert.dom('[data-test-secret-subkey="key"] pre').hasText('***********');
+    assert.dom('[data-test-show-secret-values]').doesNotExist('each row has its own reveal control');
+
+    await click('[data-test-secret-subkey="key"] [data-test-button="toggle-masked"]');
+    assert.deepEqual(
+      secretReads(),
+      [subkeysUrl, url],
+      'the eye button requests values for the displayed version'
+    );
+    assert.dom('[data-test-secret-subkey="key"] pre').hasText('private-value');
+    assert.dom('[data-test-secret-subkey="sibling"] pre').hasText('***********');
+    await click('[data-test-secret-subkey="sibling"] [data-test-button="toggle-masked"]');
+    assert.dom('[data-test-secret-subkey="sibling"] pre').hasText('other-value');
+    assert.deepEqual(secretReads(), [subkeysUrl, url], 'revealing another row reuses the same value read');
+
+    await deleteEngine(backend, assert);
+  });
+
+  test('KV v2 subkeys can be patched without data read and with check-and-set required', async function (assert) {
+    this.server.patch('/v1/**', this.server.passthrough);
+    const backend = `kv-subkeys-${this.uid}`;
+    const path = 'folder/config';
+    const token = await mountEngineGeneratePolicyToken(
+      backend,
+      path,
+      `
+      path "${backend}/subkeys/${path}" {
+        capabilities = ["read"]
+      }
+      path "${backend}/data/${path}" {
+        capabilities = ["patch"]
+      }
+    `
+    );
+    const adapter = this.owner.lookup('adapter:application');
+    const rootToken = this.owner.lookup('service:auth').currentToken;
+    const url = `/v1/${backend}/data/${path}`;
+    const showUrl = `/vault/secrets/${backend}/show/${path}`;
+    const initialData = { credentials: { password: 'old-password', username: 'keep-username' } };
+    await adapter.ajax(`/v1/${backend}/config`, 'POST', { data: { cas_required: true } });
+    await adapter.ajax(url, 'POST', { data: { options: { cas: 0 }, data: initialData } });
+    await logout.visit();
+    await authPage.login(token);
+    const subkey = (key) =>
+      findAll('[data-test-secret-subkey]').find(
+        (row) => row.dataset.testSecretSubkey === JSON.stringify(['credentials', key])
+      );
+    const enterNewPassword = async () => {
+      await click(subkey('password').querySelector('[data-test-patch-subkey]'));
+      await fillIn('[data-test-patch-subkey-value] textarea', 'new-password');
+    };
+
+    await visit(showUrl);
+    assert.dom('[data-test-secret-subkeys]').includesText('["credentials","password"]');
+    assert.dom('[data-test-secret-edit]').doesNotExist('patch does not grant full writes');
+    assert
+      .dom('[data-test-patch-subkey]', subkey('password'))
+      .hasAttribute('aria-label', 'Edit ["credentials","password"]');
+    assert
+      .dom('[data-test-patch-subkey-delete] [data-test-confirm-action-trigger]', subkey('password'))
+      .hasAttribute('aria-label', 'Delete ["credentials","password"]');
+    await click(subkey('password').querySelector('[data-test-button="toggle-masked"]'));
+    assert
+      .dom('[data-test-secret-value-read-error]', subkey('password'))
+      .hasText('You do not have permission to read this secret value.');
+    assert.dom('[data-test-secret-value-read-error]', subkey('username')).doesNotExist();
+    assert.dom('pre', subkey('password')).hasText('***********');
+    await enterNewPassword();
+
+    const concurrentData = { ...initialData, keep: 'concurrent-value' };
+    await adapter.ajax(url, 'POST', {
+      clientToken: rootToken,
+      data: { options: { cas: 1 }, data: concurrentData },
+    });
+    await click('[data-test-patch-subkey-save]');
+    assert.dom('[data-test-error]').includesText('check-and-set parameter did not match the current version');
+
+    await visit(`${showUrl}?version=1`);
+    assert.dom('[data-test-secret-subkeys]').doesNotIncludeText('keep');
+    assert.dom('[data-test-patch-subkey]').doesNotExist('historical versions cannot be patched');
+    await visit(showUrl);
+    await enterNewPassword();
+    await click('[data-test-patch-subkey-save]');
+
+    assert.dom('[data-test-patch-subkey-form]').doesNotExist();
+    assert.dom('[data-test-secret-subkeys]').doesNotIncludeText('concurrent-value');
+    const { data: result } = await adapter.ajax(url, 'GET', { clientToken: rootToken });
+    assert.strictEqual(result.metadata.version, 3, 'only the successful patch creates a version');
+    assert.deepEqual(result.data, {
+      credentials: { password: 'new-password', username: 'keep-username' },
+      keep: 'concurrent-value',
+    });
+
+    const deleteUsername = () =>
+      click(
+        subkey('username').querySelector('[data-test-patch-subkey-delete] [data-test-confirm-action-trigger]')
+      );
+    await deleteUsername();
+    assert.dom('[data-test-confirm-action-title]').includesText('["credentials","username"]');
+    await click('[data-test-confirm-cancel-button]');
+    assert.dom('[data-test-secret-subkeys]').includesText('["credentials","username"]');
+    await deleteUsername();
+    await click('[data-test-confirm-button]');
+
+    assert.dom('[data-test-secret-subkeys]').doesNotIncludeText('["credentials","username"]');
+    const { data: deleted } = await adapter.ajax(url, 'GET', { clientToken: rootToken });
+    assert.strictEqual(deleted.metadata.version, 4, 'only the confirmed delete creates a version');
+    assert.deepEqual(deleted.data, {
+      credentials: { password: 'new-password' },
+      keep: 'concurrent-value',
+    });
+
+    await deleteEngine(backend, assert);
+  });
+
   test('version 2: with metadata no read or list but with delete access and full access to the data endpoint', async function (assert) {
-    assert.expect(12);
+    assert.expect(18);
     const enginePath = 'no-metadata-read';
     const secretPath = 'no-metadata-read-secret-name';
     const V2_POLICY_NO_LIST = `
@@ -724,7 +902,18 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
       );
 
     await visit(`/vault/secrets/${enginePath}/show/${secretPath}`);
+    assert.dom('[data-test-secret-subkeys]').doesNotExist('the token has no subkeys read access');
+    assert.dom('[data-test-value-div="secret-key"]').doesNotExist('the initial page does not request values');
+    assert
+      .dom('[data-test-subkey-read-denied] [data-test-empty-state-title]')
+      .hasText('You do not have permission to read this secret’s subkeys.');
+    assert
+      .dom('[data-test-subkey-read-denied] [data-test-empty-state-message]')
+      .hasText('You may still have permission to read the full secret.');
+    assert.dom('[data-test-show-secret-values]').hasText('Read full secret');
+    await click('[data-test-show-secret-values]');
 
+    assert.dom('[data-test-subkey-read-denied]').doesNotExist();
     assert
       .dom('[data-test-value-div="secret-key"]')
       .exists('secret view page and info table row with secret-key value');
@@ -741,6 +930,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     );
     // Update key
     await editPage.editSecret('newKey', 'some-value');
+    await click('[data-test-show-secret-values]');
     assert.dom('[data-test-value-div="newKey"]').exists('Info row table exists at newKey');
 
     // check metadata tab
@@ -765,6 +955,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
 
     assert.strictEqual(currentURL(), `/vault/secrets/${enginePath}/list`, 'brings you back to the list page');
     await visit(`/vault/secrets/${enginePath}/show/${secretPath}`);
+    await click('[data-test-show-secret-values]');
 
     assert.dom('[data-test-secret-not-found]').exists('secret no longer found');
     await deleteEngine(enginePath, assert);
@@ -792,6 +983,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     await authPage.login(userToken);
 
     await writeSecret(enginePath, secretPath, 'foo', 'bar');
+    await click('[data-test-show-secret-values]');
     await click('[data-test-delete-open-modal]');
 
     assert.dom('[data-test-delete-modal="destroy-version"]').exists('destroy this version option shows');
@@ -807,6 +999,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     await click('[data-test-secret-metadata-tab]');
     await settled(); // eslint-disable-line
     await click('[data-test-secret-tab]');
+    await click('[data-test-show-secret-values]');
     await settled(); // eslint-disable-line
     assert
       .dom('[data-test-empty-state-title]')
@@ -1111,6 +1304,9 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
 
     await editPage.createSecret(secretPath, keyWithWithespaces, secretValue);
     await settled();
+    if (find('[data-test-show-secret-values]')) {
+      await click('[data-test-show-secret-values]');
+    }
 
     const labelElement = document.querySelector(`[data-test-row-label="${keyWithWithespaces}"]`);
     assert.ok(labelElement, 'label element exists');

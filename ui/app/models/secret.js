@@ -8,6 +8,7 @@ import { computed } from '@ember/object';
 import { alias } from '@ember/object/computed';
 import utils from 'vault/lib/key-utils';
 import lazyCapabilities, { apiPath } from 'vault/macros/lazy-capabilities';
+import keyWhitespaceWarning from 'vault/utils/key-whitespace-warning';
 
 export default Model.extend({
   failedServerRead: attr('boolean'),
@@ -68,24 +69,11 @@ export default Model.extend({
   secretKeyAndValue: computed('secretData', function () {
     const data = this.secretData;
 
-    return Object.keys(data).map((key) => {
-      const leading = key !== key.trimStart();
-      const trailing = key !== key.trimEnd();
-
-      let spaceWarning = null;
-      if (leading && trailing) {
-        spaceWarning = 'key starts and ends with a whitespace';
-      } else if (leading) {
-        spaceWarning = 'key starts with a whitespace';
-      } else if (trailing) {
-        spaceWarning = 'key ends with a whitespace';
-      }
-      return {
-        key,
-        value: data[key],
-        spaceWarning,
-      };
-    });
+    return Object.keys(data).map((key) => ({
+      key,
+      value: data[key],
+      spaceWarning: keyWhitespaceWarning(key),
+    }));
   }),
 
   dataAsJSONString: computed('secretData', function () {

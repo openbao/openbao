@@ -53,7 +53,7 @@ export default class SecretDeleteMenu extends Component {
   )
   destroyVersionPath;
   get canDestroyVersion() {
-    return this.destroyVersionPath.get('canUpdate');
+    return Boolean(this.args.modelForData?.version && this.destroyVersionPath.get('canUpdate'));
   }
 
   @maybeQueryRecord(
@@ -118,7 +118,7 @@ export default class SecretDeleteMenu extends Component {
   )
   secretSoftDataPath;
   get canSoftDeleteSecretData() {
-    return this.secretSoftDataPath.get('canUpdate');
+    return Boolean(this.args.modelForData?.version && this.secretSoftDataPath.get('canUpdate'));
   }
 
   get isLatestVersion() {

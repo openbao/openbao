@@ -26,9 +26,10 @@
 import { inject as service } from '@ember/service';
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
-import { tracked } from '@glimmer/tracking';
+import { cached, tracked } from '@glimmer/tracking';
 import KVObject from 'vault/lib/kv-object';
 import { maybeQueryRecord } from 'vault/macros/maybe-query-record';
+import subkeyPaths from 'vault/utils/kv-v2-subkey-paths';
 
 export default class SecretEdit extends Component {
   @service store;
@@ -36,6 +37,8 @@ export default class SecretEdit extends Component {
   @tracked secretData = null;
   @tracked isV2 = false;
   @tracked codemirrorString = null;
+  @tracked valueRead;
+  @tracked jsonView;
 
   // fired on did-insert from render modifier
   @action
@@ -44,11 +47,13 @@ export default class SecretEdit extends Component {
     if (!model) {
       return;
     }
-    if (!model.secretData && model.selectedVersion) {
-      this.isV2 = true;
+    this.isV2 = Boolean(model.selectedVersion);
+    if (this.isV2 && !this.args.subkeyView && !model.secretData) {
       model.secretData = model.belongsTo('selectedVersion').value().secretData;
     }
-    this.secretData = KVObject.create({ content: [] }).fromJSON(model.secretData);
+    this.secretData = KVObject.create({ content: [] }).fromJSON(
+      this.args.subkeyView ? null : model.secretData
+    );
     this.codemirrorString = this.secretData.toJSONString();
   }
 
@@ -135,14 +140,20 @@ export default class SecretEdit extends Component {
   }
 
   get secretDataIsAdvanced() {
-    return this.secretData.isAdvanced();
+    return !this.args.subkeyView && this.secretData.isAdvanced();
   }
 
   get showAdvancedMode() {
+    if (this.args.subkeyView) {
+      return !this.valuesHidden && this.jsonView === this.args.subkeyView;
+    }
     return this.secretDataIsAdvanced || this.args.preferAdvancedEdit;
   }
 
   get isWriteWithoutRead() {
+    if (this.args.subkeyView) {
+      return !this.args.subkeyView.canReadValues || this.currentValueRead?.httpStatus === 403;
+    }
     if (!this.args.model) {
       return false;
     }
@@ -157,6 +168,78 @@ export default class SecretEdit extends Component {
     return false;
   }
 
+  get currentValueRead() {
+    return this.valueRead?.view === this.args.subkeyView ? this.valueRead : null;
+  }
+
+  get valuesHidden() {
+    return this.args.subkeyView && this.currentValueRead?.status !== 'loaded';
+  }
+
+  get canShowValues() {
+    return (
+      this.valuesHidden &&
+      !this.args.subkeyView.paths?.length &&
+      !this.isWriteWithoutRead &&
+      !this.modelForData.deleted &&
+      !this.modelForData.destroyed
+    );
+  }
+
+  @cached
+  get subkeyData() {
+    const { subkeyView } = this.args;
+    if (!subkeyView || this.modelForData.deleted || this.modelForData.destroyed) {
+      return null;
+    }
+    const paths = subkeyView.paths ?? (!this.valuesHidden && subkeyPaths(this.modelForData.secretData));
+    return paths
+      ? {
+          view: subkeyView,
+          paths,
+          patchVersion: subkeyView.canPatch ? this.modelForData.version : null,
+        }
+      : null;
+  }
+
+  @action
+  async showValues() {
+    if (!this.canShowValues) {
+      return;
+    }
+    try {
+      await this.loadValues();
+    } catch {
+      // The page displays errors from the full-secret action.
+    }
+  }
+
+  @action
+  async loadValues() {
+    const currentRead = this.currentValueRead;
+    if (currentRead?.status === 'loaded') {
+      return;
+    }
+    if (currentRead?.status === 'loading') {
+      return currentRead.promise;
+    }
+    const view = this.args.subkeyView;
+    const request = { view, status: 'loading', promise: this.modelForData.reload() };
+    this.valueRead = request;
+    let result;
+    try {
+      await request.promise;
+      result = { view, status: 'loaded' };
+    } catch (error) {
+      result = { view, status: 'failed', httpStatus: error.httpStatus };
+      throw error;
+    } finally {
+      if (!this.isDestroying && this.args.subkeyView === view && this.valueRead === request) {
+        this.valueRead = result;
+      }
+    }
+  }
+
   @action
   refresh() {
     this.args.onRefresh();
@@ -164,6 +247,10 @@ export default class SecretEdit extends Component {
 
   @action
   toggleAdvanced(bool) {
-    this.args.onToggleAdvancedEdit(bool);
+    if (this.args.subkeyView) {
+      this.jsonView = bool ? this.args.subkeyView : null;
+    } else {
+      this.args.onToggleAdvancedEdit(bool);
+    }
   }
 }

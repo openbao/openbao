@@ -34,6 +34,19 @@ export default ApplicationAdapter.extend({
     return this.urlForFindRecord(id);
   },
 
+  async readSubkeys(backend, path, version) {
+    const url = this._url(backend, path, 'subkeys');
+    const response = await this.ajax(url, 'GET', version ? { data: { version } } : {});
+    return response.data;
+  },
+
+  patchSecret(backend, path, version, data) {
+    return this.ajax(this._url(backend, path), 'PATCH', {
+      contentType: 'application/merge-patch+json',
+      data: { options: { cas: version }, data },
+    });
+  },
+
   findRecord() {
     return this._super(...arguments).catch((errorOrModel) => {
       // if the response is a real 404 this will be an error,

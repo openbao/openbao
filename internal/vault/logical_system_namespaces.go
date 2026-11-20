@@ -379,7 +379,8 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 
 			sealConfig = &SealConfig{
-				Type: kms.Type,
+				Purpose: Primary,
+				Type:    kms.Type,
 			}
 
 			if val, ok := kms.Config["shares"]; ok {

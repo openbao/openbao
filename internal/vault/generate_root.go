@@ -300,14 +300,7 @@ func (c *Core) lockedGenerateRootUpdate(ctx context.Context, key []byte, nonce s
 		return nil, ErrNotSealable
 	}
 
-	// Get the seal configuration
-	var config *SealConfig
-	if seal.RecoveryKeySupported() {
-		config, err = seal.RecoveryConfig(ctx)
-	} else {
-		config, err = seal.BarrierConfig(ctx)
-	}
-
+	config, err := seal.Config(ctx)
 	if err != nil {
 		return nil, err
 	}

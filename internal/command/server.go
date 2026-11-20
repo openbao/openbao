@@ -1778,14 +1778,7 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) (ret
 
 	// Initialize the cluster without recovery keys; a root token can be
 	// used to create recovery keys in the future.
-	var recoveryConfig *vault.SealConfig
-	barrierConfig := &vault.SealConfig{}
-	recoveryConfig = &vault.SealConfig{}
-
-	init, err := core.Initialize(ctx, &vault.InitParams{
-		BarrierConfig:  barrierConfig,
-		RecoveryConfig: recoveryConfig,
-	})
+	init, err := core.Initialize(ctx, &vault.InitParams{SealConfig: &vault.SealConfig{Purpose: vault.Recovery, SecretShares: 0, SecretThreshold: 0}})
 	if err != nil {
 		if errors.Is(err, vault.ErrParallelInit) || errors.Is(err, vault.ErrAlreadyInit) {
 			return nil
@@ -1907,30 +1900,20 @@ func (c *ServerCommand) doSelfInit(core *vault.Core, config *server.Config, root
 func (c *ServerCommand) enableDev(core *vault.Core, coreConfig *vault.CoreConfig) (*vault.InitResult, error) {
 	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
 
-	var recoveryConfig *vault.SealConfig
-	barrierConfig := &vault.SealConfig{
-		SecretShares:    1,
-		SecretThreshold: 1,
-	}
-
-	if core.SealAccess().RecoveryKeySupported() {
-		recoveryConfig = &vault.SealConfig{
-			SecretShares:    1,
-			SecretThreshold: 1,
-		}
-	}
-
 	// Initialize it with a basic single key
 	init, err := core.Initialize(ctx, &vault.InitParams{
-		BarrierConfig:  barrierConfig,
-		RecoveryConfig: recoveryConfig,
+		SealConfig: &vault.SealConfig{
+			Purpose:         vault.Primary,
+			SecretShares:    1,
+			SecretThreshold: 1,
+		},
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	// Handle unseal with stored keys.
-	if core.SealAccess().BarrierType() != vaultseal.WrapperTypeShamir {
+	if core.SealAccess().WrapperType() != vaultseal.WrapperTypeShamir {
 		err := core.UnsealWithStoredKeys(ctx)
 		if err != nil {
 			return nil, err

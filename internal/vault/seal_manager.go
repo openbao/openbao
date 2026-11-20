@@ -95,6 +95,9 @@ func (sm *SealManager) sealAll() error {
 
 // Reset clears rotation and unlock internal states.
 func (sm *SealManager) Reset() {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
 	sm.unlockInformationByNamespace = map[string]*unlockInformation{}
 	sm.rotationConfigByNamespace = map[string]*rotationConfig{}
 }
@@ -141,7 +144,7 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	sm.sealByNamespace[ns.UUID] = defaultSeal
 
 	if writeToStorage {
-		if err := defaultSeal.SetBarrierConfig(ctx, sealConfig); err != nil {
+		if err := defaultSeal.SetConfig(ctx, sealConfig); err != nil {
 			return fmt.Errorf("failed to set barrier config: %w", err)
 		}
 	}
@@ -266,7 +269,7 @@ func (sm *SealManager) SealStatus(ctx context.Context, ns *namespace.Namespace) 
 	}
 
 	// Verify seal configuration
-	sealConfig, err := seal.BarrierConfig(ctx)
+	sealConfig, err := seal.Config(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -281,6 +284,13 @@ func (sm *SealManager) SealStatus(ctx context.Context, ns *namespace.Namespace) 
 		progress, nonce = len(info.Parts), info.Nonce
 	}
 
+	// RecoverySealType is deprecated, but left here for backwards compatibility.
+	var recoverySealType string
+	isRecoverySeal := seal.RecoveryKeySupported()
+	if isRecoverySeal {
+		recoverySealType = "shamir"
+	}
+
 	return &SealStatusResponse{
 		Type:             sealConfig.Type,
 		Initialized:      init,
@@ -289,8 +299,8 @@ func (sm *SealManager) SealStatus(ctx context.Context, ns *namespace.Namespace) 
 		N:                sealConfig.SecretShares,
 		Progress:         progress,
 		Nonce:            nonce,
-		RecoverySeal:     seal.RecoveryKeySupported(),
-		RecoverySealType: seal.RecoveryType(),
+		RecoverySeal:     isRecoverySeal,
+		RecoverySealType: recoverySealType,
 	}, nil
 }
 
@@ -392,14 +402,11 @@ func (sm *SealManager) getUnsealKey(ctx context.Context, seal Seal, ns *namespac
 	raftInfo := sm.core.raftInfo.Load()
 
 	switch {
-	case seal.RecoveryKeySupported():
-		sealConfig, err = seal.RecoveryConfig(ctx)
 	case sm.core.isRaftUnseal():
-		// Ignore follower's seal config and refer to leader's barrier
-		// configuration.
-		sealConfig = raftInfo.leaderBarrierConfig
+		// Ignore follower's seal config and refer to leader's configuration.
+		sealConfig = raftInfo.leaderSealConfig
 	default:
-		sealConfig, err = seal.BarrierConfig(ctx)
+		sealConfig, err = seal.Config(ctx)
 	}
 
 	if err != nil {
@@ -460,7 +467,7 @@ func (sm *SealManager) getUnsealKey(ctx context.Context, seal Seal, ns *namespac
 // If allowMissing is true, a failure to find the root key in storage results
 // in a nil error and a nil root key being returned.
 func (sm *SealManager) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []byte, useTestSeal bool, allowMissing bool) ([]byte, error) {
-	switch seal.BarrierType() {
+	switch seal.WrapperType() {
 	case vaultseal.WrapperTypeShamir:
 		if useTestSeal {
 			ns, err := namespace.FromContext(ctx)
@@ -471,14 +478,14 @@ func (sm *SealManager) unsealKeyToRootKey(ctx context.Context, seal Seal, combin
 			testseal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 			testseal.SetCore(sm.core)
 			testseal.SetMetaPrefix(NamespaceStoragePathPrefix(ns))
-			cfg, err := seal.BarrierConfig(ctx)
+			cfg, err := seal.Config(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("failed to setup test barrier config: %w", err)
 			}
 			if cfg == nil {
 				return nil, errors.New("namespace barrier reports initialized but no seal configuration found")
 			}
-			testseal.SetCachedBarrierConfig(cfg)
+			testseal.SetCachedConfig(cfg)
 			seal = testseal
 		}
 
@@ -554,7 +561,7 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 		return nil, ErrNotSealable
 	}
 
-	sealConfig, err := seal.BarrierConfig(ctx)
+	sealConfig, err := seal.Config(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve seal config: %w", err)
 	}
@@ -565,7 +572,7 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 	var sealKey []byte
 	var sealKeyShares [][]byte
 
-	if seal.BarrierType() == vaultseal.WrapperTypeShamir {
+	if seal.WrapperType() == vaultseal.WrapperTypeShamir {
 		sealKey, sealKeyShares, err = sm.core.generateShares(sealConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate namespace seal key: %w", err)
@@ -585,7 +592,7 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 		return nil, fmt.Errorf("failed to unseal namespace barrier: %w", err)
 	}
 
-	if seal.BarrierType() == vaultseal.WrapperTypeShamir {
+	if seal.WrapperType() == vaultseal.WrapperTypeShamir {
 		shamirWrapper, err := seal.GetShamirWrapper()
 		if err != nil {
 			return nil, fmt.Errorf("unable to get shamir wrapper: %w", err)

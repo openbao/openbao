@@ -108,7 +108,7 @@ func TestSealManager_SetSeal(t *testing.T) {
 			require.NotEmpty(t, c.sealManager.NamespaceSeal(tt.ns.UUID))
 
 			// verify storage
-			cfg, err := seal.BarrierConfig(ctx)
+			cfg, err := seal.Config(ctx)
 			require.NoError(t, err)
 			if tt.writeToStorage {
 				require.Equal(t, tt.config, cfg)

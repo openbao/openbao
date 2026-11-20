@@ -4,13 +4,12 @@
 package http
 
 import (
-	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"io"
 	"net/http"
 
 	"github.com/hashicorp/go-secure-stdlib/base62"
+	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault"
 )
 
@@ -34,23 +33,14 @@ func handleSysGenerateRootAttemptGet(core *vault.Core, w http.ResponseWriter, r 
 	defer cancel()
 
 	// Get the current seal configuration
-	barrierConfig, err := core.SealAccess().BarrierConfig(ctx)
+	sealConfig, err := core.SealAccess().Config(ctx)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err)
 		return
 	}
-	if barrierConfig == nil {
+	if sealConfig == nil {
 		respondError(w, http.StatusBadRequest, errors.New("server is not yet initialized"))
 		return
-	}
-
-	sealConfig := barrierConfig
-	if core.SealAccess().RecoveryKeySupported() {
-		sealConfig, err = core.SealAccess().RecoveryConfig(ctx)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, err)
-			return
-		}
 	}
 
 	// Get the generation configuration
@@ -150,7 +140,6 @@ func handleSysGenerateRootAttemptDelete(core *vault.Core, w http.ResponseWriter,
 
 func handleSysGenerateRootUpdate(core *vault.Core, generateStrategy vault.GenerateRootStrategy) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Parse the request
 		var req GenerateRootUpdateRequest
 		if err := parseJSONRequest(r, &req); err != nil && !errors.Is(err, io.EOF) {
 			respondError(w, http.StatusBadRequest, err)
@@ -164,27 +153,15 @@ func handleSysGenerateRootUpdate(core *vault.Core, generateStrategy vault.Genera
 			return
 		}
 
-		// Decode the key, which is base64 or hex encoded
-		min, max := core.BarrierKeyLength()
-		key, err := hex.DecodeString(req.Key)
-		// We check min and max here to ensure that a string that is base64
-		// encoded but also valid hex will not be valid and we instead base64
-		// decode it
-		if err != nil || len(key) < min || len(key) > max {
-			key, err = base64.StdEncoding.DecodeString(req.Key)
-			if err != nil {
-				respondError(
-					w, http.StatusBadRequest,
-					errors.New("'key' must be a valid hex or base64 string"),
-				)
-				return
-			}
+		key, httpErr := core.ParseShareKey(namespace.RootNamespace.Path, req.Key)
+		if httpErr != nil {
+			respondError(w, httpErr.Code(), httpErr)
+			return
 		}
 
 		ctx, cancel := core.GetContext()
 		defer cancel()
 
-		// Use the key to make progress on root generation
 		result, err := core.GenerateRootUpdate(ctx, key, req.Nonce, generateStrategy)
 		if err != nil {
 			respondError(w, http.StatusBadRequest, err)

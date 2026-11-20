@@ -74,9 +74,7 @@ func TestCore_GenerateRoot_Init(t *testing.T) {
 
 	testCore_GenerateRoot_Init_Common(t, c, namespace.RootNamespace)
 
-	bc := &SealConfig{SecretShares: 5, SecretThreshold: 3}
-	rc := &SealConfig{SecretShares: 5, SecretThreshold: 3}
-	c, _, _, _ = TestCoreUnsealedWithConfigs(t, bc, rc)
+	c, _, _, _ = TestCoreUnsealedWithConfigs(t, &SealConfig{SecretShares: 5, SecretThreshold: 3})
 	testCore_GenerateRoot_Init_Common(t, c, namespace.RootNamespace)
 
 	testCore_GenerateRoot_Init_Common(t, c, ns)

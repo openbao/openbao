@@ -1,0 +1,3 @@
+```release-note:bug
+storage/raft: Persist non-voter status across Shamir unseal during manual raft join.
+```

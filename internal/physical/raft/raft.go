@@ -647,7 +647,7 @@ func (b *RaftBackend) NonVoter() bool {
 	b.l.RLock()
 	defer b.l.RUnlock()
 
-	return b.nonVoter || (b.fsm != nil && b.fsm.DesiredSuffrage() == "non-voter")
+	return b.nonVoter
 }
 
 func (b *RaftBackend) EffectiveVersion() string {
@@ -1953,8 +1953,6 @@ func (b *RaftBackend) SetDesiredSuffrage(nonVoter bool) error {
 	b.l.Lock()
 	defer b.l.Unlock()
 
-	b.nonVoter = nonVoter
-
 	var desiredSuffrage string
 	switch nonVoter {
 	case true:
@@ -1967,6 +1965,8 @@ func (b *RaftBackend) SetDesiredSuffrage(nonVoter bool) error {
 	if err != nil {
 		return err
 	}
+
+	b.nonVoter = nonVoter
 
 	return nil
 }

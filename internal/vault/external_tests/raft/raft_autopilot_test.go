@@ -773,12 +773,6 @@ func TestRaft_Autopilot_ManualJoin_NonVoter(t *testing.T) {
 			"autopilot_reconcile_interval": "300ms",
 			"autopilot_update_interval":    "100ms",
 		},
-		VersionMap: map[int]string{
-			0: version.Version,
-			1: version.Version,
-			2: version.Version,
-			3: version.Version,
-		},
 		NumCores: 4,
 	})
 	defer cluster.Cleanup()

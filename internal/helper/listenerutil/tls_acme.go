@@ -130,13 +130,12 @@ func NewCertificateGetter(l *configutil.Listener, ui cli.Ui, logger hclog.Logger
 
 	if l.TLSACMEKeyType != "" {
 		switch certmagic.KeyType(l.TLSACMEKeyType) {
-		case certmagic.ED25519, certmagic.P256, certmagic.P384, certmagic.RSA2048, certmagic.RSA4096, certmagic.RSA8192:
+		case certmagic.ED25519, certmagic.P256, certmagic.P384, certmagic.RSA2048, certmagic.RSA4096, certmagic.RSA8192, certmagic.MLDSA44, certmagic.MLDSA65, certmagic.MLDSA87:
+			magicCfg.KeySource = certmagic.StandardKeyGenerator{
+				KeyType: certmagic.KeyType(l.TLSACMEKeyType),
+			}
 		default:
-			return nil, fmt.Errorf("unknown value for tls_acme_key_type (`%v`); allowed values are `%v`, `%v`, `%v`, `%v`, `%v`, `%v`", l.TLSACMEKeyType, certmagic.ED25519, certmagic.P256, certmagic.P384, certmagic.RSA2048, certmagic.RSA4096, certmagic.RSA8192)
-		}
-
-		magicCfg.KeySource = certmagic.StandardKeyGenerator{
-			KeyType: certmagic.KeyType(l.TLSACMEKeyType),
+			return nil, fmt.Errorf("unknown value for tls_acme_key_type (`%v`); allowed values are `%v`, `%v`, `%v`, `%v`, `%v`, `%v`, `%v`, `%v`, `%v`", l.TLSACMEKeyType, certmagic.ED25519, certmagic.P256, certmagic.P384, certmagic.RSA2048, certmagic.RSA4096, certmagic.RSA8192, certmagic.MLDSA44, certmagic.MLDSA65, certmagic.MLDSA87)
 		}
 	}
 

@@ -153,10 +153,6 @@ func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, err
 		SaltFunc: b.Salt,
 	}
 
-	if _, err := b.getClient(); err != nil {
-		return nil, fmt.Errorf("unable to create http client: %w", err)
-	}
-
 	return b, nil
 }
 
@@ -204,10 +200,7 @@ func (b *Backend) LogRequest(ctx context.Context, in *logical.LogInput) error {
 func (b *Backend) log(ctx context.Context, buf *bytes.Buffer) error {
 	reader := bytes.NewReader(buf.Bytes())
 
-	client, err := b.getClient()
-	if err != nil {
-		return err
-	}
+	client := b.getClient()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, b.uri, reader)
 	if err != nil {
@@ -257,13 +250,13 @@ func (b *Backend) LogTestMessage(ctx context.Context, in *logical.LogInput, conf
 	return b.log(ctx, &buf)
 }
 
-func (b *Backend) getClient() (*http.Client, error) {
+func (b *Backend) getClient() *http.Client {
 	b.clientLock.RLock()
 	client := b.client
 	b.clientLock.RUnlock()
 
 	if client != nil {
-		return client, nil
+		return client
 	}
 
 	b.clientLock.Lock()
@@ -273,7 +266,7 @@ func (b *Backend) getClient() (*http.Client, error) {
 		b.client = newClient()
 	}
 
-	return b.client, nil
+	return b.client
 }
 
 func newClient() *http.Client {

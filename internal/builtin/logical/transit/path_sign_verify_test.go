@@ -1179,3 +1179,97 @@ func testTransit_NoDeadlock_SignVerify(t *testing.T, keyType string, cachingDisa
 	_, err = client.Logical().ReadWithContext(ctx, "transit/keys/broken_transit_key")
 	require.NoError(t, err)
 }
+
+func TestTransit_SignVerify_SHA1Deprecation(t *testing.T) {
+	t.Parallel()
+
+	const (
+		hashSHA1   = "sha1"
+		hashSHA256 = "sha2-256"
+	)
+
+	b, storage := createBackendWithSysView(t)
+
+	for _, keyType := range []keysutil.KeyType{
+		keysutil.KeyType_RSA2048,
+		keysutil.KeyType_ECDSA_P256,
+		keysutil.KeyType_ED25519,
+	} {
+		resp, err := b.HandleRequest(t.Context(), &logical.Request{
+			Storage:   storage,
+			Operation: logical.UpdateOperation,
+			Path:      "keys/" + keyType.String(),
+			Data:      map[string]any{"type": keyType.String()},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.False(t, resp.IsError(), "%#v", resp)
+	}
+
+	testCases := []struct {
+		keyType       keysutil.KeyType
+		hashAlgorithm string
+		urlSuffix     string
+		expectWarning bool
+	}{
+		{keysutil.KeyType_RSA2048, hashSHA1, "", true},
+		{keysutil.KeyType_RSA2048, hashSHA256, "", false},
+		{keysutil.KeyType_ECDSA_P256, hashSHA1, "", true},
+		{keysutil.KeyType_ECDSA_P256, hashSHA256, "", false},
+		{keysutil.KeyType_ED25519, hashSHA1, "", false},
+		{keysutil.KeyType_ED25519, hashSHA256, "", false},
+		{keysutil.KeyType_RSA2048, hashSHA256, "/" + hashSHA1, true},
+		{keysutil.KeyType_ECDSA_P256, hashSHA256, "/" + hashSHA1, true},
+	}
+	input := base64.StdEncoding.EncodeToString([]byte("test 12345"))
+
+	for _, tc := range testCases {
+		t.Run(tc.keyType.String()+"/"+tc.hashAlgorithm+tc.urlSuffix, func(t *testing.T) {
+			signResp, err := b.HandleRequest(t.Context(), &logical.Request{
+				Storage:   storage,
+				Operation: logical.UpdateOperation,
+				Path:      "sign/" + tc.keyType.String() + tc.urlSuffix,
+				Data: map[string]any{
+					"input":          input,
+					"hash_algorithm": tc.hashAlgorithm,
+				},
+			})
+			require.NoError(t, err)
+			require.NotNil(t, signResp)
+			require.False(t, signResp.IsError(), "%#v", signResp)
+
+			signature, ok := signResp.Data["signature"].(string)
+			require.True(t, ok)
+			require.NotEmpty(t, signature)
+
+			if tc.expectWarning {
+				require.Contains(t, signResp.Warnings, sha1SigningDeprecationWarning)
+			} else {
+				require.NotContains(t, signResp.Warnings, sha1SigningDeprecationWarning)
+			}
+			require.NotContains(t, signResp.Warnings, sha1VerificationDeprecationWarning)
+
+			verifyResp, err := b.HandleRequest(t.Context(), &logical.Request{
+				Storage:   storage,
+				Operation: logical.UpdateOperation,
+				Path:      "verify/" + tc.keyType.String() + tc.urlSuffix,
+				Data: map[string]any{
+					"input":          input,
+					"hash_algorithm": tc.hashAlgorithm,
+					"signature":      signature,
+				},
+			})
+			require.NoError(t, err)
+			require.NotNil(t, verifyResp)
+			require.False(t, verifyResp.IsError(), "%#v", verifyResp)
+			require.Equal(t, true, verifyResp.Data["valid"])
+
+			if tc.expectWarning {
+				require.Contains(t, verifyResp.Warnings, sha1VerificationDeprecationWarning)
+			} else {
+				require.NotContains(t, verifyResp.Warnings, sha1VerificationDeprecationWarning)
+			}
+			require.NotContains(t, verifyResp.Warnings, sha1SigningDeprecationWarning)
+		})
+	}
+}

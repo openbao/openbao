@@ -1,0 +1,3 @@
+```release-note:improvement
+auth/jwt: Add `oidc_discovery_document` to supply the OIDC discovery document directly and skip discovery, for when OpenBao cannot reach the issuer's public URL.
+```

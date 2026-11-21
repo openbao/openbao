@@ -1,0 +1,6 @@
+```release-note:bug
+core/mount: Fix namespace mount entries incorrectly persisting to the root namespace's storage when migrating from a non-transactional storage backend to a transactional one.
+```
+```release-note:bug
+core/auth: Fix namespace auth mount entries incorrectly persisting to the root namespace's storage when migrating from a non-transactional storage backend to a transactional one.
+```

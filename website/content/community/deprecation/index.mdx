@@ -19,6 +19,26 @@ forum](https://github.com/orgs/openbao/discussions).
 Please refer to the [FAQ](faq.mdx) page for frequently asked questions
 concerning OpenBao feature deprecations.
 
+### SHA-1 for RSA-OAEP key wrapping in the Transit secrets engine
+
+> Announced **11/2026**, Deprecated in: **v2.8.0**, Removal: **v2.9.0**
+
+Support for SHA-1 as the RSA-OAEP hash function will be removed.
+This applies to `ciphertext` imports and BYOK exports via the following
+endpoints:
+
+- `/transit/keys/:name/import`
+- `/transit/keys/:name/import_version`
+- `/transit/byok-export/:destination/:source(/:version)`
+
+Use `SHA256` (default) or another supported hash function instead.
+
+Also see:
+
+- [Import key](/docs/api/secret/transit#import-key)
+- [Import key version](/docs/api/secret/transit#import-key-version)
+- [BYOK export](/docs/api/secret/transit#securely-export-key)
+
 ### RSA SHA-1 signing of SSH certificates
 
 > Announced **11/2026**, Deprecated in: **v2.8.0**, Removal: **v2.9.0**

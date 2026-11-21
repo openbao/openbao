@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	uuid "github.com/hashicorp/go-uuid"
+	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
 	"github.com/tink-crypto/tink-go/v2/kwp/subtle"
@@ -239,8 +240,17 @@ func TestTransit_Import(t *testing.T) {
 							"ciphertext":    importBlob,
 						},
 					}
-					_, err = b.HandleRequest(t.Context(), req)
+					resp, err := b.HandleRequest(t.Context(), req)
 					require.NoError(t, err)
+
+					if hashFn == "SHA1" {
+						require.NotNil(t, resp)
+						require.False(t, resp.IsError())
+						require.Equal(t, []string{sha1KeyWrappingDeprecationWarning}, resp.Warnings)
+					} else if resp != nil {
+						require.False(t, resp.IsError())
+						require.Empty(t, resp.Warnings)
+					}
 				},
 			)
 
@@ -620,8 +630,47 @@ func TestTransit_ImportVersion(t *testing.T) {
 					"ciphertext": importBlob,
 				},
 			}
+			resp, err := b.HandleRequest(t.Context(), req)
+			require.NoError(t, err)
+			if resp != nil {
+				require.False(t, resp.IsError())
+				require.Empty(t, resp.Warnings)
+			}
+		},
+	)
+
+	t.Run("import_version with SHA1 returns a deprecation warning",
+		func(t *testing.T) {
+			keyID, err := uuid.GenerateUUID()
+			require.NoError(t, err)
+
+			keyType := keysutil.KeyType(keysutil.KeyType_RSA2048).String()
+			targetKey := getKey(t, keyType)
+			importBlob := wrapTargetKeyForImport(t, pubWrappingKey, targetKey, keyType, "SHA1")
+
+			req := &logical.Request{
+				Storage:   s,
+				Operation: logical.UpdateOperation,
+				Path:      fmt.Sprintf("keys/%s/import", keyID),
+				Data: map[string]any{
+					"type":          keyType,
+					"ciphertext":    importBlob,
+					"hash_function": "SHA1",
+				},
+			}
 			_, err = b.HandleRequest(t.Context(), req)
 			require.NoError(t, err)
+
+			req.Path = fmt.Sprintf("keys/%s/import_version", keyID)
+			req.Data = map[string]any{
+				"ciphertext":    importBlob,
+				"hash_function": "sha1",
+			}
+			resp, err := b.HandleRequest(t.Context(), req)
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			require.False(t, resp.IsError())
+			require.Equal(t, []string{sha1KeyWrappingDeprecationWarning}, resp.Warnings)
 		},
 	)
 }

@@ -950,7 +950,7 @@ func (b *SystemBackend) handleRotateBackupDelete() framework.OperationFunc {
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		if err := b.Core.sealManager.DeleteRotationBackup(ctx, ns.Path, recovery); err != nil {
+		if err := b.Core.sealManager.DeleteRotationBackup(ctx, ns, recovery); err != nil {
 			return handleError(err)
 		}
 

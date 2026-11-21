@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"path/filepath"
+	"path"
 	"strings"
 	"time"
 
@@ -225,9 +225,9 @@ func (b *versionedKVBackend) pathMetadataList() framework.OperationFunc {
 		keyInfos := map[string]any{}
 
 		for index, subKey := range keys {
-			path := filepath.Join(key, subKey)
+			entryPath := path.Join(key, subKey)
 
-			meta, err := b.getKeyMetadata(ctx, req.Storage, path)
+			meta, err := b.getKeyMetadata(ctx, req.Storage, entryPath)
 			if err != nil {
 				return nil, fmt.Errorf("[%d] failed to read entry: %w", index, err)
 			}
@@ -256,6 +256,18 @@ func (b *versionedKVBackend) pathMetadataScan() framework.OperationFunc {
 
 		readMetadata := strings.HasPrefix(req.Path, "detailed-metadata/")
 
+		// If the storage supports read-only transactions, we should leverage
+		// this as we're not writing to storage.
+		if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+			txn, err := txnStorage.BeginReadOnlyTx(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			defer txn.Rollback(ctx) //nolint:errcheck
+			req.Storage = txn
+		}
+
 		// Get an encrypted key storage object
 		wrapper, err := b.getKeyEncryptor(ctx, req.Storage)
 		if err != nil {
@@ -282,11 +294,17 @@ func (b *versionedKVBackend) pathMetadataScan() framework.OperationFunc {
 		keyInfos := map[string]any{}
 
 		for index, subKey := range keys {
-			path := filepath.Join(key, subKey)
+			entryPath := path.Join(key, subKey)
 
-			meta, err := b.getKeyMetadata(ctx, req.Storage, path)
+			meta, err := b.getKeyMetadata(ctx, req.Storage, entryPath)
 			if err != nil {
 				return nil, fmt.Errorf("[%d] failed to read entry: %w", index, err)
+			}
+
+			// No metadata for a directory or deleted entry.
+			if meta == nil {
+				keyInfos[subKey] = map[string]any{}
+				continue
 			}
 
 			data, err := b.metadataResponseData(meta)

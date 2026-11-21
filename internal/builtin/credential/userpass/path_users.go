@@ -7,6 +7,7 @@ package userpass
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -51,7 +52,7 @@ func pathUsersList(b *backend) *framework.Path {
 
 func pathUsers(b *backend) *framework.Path {
 	p := &framework.Path{
-		Pattern: "users/" + framework.GenericNameRegex("username"),
+		Pattern: "users/" + usernamePathRegex(),
 
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixUserpass,
@@ -188,7 +189,10 @@ func (b *backend) setUser(ctx context.Context, s logical.Storage, username strin
 }
 
 func (b *backend) pathUserResolvePath(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	username := strings.ToLower(d.Get("username").(string))
+	username, err := getUsername(d)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", logical.ErrInvalidRequest, err)
+	}
 	return logical.ResolvePathResponse("users/" + username)
 }
 
@@ -208,7 +212,12 @@ func (b *backend) pathUserList(ctx context.Context, req *logical.Request, data *
 }
 
 func (b *backend) pathUserDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	err := req.Storage.Delete(ctx, "user/"+strings.ToLower(d.Get("username").(string)))
+	username, err := getUsername(d)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+	}
+
+	err = req.Storage.Delete(ctx, "user/"+username)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +226,12 @@ func (b *backend) pathUserDelete(ctx context.Context, req *logical.Request, d *f
 }
 
 func (b *backend) pathUserRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	user, err := b.user(ctx, req.Storage, strings.ToLower(d.Get("username").(string)))
+	username, err := getUsername(d)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+	}
+
+	user, err := b.user(ctx, req.Storage, username)
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +277,11 @@ func (b *backend) pathUserWrite(ctx context.Context, req *logical.Request, d *fr
 	}
 	defer txRollback()
 
-	username := strings.ToLower(d.Get("username").(string))
+	username, err := getUsername(d)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+	}
+
 	userEntry, err := b.user(ctx, req.Storage, username)
 	if err != nil {
 		return nil, err

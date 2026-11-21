@@ -12,6 +12,69 @@ This policy was originally discussed [via email](https://lists.openssf.org/g/Ope
 and [approved by the OpenBao TSC](https://lf-edge.atlassian.net/wiki/spaces/OP/pages/62586881/2024-10-10+OpenBao+TSC+Meeting)
 on the October 10th, 2024 meeting.
 
-## Proposal
+A section on extended support for earlier release lines under special
+circumstances was later added when demand for a temporary dual release line
+arose due to changes made in the v2.7.x release line.
 
-A best effort by the maintainers and community will be made to identify and debug issues with releases. Any fixes identified will go into the next release. The latest release does not EoL, but users not on the latest release will be asked to test the latest release if the issue is not easily reproducible. Release timelines are roughly every month pending maintainer availability, at which point an evaluation will occur as to scope of the release (major, minor, or patch). Major and minor releases will be less frequent than every month and it may be several months between large releases.
+## Process
+
+A best effort by the maintainers and community will be made to identify and
+debug issues with releases. Any fixes identified will go into the next release.
+
+## Cadence
+
+Release timelines are roughly every month pending maintainer availability, at
+which point an evaluation will occur as to scope of the release (major, minor,
+or patch). Major and minor releases will be less frequent than every month and
+it may be several months between large releases.
+
+## Support
+
+By default, only the latest major or minor release line ("active release line")
+is supported, receiving patch releases containing bug and security fixes. As
+a result, any releases preceding the latest release, including any prior patch
+releases, are automatically considered unsupported.
+
+### Extensions
+
+Under special circumstances, the project maintainers may choose to extend
+support for an earlier major or minor release line.
+
+Common factors warranting extended support include, but are not limited to:
+
+- Breaking changes made in the active release line that render it difficult for
+  users to perform a timely upgrade.
+- Changes to build requirements made in the active release line that are
+  difficult for downstream packagers to adopt in a timely manner. One example of
+  this is an increase in the minimum required version of the Go toolchain, which
+  may not be available to downstream packagers as soon as it is to upstream.
+
+Extended support occurs across **two phases**:
+
+1. **Security release phase:** The release line keeps receiving patch releases
+   containing security fixes in coordination with the active release line. This
+   includes dedicated patch version numbers, release notes, release artifacts,
+   and inclusion within the "Patched versions" section of related GHSAs.
+   However, such releases are not separately announced or advertised by the
+   project.
+
+2. **Community backport phase:** The release line stops receiving new releases
+   entirely, but the corresponding release branch remains open for security
+   backports. That is, the community may open backport pull requests and expect
+   these to be merged by maintainers, however maintainers themselves are not
+   expected to make an effort to open backports themselves. This allows the
+   community to maintain a shared patched source tree upstream for their own
+   downstream consumption. Due to the lack of official version assignments
+   during this phase, related GHSAs no longer include the release line within
+   the "Patched versions" section.
+
+The transition between the security release and community backport phases occurs
+at a **set date** agreed upon by the organization-wide maintainers at the start
+of the security release phase. These dates are to be communicated on this page,
+and to be included as part of the release notes published with any releases made
+as part of the security release phase.
+
+#### Note on v2.6.x
+
+The security release phase of the v2.6.x release line ends on **December 1st,
+2026**.

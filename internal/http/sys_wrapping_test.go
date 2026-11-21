@@ -562,3 +562,92 @@ path "sys/control-group/request"   { capabilities = ["update"] }
 	_, err = client.Logical().Write("sys/wrapping/unwrap", nil)
 	require.Error(t, err)
 }
+
+func TestHTTP_Wrapping_RewrapCrossNamespace(t *testing.T) {
+	cluster := vault.NewTestCluster(t, &vault.CoreConfig{}, &vault.TestClusterOptions{
+		HandlerFunc: Handler,
+	})
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	core := cluster.Cores[0].Core
+	vault.TestWaitActive(t, core)
+
+	rootClient := cluster.Cores[0].Client
+	rootClient.SetToken(cluster.RootToken)
+
+	_, err := rootClient.Logical().Write("sys/namespaces/ns1", nil)
+	require.NoError(t, err)
+
+	ns1RootClient, err := rootClient.Clone()
+	require.NoError(t, err)
+	ns1RootClient.SetNamespace("ns1")
+	ns1RootClient.SetToken(cluster.RootToken)
+
+	err = ns1RootClient.Sys().PutPolicy("wrapping", `path "sys/wrapping/*" { capabilities = ["update"] }`)
+	require.NoError(t, err)
+
+	tokResp, err := ns1RootClient.Logical().Write("auth/token/create", map[string]any{
+		"policies": []string{"wrapping"},
+	})
+	require.NoError(t, err)
+	ns1Token := tokResp.Auth.ClientToken
+
+	ns1Client, err := ns1RootClient.Clone()
+	require.NoError(t, err)
+	ns1Client.SetNamespace("ns1")
+	ns1Client.SetToken(ns1Token)
+
+	wrapOnce := func() string {
+		ns1Client.SetWrappingLookupFunc(func(operation, path string) string {
+			if path == "sys/wrapping/wrap" {
+				return "5m"
+			}
+			return ""
+		})
+		defer ns1Client.SetWrappingLookupFunc(nil)
+		w, err := ns1Client.Logical().Write("sys/wrapping/wrap", map[string]any{
+			"value": "ns1-secret",
+		})
+		require.NoError(t, err)
+		require.NotNil(t, w)
+		require.NotNil(t, w.WrapInfo)
+		return w.WrapInfo.Token
+	}
+
+	// Root token rewraps ns1 wrapping token with namespace=ns1, and the rewrapped token remains in ns1.
+	orig1 := wrapOnce()
+	rewrapped1, err := ns1RootClient.Logical().Write("sys/wrapping/rewrap", map[string]any{
+		"token": orig1,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, rewrapped1)
+	require.NotNil(t, rewrapped1.WrapInfo)
+
+	_, err = rootClient.Logical().Unwrap(orig1)
+	require.Error(t, err)
+
+	rewrapped1b, err := ns1Client.Logical().Write("sys/wrapping/rewrap", map[string]any{
+		"token": rewrapped1.WrapInfo.Token,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, rewrapped1b)
+	require.NotNil(t, rewrapped1b.WrapInfo)
+
+	unwrapped1, err := rootClient.Logical().Unwrap(rewrapped1b.WrapInfo.Token)
+	require.NoError(t, err)
+	require.Equal(t, "ns1-secret", unwrapped1.Data["value"])
+
+	// Root token rewraps ns1 wrapping token without a namespace header.
+	orig2 := wrapOnce()
+	rewrapped2, err := rootClient.Logical().Write("sys/wrapping/rewrap", map[string]any{
+		"token": orig2,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, rewrapped2)
+	require.NotNil(t, rewrapped2.WrapInfo)
+
+	unwrapped2, err := ns1Client.Logical().Unwrap(rewrapped2.WrapInfo.Token)
+	require.NoError(t, err)
+	require.Equal(t, "ns1-secret", unwrapped2.Data["value"])
+}

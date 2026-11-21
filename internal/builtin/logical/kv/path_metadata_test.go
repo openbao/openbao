@@ -4,6 +4,7 @@
 package kv
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -1651,5 +1652,107 @@ func TestVersionedKV_ListDetailedMetadata(t *testing.T) {
 
 	if value != nil && len(value.(map[string]any)) != 0 {
 		t.Fatalf("unexpected info about directory in detailed list response: %v", listResp.Data)
+	}
+}
+
+// TestVersionedKV_ScanDetailedMetadata ensures that detailed scanning in
+// KVv2 returns metadata for existing entries.
+func TestVersionedKV_ScanDetailedMetadata(t *testing.T) {
+	b, storage := getBackend(t)
+
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "data/subdir/entry",
+		Storage:   storage,
+		Data: map[string]any{
+			"data": map[string]any{
+				"value": 10,
+			},
+		},
+	}
+
+	resp, err := b.HandleRequest(t.Context(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("create request failed, err: %#v, resp: %#v", err, resp)
+	}
+
+	req = &logical.Request{
+		Operation: logical.ScanOperation,
+		Path:      "detailed-metadata/",
+		Storage:   storage,
+	}
+
+	scanResp, err := b.HandleRequest(t.Context(), req)
+	if err != nil || scanResp == nil || scanResp.IsError() {
+		t.Fatalf("err:%s resp:%#v\n", err, scanResp)
+	}
+
+	if len(scanResp.Data["keys"].([]string)) != 1 || scanResp.Data["keys"].([]string)[0] != "subdir/entry" {
+		t.Fatalf("expected one key (subdir/entry) - resp: %#v", scanResp)
+	}
+
+	value := scanResp.Data["key_info"].(map[string]any)["subdir/entry"]
+	if value == nil || len(value.(map[string]any)) == 0 {
+		t.Fatalf("expected info about entry in detailed scan response: %v", scanResp.Data)
+	}
+}
+
+type deleteOnGetStorage struct {
+	logical.Storage
+	returnNilOnGet bool
+}
+
+func (s *deleteOnGetStorage) Get(ctx context.Context, key string) (*logical.StorageEntry, error) {
+	if s.returnNilOnGet {
+		return nil, nil
+	}
+	return s.Storage.Get(ctx, key)
+}
+
+// TestVersionedKV_ScanDetailedMetadata_MissingMetadata ensures that detailed scanning in
+// KVv2 does not panic when an entry has missing or deleted metadata mid-scan.
+func TestVersionedKV_ScanDetailedMetadata_MissingMetadata(t *testing.T) {
+	b, storage := getBackend(t)
+
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "data/subdir/deleted",
+		Storage:   storage,
+		Data: map[string]any{
+			"data": map[string]any{
+				"value": 10,
+			},
+		},
+	}
+
+	resp, err := b.HandleRequest(t.Context(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("create request failed, err: %#v, resp: %#v", err, resp)
+	}
+
+	// Intercept storage so the key is visible during List (ScanView) but returns nil on Get (deleted mid-scan)
+	wrappedStorage := &deleteOnGetStorage{
+		Storage:        storage,
+		returnNilOnGet: true,
+	}
+
+	req = &logical.Request{
+		Operation: logical.ScanOperation,
+		Path:      "detailed-metadata/",
+		Storage:   wrappedStorage,
+	}
+
+	scanResp, err := b.HandleRequest(t.Context(), req)
+	if err != nil || scanResp == nil || scanResp.IsError() {
+		t.Fatalf("err:%s resp:%#v\n", err, scanResp)
+	}
+
+	if len(scanResp.Data["keys"].([]string)) != 1 || scanResp.Data["keys"].([]string)[0] != "subdir/deleted" {
+		t.Fatalf("expected one key (subdir/deleted) - resp: %#v", scanResp)
+	}
+
+	value := scanResp.Data["key_info"].(map[string]any)["subdir/deleted"]
+	if value != nil && len(value.(map[string]any)) != 0 {
+		t.Fatalf("unexpected info about deleted entry in detailed scan response: %v", scanResp.Data)
 	}
 }

@@ -1,0 +1,3 @@
+```release-note:bug
+secrets/kv: Fix panic on detailed metadata scan when entries have missing or deleted metadata.
+```

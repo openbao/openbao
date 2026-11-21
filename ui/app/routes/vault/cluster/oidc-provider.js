@@ -160,6 +160,13 @@ export default class VaultClusterOidcProviderRoute extends Route {
             message: 'Your client ID is invalid. Please update your configuration and try again.',
           },
         };
+      } else if (resp?.errors?.includes('namespace not found')) {
+        return {
+          error: {
+            title: 'Namespace not found',
+            message: 'Unable to find the requested namespace. Please verify the URL and try again.',
+          },
+        };
       } else {
         return this._handleError(resp, decodedRedirect);
       }

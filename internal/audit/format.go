@@ -298,9 +298,10 @@ func (f *AuditFormatter) FormatResponse(ctx context.Context, w io.Writer, config
 		respType = "response"
 	}
 	respEntry := &AuditResponseEntry{
-		Type:      respType,
-		Error:     errString,
-		Forwarded: req.ForwardedFrom != "",
+		Type:       respType,
+		Error:      errString,
+		Forwarded:  req.ForwardedFrom != "",
+		Forwarding: in.Forwarding,
 		Auth: &AuditAuth{
 			ClientToken:               auth.ClientToken,
 			Accessor:                  auth.Accessor,
@@ -404,13 +405,14 @@ type AuditRequestEntry struct {
 
 // AuditResponseEntry is the structure of a response audit log entry in Audit.
 type AuditResponseEntry struct {
-	Time      string         `json:"time,omitempty"`
-	Type      string         `json:"type,omitempty"`
-	Auth      *AuditAuth     `json:"auth,omitempty"`
-	Request   *AuditRequest  `json:"request,omitempty"`
-	Response  *AuditResponse `json:"response,omitempty"`
-	Error     string         `json:"error,omitempty"`
-	Forwarded bool           `json:"forwarded,omitempty"`
+	Time       string         `json:"time,omitempty"`
+	Type       string         `json:"type,omitempty"`
+	Auth       *AuditAuth     `json:"auth,omitempty"`
+	Request    *AuditRequest  `json:"request,omitempty"`
+	Response   *AuditResponse `json:"response,omitempty"`
+	Error      string         `json:"error,omitempty"`
+	Forwarded  bool           `json:"forwarded,omitempty"`
+	Forwarding bool           `json:"forwarding,omitempty"`
 }
 
 type AuditRequest struct {

@@ -115,7 +115,10 @@ factor, so that different factors can be required for different operations.
 Finally, the capabilities in the `controlled_capabilities` stanza must be a
 subset of the `capabilities` specified in the policy itself. For example, a
 policy giving only `read` access to the path `secret/foo` cannot specify a
-control group factor with `list` as a controlled capability.
+control group factor with `list` as a controlled capability. Note that
+`controlled_capabilities` only matches request operations (such as `create`,
+`read`, `update`, `patch`, `delete`, `list`, and `scan`); `sudo` is not
+supported by control groups even though the field name refers to capabilities.
 
 Please see the following section for example ACL Policies.
 
@@ -197,7 +200,7 @@ path "kv/*" {
   capabilities = ["create", "update", "delete", "list", "sudo"]
   control_group {
     factor "admin" {
-      controlled_capabilities = ["delete", "list", "sudo"]
+      controlled_capabilities = ["delete", "list"]
       identity {
         group_names = ["admin"]
         approvals   = 1
@@ -224,8 +227,8 @@ Because the second path stanza has a control group factor with no
 required to get 2 approvals from the `superuser` group before
 executing any operation against `kv/*`. In addition, by virtue of the
 `controlled_capabilities` field in the first path stanza,
-`delete`,`list`, and `sudo` operations will require an additional
-approval from the `admin` group.
+`delete` and `list` operations will require an additional approval from the
+`admin` group.
 
 ```hcl
 path "kv/*" {

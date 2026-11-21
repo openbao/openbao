@@ -319,3 +319,52 @@ func (c *Sys) NamespaceSealStatusWithContext(ctx context.Context, name string) (
 
 	return result.Data, mapstructure.Decode(secret, &result)
 }
+
+// MigrateNamespaceBarrierInput is the input for the MigrateNamespaceBarrier operation.
+type MigrateNamespaceBarrierInput struct {
+	// Seal is a HCL string with exactly one seal stanza, e.g.:
+	//   seal "shamir" { shares = 5 threshold = 3 }
+	// If empty the namespace is not sealable.
+	Seal    string   `json:"seal,omitempty"`
+	PGPKeys []string `json:"pgp_keys,omitempty"`
+}
+
+// MigrateNamespaceBarrierOutput is returned by CreateNamespace.
+type MigrateNamespaceBarrierOutput struct {
+	KeyShares    []string `json:"key_shares"`
+	KeyThreshold int      `json:"key_threshold"`
+	Status       string   `json:"status"`
+}
+
+func (c *Sys) MigrateNamespaceBarrier(name string, i *MigrateNamespaceBarrierInput) (*MigrateNamespaceBarrierOutput, error) {
+	return c.MigrateNamespaceBarrierWithContext(context.Background(), name, i)
+}
+
+func (c *Sys) MigrateNamespaceBarrierWithContext(ctx context.Context, name string, i *MigrateNamespaceBarrierInput) (*MigrateNamespaceBarrierOutput, error) {
+	if name == "" {
+		return nil, errors.New("name must not be empty")
+	}
+
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodPost, fmt.Sprintf("/v1/sys/namespaces/%s/migrate-barrier", name))
+
+	if err := r.SetJSONBody(i); err != nil {
+		return nil, err
+	}
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	var result struct {
+		Data *MigrateNamespaceBarrierOutput
+	}
+	if err := resp.DecodeJSON(&result); err != nil {
+		return nil, err
+	}
+	return result.Data, nil
+}

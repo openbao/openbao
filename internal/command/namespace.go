@@ -65,6 +65,10 @@ Usage: bao namespace <subcommand> [options] [args]
 
       $ bao namespace unseal
 
+  Migrate the namespace barrier:
+
+      $ bao namespace migrate-barrier
+
   Please see the individual subcommand help for detailed usage information.
 `
 

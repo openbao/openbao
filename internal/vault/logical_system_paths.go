@@ -12,7 +12,51 @@ import (
 	"github.com/openbao/openbao/v2/internal/vault/policy"
 )
 
+var SysHealthSchema = map[string]*framework.FieldSchema{
+	"standbyok": {
+		Type:        framework.TypeBool,
+		Description: "Specifies if being a standby should still return the active status code.",
+		Default:     false,
+	},
+	"activecode": {
+		Type:        framework.TypeInt,
+		Description: "Specifies the status code for an active node.",
+		Default:     http.StatusOK,
+	},
+	"standbycode": {
+		Type:        framework.TypeInt,
+		Description: "Specifies the status code for a standby node.",
+		Default:     http.StatusTooManyRequests, // Consul warning code
+	},
+	"sealedcode": {
+		Type:        framework.TypeInt,
+		Description: "Specifies the status code for a sealed node.",
+		Default:     http.StatusServiceUnavailable,
+	},
+	"uninitcode": {
+		Type:        framework.TypeInt,
+		Description: "Specifies the status code for an uninitialized node.",
+		Default:     http.StatusNotImplemented,
+	},
+}
+
 func (b *SystemBackend) configPaths() []*framework.Path {
+	sysHealthOperation := &framework.PathOperation{
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationVerb:   "read",
+			OperationSuffix: "health-status",
+		},
+		Summary: "Returns the health status of OpenBao.",
+		Responses: map[int][]framework.Response{
+			200: {{Description: "initialized, unsealed, and active"}},
+			429: {{Description: "unsealed and standby"}},
+			472: {{Description: "data recovery mode replication secondary and active"}},
+			501: {{Description: "not initialized"}},
+			503: {{Description: "sealed"}},
+		},
+		Callback: b.handleHealth,
+	}
+
 	return []*framework.Path{
 		{
 			Pattern: "config/cors$",
@@ -478,43 +522,10 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 
 		{
 			Pattern: "health$",
-			Fields: map[string]*framework.FieldSchema{
-				"standbyok": {
-					Type:        framework.TypeBool,
-					Description: "Specifies if being a standby should still return the active status code.",
-				},
-				"activecode": {
-					Type:        framework.TypeInt,
-					Description: "Specifies the status code for an active node.",
-				},
-				"standbycode": {
-					Type:        framework.TypeInt,
-					Description: "Specifies the status code for a standby node.",
-				},
-				"sealedcode": {
-					Type:        framework.TypeInt,
-					Description: "Specifies the status code for a sealed node.",
-				},
-				"uninitcode": {
-					Type:        framework.TypeInt,
-					Description: "Specifies the status code for an uninitialized node.",
-				},
-			},
+			Fields:  SysHealthSchema,
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ReadOperation: &framework.PathOperation{
-					DisplayAttrs: &framework.DisplayAttributes{
-						OperationVerb:   "read",
-						OperationSuffix: "health-status",
-					},
-					Summary: "Returns the health status of OpenBao.",
-					Responses: map[int][]framework.Response{
-						200: {{Description: "initialized, unsealed, and active"}},
-						429: {{Description: "unsealed and standby"}},
-						472: {{Description: "data recovery mode replication secondary and active"}},
-						501: {{Description: "not initialized"}},
-						503: {{Description: "sealed"}},
-					},
-				},
+				logical.ReadOperation:   sysHealthOperation,
+				logical.HeaderOperation: sysHealthOperation,
 			},
 
 			HelpSynopsis:    strings.TrimSpace(sysHelp["health"][0]),

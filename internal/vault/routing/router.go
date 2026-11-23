@@ -356,7 +356,10 @@ func (r *Router) Remount(ctx context.Context, src, dst string, callback func(*Ro
 	}
 
 	if callback != nil {
-		err = callback(raw.(*RouteEntry))
+		re := raw.(*RouteEntry)
+		re.Lock()
+		err = callback(re)
+		re.Unlock()
 		if err != nil {
 			return fmt.Errorf("unable to update route entry: %w", err)
 		}
@@ -615,7 +618,11 @@ func (r *Router) matchingStorage(ctx context.Context, path string, apiPath bool)
 	if !ok {
 		return nil
 	}
-	return raw.(*RouteEntry).StorageView
+	re := raw.(*RouteEntry)
+	re.RLock()
+	defer re.RUnlock()
+
+	return re.StorageView
 }
 
 // MatchingMountEntry returns the MountEntry used for a path
@@ -672,14 +679,22 @@ func (r *Router) MatchingSystemView(ctx context.Context, path string) logical.Sy
 	r.l.RLock()
 	_, raw, ok := r.root.LongestPrefix(path)
 	r.l.RUnlock()
-	if !ok || raw.(*RouteEntry).Backend == nil {
+	if !ok {
 		return nil
 	}
-	return raw.(*RouteEntry).Backend.System()
+
+	re := raw.(*RouteEntry)
+	re.RLock()
+	defer re.RUnlock()
+
+	if re.Backend == nil {
+		return nil
+	}
+	return re.Backend.System()
 }
 
 func (r *Router) MatchingMountByAPIPath(ctx context.Context, path string) string {
-	re, _ := r.matchingRouteEntryByPath(ctx, path, true)
+	re, _ := r.matchingRouteEntryByPath(path, true)
 	if re == nil {
 		return ""
 	}
@@ -698,7 +713,7 @@ func (r *Router) MatchingStoragePrefixByAPIPath(ctx context.Context, path string
 	}
 	path = ns.Path + path
 
-	re, found := r.matchingRouteEntryByPath(ctx, path, true)
+	re, found := r.matchingRouteEntryByPath(path, true)
 	if !found {
 		return "", false
 	}
@@ -711,7 +726,7 @@ func (r *Router) MatchingStoragePrefixByAPIPath(ctx context.Context, path string
 
 // MatchingAPIPrefixByStoragePath the api path information for the given storage path
 func (r *Router) MatchingAPIPrefixByStoragePath(ctx context.Context, path string) (*namespace.Namespace, string, string, bool) {
-	re, found := r.matchingRouteEntryByPath(ctx, path, false)
+	re, found := r.matchingRouteEntryByPath(path, false)
 	if !found {
 		return nil, "", "", found
 	}
@@ -728,7 +743,7 @@ func (r *Router) MatchingAPIPrefixByStoragePath(ctx context.Context, path string
 	return re.MountEntry.Namespace, mountPath, re.StoragePrefix, found
 }
 
-func (r *Router) matchingRouteEntryByPath(ctx context.Context, path string, apiPath bool) (*RouteEntry, bool) {
+func (r *Router) matchingRouteEntryByPath(path string, apiPath bool) (*RouteEntry, bool) {
 	var raw any
 	var ok bool
 	r.l.RLock()
@@ -1266,11 +1281,15 @@ func filteredHeaders(origHeaders map[string][]string, candidateHeaders, deniedHe
 
 // Invalidate is used to route a cache invalidation request to the correct plugin
 func (r *Router) Invalidate(ctx context.Context, key string) bool {
-	re, ok := r.matchingRouteEntryByPath(ctx, key, false)
-	if ok && strings.HasPrefix(key, re.StoragePrefix) {
-		re.RLock()
-		defer re.RUnlock()
-		re.Backend.InvalidateKey(ctx, strings.TrimPrefix(key, re.StoragePrefix))
+	re, ok := r.matchingRouteEntryByPath(key, false)
+	if !ok {
+		return false
+	}
+
+	re.RLock()
+	defer re.RUnlock()
+	if after, ok := strings.CutPrefix(key, re.StoragePrefix); ok {
+		re.Backend.InvalidateKey(ctx, after)
 		return true
 	}
 	return false

@@ -4,6 +4,7 @@
 package file
 
 import (
+	"bytes"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -172,6 +173,42 @@ func TestAuditFile_fileModeIrregular(t *testing.T) {
 			require.Error(t, err)
 		})
 	}
+}
+
+func TestAuditFile_Retry(t *testing.T) {
+	f, err := os.CreateTemp("", "test")
+	require.NoError(t, err)
+	defer os.Remove(f.Name())
+
+	err = f.Close()
+	require.NoError(t, err)
+
+	config := map[string]string{
+		"path": f.Name(),
+	}
+
+	backendIface, err := Factory(t.Context(), &audit.BackendConfig{
+		Config:     config,
+		SaltConfig: &salt.Config{},
+		SaltView:   &logical.InmemStorage{},
+	})
+	require.NoError(t, err)
+
+	backend, ok := backendIface.(*Backend)
+	require.True(t, ok)
+
+	err = backend.log(t.Context(), bytes.NewBufferString("1"), nil)
+	require.NoError(t, err)
+
+	err = backend.f.Close()
+	require.NoError(t, err)
+
+	err = backend.log(t.Context(), bytes.NewBufferString("2"), nil)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(f.Name())
+	require.NoError(t, err)
+	require.Equal(t, "12", string(data))
 }
 
 func BenchmarkAuditFile_request(b *testing.B) {

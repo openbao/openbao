@@ -253,6 +253,7 @@ func (b *Backend) log(ctx context.Context, buf *bytes.Buffer, writer io.Writer) 
 		b.fileLock.Unlock()
 		return err
 	}
+	writer = b.f
 
 	if _, err := reader.Seek(0, io.SeekStart); err != nil {
 		b.fileLock.Unlock()

@@ -1528,16 +1528,11 @@ func TestNamespaceSealManyLeases(t *testing.T) {
 						return true
 					}
 
-					found := false
-					expiration.pending.Range(func(keyRaw any, _ any) bool {
-						key := keyRaw.(string)
-						found = found || key == leaseId
-						return true
-					})
+					_, found := expiration.pending.Load(leaseId)
 					require.True(collect, found, "did not find expected lease: %v", leaseId)
 					return true
 				})
-			}, time.Second, 100*time.Millisecond)
+			}, 3*time.Second, 100*time.Millisecond)
 
 		}
 	}

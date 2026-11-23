@@ -1,0 +1,3 @@
+```release-note:improvement
+command/operator: Allow `operator generate-root -decode` without requiring an authenticated client token.
+```

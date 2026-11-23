@@ -84,7 +84,7 @@ type NamespaceStore struct {
 	// initialization time and persisted throughout the lifetime of the
 	// instance. Entries should not be returned directly but instead be
 	// copied to prevent modification.
-	namespacesByPath     *namespaceTree
+	namespacesByPath     *namespace.Tree
 	namespacesByUUID     map[string]*namespace.Namespace
 	namespacesByAccessor map[string]*namespace.Namespace
 
@@ -107,9 +107,9 @@ type NamespaceStore struct {
 // NewNamespaceStore creates a new NamespaceStore that is backed
 // using a given view. It used used to durable store and manage named namespace.
 func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*NamespaceStore, error) {
-	tree := newNamespaceTree(namespace.RootNamespace)
-	tree.createHook = core.router.MountNamespace
-	tree.deleteHook = core.router.UnmountNamespace
+	tree := namespace.NewTree(namespace.RootNamespace)
+	tree.CreateHook = core.router.MountNamespace
+	tree.DeleteHook = core.router.UnmountNamespace
 
 	ns := &NamespaceStore{
 		core:             core,
@@ -192,7 +192,7 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 		return err
 	}
 
-	err := ns.namespacesByPath.validate()
+	err := ns.namespacesByPath.Validate()
 	if err != nil {
 		return err
 	}

@@ -1860,10 +1860,11 @@ func TestSystemBackend_authTable(t *testing.T) {
 			"accessor":                resp.Data["token/"].(map[string]any)["accessor"],
 			"uuid":                    resp.Data["token/"].(map[string]any)["uuid"],
 			"config": map[string]any{
-				"default_lease_ttl": int64(0),
-				"max_lease_ttl":     int64(0),
-				"force_no_cache":    false,
-				"token_type":        "default-service",
+				"default_lease_ttl":    int64(0),
+				"max_lease_ttl":        int64(0),
+				"force_no_cache":       false,
+				"token_type":           "default-service",
+				"case_sensitive_alias": true,
 			},
 			"local":                  false,
 			"seal_wrap":              false,
@@ -1940,10 +1941,11 @@ func TestSystemBackend_enableAuth(t *testing.T) {
 			"accessor":                resp.Data["foo/"].(map[string]any)["accessor"],
 			"uuid":                    resp.Data["foo/"].(map[string]any)["uuid"],
 			"config": map[string]any{
-				"default_lease_ttl": int64(2100),
-				"max_lease_ttl":     int64(2700),
-				"force_no_cache":    false,
-				"token_type":        "default-service",
+				"default_lease_ttl":    int64(2100),
+				"max_lease_ttl":        int64(2700),
+				"force_no_cache":       false,
+				"token_type":           "default-service",
+				"case_sensitive_alias": true,
 			},
 			"local":                  true,
 			"seal_wrap":              true,
@@ -1959,10 +1961,11 @@ func TestSystemBackend_enableAuth(t *testing.T) {
 			"accessor":                resp.Data["token/"].(map[string]any)["accessor"],
 			"uuid":                    resp.Data["token/"].(map[string]any)["uuid"],
 			"config": map[string]any{
-				"default_lease_ttl": int64(0),
-				"max_lease_ttl":     int64(0),
-				"force_no_cache":    false,
-				"token_type":        "default-service",
+				"default_lease_ttl":    int64(0),
+				"max_lease_ttl":        int64(0),
+				"force_no_cache":       false,
+				"token_type":           "default-service",
+				"case_sensitive_alias": true,
 			},
 			"local":                  false,
 			"seal_wrap":              false,
@@ -2037,11 +2040,12 @@ func TestSystemBackend_tuneAuth(t *testing.T) {
 	)
 
 	exp := map[string]any{
-		"description":       "token based credentials",
-		"default_lease_ttl": int(2764800),
-		"max_lease_ttl":     int(2764800),
-		"force_no_cache":    false,
-		"token_type":        "default-service",
+		"description":          "token based credentials",
+		"default_lease_ttl":    int(2764800),
+		"max_lease_ttl":        int(2764800),
+		"force_no_cache":       false,
+		"token_type":           "default-service",
+		"case_sensitive_alias": true,
 	}
 
 	if diff := deep.Equal(resp.Data, exp); diff != nil {
@@ -4012,10 +4016,11 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 			"token/": map[string]any{
 				"options": map[string]string(nil),
 				"config": map[string]any{
-					"default_lease_ttl": int64(0),
-					"max_lease_ttl":     int64(0),
-					"force_no_cache":    false,
-					"token_type":        "default-service",
+					"default_lease_ttl":    int64(0),
+					"max_lease_ttl":        int64(0),
+					"force_no_cache":       false,
+					"token_type":           "default-service",
+					"case_sensitive_alias": true,
 				},
 				"type":                    "token",
 				"external_entropy_access": false,

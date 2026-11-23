@@ -71,9 +71,6 @@ func TestIdentityStore_CaseSensitiveEntityAliases(t *testing.T) {
 	// Enable and configure cert auth
 	err = client.Sys().EnableAuthWithOptionsWithContext(t.Context(), "cert", &api.EnableAuthOptions{
 		Type: "cert",
-		Config: api.MountConfigInput{
-			CaseSensitiveAlias: new(true),
-		},
 	})
 	require.NoError(t, err)
 

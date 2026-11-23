@@ -1335,6 +1335,9 @@ func (c *Core) defaultAuthTable(ctx context.Context) (*routing.MountTable, error
 		BackendAwareUUID: tokenBackendUUID,
 		NamespaceID:      ns.ID,
 		Namespace:        ns,
+		Config: routing.MountConfig{
+			CaseSensitiveAlias: new(true),
+		},
 	}
 
 	if ns.ID != namespace.RootNamespaceID {

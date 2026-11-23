@@ -19,6 +19,22 @@ forum](https://github.com/orgs/openbao/discussions).
 Please refer to the [FAQ](faq.mdx) page for frequently asked questions
 concerning OpenBao feature deprecations.
 
+### Raft `auto_join` stanza and discover plugin
+
+> Announced **11/2026**, Deprecated in: **v2.8.0**, Removal: **v2.9.0**
+
+Raft's `auto_join` stanza will be removed in favor of the newer
+`auto_join_plugin` stanza. To keep using the feature, you will need
+to update your configuration to use `auto_join_plugin` with the
+`discover` join plugin instead. The `discover` plugin will be available
+as a built-in plugin throughout v2.8, but must be installed from
+[openbao-plugins](https://github.com/openbao/openbao-plugins) as an external
+plugin starting with v2.9.0.
+
+Also see:
+
+- [`retry_join` stanza](/docs/configuration/storage/raft/#retry_join-stanza)
+
 ### RSA SHA-1 signing of SSH certificates
 
 > Announced **11/2026**, Deprecated in: **v2.8.0**, Removal: **v2.9.0**

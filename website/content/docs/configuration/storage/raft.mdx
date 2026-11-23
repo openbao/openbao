@@ -181,15 +181,15 @@ backend cannot be declared.
 
 - `auto_join` `(string: "")` <a name="auto_join"></a> - Cloud auto-join
   configuration, using [go-discover](https://github.com/hashicorp/go-discover)
-  syntax. This is discouraged in favor of the `discover` `auto_join_plugin`.
+  syntax. This is deprecated in favor of the `discover` `auto_join_plugin`.
 
 - `auto_join_scheme` `(string: "")` <a name="auto_join_scheme"></a> - The
   optional URI protocol scheme for addresses discovered via auto-join. Available
-  values are `http` or `https`. This is discouraged in favor of the `discover`
+  values are `http` or `https`. This is deprecated in favor of the `discover`
   `auto_join_plugin`.
 
 - `auto_join_port` `(uint: "")` <a name="auto_join_port"></a> - The optional
-  port used for addresses discovered via auto-join. This is discouraged in favor
+  port used for addresses discovered via auto-join. This is deprecated in favor
   of the `discover` `auto_join_plugin`.
 
 - `leader_tls_servername` `(string: "")` <a name="leader_tls_servername"></a> - The TLS server name to use when
@@ -250,6 +250,14 @@ config keys:
 - `scheme` `(string: "https")` - The scheme (`"http"` or `"https"`) to use when
   connecting.
 
+:::warning
+
+The `discover` plugin remains built-in throughout v2.8, but must be installed
+from [openbao-plugins](https://github.com/openbao/openbao-plugins) as an
+external plugin starting with v2.9.0.
+
+:::
+
 `static` - static list of addresses, mostly for plugin testing. Takes only one
 config key:
 
@@ -296,7 +304,7 @@ storage "raft" {
     }
   }
 
-  # Discouraged form, prefer the plugin form above
+  # Deprecated form, use the plugin form above!
   retry_join {
     auto_join = "provider=aws region=eu-west-1 tag_key=openbao tag_value=... access_key_id=... secret_access_key=..."
   }

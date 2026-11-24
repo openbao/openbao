@@ -1,118 +1,111 @@
 // Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package namespace
 
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
-
-	"github.com/openbao/openbao/v2/internal/helper/namespace"
 )
 
-// namespaceTree represents a tree structure for efficient namespace path lookups.
+// Tree represents a tree structure for efficient namespace lookups by path.
 // IMPORTANT: This structure is NOT thread-safe on its own and must be protected
 // by the NamespaceStore's lock when being accessed or modified.
-type namespaceTree struct {
-	root *namespaceNode
+type Tree struct {
+	root *treeNode
 	size int
 
-	createHook func(*namespace.Namespace) error
-	deleteHook func(*namespace.Namespace) error
+	CreateHook func(*Namespace) error
+	DeleteHook func(*Namespace) error
 }
 
-type namespaceNode struct {
-	children map[string]*namespaceNode
-	entry    *namespace.Namespace
+type treeNode struct {
+	children map[string]*treeNode
+	entry    *Namespace
 }
 
-// newNamespaceTree creates a new namespaceTree with the given Namespace as
-// root namespace
-func newNamespaceTree(root *namespace.Namespace) *namespaceTree {
-	node := &namespaceNode{
+// NewTree creates a new Tree with the given Namespace as root namespace.
+func NewTree(root *Namespace) *Tree {
+	node := &treeNode{
 		entry:    root,
-		children: make(map[string]*namespaceNode),
+		children: make(map[string]*treeNode),
 	}
-	return &namespaceTree{
+	return &Tree{
 		root: node,
 		size: 1,
 	}
 }
 
-func (nt *namespaceTree) nodeAt(path string) *namespaceNode {
-	path = namespace.Canonicalize(path)
+func (t *Tree) nodeAt(path string) *treeNode {
+	path = Canonicalize(path)
 	var segments []string
 	if path != "" {
 		segments = strings.SplitAfter(path, "/")
 		segments = segments[:len(segments)-1]
 	}
-	node := nt.root
+	node := t.root
 	for _, segment := range segments {
 		n, ok := node.children[segment]
 		if !ok {
 			return nil
 		}
-
 		node = n
 	}
 	return node
 }
 
 // Get returns the namespace at a given path.
-func (nt *namespaceTree) Get(path string) *namespace.Namespace {
-	node := nt.nodeAt(path)
+func (t *Tree) Get(path string) *Namespace {
+	node := t.nodeAt(path)
 	if node == nil {
 		return nil
 	}
-
 	return node.entry
 }
 
 // IsLeaf returns true if the given path represents a leaf node, i.e., a
 // namespace with no children.
-func (nt *namespaceTree) IsLeaf(path string) bool {
-	node := nt.nodeAt(path)
+func (t *Tree) IsLeaf(path string) bool {
+	node := t.nodeAt(path)
 	if node == nil {
 		return false
 	}
-
 	return len(node.children) == 0
 }
 
 // LongestPrefix finds the longest prefix of path that leads to a namespace. It
 // returns the path to the namespace, the namespace and the remaining part of
 // the input path.
-func (nt *namespaceTree) LongestPrefix(path string) (string, *namespace.Namespace, string) {
-	cpath := namespace.Canonicalize(path)
+func (t *Tree) LongestPrefix(path string) (string, *Namespace, string) {
+	cpath := Canonicalize(path)
 	var segments []string
 	if path != "" {
 		segments = strings.SplitAfter(cpath, "/")
 		segments = segments[:len(segments)-1]
 	}
-	node := nt.root
+	node := t.root
 	for i := range segments {
 		n, ok := node.children[segments[i]]
 		if !ok {
 			break
 		}
-
 		node = n
 	}
-
 	namespacePrefix := node.entry.Path
 	pathSuffix := strings.TrimPrefix(path, namespacePrefix)
 	return namespacePrefix, node.entry.Clone(false), pathSuffix
 }
 
-func (nt *namespaceTree) PostOrderTraversal(path string, op func(namespace *namespace.Namespace)) {
-	node := nt.nodeAt(path)
+func (t *Tree) PostOrderTraversal(path string, op func(namespace *Namespace)) {
+	node := t.nodeAt(path)
 	if node == nil {
 		return
 	}
 
-	nodes := []*namespaceNode{node}
-	ordNodes := []*namespaceNode{}
+	nodes := []*treeNode{node}
+	ordNodes := []*treeNode{}
 
 	for len(nodes) > 0 {
 		node := nodes[len(nodes)-1]
@@ -124,16 +117,16 @@ func (nt *namespaceTree) PostOrderTraversal(path string, op func(namespace *name
 		}
 	}
 
-	for i := len(ordNodes) - 1; i >= 0; i-- {
-		op(ordNodes[i].entry)
+	for _, ordNode := range slices.Backward(ordNodes) {
+		op(ordNode.entry)
 	}
 }
 
 // WalkPath calls predicate by walking towards the given namespace, starting
 // from the root, until the predicate returns true or the namespace was reached
 // or not found.
-func (nt *namespaceTree) WalkPath(path string, predicate func(namespace *namespace.Namespace) bool) {
-	path = namespace.Canonicalize(path)
+func (t *Tree) WalkPath(path string, predicate func(namespace *Namespace) bool) {
+	path = Canonicalize(path)
 	var segments []string
 	if path != "" {
 		segments = strings.SplitAfter(path, "/")
@@ -141,7 +134,7 @@ func (nt *namespaceTree) WalkPath(path string, predicate func(namespace *namespa
 	}
 
 	// intentionally not calling the predicate on the root
-	node := nt.root
+	node := t.root
 	for _, segment := range segments {
 		n, ok := node.children[segment]
 		if !ok || predicate(n.entry) {
@@ -154,17 +147,13 @@ func (nt *namespaceTree) WalkPath(path string, predicate func(namespace *namespa
 
 // Walk walks the tree starting at path and calls callback on each encountered
 // child namespace. An error is returned if the initial path does not exist.
-func (nt *namespaceTree) Walk(
-	path string,
-	recursive bool,
-	callback func(*namespace.Namespace),
-) error {
-	node := nt.nodeAt(path)
+func (t *Tree) Walk(path string, recursive bool, callback func(*Namespace)) error {
+	node := t.nodeAt(path)
 	if node == nil {
-		return fmt.Errorf("unknown path: %s", namespace.Canonicalize(path))
+		return fmt.Errorf("unknown path: %s", Canonicalize(path))
 	}
 
-	queue := make([]*namespaceNode, 0, len(node.children))
+	queue := make([]*treeNode, 0, len(node.children))
 	for _, child := range node.children {
 		queue = append(queue, child)
 	}
@@ -184,15 +173,15 @@ func (nt *namespaceTree) Walk(
 
 // Insert adds or updates the namespace with the given entry. It refuses to add
 // the namespace if the parent namespace does not exist in the tree.
-func (nt *namespaceTree) Insert(entry *namespace.Namespace) error {
-	path := namespace.Canonicalize(entry.Path)
+func (t *Tree) Insert(entry *Namespace) error {
+	path := Canonicalize(entry.Path)
 	if path == "" {
 		return errors.New("can't insert root namespace")
 	}
 	segments := strings.SplitAfter(path, "/")
 	segments = segments[:len(segments)-1]
 	l := len(segments)
-	node := nt.root
+	node := t.root
 	for i, segment := range segments {
 		n, ok := node.children[segment]
 		if !ok {
@@ -200,19 +189,19 @@ func (nt *namespaceTree) Insert(entry *namespace.Namespace) error {
 				return errors.New("can't insert namespace with missing parent")
 			}
 
-			if nt.createHook != nil {
-				// Call createHook before mutating the tree below so we don't
+			if t.CreateHook != nil {
+				// Call CreateHook before mutating the tree below so we don't
 				// need code to undo the mutation on hook failure.
-				if err := nt.createHook(entry); err != nil {
+				if err := t.CreateHook(entry); err != nil {
 					return err
 				}
 			}
 
-			node.children[segment] = &namespaceNode{
-				children: make(map[string]*namespaceNode),
+			node.children[segment] = &treeNode{
+				children: make(map[string]*treeNode),
 				entry:    entry,
 			}
-			nt.size += 1
+			t.size += 1
 			return nil
 		}
 
@@ -226,8 +215,8 @@ func (nt *namespaceTree) Insert(entry *namespace.Namespace) error {
 
 // Delete removes a namespace from the tree using the path. The delete is not
 // cascading and refuses to remove namespaces with existing children.
-func (nt *namespaceTree) Delete(path string) error {
-	path = namespace.Canonicalize(path)
+func (t *Tree) Delete(path string) error {
+	path = Canonicalize(path)
 	if path == "" {
 		return errors.New("can't delete root namespace")
 	}
@@ -235,8 +224,8 @@ func (nt *namespaceTree) Delete(path string) error {
 	segments := strings.SplitAfter(path, "/")
 	segments = segments[:len(segments)-1]
 
-	node := nt.root
-	var parent *namespaceNode
+	node := t.root
+	var parent *treeNode
 
 	for _, segment := range segments {
 		n, ok := node.children[segment]
@@ -252,10 +241,10 @@ func (nt *namespaceTree) Delete(path string) error {
 	}
 
 	delete(parent.children, segments[len(segments)-1])
-	nt.size -= 1
+	t.size -= 1
 
-	if nt.deleteHook != nil {
-		if err := nt.deleteHook(node.entry); err != nil {
+	if t.DeleteHook != nil {
+		if err := t.DeleteHook(node.entry); err != nil {
 			return err
 		}
 	}
@@ -263,10 +252,10 @@ func (nt *namespaceTree) Delete(path string) error {
 	return nil
 }
 
-// validate validates that all nodes in the tree have entry set
-func (nt *namespaceTree) validate() error {
-	nodes := make([]*namespaceNode, 0, nt.size)
-	nodes = append(nodes, nt.root)
+// Validate validates that all nodes in the tree have entry set.
+func (t *Tree) Validate() error {
+	nodes := make([]*treeNode, 0, t.size)
+	nodes = append(nodes, t.root)
 
 	var errs []error
 

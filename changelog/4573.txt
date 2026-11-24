@@ -1,0 +1,3 @@
+```release-note:improvement
+core/auth: For newly created auth methods `case_sensitive_alias` will default to `true`.
+```

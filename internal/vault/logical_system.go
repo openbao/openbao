@@ -2366,6 +2366,9 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	}
 
 	config.CaseSensitiveAlias = apiConfig.CaseSensitiveAlias
+	if config.CaseSensitiveAlias == nil {
+		config.CaseSensitiveAlias = new(true)
+	}
 
 	// Create the mount entry
 	me := &routing.MountEntry{

@@ -193,8 +193,8 @@ func (c *AuthTuneCommand) Flags() *FlagSets {
 		Target:  &c.flagCaseSensitiveAlias,
 		Default: false,
 		Usage: "Whether or not the aliases returned by this auth method should be " +
-			"treated case sensitively. Currently defaults to false, but will default " +
-			"to true for newly created auth methods starting with OpenBao 2.8.0.",
+			"treated case sensitively. Currently defaults to true, but defaults to " +
+			"false for auth methods created before OpenBao 2.8.0.",
 	})
 
 	f.StringVar(&StringVar{

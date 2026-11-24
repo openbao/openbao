@@ -6,7 +6,6 @@ package http
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"testing"
 	"time"
 
@@ -39,10 +38,11 @@ func TestSysAuth(t *testing.T) {
 				"type":                    "token",
 				"external_entropy_access": false,
 				"config": map[string]any{
-					"default_lease_ttl": json.Number("0"),
-					"max_lease_ttl":     json.Number("0"),
-					"token_type":        "default-service",
-					"force_no_cache":    false,
+					"default_lease_ttl":    json.Number("0"),
+					"max_lease_ttl":        json.Number("0"),
+					"token_type":           "default-service",
+					"force_no_cache":       false,
+					"case_sensitive_alias": true,
 				},
 				"local":                  false,
 				"seal_wrap":              false,
@@ -57,10 +57,11 @@ func TestSysAuth(t *testing.T) {
 			"type":                    "token",
 			"external_entropy_access": false,
 			"config": map[string]any{
-				"default_lease_ttl": json.Number("0"),
-				"max_lease_ttl":     json.Number("0"),
-				"token_type":        "default-service",
-				"force_no_cache":    false,
+				"default_lease_ttl":    json.Number("0"),
+				"max_lease_ttl":        json.Number("0"),
+				"token_type":           "default-service",
+				"force_no_cache":       false,
+				"case_sensitive_alias": true,
 			},
 			"local":                  false,
 			"seal_wrap":              false,
@@ -88,8 +89,8 @@ func TestSysAuth(t *testing.T) {
 		expected["data"].(map[string]any)[k].(map[string]any)["uuid"] = v.(map[string]any)["uuid"]
 	}
 
-	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf("bad: expected:%#v\nactual:%#v", expected, actual)
+	if diff := deep.Equal(actual, expected); diff != nil {
+		t.Fatal(diff)
 	}
 }
 
@@ -122,10 +123,11 @@ func TestSysEnableAuth(t *testing.T) {
 				"external_entropy_access": false,
 				"deprecation_status":      "supported",
 				"config": map[string]any{
-					"default_lease_ttl": json.Number("0"),
-					"max_lease_ttl":     json.Number("0"),
-					"token_type":        "default-service",
-					"force_no_cache":    false,
+					"default_lease_ttl":    json.Number("0"),
+					"max_lease_ttl":        json.Number("0"),
+					"token_type":           "default-service",
+					"force_no_cache":       false,
+					"case_sensitive_alias": true,
 				},
 				"local":                  false,
 				"seal_wrap":              false,
@@ -139,10 +141,11 @@ func TestSysEnableAuth(t *testing.T) {
 				"type":                    "token",
 				"external_entropy_access": false,
 				"config": map[string]any{
-					"default_lease_ttl": json.Number("0"),
-					"max_lease_ttl":     json.Number("0"),
-					"force_no_cache":    false,
-					"token_type":        "default-service",
+					"default_lease_ttl":    json.Number("0"),
+					"max_lease_ttl":        json.Number("0"),
+					"force_no_cache":       false,
+					"token_type":           "default-service",
+					"case_sensitive_alias": true,
 				},
 				"local":                  false,
 				"seal_wrap":              false,
@@ -158,10 +161,11 @@ func TestSysEnableAuth(t *testing.T) {
 			"external_entropy_access": false,
 			"deprecation_status":      "supported",
 			"config": map[string]any{
-				"default_lease_ttl": json.Number("0"),
-				"max_lease_ttl":     json.Number("0"),
-				"token_type":        "default-service",
-				"force_no_cache":    false,
+				"default_lease_ttl":    json.Number("0"),
+				"max_lease_ttl":        json.Number("0"),
+				"token_type":           "default-service",
+				"force_no_cache":       false,
+				"case_sensitive_alias": true,
 			},
 			"local":                  false,
 			"seal_wrap":              false,
@@ -175,10 +179,11 @@ func TestSysEnableAuth(t *testing.T) {
 			"type":                    "token",
 			"external_entropy_access": false,
 			"config": map[string]any{
-				"default_lease_ttl": json.Number("0"),
-				"max_lease_ttl":     json.Number("0"),
-				"token_type":        "default-service",
-				"force_no_cache":    false,
+				"default_lease_ttl":    json.Number("0"),
+				"max_lease_ttl":        json.Number("0"),
+				"token_type":           "default-service",
+				"force_no_cache":       false,
+				"case_sensitive_alias": true,
 			},
 			"local":                  false,
 			"seal_wrap":              false,
@@ -239,10 +244,11 @@ func TestSysDisableAuth(t *testing.T) {
 		"data": map[string]any{
 			"token/": map[string]any{
 				"config": map[string]any{
-					"default_lease_ttl": json.Number("0"),
-					"max_lease_ttl":     json.Number("0"),
-					"token_type":        "default-service",
-					"force_no_cache":    false,
+					"default_lease_ttl":    json.Number("0"),
+					"max_lease_ttl":        json.Number("0"),
+					"token_type":           "default-service",
+					"force_no_cache":       false,
+					"case_sensitive_alias": true,
 				},
 				"description":             "token based credentials",
 				"type":                    "token",
@@ -257,10 +263,11 @@ func TestSysDisableAuth(t *testing.T) {
 		},
 		"token/": map[string]any{
 			"config": map[string]any{
-				"default_lease_ttl": json.Number("0"),
-				"max_lease_ttl":     json.Number("0"),
-				"token_type":        "default-service",
-				"force_no_cache":    false,
+				"default_lease_ttl":    json.Number("0"),
+				"max_lease_ttl":        json.Number("0"),
+				"token_type":           "default-service",
+				"force_no_cache":       false,
+				"case_sensitive_alias": true,
 			},
 			"description":             "token based credentials",
 			"type":                    "token",
@@ -334,6 +341,7 @@ func TestSysTuneAuth_nonHMACKeys(t *testing.T) {
 			"audit_non_hmac_request_keys":  []any{"foo"},
 			"audit_non_hmac_response_keys": []any{"bar"},
 			"token_type":                   "default-service",
+			"case_sensitive_alias":         true,
 		},
 		"description":                  "token based credentials",
 		"default_lease_ttl":            json.Number("2764800"),
@@ -342,11 +350,12 @@ func TestSysTuneAuth_nonHMACKeys(t *testing.T) {
 		"audit_non_hmac_request_keys":  []any{"foo"},
 		"audit_non_hmac_response_keys": []any{"bar"},
 		"token_type":                   "default-service",
+		"case_sensitive_alias":         true,
 	}
 	testResponseBody(t, resp, &actual)
 	expected["request_id"] = actual["request_id"]
-	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf("bad:\nExpected: %#v\nActual:%#v", expected, actual)
+	if diff := deep.Equal(actual, expected); diff != nil {
+		t.Fatal(diff)
 	}
 
 	// Unset those mount tune values
@@ -373,22 +382,24 @@ func TestSysTuneAuth_nonHMACKeys(t *testing.T) {
 		"warnings":       nil,
 		"auth":           nil,
 		"data": map[string]any{
-			"description":       "token based credentials",
-			"default_lease_ttl": json.Number("2764800"),
-			"max_lease_ttl":     json.Number("2764800"),
-			"force_no_cache":    false,
-			"token_type":        "default-service",
+			"description":          "token based credentials",
+			"default_lease_ttl":    json.Number("2764800"),
+			"max_lease_ttl":        json.Number("2764800"),
+			"force_no_cache":       false,
+			"token_type":           "default-service",
+			"case_sensitive_alias": true,
 		},
-		"description":       "token based credentials",
-		"default_lease_ttl": json.Number("2764800"),
-		"max_lease_ttl":     json.Number("2764800"),
-		"force_no_cache":    false,
-		"token_type":        "default-service",
+		"description":          "token based credentials",
+		"default_lease_ttl":    json.Number("2764800"),
+		"max_lease_ttl":        json.Number("2764800"),
+		"force_no_cache":       false,
+		"token_type":           "default-service",
+		"case_sensitive_alias": true,
 	}
 	testResponseBody(t, resp, &actual)
 	expected["request_id"] = actual["request_id"]
-	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf("bad:\nExpected: %#v\nActual:%#v", expected, actual)
+	if diff := deep.Equal(actual, expected); diff != nil {
+		t.Fatal(diff)
 	}
 }
 
@@ -411,22 +422,24 @@ func TestSysTuneAuth_showUIMount(t *testing.T) {
 		"warnings":       nil,
 		"auth":           nil,
 		"data": map[string]any{
-			"description":       "token based credentials",
-			"default_lease_ttl": json.Number("2764800"),
-			"max_lease_ttl":     json.Number("2764800"),
-			"force_no_cache":    false,
-			"token_type":        "default-service",
+			"description":          "token based credentials",
+			"default_lease_ttl":    json.Number("2764800"),
+			"max_lease_ttl":        json.Number("2764800"),
+			"force_no_cache":       false,
+			"token_type":           "default-service",
+			"case_sensitive_alias": true,
 		},
-		"description":       "token based credentials",
-		"default_lease_ttl": json.Number("2764800"),
-		"max_lease_ttl":     json.Number("2764800"),
-		"force_no_cache":    false,
-		"token_type":        "default-service",
+		"description":          "token based credentials",
+		"default_lease_ttl":    json.Number("2764800"),
+		"max_lease_ttl":        json.Number("2764800"),
+		"force_no_cache":       false,
+		"token_type":           "default-service",
+		"case_sensitive_alias": true,
 	}
 	testResponseBody(t, resp, &actual)
 	expected["request_id"] = actual["request_id"]
-	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf("bad:\nExpected: %#v\nActual:%#v", expected, actual)
+	if diff := deep.Equal(actual, expected); diff != nil {
+		t.Fatal(diff)
 	}
 
 	// Mount-tune the listing_visibility
@@ -449,23 +462,25 @@ func TestSysTuneAuth_showUIMount(t *testing.T) {
 		"warnings":       nil,
 		"auth":           nil,
 		"data": map[string]any{
-			"description":        "token based credentials",
-			"default_lease_ttl":  json.Number("2764800"),
-			"max_lease_ttl":      json.Number("2764800"),
-			"force_no_cache":     false,
-			"listing_visibility": "unauth",
-			"token_type":         "default-service",
+			"description":          "token based credentials",
+			"default_lease_ttl":    json.Number("2764800"),
+			"max_lease_ttl":        json.Number("2764800"),
+			"force_no_cache":       false,
+			"listing_visibility":   "unauth",
+			"token_type":           "default-service",
+			"case_sensitive_alias": true,
 		},
-		"default_lease_ttl":  json.Number("2764800"),
-		"max_lease_ttl":      json.Number("2764800"),
-		"force_no_cache":     false,
-		"listing_visibility": "unauth",
-		"token_type":         "default-service",
+		"default_lease_ttl":    json.Number("2764800"),
+		"max_lease_ttl":        json.Number("2764800"),
+		"force_no_cache":       false,
+		"listing_visibility":   "unauth",
+		"token_type":           "default-service",
+		"case_sensitive_alias": true,
 	}
 	testResponseBody(t, resp, &actual)
 	expected["request_id"] = actual["request_id"]
-	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf("bad:\nExpected: %#v\nActual:%#v", expected, actual)
+	if diff := deep.Equal(actual, expected); diff != nil {
+		t.Fatal(diff)
 	}
 }
 
@@ -488,25 +503,27 @@ func TestSysTuneAuth_caseSensitiveAlias(t *testing.T) {
 		"warnings":       nil,
 		"auth":           nil,
 		"data": map[string]any{
-			"description":       "token based credentials",
-			"default_lease_ttl": json.Number("2764800"),
-			"max_lease_ttl":     json.Number("2764800"),
-			"force_no_cache":    false,
-			"token_type":        "default-service",
+			"description":          "token based credentials",
+			"default_lease_ttl":    json.Number("2764800"),
+			"max_lease_ttl":        json.Number("2764800"),
+			"force_no_cache":       false,
+			"token_type":           "default-service",
+			"case_sensitive_alias": true,
 		},
-		"description":       "token based credentials",
-		"default_lease_ttl": json.Number("2764800"),
-		"max_lease_ttl":     json.Number("2764800"),
-		"force_no_cache":    false,
-		"token_type":        "default-service",
+		"description":          "token based credentials",
+		"default_lease_ttl":    json.Number("2764800"),
+		"max_lease_ttl":        json.Number("2764800"),
+		"force_no_cache":       false,
+		"token_type":           "default-service",
+		"case_sensitive_alias": true,
 	}
 	testResponseBody(t, resp, &actual)
 	expected["request_id"] = actual["request_id"]
-	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf("bad:\nExpected: %#v\nActual:%#v", expected, actual)
+	if diff := deep.Equal(actual, expected); diff != nil {
+		t.Fatal(diff)
 	}
 
-	// Mount-tune the listing_visibility
+	// Mount-tune the case-sensitivity
 	resp = testHttpPost(t, token, addr+"/v1/sys/auth/token/tune", map[string]any{
 		"case_sensitive_alias": false,
 	})
@@ -541,8 +558,8 @@ func TestSysTuneAuth_caseSensitiveAlias(t *testing.T) {
 	}
 	testResponseBody(t, resp, &actual)
 	expected["request_id"] = actual["request_id"]
-	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf("bad:\nExpected: %#v\nActual:%#v", expected, actual)
+	if diff := deep.Equal(actual, expected); diff != nil {
+		t.Fatal(diff)
 	}
 }
 
@@ -597,10 +614,11 @@ func TestSysRemountAuth(t *testing.T) {
 				"type":                    "noop",
 				"external_entropy_access": false,
 				"config": map[string]any{
-					"default_lease_ttl": json.Number("0"),
-					"max_lease_ttl":     json.Number("0"),
-					"token_type":        "default-service",
-					"force_no_cache":    false,
+					"default_lease_ttl":    json.Number("0"),
+					"max_lease_ttl":        json.Number("0"),
+					"token_type":           "default-service",
+					"force_no_cache":       false,
+					"case_sensitive_alias": true,
 				},
 				"local":                  false,
 				"seal_wrap":              false,
@@ -614,10 +632,11 @@ func TestSysRemountAuth(t *testing.T) {
 				"type":                    "token",
 				"external_entropy_access": false,
 				"config": map[string]any{
-					"default_lease_ttl": json.Number("0"),
-					"max_lease_ttl":     json.Number("0"),
-					"force_no_cache":    false,
-					"token_type":        "default-service",
+					"default_lease_ttl":    json.Number("0"),
+					"max_lease_ttl":        json.Number("0"),
+					"force_no_cache":       false,
+					"token_type":           "default-service",
+					"case_sensitive_alias": true,
 				},
 				"local":                  false,
 				"seal_wrap":              false,
@@ -632,10 +651,11 @@ func TestSysRemountAuth(t *testing.T) {
 			"type":                    "noop",
 			"external_entropy_access": false,
 			"config": map[string]any{
-				"default_lease_ttl": json.Number("0"),
-				"max_lease_ttl":     json.Number("0"),
-				"token_type":        "default-service",
-				"force_no_cache":    false,
+				"default_lease_ttl":    json.Number("0"),
+				"max_lease_ttl":        json.Number("0"),
+				"token_type":           "default-service",
+				"force_no_cache":       false,
+				"case_sensitive_alias": true,
 			},
 			"local":                  false,
 			"seal_wrap":              false,
@@ -649,10 +669,11 @@ func TestSysRemountAuth(t *testing.T) {
 			"type":                    "token",
 			"external_entropy_access": false,
 			"config": map[string]any{
-				"default_lease_ttl": json.Number("0"),
-				"max_lease_ttl":     json.Number("0"),
-				"token_type":        "default-service",
-				"force_no_cache":    false,
+				"default_lease_ttl":    json.Number("0"),
+				"max_lease_ttl":        json.Number("0"),
+				"token_type":           "default-service",
+				"force_no_cache":       false,
+				"case_sensitive_alias": true,
 			},
 			"local":                  false,
 			"seal_wrap":              false,

@@ -173,12 +173,12 @@ This endpoint enables a new secrets engine at the given path.
     unversioned plugin that may have been registered, the latest versioned plugin
     registered, or a built-in plugin in that order of precedence.
 
-  - `case_sensitive_alias` `(bool: false)` - Whether or not the aliases returned
+  - `case_sensitive_alias` `(bool: true)` - Whether or not the aliases returned
     by this auth mount should be treated case sensitively.
 
     :::warning
 
-    The default value for `case_sensitive_alias` will change to `true` in
+    The default value for `case_sensitive_alias` has changed to `true` in
     OpenBao 2.8.0. See [Tune mount configuration](#tune-mount-configuration) for
     details.
 
@@ -378,22 +378,22 @@ This endpoint tunes configuration parameters for a given mount point.
 - `plugin_version` `(string: "")` – Specifies the semantic version of the plugin
   to use, e.g. "v1.0.0". Changes will not take effect until the mount is reloaded.
 
-- `case_sensitive_alias` `(bool: false)` - Whether or not the aliases returned
+- `case_sensitive_alias` `(bool: true)` - Whether or not the aliases returned
   by this auth mount should be treated case sensitively. Before changing this
   value, please read [this guide](../../guides/case-sensitive-alias.mdx).
 
   :::warning
 
   Case-insensitive matching may lead to unprivileged users being able to
-  impersonate privileged users. Therefore the default will change to `true` in
-  OpenBao 2.8.0, only disable case-sensitivity, if you know it is safe for the
-  given auth method.
+  impersonate privileged users. Therefore the default has changed to `true` in
+  OpenBao 2.8.0 for new auth methods. Only disable case-sensitivity, if you know
+  it is safe for the given auth method.
 
-  Currently, OpenBao implicitly defaults to `false` and for backwards
-  compatibility existing auth methods are not automatically converted to being
-  case-sensitive with 2.8.0. Starting with 2.7.3 and 2.6.6 you can convert your
-  existing auth methods to being case-sensitive, but it is recommended to read
-  [this guide](../../guides/case-sensitive-alias.mdx) first.
+  Versions before 2.8.0 defaulted to `false` and for backwards compatibility
+  existing auth methods are not automatically converted to being case-sensitive
+  with 2.8.0. Starting with 2.7.3 and 2.6.6 you can convert your existing auth
+  methods to being case-sensitive, but it is recommended to read [this
+  guide](../../guides/case-sensitive-alias.mdx) first.
 
   :::
 

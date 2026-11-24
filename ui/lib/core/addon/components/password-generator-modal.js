@@ -32,7 +32,7 @@ export default class PasswordGeneratorModal extends Component {
   @action regenerate() {
     try {
       this.pw = generatePassword({
-        length: this.length,
+        length: this.len,
         ...this.types,
       });
       this.error = null;

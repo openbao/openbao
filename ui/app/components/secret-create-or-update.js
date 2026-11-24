@@ -263,7 +263,7 @@ export default class SecretCreateOrUpdate extends Component {
   @action
   handleMaskedInputChange(secret, index, value) {
     const row = { ...secret, value };
-    set(this.args.secretData, index, row);
+    this.args.secretData.replace(index, 1, [row]);
     this.handleChange();
   }
   @action

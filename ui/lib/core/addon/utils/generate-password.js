@@ -26,12 +26,10 @@ export default function generatePassword({
   symbols = true,
 } = {}) {
   const types = { lower, upper, digits, symbols };
-  const selected = Object.keys(CHARACTER_TYPES)
-    .filter((key) => types[key])
-    .map((key) => CHARACTER_TYPES[key]);
+  const selected = Object.keys(CHARACTER_TYPES).filter((key) => types[key]);
 
   // Return error messages for modal
-  if (selected.length == 0) {
+  if (selected.length === 0) {
     throw new Error('Select at least one character types');
   }
   if (!Number.isInteger(length) || length < MIN_LENGTH || length > MAX_LENGTH) {

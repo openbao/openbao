@@ -1,0 +1,3 @@
+```release-note:bug
+ui/pki: Keep the source CA's allowed DNS domains and path length limit when cross-signing in the UI.
+```

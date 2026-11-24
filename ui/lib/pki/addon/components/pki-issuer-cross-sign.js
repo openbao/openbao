@@ -172,6 +172,8 @@ export default class PkiIssuerCrossSign extends Component {
         csr: newCsr,
         commonName: existingIssuer.commonName,
         ...certData,
+        maxPathLength: certData.max_path_length ?? -1,
+        permittedDnsDomains: certData.permitted_dns_domains,
       })
       .save({
         adapterOptions: {

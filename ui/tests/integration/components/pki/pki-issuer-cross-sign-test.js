@@ -139,7 +139,11 @@ module('Integration | Component | pki issuer cross sign', function (hooks) {
       `/${this.backend}/issuer/${this.parentIssuerData.issuer_name}/sign-intermediate`,
       (schema, req) => {
         assert.ok(true, 'Step 3. POST request is made to sign CSR with new parent issuer');
-        assert.propEqual(JSON.parse(req.requestBody), newCSR, 'payload has common name and csr');
+        assert.propEqual(
+          JSON.parse(req.requestBody),
+          { ...newCSR, max_path_length: -1 },
+          'payload has common name, csr, and the unconstrained path length'
+        );
         return { data: { ca_chain: [newlySignedCert, parentIssuerCert] } };
       }
     );

@@ -43,6 +43,30 @@ module('Unit | Serializer | pki/action', function (hooks) {
     });
   });
 
+  module('actionType sign-intermediate', function () {
+    for (const maxPathLength of [0, 1, -1]) {
+      test(`it preserves CA constraints with max path length ${maxPathLength}`, function (assert) {
+        const store = this.owner.lookup('service:store');
+        const record = store.createRecord('pki/action', {
+          commonName: 'Constrained CA',
+          issuerName: 'cross-signed-ca',
+          csr: 'test-csr',
+          maxPathLength,
+          permittedDnsDomains: '.example.com, .example.net',
+          keyName: 'do-not-send',
+        });
+
+        assert.deepEqual(record.serialize('sign-intermediate'), {
+          common_name: 'Constrained CA',
+          issuer_name: 'cross-signed-ca',
+          csr: 'test-csr',
+          max_path_length: maxPathLength,
+          permitted_dns_domains: '.example.com, .example.net',
+        });
+      });
+    }
+  });
+
   module('actionType generate-root', function (hooks) {
     hooks.beforeEach(function () {
       this.actionType = 'generate-root';

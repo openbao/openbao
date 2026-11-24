@@ -13,7 +13,7 @@ import logout from 'vault/tests/pages/logout';
 import enablePage from 'vault/tests/pages/settings/mount-secret-backend';
 import { runCommands } from 'vault/tests/helpers/pki/pki-run-commands';
 import { SELECTORS } from 'vault/tests/helpers/pki/pki-issuer-cross-sign';
-import { verifyCertificates } from 'vault/utils/parse-pki-cert';
+import { parseCertificate, verifyCertificates } from 'vault/utils/parse-pki-cert';
 module('Acceptance | pki/pki cross sign', function (hooks) {
   setupApplicationTest(hooks);
 
@@ -41,6 +41,40 @@ module('Acceptance | pki/pki cross sign', function (hooks) {
     await runCommands([`delete sys/mounts/${this.parentMountPath}`]);
     await logout.visit();
     await settled();
+  });
+
+  test('it preserves DNS constraints and a zero path length when cross-signing', async function (assert) {
+    await runCommands([
+      `write "${this.intMountPath}/root/generate/internal" common_name="Constrained CA" issuer_name="${this.intIssuerName}" ttl=720h max_path_length=0 permitted_dns_domains=".example.com,.example.net"`,
+    ]);
+
+    const store = this.owner.lookup('service:store');
+    const sourceIssuer = await store.queryRecord('pki/issuer', {
+      backend: this.intMountPath,
+      id: this.intIssuerName,
+    });
+    const source = parseCertificate(sourceIssuer.certificate);
+    assert.deepEqual(source.parsing_errors, [], 'source certificate can be parsed');
+    assert.strictEqual(source.max_path_length, 0, 'source CA cannot issue subordinate CAs');
+    assert.strictEqual(source.permitted_dns_domains, '.example.com, .example.net');
+
+    await visit(`/vault/secrets/${this.parentMountPath}/pki/issuers/${this.parentIssuerName}/cross-sign`);
+    await fillIn(SELECTORS.objectListInput('intermediateMount'), this.intMountPath);
+    await fillIn(SELECTORS.objectListInput('intermediateIssuer'), this.intIssuerName);
+    await fillIn(SELECTORS.objectListInput('newCrossSignedIssuer'), this.newlySignedIssuer);
+    await click(SELECTORS.submitButton);
+
+    assert.dom(SELECTORS.statusCount).hasText('Cross-signing complete (1 successful, 0 errors)');
+    await click(`${SELECTORS.signedIssuerCol('newCrossSignedIssuer')} a`);
+    const certificate = find(SELECTORS.copyButton('Certificate')).getAttribute('data-clipboard-text');
+    const crossSigned = parseCertificate(certificate);
+    assert.deepEqual(crossSigned.parsing_errors, [], 'cross-signed certificate can be parsed');
+    assert.strictEqual(crossSigned.max_path_length, 0, 'cross-signing preserves the zero path length');
+    assert.strictEqual(
+      crossSigned.permitted_dns_domains,
+      source.permitted_dns_domains,
+      'cross-signing preserves the permitted DNS domains'
+    );
   });
 
   test('it cross-signs an issuer', async function (assert) {

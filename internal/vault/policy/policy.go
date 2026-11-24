@@ -719,6 +719,17 @@ func parsePath(result *Policy, key string, item *ast.ObjectItem, performTemplati
 	pc.Permissions.PaginationLimit = pc.PaginationLimitHCL
 
 PathFinished:
+	if pc.ControlGroup != nil {
+		for _, factor := range pc.ControlGroup.Factors {
+			for _, op := range factor.ControlledCapabilities {
+				capBit, ok := cap2Int[string(op)]
+				if !ok ||
+					(pc.Permissions.CapabilitiesBitmap&capBit) == 0 {
+					return nil, fmt.Errorf("path %q: control_group factor %q controlled capability %q is not a subset of path capabilities", key, factor.Name, op)
+				}
+			}
+		}
+	}
 
 	return &pc, nil
 }

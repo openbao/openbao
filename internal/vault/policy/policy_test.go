@@ -620,3 +620,56 @@ path "pki/issue/*" {
 	require.Len(t, parsed.Paths, 1)
 	require.Equal(t, 5*24*time.Hour, parsed.Paths[0].ControlGroup.TTL)
 }
+
+func TestPolicy_ControlGroupControlledCapabilitiesSubset(t *testing.T) {
+	_, err := ParseACLPolicy(namespace.RootNamespace, strings.TrimSpace(`
+path "secret/foo" {
+  capabilities = ["read"]
+  control_group {
+    ttl = "5m"
+    factor "ops_manager" {
+      controlled_capabilities = ["list"]
+      identity {
+        group_names = ["managers"]
+        approvals = 1
+      }
+    }
+  }
+}
+`))
+	require.ErrorContains(t, err, `controlled capability "list" is not a subset of path capabilities`)
+
+	_, err = ParseACLPolicy(namespace.RootNamespace, strings.TrimSpace(`
+path "secret/foo" {
+  capabilities = ["deny"]
+  control_group {
+    ttl = "5m"
+    factor "ops_manager" {
+      controlled_capabilities = ["read"]
+      identity {
+        group_names = ["managers"]
+        approvals = 1
+      }
+    }
+  }
+}
+`))
+	require.ErrorContains(t, err, `controlled capability "read" is not a subset of path capabilities`)
+
+	_, err = ParseACLPolicy(namespace.RootNamespace, strings.TrimSpace(`
+path "secret/foo" {
+  policy = "write"
+  control_group {
+    ttl = "5m"
+    factor "ops_manager" {
+      controlled_capabilities = ["update"]
+      identity {
+        group_names = ["managers"]
+        approvals = 1
+      }
+    }
+  }
+}
+`))
+	require.NoError(t, err)
+}

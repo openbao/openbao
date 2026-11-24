@@ -580,3 +580,43 @@ path "secret/data/foo" {
 `))
 	require.ErrorContains(t, err, "missing required approvals")
 }
+
+func TestPolicy_ControlGroupInvalidIdentityKeys(t *testing.T) {
+	_, err := ParseACLPolicy(namespace.RootNamespace, strings.TrimSpace(`
+path "pki/issue/*" {
+  capabilities = ["read", "update"]
+  control_group {
+    self_auth_allowed = false
+    factor "pki-approvers" {
+      controlled_capabilities = ["update"]
+      identity {
+        group_names = ["pki-approvers", "security-team"]
+        approvals = 1
+        ttl = "5d"
+      }
+    }
+  }
+}
+`))
+	require.ErrorContains(t, err, `invalid key "ttl"`)
+
+	parsed, err := ParseACLPolicy(namespace.RootNamespace, strings.TrimSpace(`
+path "pki/issue/*" {
+  capabilities = ["read", "update"]
+  control_group {
+    self_auth_allowed = false
+    ttl = "5d"
+    factor "pki-approvers" {
+      controlled_capabilities = ["update"]
+      identity {
+        group_names = ["pki-approvers", "security-team"]
+        approvals = 1
+      }
+    }
+  }
+}
+`))
+	require.NoError(t, err)
+	require.Len(t, parsed.Paths, 1)
+	require.Equal(t, 5*24*time.Hour, parsed.Paths[0].ControlGroup.TTL)
+}

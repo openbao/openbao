@@ -416,6 +416,9 @@ importers:
       sass-svg-uri:
         specifier: ^2.0.0
         version: 2.0.0
+      secure-password-utilities:
+        specifier: 0.2.1
+        version: 0.2.1
       shell-quote:
         specifier: ^1.11.0
         version: 1.12.0
@@ -530,6 +533,9 @@ importers:
       escape-string-regexp:
         specifier: '*'
         version: 2.0.0
+      secure-password-utilities:
+        specifier: '*'
+        version: 0.2.1
 
   lib/css: {}
 
@@ -7114,6 +7120,9 @@ packages:
   schema-utils@4.3.3:
     resolution: {integrity: sha512-eflK8wEtyOE6+hsaRVPxvUKYCpRgzLqDTb8krvAsRIwOGlHoSgYLgBXoubGgLd2fT41/OUYdb48v4k4WWHQurA==}
     engines: {node: '>= 10.13.0'}
+
+  secure-password-utilities@0.2.1:
+    resolution: {integrity: sha512-znUg8ae3cpuAaogiFBhP82gD2daVkSz4Qv/L7OWjB7wWvfbCdeqqQuJkm2/IvhKQPOV0T739YPR6rb7vs0uWaw==}
 
   select@1.1.2:
     resolution: {integrity: sha512-OwpTSOfy6xSs1+pwcNrv0RBMOzI39Lp3qQKUTPVVPRjCdNa5JH/oPRiqsesIskK8TVgmRiHwO4KXlV2Li9dANA==}
@@ -16574,6 +16583,8 @@ snapshots:
       ajv: 8.20.0
       ajv-formats: 2.1.1(ajv@8.20.0)
       ajv-keywords: 5.1.0(ajv@8.20.0)
+
+  secure-password-utilities@0.2.1: {}
 
   select@1.1.2: {}
 

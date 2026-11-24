@@ -29,6 +29,7 @@ import autosize from 'autosize';
  * @param [allowCopy=false] {bool} - Whether or not the input should render with a copy button.
  * @param [allowDownload=false] {bool} - Renders a download button that prompts a confirmation modal to download the secret value
  * @param [displayOnly=false] {bool} - Whether or not to display the value as a display only `pre` element or as an input.
+ * @param [allowGenerate=false] {bool} - Renders a button that opens a password generator modal. Requires onChange.
  *
  */
 export default class MaskedInputComponent extends Component {
@@ -36,6 +37,7 @@ export default class MaskedInputComponent extends Component {
   @tracked showValue = false;
   @tracked modalOpen = false;
   @tracked stringifyDownload = false;
+  @tracked showGenerator = false;
 
   get copyValue() {
     const value = this.args.value;
@@ -76,5 +78,19 @@ export default class MaskedInputComponent extends Component {
 
   @action toggleStringifyDownload(event) {
     this.stringifyDownload = event.target.checked;
+  }
+
+  @action openGenerator() {
+    this.showGenerator = true;
+  }
+
+  @action closeGenerator() {
+    this.showGenerator = false;
+  }
+
+  @action useGeneratedPassword(password) {
+    this.args.onChange?.(password);
+    this.showGenerator = false;
+    requestAnimationFrame(() => this.updateSize());
   }
 }

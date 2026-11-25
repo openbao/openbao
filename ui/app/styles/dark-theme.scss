@@ -272,6 +272,42 @@
   table th {
     color: #ffffff;
   }
+
+  // Radio cards
+  .radio-card {
+    background-color: #242526;
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: none;
+
+    input[type='radio'] + span.dot {
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+
+    input[type='radio']:checked + span.dot {
+      background: #79c0ab;
+      border-color: #79c0ab;
+      box-shadow: inset 0 0 0 0.15rem #33463f;
+    }
+  }
+
+  .radio-card-radio-row {
+    background: #2e2f31;
+  }
+
+  .radio-card-message-body {
+    color: #a0a3ab;
+  }
+
+  .is-selected {
+    &.radio-card {
+      background: #2c3a35;
+      border-color: #79c0ab;
+    }
+
+    .radio-card-radio-row {
+      background: #33463f;
+    }
+  }
 }
 
 :root[data-theme='dark'] {

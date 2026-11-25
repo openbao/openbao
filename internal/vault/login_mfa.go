@@ -26,8 +26,6 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/go-multierror"
-	"github.com/okta/okta-sdk-golang/v2/okta"
-	"github.com/okta/okta-sdk-golang/v2/okta/query"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/identitytpl"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -35,6 +33,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/identity"
 	"github.com/openbao/openbao/v2/internal/helper/identity/mfa"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
+	"github.com/openbao/openbao/v2/internal/helper/okta"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
 	ident "github.com/openbao/openbao/v2/internal/vault/identity"
 	"github.com/openbao/openbao/v2/internal/vault/routing"
@@ -1210,22 +1209,7 @@ func (c *Core) validateOkta(ctx context.Context, mConfig *mfa.Config, username s
 		return fmt.Errorf("failed to get Okta configuration for method %q", mConfig.Name)
 	}
 
-	baseURL := oktaConfig.BaseURL
-	if baseURL == "" {
-		baseURL = "okta.com"
-	}
-	orgURL, err := url.Parse(fmt.Sprintf("https://%s.%s", oktaConfig.OrgName, baseURL))
-	if err != nil {
-		return err
-	}
-
-	ctx, client, err := okta.NewClient(
-		ctx,
-		okta.WithToken(oktaConfig.APIToken),
-		okta.WithOrgUrl(orgURL.String()),
-		// Do not use cache or polling MFA will not refresh
-		okta.WithCache(false),
-	)
+	client, err := okta.New(oktaConfig.BaseURL, oktaConfig.OrgName, oktaConfig.APIToken)
 	if err != nil {
 		return fmt.Errorf("error creating client: %s", err)
 	}
@@ -1235,9 +1219,7 @@ func (c *Core) validateOkta(ctx context.Context, mConfig *mfa.Config, username s
 		filterField = "profile.email"
 	}
 	filterQuery := fmt.Sprintf("%s eq %q", filterField, username)
-	filter := query.NewQueryParams(query.WithFilter(filterQuery))
-
-	users, _, err := client.User.ListUsers(ctx, filter)
+	users, err := client.ListUsers(ctx, filterQuery)
 	if err != nil {
 		return err
 	}
@@ -1250,7 +1232,7 @@ func (c *Core) validateOkta(ctx context.Context, mConfig *mfa.Config, username s
 
 	user := users[0]
 
-	factors, _, err := client.UserFactor.ListFactors(ctx, user.Id)
+	factors, err := client.ListFactors(ctx, user.ID)
 	if err != nil {
 		return err
 	}
@@ -1260,14 +1242,12 @@ func (c *Core) validateOkta(ctx context.Context, mConfig *mfa.Config, username s
 	}
 
 	var factorFound bool
-	var userFactor *okta.UserFactor
+	var userFactor okta.Factor
 	for _, factor := range factors {
-		if factor.IsUserFactorInstance() {
-			userFactor = factor.(*okta.UserFactor)
-			if userFactor.FactorType == "push" {
-				factorFound = true
-				break
-			}
+		if factor.FactorType == "push" {
+			userFactor = factor
+			factorFound = true
+			break
 		}
 	}
 
@@ -1275,7 +1255,7 @@ func (c *Core) validateOkta(ctx context.Context, mConfig *mfa.Config, username s
 		return errors.New("no push-type MFA factor found for user")
 	}
 
-	result, _, err := client.UserFactor.VerifyFactor(ctx, user.Id, userFactor.Id, okta.VerifyFactorRequest{}, userFactor, nil)
+	result, err := client.VerifyFactor(ctx, user.ID, userFactor.ID)
 	if err != nil {
 		return err
 	}
@@ -1284,32 +1264,8 @@ func (c *Core) validateOkta(ctx context.Context, mConfig *mfa.Config, username s
 		return fmt.Errorf("expected WAITING status for push status, got %q", result.FactorResult)
 	}
 
-	// Parse links to get polling link
-	type linksObj struct {
-		Poll struct {
-			Href string `mapstructure:"href"`
-		} `mapstructure:"poll"`
-	}
-	links := new(linksObj)
-	if err := mapstructure.WeakDecode(result.Links, links); err != nil {
-		return err
-	}
-	// Strip the org URL from the fully qualified poll URL
-	url, err := url.Parse(strings.Replace(links.Poll.Href, orgURL.String(), "", 1))
-	if err != nil {
-		return err
-	}
-
 	for {
-		// Okta provides an SDK method `GetFactorTransactionStatus` but does not provide the transaction id in
-		// the VerifyFactor response. This code effectively reimplements that method.
-		rq := client.CloneRequestExecutor()
-		req, err := rq.WithAccept("application/json").WithContentType("application/json").NewRequest("GET", url.String(), nil)
-		if err != nil {
-			return err
-		}
-		var result *okta.VerifyUserFactorResponse
-		_, err = rq.Do(ctx, req, &result)
+		result, err := client.Poll(ctx, result.Links.Poll.Href)
 		if err != nil {
 			return err
 		}

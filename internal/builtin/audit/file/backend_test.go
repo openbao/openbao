@@ -176,15 +176,10 @@ func TestAuditFile_fileModeIrregular(t *testing.T) {
 }
 
 func TestAuditFile_Retry(t *testing.T) {
-	f, err := os.CreateTemp("", "test")
-	require.NoError(t, err)
-	defer os.Remove(f.Name())
-
-	err = f.Close()
-	require.NoError(t, err)
+	file := filepath.Join(t.TempDir(), "audit.txt")
 
 	config := map[string]string{
-		"path": f.Name(),
+		"path": file,
 	}
 
 	backendIface, err := Factory(t.Context(), &audit.BackendConfig{
@@ -206,7 +201,7 @@ func TestAuditFile_Retry(t *testing.T) {
 	err = backend.log(t.Context(), bytes.NewBufferString("2"), nil)
 	require.NoError(t, err)
 
-	data, err := os.ReadFile(f.Name())
+	data, err := os.ReadFile(file)
 	require.NoError(t, err)
 	require.Equal(t, "12", string(data))
 }

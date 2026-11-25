@@ -68,6 +68,11 @@
     background: #3a3b3d;
   }
 
+  // Toggle track (on statehere)
+  .toggle[type='checkbox'].is-success:checked + label::before {
+    background: #46957e;
+  }
+
   // Cards and list rows
   .box {
     background-color: #242526;
@@ -176,7 +181,7 @@
     &:focus-visible,
     &:active,
     &.is-active {
-      border-color: #1563ff;
+      border-color: #79c0ab;
     }
   }
 
@@ -192,7 +197,7 @@
     }
 
     &:focus:not(:active) {
-      box-shadow: 0 0 0 0.125em rgba(21, 99, 255, 0.25);
+      box-shadow: 0 0 0 0.125em rgba(121, 192, 171, 0.35);
     }
 
     &.is-input {
@@ -273,6 +278,19 @@
     color: #ffffff;
   }
 
+  // Secret values
+  pre {
+    color: #e3e3e3;
+  }
+
+  .console-ui-panel-content pre {
+    color: inherit;
+  }
+
+  .visual-diff pre {
+    color: #f1f2f3;
+  }
+
   // Radio cards
   .radio-card {
     background-color: #242526;
@@ -287,6 +305,12 @@
       background: #79c0ab;
       border-color: #79c0ab;
       box-shadow: inset 0 0 0 0.15rem #33463f;
+    }
+
+    input[type='radio']:focus + span.dot {
+      box-shadow:
+        0 0 10px 1px rgba(121, 192, 171, 0.4),
+        inset 0 0 0 0.15rem #33463f;
     }
   }
 
@@ -307,6 +331,34 @@
     .radio-card-radio-row {
       background: #33463f;
     }
+  }
+
+  // Radio and checkbox
+  accent-color: #79c0ab;
+
+  // Show/hide toggle buttons
+  .button.has-text-info {
+    color: #79c0ab !important;
+  }
+
+  // Focus outline on dropdown search fields
+  .ember-power-select-trigger:focus,
+  .ember-power-select-trigger--active .ember-power-select-search-input:focus,
+  .ember-power-select-search-input:focus-visible {
+    outline: 1px solid #79c0ab;
+    outline-offset: -1px;
+    box-shadow: 0 0 0 0.125em rgba(121, 192, 171, 0.35);
+  }
+
+  // Text input focus
+  .input:focus,
+  .input:active,
+  .input.is-active,
+  .input:focus-visible,
+  .textarea:focus,
+  .textarea:focus-visible {
+    border-color: #79c0ab !important;
+    box-shadow: 0 0 0.125em rgba(121, 192, 171, 0.35);
   }
 }
 

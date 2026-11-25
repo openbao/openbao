@@ -1,0 +1,3 @@
+```release-note:bug
+audit/file: Allow successful writes after file reopening.
+```

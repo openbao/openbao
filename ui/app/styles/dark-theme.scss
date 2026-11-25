@@ -139,6 +139,27 @@
     }
   }
 
+  // Namespace picker dropdown
+  .namespace-picker-content.ember-why basic-dropdown-content,
+  .namespace-picker-content .leaf-panel {
+    background: #242526;
+  }
+
+  .namespace-picker-content {
+    .namespace-link {
+      color: #e3e3e3;
+
+      &:hover {
+        color: #ffffff;
+      }
+    }
+
+    .namespace-header-bar,
+    .namespace-manage-link {
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+  }
+
   // Plain select dropdowns
   .select select {
     background-color: #242526;
@@ -257,7 +278,7 @@
   color: var(--token-color-foreground-primary);
 }
 
-// Links
-:where(:root[data-theme='dark']) a:hover {
+// Links (excluding button text)
+:where(:root[data-theme='dark']) a:where(:not(.button)):hover {
   color: #e3e3e3;
 }

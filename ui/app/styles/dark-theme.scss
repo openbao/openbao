@@ -140,7 +140,7 @@
   }
 
   // Namespace picker dropdown
-  .namespace-picker-content.ember-why basic-dropdown-content,
+  .namespace-picker-content.ember-basic-dropdown-content,
   .namespace-picker-content .leaf-panel {
     background: #242526;
   }
@@ -157,6 +157,11 @@
     .namespace-header-bar,
     .namespace-manage-link {
       border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    // Reload button
+    .button.is-ghost:hover {
+      background-color: #2e2f31;
     }
   }
 

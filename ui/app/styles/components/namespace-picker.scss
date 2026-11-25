@@ -122,3 +122,11 @@
 .leaf-panel-adding {
   z-index: 100;
 }
+
+.namespace-picker-content .level-right .button.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  min-width: auto;
+}

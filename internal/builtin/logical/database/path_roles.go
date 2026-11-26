@@ -663,7 +663,7 @@ func (b *databaseBackend) pathStaticRoleCreateUpdate(ctx context.Context, req *l
 		role.StaticAccount.RotationPeriod = 0
 	}
 
-	// Create a scheduler for this role
+	// Create a dispensable scheduler to check and apply new/updated role's rotation parameters
 	sched, err := scheduling.NewDefaultScheduler(role.StaticAccount)
 	if err != nil {
 		return nil, err
@@ -674,12 +674,12 @@ func (b *databaseBackend) pathStaticRoleCreateUpdate(ctx context.Context, req *l
 	}
 
 	if rotationWindowSecondsRaw, ok := data.GetOk("rotation_window"); ok {
-		role.StaticAccount.RotationWindow = time.Duration(rotationWindowSecondsRaw.(int)) * time.Second
-		if role.StaticAccount.RotationWindow != 0 {
-			if role.StaticAccount.RotationWindow < time.Duration(minimumRotationWindowSeconds)*time.Second {
-				return logical.ErrorResponse("rotation_window must be %d seconds or more", minimumRotationWindowSeconds), nil
-			}
+		rotationWindow := time.Duration(rotationWindowSecondsRaw.(int)) * time.Second
+		if rotationWindow != 0 && rotationWindow < minimumRotationWindow {
+			return logical.ErrorResponse("rotation_window must be %s or more\n", minimumRotationWindow), nil
 		}
+
+		role.StaticAccount.RotationWindow = rotationWindow
 	} else if createRole {
 		role.StaticAccount.RotationWindow = 0
 	}
@@ -877,7 +877,7 @@ type staticAccount struct {
 
 	// LastVaultRotation represents the last time Vault rotated the password
 	LastVaultRotation time.Time `json:"last_vault_rotation"`
-	// NextVaultRotation represents the next password rotation is expected to occur.
+	// NextVaultRotation represents the time the next password rotation is expected to occur.
 	NextVaultRotation time.Time `json:"next_vault_rotation"`
 
 	// RotationPeriod is number in seconds between each rotation, effectively a

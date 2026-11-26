@@ -1589,14 +1589,14 @@ func TestStaticRole_RotationSchedule_Validation(t *testing.T) {
 			configureDBMount(t, storage)
 			allowRotations(mockDB)
 
-			resp, err := writeStaticRole(t, b, storage, logical.CreateOperation, "hashicorp", tc.data)
+			resp, err := writeStaticRole(t, b, storage, logical.CreateOperation, "testrolename", tc.data)
 			if tc.wantErr {
 				if err == nil && (resp == nil || !resp.IsError()) {
 					t.Fatalf("expected an error, got resp:%#v", resp)
 				}
 
 				// A rejected role must leave nothing behind
-				role, err := b.StaticRole(ctx, storage, "hashicorp")
+				role, err := b.StaticRole(ctx, storage, "testrolename")
 				require.NoError(t, err)
 				require.Nil(t, role)
 				require.Equal(t, 0, b.credRotationQueue.Len())
@@ -1607,7 +1607,7 @@ func TestStaticRole_RotationSchedule_Validation(t *testing.T) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
 
-			data := readStaticPath(t, b, storage, "static-roles/hashicorp")
+			data := readStaticPath(t, b, storage, "static-roles/testrolename")
 			if tc.wantSchedule != "" {
 				require.Equal(t, tc.wantSchedule, data["rotation_schedule"])
 				require.NotContains(t, data, "rotation_period")
@@ -1718,14 +1718,14 @@ func TestStaticRole_RotationSchedule_Update(t *testing.T) {
 	configureDBMount(t, storage)
 	allowRotations(mockDB)
 
-	requireWriteStaticRole(t, b, storage, logical.CreateOperation, "hashicorp", map[string]any{
+	requireWriteStaticRole(t, b, storage, logical.CreateOperation, "testrolename", map[string]any{
 		"rotation_period": "24h",
 	})
-	created := requireStaticAccount(t, b, storage, "hashicorp")
+	created := requireStaticAccount(t, b, storage, "testrolename")
 
 	requireUntouched := func(t *testing.T) {
 		t.Helper()
-		account := requireStaticAccount(t, b, storage, "hashicorp")
+		account := requireStaticAccount(t, b, storage, "testrolename")
 		require.Equal(t, created.Password, account.Password)
 		require.True(t, created.LastVaultRotation.Equal(account.LastVaultRotation))
 		mockDB.AssertNumberOfCalls(t, "UpdateUser", 1)
@@ -1737,51 +1737,51 @@ func TestStaticRole_RotationSchedule_Update(t *testing.T) {
 
 	t.Run("period to schedule", func(t *testing.T) {
 		schedule, occurrence = dailyScheduleAt(time.Now().Add(12 * time.Hour))
-		requireWriteStaticRole(t, b, storage, logical.UpdateOperation, "hashicorp", map[string]any{
+		requireWriteStaticRole(t, b, storage, logical.UpdateOperation, "testrolename", map[string]any{
 			"rotation_schedule": schedule,
 			"rotation_window":   "2h",
 		})
-		data := readStaticPath(t, b, storage, "static-roles/hashicorp")
+		data := readStaticPath(t, b, storage, "static-roles/testrolename")
 		require.Equal(t, schedule, data["rotation_schedule"])
 		require.NotContains(t, data, "rotation_period")
 		require.Equal(t, (2 * time.Hour).Seconds(), data["rotation_window"])
 		next := data["next_vault_rotation"].(time.Time)
 		require.True(t, next.Equal(occurrence), "next rotation %s, expected %s", next, occurrence)
-		require.Equal(t, occurrence.Unix(), rotationPriority(t, b, "hashicorp"))
+		require.Equal(t, occurrence.Unix(), rotationPriority(t, b, "testrolename"))
 		requireUntouched(t)
 	})
 
 	t.Run("schedule alone keeps the window", func(t *testing.T) {
 		schedule, occurrence = dailyScheduleAt(time.Now().Add(6 * time.Hour))
-		requireWriteStaticRole(t, b, storage, logical.UpdateOperation, "hashicorp", map[string]any{
+		requireWriteStaticRole(t, b, storage, logical.UpdateOperation, "testrolename", map[string]any{
 			"rotation_schedule": schedule,
 		})
-		data := readStaticPath(t, b, storage, "static-roles/hashicorp")
+		data := readStaticPath(t, b, storage, "static-roles/testrolename")
 		require.Equal(t, schedule, data["rotation_schedule"])
 		require.Equal(t, (2 * time.Hour).Seconds(), data["rotation_window"])
 		next := data["next_vault_rotation"].(time.Time)
 		require.True(t, next.Equal(occurrence), "next rotation %s, expected %s", next, occurrence)
-		require.Equal(t, occurrence.Unix(), rotationPriority(t, b, "hashicorp"))
+		require.Equal(t, occurrence.Unix(), rotationPriority(t, b, "testrolename"))
 		requireUntouched(t)
 	})
 
 	t.Run("window alone keeps the schedule", func(t *testing.T) {
-		requireWriteStaticRole(t, b, storage, logical.UpdateOperation, "hashicorp", map[string]any{
+		requireWriteStaticRole(t, b, storage, logical.UpdateOperation, "testrolename", map[string]any{
 			"rotation_window": "1h",
 		})
-		data := readStaticPath(t, b, storage, "static-roles/hashicorp")
+		data := readStaticPath(t, b, storage, "static-roles/testrolename")
 		require.Equal(t, schedule, data["rotation_schedule"])
 		require.NotContains(t, data, "rotation_period")
 		require.Equal(t, time.Hour.Seconds(), data["rotation_window"])
 		next := data["next_vault_rotation"].(time.Time)
 		require.True(t, next.Equal(occurrence), "next rotation %s, expected %s", next, occurrence)
-		require.Equal(t, occurrence.Unix(), rotationPriority(t, b, "hashicorp"))
+		require.Equal(t, occurrence.Unix(), rotationPriority(t, b, "testrolename"))
 		requireUntouched(t)
 	})
 
 	t.Run("invalid updates leave the role as it was", func(t *testing.T) {
-		before := readStaticPath(t, b, storage, "static-roles/hashicorp")
-		priority := rotationPriority(t, b, "hashicorp")
+		before := readStaticPath(t, b, storage, "static-roles/testrolename")
+		priority := rotationPriority(t, b, "testrolename")
 
 		for _, tc := range []struct {
 			name string
@@ -1794,36 +1794,36 @@ func TestStaticRole_RotationSchedule_Update(t *testing.T) {
 			{"period below window", map[string]any{"rotation_period": "1h"}},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
-				resp, err := writeStaticRole(t, b, storage, logical.UpdateOperation, "hashicorp", tc.data)
+				resp, err := writeStaticRole(t, b, storage, logical.UpdateOperation, "testrolename", tc.data)
 				if err == nil && (resp == nil || !resp.IsError()) {
 					t.Errorf("expected an error, got resp:%#v", resp)
 				}
-				require.Equal(t, before, readStaticPath(t, b, storage, "static-roles/hashicorp"))
-				require.Equal(t, priority, rotationPriority(t, b, "hashicorp"))
+				require.Equal(t, before, readStaticPath(t, b, storage, "static-roles/testrolename"))
+				require.Equal(t, priority, rotationPriority(t, b, "testrolename"))
 				requireUntouched(t)
 			})
 		}
 	})
 
 	t.Run("schedule to period", func(t *testing.T) {
-		requireWriteStaticRole(t, b, storage, logical.UpdateOperation, "hashicorp", map[string]any{
+		requireWriteStaticRole(t, b, storage, logical.UpdateOperation, "testrolename", map[string]any{
 			"rotation_period": "4h",
 		})
-		data := readStaticPath(t, b, storage, "static-roles/hashicorp")
+		data := readStaticPath(t, b, storage, "static-roles/testrolename")
 		require.Equal(t, (4 * time.Hour).Seconds(), data["rotation_period"])
 		require.NotContains(t, data, "rotation_schedule")
 		require.Equal(t, time.Hour.Seconds(), data["rotation_window"])
 		next := data["next_vault_rotation"].(time.Time)
 		require.WithinDuration(t, created.LastVaultRotation.Add(4*time.Hour), next, time.Second)
-		require.Equal(t, next.Unix(), rotationPriority(t, b, "hashicorp"))
+		require.Equal(t, next.Unix(), rotationPriority(t, b, "testrolename"))
 		requireUntouched(t)
 	})
 
 	t.Run("zero window removes the restriction", func(t *testing.T) {
-		requireWriteStaticRole(t, b, storage, logical.UpdateOperation, "hashicorp", map[string]any{
+		requireWriteStaticRole(t, b, storage, logical.UpdateOperation, "testrolename", map[string]any{
 			"rotation_window": 0,
 		})
-		data := readStaticPath(t, b, storage, "static-roles/hashicorp")
+		data := readStaticPath(t, b, storage, "static-roles/testrolename")
 		require.Equal(t, (4 * time.Hour).Seconds(), data["rotation_period"])
 		require.NotContains(t, data, "rotation_window")
 		requireUntouched(t)
@@ -1839,21 +1839,21 @@ func TestStaticRole_RotationSchedule_Rotates(t *testing.T) {
 	allowRotations(mockDB)
 
 	// Every 5 seconds, using the optional seconds field
-	requireWriteStaticRole(t, b, storage, logical.CreateOperation, "hashicorp", map[string]any{
+	requireWriteStaticRole(t, b, storage, logical.CreateOperation, "testrolename", map[string]any{
 		"rotation_schedule": "*/5 * * * * *",
 	})
 
-	previous := requireStaticAccount(t, b, storage, "hashicorp")
+	previous := requireStaticAccount(t, b, storage, "testrolename")
 	for range 2 {
 		require.True(t, previous.NextVaultRotation.After(previous.LastVaultRotation))
 		require.LessOrEqual(t, previous.NextVaultRotation.Sub(previous.LastVaultRotation), 5*time.Second)
 		require.Zero(t, previous.NextVaultRotation.Second()%5)
-		require.Equal(t, previous.NextVaultRotation.Unix(), rotationPriority(t, b, "hashicorp"))
+		require.Equal(t, previous.NextVaultRotation.Unix(), rotationPriority(t, b, "testrolename"))
 
 		var rotated *staticAccount
 		require.Eventually(t, func() bool {
 			b.rotateCredentials(ctx, storage)
-			rotated = requireStaticAccount(t, b, storage, "hashicorp")
+			rotated = requireStaticAccount(t, b, storage, "testrolename")
 			return rotated.Password != previous.Password
 		}, 11*time.Second, 100*time.Millisecond)
 
@@ -1903,20 +1903,20 @@ func TestStaticRole_RotationWindow(t *testing.T) {
 				data["rotation_schedule"], scheduled = dailyScheduleAt(scheduled)
 				interval = 24 * time.Hour
 			}
-			requireWriteStaticRole(t, b, storage, logical.CreateOperation, "hashicorp", data)
-			created := requireStaticAccount(t, b, storage, "hashicorp")
+			requireWriteStaticRole(t, b, storage, logical.CreateOperation, "testrolename", data)
+			created := requireStaticAccount(t, b, storage, "testrolename")
 
 			// Pretend the role was last rotated one interval before the
 			// rotation that is now overdue.
 			previous := scheduled.Add(-interval)
-			setRotationTimes(t, b, storage, "hashicorp", previous, scheduled)
+			setRotationTimes(t, b, storage, "testrolename", previous, scheduled)
 
 			start := time.Now()
 			b.rotateCredentials(ctx, storage)
 			end := time.Now()
 
-			account := requireStaticAccount(t, b, storage, "hashicorp")
-			priority := rotationPriority(t, b, "hashicorp")
+			account := requireStaticAccount(t, b, storage, "testrolename")
+			priority := rotationPriority(t, b, "testrolename")
 			require.Greater(t, priority, end.Unix(), "role must be queued for a future rotation")
 
 			if !tc.wantRotate {

@@ -103,8 +103,7 @@
 
 .b-checkbox input[type='checkbox']:focus + label::before,
 .b-checkbox input[type='radio']:focus + label::before {
-  outline: thin dotted;
-  outline: 5px auto -webkit-focus-ring-color;
+  outline: 2px solid $interactive;
   outline-offset: -2px;
 }
 

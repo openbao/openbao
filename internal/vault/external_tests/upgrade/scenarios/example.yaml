@@ -1,0 +1,11 @@
+name: "Example"
+nodes: 1
+storage: "raft"
+seal: "shamir"
+upgrade_mode: "in-place"
+before:
+  - health
+after_node:
+  - health
+after:
+  - health

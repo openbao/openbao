@@ -70,6 +70,13 @@ func (b *databaseBackend) populateQueue(ctx context.Context, s logical.Storage) 
 			continue
 		}
 
+		// Rotation parameters were validated against the backend configuration
+		// in effect when the role was written, which may have changed since.
+		// Enqueue anyway, so that credentials keep being rotated.
+		if _, err := b.staticAccountScheduler(role.StaticAccount); err != nil {
+			log.Warn("static role rotation parameters are invalid with current configuration", "error", err, "role", roleName)
+		}
+
 		item := queue.Item{
 			Key:      roleName,
 			Priority: role.StaticAccount.NextRotationTime().Unix(),

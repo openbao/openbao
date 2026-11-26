@@ -264,9 +264,7 @@ func TestTransit_Export_SigningDoesNotSupportSigning_ReturnsError(t *testing.T) 
 		Path:      "export/signing-key/foo",
 	}
 	_, err = b.HandleRequest(t.Context(), req)
-	if err == nil {
-		t.Fatal("Key does not support signing but was exported without error.")
-	}
+	require.Error(t, err, "Key does not support signing but was exported without error.")
 }
 
 func TestTransit_Export_EncryptionDoesNotSupportEncryption_ReturnsError(t *testing.T) {
@@ -297,9 +295,7 @@ func testTransit_Export_EncryptionDoesNotSupportEncryption_ReturnsError(t *testi
 		Path:      "export/encryption-key/foo",
 	}
 	_, err = b.HandleRequest(t.Context(), req)
-	if err == nil {
-		t.Fatalf("Key %s does not support encryption but was exported without error.", keyType)
-	}
+	require.Errorf(t, err, "Key %s does not support encryption but was exported without error.", keyType)
 }
 
 func TestTransit_Export_KeysDoesNotExist_ReturnsNotFound(t *testing.T) {
@@ -455,17 +451,14 @@ func verifyExportsCorrectFormat(t *testing.T, exportType, keyType string) {
 				}
 
 				if exportType == "public-key" {
-					if _, err := x509.ParsePKIXPublicKey(block.Bytes); err != nil {
-						t.Fatalf("failed to parse raw rsa key (%v): %v", k, err)
-					}
+					_, err = x509.ParsePKIXPublicKey(block.Bytes)
+					require.NoErrorf(t, err, "failed to parse raw rsa key (%v)", k)
 				} else if strings.HasPrefix(keyType, "rsa") {
-					if _, err := x509.ParsePKCS1PrivateKey(block.Bytes); err != nil {
-						t.Fatalf("failed to parse raw rsa key (%v): %v", k, err)
-					}
+					_, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+					require.NoErrorf(t, err, "failed to parse raw rsa key (%v)", k)
 				} else {
-					if _, err := x509.ParseECPrivateKey(block.Bytes); err != nil {
-						t.Fatalf("failed to parse raw ec key (%v): %v", k, err)
-					}
+					_, err = x509.ParseECPrivateKey(block.Bytes)
+					require.NoErrorf(t, err, "failed to parse raw ec key (%v)", k)
 				}
 			} else if formatRequest == "" && strings.HasPrefix(keyType, "ec") {
 			} else if formatRequest == "der" || formatRequest == "pem" {
@@ -496,9 +489,8 @@ func verifyExportsCorrectFormat(t *testing.T, exportType, keyType string) {
 					require.NoErrorf(t, err, "error decoding `%v` key (%v): %v", formatRequest, k, err)
 				}
 			} else {
-				if _, err := base64.StdEncoding.DecodeString(k); err != nil {
-					t.Fatalf("error decoding raw key (%v / %v): %v", formatRequest, keyType, k)
-				}
+				_, err = base64.StdEncoding.DecodeString(k)
+				require.NoErrorf(t, err, "error decoding raw key (%v / %v): %v", formatRequest, keyType, k)
 			}
 		}
 	}

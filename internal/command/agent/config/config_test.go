@@ -427,13 +427,9 @@ func TestLoadConfigFile_AgentCache_NoListeners(t *testing.T) {
 }
 
 func TestLoadConfigFile(t *testing.T) {
-	if err := os.Setenv("TEST_AAD_ENV", "aad"); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.Setenv("TEST_AAD_ENV", "aad"))
 	defer func() {
-		if err := os.Unsetenv("TEST_AAD_ENV"); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, os.Unsetenv("TEST_AAD_ENV"))
 	}()
 
 	config, err := LoadConfigFile("./test-fixtures/config.hcl")
@@ -636,9 +632,7 @@ func TestLoadConfigFile_Bad_AgentCache_InconsisentAutoAuth(t *testing.T) {
 		t.Fatal("config was nil")
 	}
 	err = config.ValidateConfig()
-	if err == nil {
-		t.Fatal("ValidateConfig should return an error when use_auto_auth_token=true and no auto_auth section present")
-	}
+	require.Error(t, err, "ValidateConfig should return an error when use_auto_auth_token=true and no auto_auth section present")
 }
 
 func TestLoadConfigFile_Bad_AgentCache_ForceAutoAuthNoMethod(t *testing.T) {
@@ -648,9 +642,7 @@ func TestLoadConfigFile_Bad_AgentCache_ForceAutoAuthNoMethod(t *testing.T) {
 		t.Fatal("config was nil")
 	}
 	err = config.ValidateConfig()
-	if err == nil {
-		t.Fatal("ValidateConfig should return an error when use_auto_auth_token=force and no auto_auth section present")
-	}
+	require.Error(t, err, "ValidateConfig should return an error when use_auto_auth_token=force and no auto_auth section present")
 }
 
 func TestLoadConfigFile_Bad_AgentCache_NoListeners(t *testing.T) {
@@ -660,9 +652,7 @@ func TestLoadConfigFile_Bad_AgentCache_NoListeners(t *testing.T) {
 
 func TestLoadConfigFile_Bad_AutoAuth_Wrapped_Multiple_Sinks(t *testing.T) {
 	_, err := LoadConfigFile("./test-fixtures/bad-config-auto_auth-wrapped-multiple-sinks.hcl")
-	if err == nil {
-		t.Fatalf("LoadConfigFile should return an error for this config, err: %v", err)
-	}
+	require.Error(t, err, "LoadConfigFile should return an error for this config")
 }
 
 func TestLoadConfigFile_Bad_AutoAuth_Nosinks_Nocache_Notemplates(t *testing.T) {
@@ -672,16 +662,12 @@ func TestLoadConfigFile_Bad_AutoAuth_Nosinks_Nocache_Notemplates(t *testing.T) {
 		t.Fatal("config was nil")
 	}
 	err = config.ValidateConfig()
-	if err == nil {
-		t.Fatal("ValidateConfig should return an error when auto_auth configured and there are no sinks, caches or templates")
-	}
+	require.Error(t, err, "ValidateConfig should return an error when auto_auth configured and there are no sinks, caches or templates")
 }
 
 func TestLoadConfigFile_Bad_AutoAuth_Both_Wrapping_Types(t *testing.T) {
 	_, err := LoadConfigFile("./test-fixtures/bad-config-method-wrapping-and-sink-wrapping.hcl")
-	if err == nil {
-		t.Fatal("LoadConfigFile should return an error for this config")
-	}
+	require.Error(t, err, "LoadConfigFile should return an error for this config")
 }
 
 func TestLoadConfigFile_Bad_AgentCache_AutoAuth_Method_wrapping(t *testing.T) {
@@ -691,9 +677,7 @@ func TestLoadConfigFile_Bad_AgentCache_AutoAuth_Method_wrapping(t *testing.T) {
 		t.Fatal("config was nil")
 	}
 	err = config.ValidateConfig()
-	if err == nil {
-		t.Fatal("ValidateConfig should return an error when auth_auth.method.wrap_ttl nonzero and cache.use_auto_auth_token=true")
-	}
+	require.Error(t, err, "ValidateConfig should return an error when auth_auth.method.wrap_ttl nonzero and cache.use_auto_auth_token=true")
 }
 
 func TestLoadConfigFile_Bad_APIProxy_And_Cache_Same_Config(t *testing.T) {
@@ -703,9 +687,7 @@ func TestLoadConfigFile_Bad_APIProxy_And_Cache_Same_Config(t *testing.T) {
 		t.Fatal("config was nil")
 	}
 	err = config.ValidateConfig()
-	if err == nil {
-		t.Fatal("ValidateConfig should return an error when cache and api_proxy try and configure the same value")
-	}
+	require.Error(t, err, "ValidateConfig should return an error when cache and api_proxy try and configure the same value")
 }
 
 func TestLoadConfigFile_AgentCache_AutoAuth_NoSink(t *testing.T) {
@@ -1675,9 +1657,7 @@ func TestLoadConfigFile_Disable_Idle_Conns_Env(t *testing.T) {
 
 func TestLoadConfigFile_Bad_Value_Disable_Idle_Conns(t *testing.T) {
 	_, err := LoadConfigFile("./test-fixtures/bad-config-disable-idle-connections.hcl")
-	if err == nil {
-		t.Fatal("should have error, it didn't")
-	}
+	require.Error(t, err)
 }
 
 func TestLoadConfigFile_Disable_Keep_Alives_All(t *testing.T) {
@@ -2015,9 +1995,7 @@ func TestLoadConfigFile_Disable_Keep_Alives_Env(t *testing.T) {
 
 func TestLoadConfigFile_Bad_Value_Disable_Keep_Alives(t *testing.T) {
 	_, err := LoadConfigFile("./test-fixtures/bad-config-disable-keep-alives.hcl")
-	if err == nil {
-		t.Fatal("should have error, it didn't")
-	}
+	require.Error(t, err)
 }
 
 // TestLoadConfigFile_EnvTemplates_Simple loads and validates an env_template config
@@ -2025,9 +2003,7 @@ func TestLoadConfigFile_EnvTemplates_Simple(t *testing.T) {
 	cfg, err := LoadConfigFile("./test-fixtures/config-env-templates-simple.hcl")
 	require.NoError(t, err)
 
-	if err := cfg.ValidateConfig(); err != nil {
-		t.Fatalf("validation error: %s", err)
-	}
+	require.NoError(t, cfg.ValidateConfig(), "validation error")
 
 	expectedKey := "MY_DATABASE_USER"
 	found := false
@@ -2046,9 +2022,7 @@ func TestLoadConfigFile_EnvTemplates_Complex(t *testing.T) {
 	cfg, err := LoadConfigFile("./test-fixtures/config-env-templates-complex.hcl")
 	require.NoError(t, err)
 
-	if err := cfg.ValidateConfig(); err != nil {
-		t.Fatalf("validation error: %s", err)
-	}
+	require.NoError(t, cfg.ValidateConfig(), "validation error")
 
 	expectedKeys := []string{
 		"FOO_PASSWORD",
@@ -2077,25 +2051,19 @@ func TestLoadConfigFile_EnvTemplates_WithSource(t *testing.T) {
 	cfg, err := LoadConfigFile("./test-fixtures/config-env-templates-with-source.hcl")
 	require.NoError(t, err)
 
-	if err := cfg.ValidateConfig(); err != nil {
-		t.Fatalf("validation error: %s", err)
-	}
+	require.NoError(t, cfg.ValidateConfig(), "validation error")
 }
 
 // TestLoadConfigFile_EnvTemplates_NoName ensures that env_template with no name triggers an error
 func TestLoadConfigFile_EnvTemplates_NoName(t *testing.T) {
 	_, err := LoadConfigFile("./test-fixtures/bad-config-env-templates-no-name.hcl")
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 }
 
 // TestLoadConfigFile_EnvTemplates_ExecInvalidSignal ensures that an invalid signal triggers an error
 func TestLoadConfigFile_EnvTemplates_ExecInvalidSignal(t *testing.T) {
 	_, err := LoadConfigFile("./test-fixtures/bad-config-env-templates-invalid-signal.hcl")
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 }
 
 // TestLoadConfigFile_EnvTemplates_ExecSimple validates the exec section with default parameters
@@ -2103,9 +2071,7 @@ func TestLoadConfigFile_EnvTemplates_ExecSimple(t *testing.T) {
 	cfg, err := LoadConfigFile("./test-fixtures/config-env-templates-simple.hcl")
 	require.NoError(t, err)
 
-	if err := cfg.ValidateConfig(); err != nil {
-		t.Fatalf("validation error: %s", err)
-	}
+	require.NoError(t, cfg.ValidateConfig(), "validation error")
 
 	expectedCmd := []string{"/path/to/my/app", "arg1", "arg2"}
 	if !slices.Equal(cfg.Exec.Command, expectedCmd) {
@@ -2127,9 +2093,7 @@ func TestLoadConfigFile_EnvTemplates_ExecComplex(t *testing.T) {
 	cfg, err := LoadConfigFile("./test-fixtures/config-env-templates-complex.hcl")
 	require.NoError(t, err)
 
-	if err := cfg.ValidateConfig(); err != nil {
-		t.Fatalf("validation error: %s", err)
-	}
+	require.NoError(t, cfg.ValidateConfig(), "validation error")
 
 	if !slices.Equal(cfg.Exec.Command, []string{"env"}) {
 		t.Fatal("exec.command does not have expected value")
@@ -2150,9 +2114,7 @@ func TestLoadConfigFile_Bad_EnvTemplates_MissingExec(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/bad-config-env-templates-missing-exec.hcl")
 	require.NoError(t, err)
 
-	if err := config.ValidateConfig(); err == nil {
-		t.Fatal("expected an error from ValidateConfig: exec section is missing")
-	}
+	require.Error(t, config.ValidateConfig(), "expected an error from ValidateConfig: exec section is missing")
 }
 
 // TestLoadConfigFile_Bad_EnvTemplates_WithProxy ensures that ValidateConfig
@@ -2161,9 +2123,7 @@ func TestLoadConfigFile_Bad_EnvTemplates_WithProxy(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/bad-config-env-templates-with-proxy.hcl")
 	require.NoError(t, err)
 
-	if err := config.ValidateConfig(); err == nil {
-		t.Fatal("expected an error from ValidateConfig: listener / api_proxy are not compatible with env_template")
-	}
+	require.Error(t, config.ValidateConfig(), "expected an error from ValidateConfig: listener / api_proxy are not compatible with env_template")
 }
 
 // TestLoadConfigFile_Bad_EnvTemplates_WithFileTemplates ensures that
@@ -2172,9 +2132,7 @@ func TestLoadConfigFile_Bad_EnvTemplates_WithFileTemplates(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/bad-config-env-templates-with-file-templates.hcl")
 	require.NoError(t, err)
 
-	if err := config.ValidateConfig(); err == nil {
-		t.Fatal("expected an error from ValidateConfig: file template stanza is not compatible with env_template")
-	}
+	require.Error(t, config.ValidateConfig(), "expected an error from ValidateConfig: file template stanza is not compatible with env_template")
 }
 
 // TestLoadConfigFile_Bad_EnvTemplates_DisalowedFields ensure that
@@ -2183,7 +2141,5 @@ func TestLoadConfigFile_Bad_EnvTemplates_DisalowedFields(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/bad-config-env-templates-disalowed-fields.hcl")
 	require.NoError(t, err)
 
-	if err := config.ValidateConfig(); err == nil {
-		t.Fatal("expected an error from ValidateConfig: disallowed fields specified in env_template")
-	}
+	require.Error(t, config.ValidateConfig(), "expected an error from ValidateConfig: disallowed fields specified in env_template")
 }

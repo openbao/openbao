@@ -185,11 +185,9 @@ func TestKVPutCommand(t *testing.T) {
 			client, closer := testVaultServer(t)
 			defer closer()
 
-			if err := client.Sys().Mount("kv/", &api.MountInput{
+			require.NoError(t, client.Sys().Mount("kv/", &api.MountInput{
 				Type: "kv-v2",
-			}); err != nil {
-				t.Fatal(err)
-			}
+			}))
 
 			code, combined := kvPutWithRetry(t, client, tc.args)
 			if code != tc.code {
@@ -210,11 +208,9 @@ func TestKVPutCommand(t *testing.T) {
 		client, closer := testVaultServer(t)
 		defer closer()
 
-		if err := client.Sys().Mount("kv/", &api.MountInput{
+		require.NoError(t, client.Sys().Mount("kv/", &api.MountInput{
 			Type: "kv-v2",
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 
 		// Only have to potentially retry the first time.
 		code, combined := kvPutWithRetry(t, client, []string{
@@ -520,43 +516,37 @@ func TestKVGetCommand(t *testing.T) {
 
 				client, closer := testVaultServer(t)
 				defer closer()
-				if err := client.Sys().Mount("kv/", &api.MountInput{
+				require.NoError(t, client.Sys().Mount("kv/", &api.MountInput{
 					Type: "kv-v2",
-				}); err != nil {
-					t.Fatal(err)
-				}
+				}))
 
 				// Give time for the upgrade code to run/finish
 				time.Sleep(time.Second)
 
-				if _, err := client.Logical().Write("secret/read/foo", map[string]any{
+				_, err := client.Logical().Write("secret/read/foo", map[string]any{
 					"foo": "bar",
-				}); err != nil {
-					t.Fatal(err)
-				}
+				})
+				require.NoError(t, err)
 
-				if _, err := client.Logical().Write("kv/data/read/foo", map[string]any{
+				_, err = client.Logical().Write("kv/data/read/foo", map[string]any{
 					"data": map[string]any{
 						"foo": "bar",
 					},
-				}); err != nil {
-					t.Fatal(err)
-				}
+				})
+				require.NoError(t, err)
 
 				// create KV entries to test -mount flag where secret key is same as mount path
-				if _, err := client.Logical().Write("secret/secret", map[string]any{
+				_, err = client.Logical().Write("secret/secret", map[string]any{
 					"foo": "bar",
-				}); err != nil {
-					t.Fatal(err)
-				}
+				})
+				require.NoError(t, err)
 
-				if _, err := client.Logical().Write("kv/data/kv", map[string]any{
+				_, err = client.Logical().Write("kv/data/kv", map[string]any{
 					"data": map[string]any{
 						"foo": "bar",
 					},
-				}); err != nil {
-					t.Fatal(err)
-				}
+				})
+				require.NoError(t, err)
 
 				ui, cmd := testKVGetCommand(t)
 				cmd.client = client
@@ -671,11 +661,9 @@ func TestKVListCommand(t *testing.T) {
 				defer closer()
 
 				// enable kv-v2 backend
-				if err := client.Sys().Mount("kv/", &api.MountInput{
+				require.NoError(t, client.Sys().Mount("kv/", &api.MountInput{
 					Type: "kv-v2",
-				}); err != nil {
-					t.Fatal(err)
-				}
+				}))
 				time.Sleep(time.Second)
 
 				ctx := t.Context()
@@ -785,31 +773,27 @@ func TestKVMetadataGetCommand(t *testing.T) {
 
 				client, closer := testVaultServer(t)
 				defer closer()
-				if err := client.Sys().Mount("kv/", &api.MountInput{
+				require.NoError(t, client.Sys().Mount("kv/", &api.MountInput{
 					Type: "kv-v2",
-				}); err != nil {
-					t.Fatal(err)
-				}
+				}))
 
 				// Give time for the upgrade code to run/finish
 				time.Sleep(time.Second)
 
-				if _, err := client.Logical().Write("kv/data/foo", map[string]any{
+				_, err := client.Logical().Write("kv/data/foo", map[string]any{
 					"data": map[string]any{
 						"foo": "bar",
 					},
-				}); err != nil {
-					t.Fatal(err)
-				}
+				})
+				require.NoError(t, err)
 
 				// create KV entry to test -mount flag where secret key is same as mount path
-				if _, err := client.Logical().Write("kv/data/kv", map[string]any{
+				_, err = client.Logical().Write("kv/data/kv", map[string]any{
 					"data": map[string]any{
 						"foo": "bar",
 					},
-				}); err != nil {
-					t.Fatal(err)
-				}
+				})
+				require.NoError(t, err)
 
 				ui, cmd := testKVMetadataGetCommand(t)
 				cmd.client = client
@@ -890,11 +874,9 @@ func TestKVPatchCommand_ArgValidation(t *testing.T) {
 			client, closer := testVaultServer(t)
 			defer closer()
 
-			if err := client.Sys().Mount("kv/", &api.MountInput{
+			require.NoError(t, client.Sys().Mount("kv/", &api.MountInput{
 				Type: "kv-v2",
-			}); err != nil {
-				t.Fatalf("kv-v2 mount attempt failed - err: %#v\n", err)
-			}
+			}), "kv-v2 mount attempt failed")
 
 			code, combined := kvPatchWithRetry(t, client, tc.args, nil)
 
@@ -926,19 +908,16 @@ func TestKVPatchCommand_StdinFull(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	if err := client.Sys().Mount("kv/", &api.MountInput{
+	require.NoError(t, client.Sys().Mount("kv/", &api.MountInput{
 		Type: "kv-v2",
-	}); err != nil {
-		t.Fatalf("kv-v2 mount attempt failed - err: %#v\n", err)
-	}
+	}), "kv-v2 mount attempt failed")
 
-	if _, err := client.Logical().Write("kv/data/patch/foo", map[string]any{
+	_, err := client.Logical().Write("kv/data/patch/foo", map[string]any{
 		"data": map[string]any{
 			"foo": "a",
 		},
-	}); err != nil {
-		t.Fatalf("write failed, err: %#v\n", err)
-	}
+	})
+	require.NoError(t, err, "write failed")
 
 	cases := [][]string{
 		{"kv/patch/foo", "-"},
@@ -991,11 +970,9 @@ func TestKVPatchCommand_StdinValue(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	if err := client.Sys().Mount("kv/", &api.MountInput{
+	require.NoError(t, client.Sys().Mount("kv/", &api.MountInput{
 		Type: "kv-v2",
-	}); err != nil {
-		t.Fatalf("kv-v2 mount attempt failed - err: %#v\n", err)
-	}
+	}), "kv-v2 mount attempt failed")
 
 	// because of the upgrade to v2 path, this can initially fail with
 	// "Upgrading from non-versioned to versioned data. \
@@ -1058,11 +1035,9 @@ func TestKVPatchCommand_RWMethodNotExists(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	if err := client.Sys().Mount("kv/", &api.MountInput{
+	require.NoError(t, client.Sys().Mount("kv/", &api.MountInput{
 		Type: "kv-v2",
-	}); err != nil {
-		t.Fatalf("kv-v2 mount attempt failed - err: %#v\n", err)
-	}
+	}), "kv-v2 mount attempt failed")
 
 	cases := [][]string{
 		{"-method", "rw", "kv/patch/foo", "foo=a"},
@@ -1087,20 +1062,17 @@ func TestKVPatchCommand_RWMethodSucceeds(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	if err := client.Sys().Mount("kv/", &api.MountInput{
+	require.NoError(t, client.Sys().Mount("kv/", &api.MountInput{
 		Type: "kv-v2",
-	}); err != nil {
-		t.Fatalf("kv-v2 mount attempt failed - err: %#v\n", err)
-	}
+	}), "kv-v2 mount attempt failed")
 
-	if _, err := client.Logical().Write("kv/data/patch/foo", map[string]any{
+	_, err := client.Logical().Write("kv/data/patch/foo", map[string]any{
 		"data": map[string]any{
 			"foo": "a",
 			"bar": "b",
 		},
-	}); err != nil {
-		t.Fatalf("write failed, err: %#v\n", err)
-	}
+	})
+	require.NoError(t, err, "write failed")
 
 	// Test single value
 	args := []string{"-method", "rw", "kv/patch/foo", "foo=aa"}
@@ -1188,11 +1160,9 @@ func TestKVPatchCommand_CAS(t *testing.T) {
 			client, closer := testVaultServer(t)
 			defer closer()
 
-			if err := client.Sys().Mount("kv/", &api.MountInput{
+			require.NoError(t, client.Sys().Mount("kv/", &api.MountInput{
 				Type: "kv-v2",
-			}); err != nil {
-				t.Fatalf("kv-v2 mount attempt failed - err: %#v\n", err)
-			}
+			}), "kv-v2 mount attempt failed")
 
 			// create a policy with patch capability
 			policy := `path "kv/*" { capabilities = ["create", "update", "read", "patch"] }`
@@ -1261,11 +1231,9 @@ func TestKVPatchCommand_Methods(t *testing.T) {
 			client, closer := testVaultServer(t)
 			defer closer()
 
-			if err := client.Sys().Mount("kv/", &api.MountInput{
+			require.NoError(t, client.Sys().Mount("kv/", &api.MountInput{
 				Type: "kv-v2",
-			}); err != nil {
-				t.Fatalf("kv-v2 mount attempt failed - err: %#v\n", err)
-			}
+			}), "kv-v2 mount attempt failed")
 
 			// create a policy with patch capability
 			policy := `path "kv/*" { capabilities = ["create", "update", "read", "patch"] }`
@@ -1327,11 +1295,9 @@ func TestKVPatchCommand_403Fallback(t *testing.T) {
 			client, closer := testVaultServer(t)
 			defer closer()
 
-			if err := client.Sys().Mount("kv/", &api.MountInput{
+			require.NoError(t, client.Sys().Mount("kv/", &api.MountInput{
 				Type: "kv-v2",
-			}); err != nil {
-				t.Fatalf("kv-v2 mount attempt failed - err: %#v\n", err)
-			}
+			}), "kv-v2 mount attempt failed")
 
 			// create a policy without patch capability
 			policy := `path "kv/*" { capabilities = ["create", "update", "read"] }`
@@ -1402,11 +1368,9 @@ func TestKVPatchCommand_RWMethodPolicyVariations(t *testing.T) {
 			client, closer := testVaultServer(t)
 			defer closer()
 
-			if err := client.Sys().Mount("kv/", &api.MountInput{
+			require.NoError(t, client.Sys().Mount("kv/", &api.MountInput{
 				Type: "kv-v2",
-			}); err != nil {
-				t.Fatalf("kv-v2 mount attempt failed - err: %#v\n", err)
-			}
+			}), "kv-v2 mount attempt failed")
 
 			secretAuth, err := createTokenForPolicy(t, client, tc.policy)
 			require.NoErrorf(t, err, "policy/token creation failed for policy %s, err: %#v\n", tc.policy, err)

@@ -117,11 +117,8 @@ func testCertEndToEnd(t *testing.T, withCertRoleName, ahWrapping bool) {
 		Curve25519PublicKey: pub,
 	})
 	require.NoError(t, err)
-	if err := os.WriteFile(dhpath, mPubKey, 0o600); err != nil {
-		t.Fatal(err)
-	} else {
-		logger.Trace("wrote dh param file", "path", dhpath)
-	}
+	require.NoError(t, os.WriteFile(dhpath, mPubKey, 0o600))
+	logger.Trace("wrote dh param file", "path", dhpath)
 
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 
@@ -233,9 +230,7 @@ func testCertEndToEnd(t *testing.T, withCertRoleName, ahWrapping bool) {
 
 				// Now unwrap it
 				wrapInfo := new(api.SecretWrapInfo)
-				if err := jsonutil.DecodeJSON(val, wrapInfo); err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, jsonutil.DecodeJSON(val, wrapInfo))
 				switch {
 				case wrapInfo.TTL != 10:
 					t.Fatalf("bad wrap info: %v", wrapInfo.TTL)
@@ -366,32 +361,23 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 	caCertFile, err := os.CreateTemp("", "caCert")
 	require.NoError(t, err)
 	defer os.Remove(caCertFile.Name())
-	if _, err := caCertFile.Write([]byte(cluster.CACertPEM)); err != nil {
-		t.Fatal(err)
-	}
-	if err := caCertFile.Close(); err != nil {
-		t.Fatal(err)
-	}
+	_, err = caCertFile.Write([]byte(cluster.CACertPEM))
+	require.NoError(t, err)
+	require.NoError(t, caCertFile.Close())
 
 	leafCertFile, err := os.CreateTemp("", "leafCert")
 	require.NoError(t, err)
 	defer os.Remove(leafCertFile.Name())
-	if _, err := leafCertFile.Write([]byte(leafCertPEM)); err != nil {
-		t.Fatal(err)
-	}
-	if err := leafCertFile.Close(); err != nil {
-		t.Fatal(err)
-	}
+	_, err = leafCertFile.Write([]byte(leafCertPEM))
+	require.NoError(t, err)
+	require.NoError(t, leafCertFile.Close())
 
 	leafCertKeyFile, err := os.CreateTemp("", "leafCertKey")
 	require.NoError(t, err)
 	defer os.Remove(leafCertKeyFile.Name())
-	if _, err := leafCertKeyFile.Write([]byte(leafCertKeyPEM)); err != nil {
-		t.Fatal(err)
-	}
-	if err := leafCertKeyFile.Close(); err != nil {
-		t.Fatal(err)
-	}
+	_, err = leafCertKeyFile.Write([]byte(leafCertKeyPEM))
+	require.NoError(t, err)
+	require.NoError(t, leafCertKeyFile.Close())
 
 	// /////////////
 	// Cert auth setup

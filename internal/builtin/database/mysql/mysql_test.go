@@ -542,9 +542,7 @@ func TestMySQL_RotateRootCredentials(t *testing.T) {
 			require.NoError(t, err)
 
 			// verify old password doesn't work
-			if err := mysqlhelper.TestCredsExist(t, connURL, updateReq.Username, "secret"); err == nil {
-				t.Fatal("Should not be able to connect with initial credentials")
-			}
+			require.Error(t, mysqlhelper.TestCredsExist(t, connURL, updateReq.Username, "secret"), "Should not be able to connect with initial credentials")
 
 			err = db.Close()
 			require.NoError(t, err)
@@ -621,9 +619,7 @@ func TestMySQL_DeleteUser(t *testing.T) {
 			userResp, err := db.NewUser(ctx, createReq)
 			require.NoError(t, err)
 
-			if err := mysqlhelper.TestCredsExist(t, connURL, userResp.Username, password); err != nil {
-				t.Fatalf("Could not connect with new credentials: %s", err)
-			}
+			require.NoError(t, mysqlhelper.TestCredsExist(t, connURL, userResp.Username, password), "Could not connect with new credentials")
 
 			deleteReq := dbplugin.DeleteUserRequest{
 				Username: userResp.Username,
@@ -634,9 +630,7 @@ func TestMySQL_DeleteUser(t *testing.T) {
 			_, err = db.DeleteUser(t.Context(), deleteReq)
 			require.NoError(t, err)
 
-			if err := mysqlhelper.TestCredsExist(t, connURL, userResp.Username, password); err == nil {
-				t.Fatal("Credentials were not revoked!")
-			}
+			require.Error(t, mysqlhelper.TestCredsExist(t, connURL, userResp.Username, password), "Credentials were not revoked!")
 
 			if test.deleteTwice { // revoke again https://openbao.org/docs/plugins/plugin-authors-guide/#revoke-operations-should-ignore-not-found-errors
 				t.Log("calling delete again")
@@ -680,9 +674,7 @@ func TestMySQL_UpdateUser(t *testing.T) {
 				GRANT SELECT ON *.* TO '{{name}}'@'%';`
 
 			createTestMySQLUser(t, connURL, dbUser, initPassword, createStatements)
-			if err := mysqlhelper.TestCredsExist(t, connURL, dbUser, initPassword); err != nil {
-				t.Fatalf("Could not connect with credentials: %s", err)
-			}
+			require.NoError(t, mysqlhelper.TestCredsExist(t, connURL, dbUser, initPassword), "Could not connect with credentials")
 
 			connectionDetails := map[string]any{
 				"connection_url": connURL,
@@ -719,14 +711,10 @@ func TestMySQL_UpdateUser(t *testing.T) {
 			require.NoError(t, err)
 
 			// verify new password works
-			if err := mysqlhelper.TestCredsExist(t, connURL, dbUser, newPassword); err != nil {
-				t.Fatalf("Could not connect with new credentials: %s", err)
-			}
+			require.NoError(t, mysqlhelper.TestCredsExist(t, connURL, dbUser, newPassword), "Could not connect with new credentials")
 
 			// verify old password doesn't work
-			if err := mysqlhelper.TestCredsExist(t, connURL, dbUser, initPassword); err == nil {
-				t.Fatal("Should not be able to connect with initial credentials")
-			}
+			require.Error(t, mysqlhelper.TestCredsExist(t, connURL, dbUser, initPassword), "Should not be able to connect with initial credentials")
 		})
 	}
 }

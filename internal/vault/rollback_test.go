@@ -43,9 +43,7 @@ func mockRollback(t *testing.T) (*RollbackManager, *be.Noop) {
 	meUUID, err := uuid.GenerateUUID()
 	require.NoError(t, err)
 
-	if err := router.Mount(backend, "foo", &routing.MountEntry{UUID: meUUID, Accessor: "noopaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, router.Mount(backend, "foo", &routing.MountEntry{UUID: meUUID, Accessor: "noopaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view))
 
 	mountsFunc := func() []*routing.MountEntry {
 		return mounts.Entries

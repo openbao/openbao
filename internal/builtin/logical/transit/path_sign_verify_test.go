@@ -152,9 +152,8 @@ func testTransit_SignVerify_ECDSA(t *testing.T, bits int) {
 		t.Fatal("could not set D")
 	}
 	p.Keys[strconv.Itoa(p.LatestVersion)] = keyEntry
-	if err = p.Persist(t.Context(), storage); err != nil {
-		t.Fatal(err)
-	}
+	err = p.Persist(t.Context(), storage)
+	require.NoError(t, err)
 	req.Data = map[string]any{
 		"input": "dGhlIHF1aWNrIGJyb3duIGZveA==",
 	}
@@ -316,9 +315,8 @@ func testTransit_SignVerify_ECDSA(t *testing.T, bits int) {
 	require.NoError(t, err)
 
 	p.MinDecryptionVersion = 2
-	if err = p.Persist(t.Context(), storage); err != nil {
-		t.Fatal(err)
-	}
+	err = p.Persist(t.Context(), storage)
+	require.NoError(t, err)
 
 	req.Data["input"] = "dGhlIHF1aWNrIGJyb3duIGZveA=="
 	req.Data["hash_algorithm"] = "sha2-256"
@@ -350,9 +348,7 @@ func validatePublicKey(t *testing.T, in string, sig string, pubKeyRaw []byte, ex
 	require.NoError(t, err)
 	val := keyReadResp.Data["keys"].(map[string]map[string]any)[strings.TrimPrefix(splitSig[1], "v")]
 	var ak asymKey
-	if err := mapstructure.Decode(val, &ak); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, mapstructure.Decode(val, &ak))
 	if ak.PublicKey != "" {
 		t.Fatal("got non-empty public key")
 	}
@@ -362,9 +358,7 @@ func validatePublicKey(t *testing.T, in string, sig string, pubKeyRaw []byte, ex
 	keyReadResp, err = b.HandleRequest(t.Context(), keyReadReq)
 	require.NoError(t, err)
 	val = keyReadResp.Data["keys"].(map[string]map[string]any)[strings.TrimPrefix(splitSig[1], "v")]
-	if err := mapstructure.Decode(val, &ak); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, mapstructure.Decode(val, &ak))
 	if ak.PublicKey != base64.StdEncoding.EncodeToString(pubKeyRaw) {
 		t.Fatalf("got incorrect public key; got %q, expected %q\nasymKey struct is\n%#v", ak.PublicKey, pubKeyRaw, ak)
 	}
@@ -596,9 +590,8 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 	err = fooP.Rotate(t.Context(), storage, b.GetRandomReader())
 	require.NoError(t, err)
 	fooP.MinDecryptionVersion = 2
-	if err = fooP.Persist(t.Context(), storage); err != nil {
-		t.Fatal(err)
-	}
+	err = fooP.Persist(t.Context(), storage)
+	require.NoError(t, err)
 	fooP.Unlock()
 
 	err = barP.Rotate(t.Context(), storage, b.GetRandomReader())
@@ -606,9 +599,8 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 	err = barP.Rotate(t.Context(), storage, b.GetRandomReader())
 	require.NoError(t, err)
 	barP.MinDecryptionVersion = 2
-	if err = barP.Persist(t.Context(), storage); err != nil {
-		t.Fatal(err)
-	}
+	err = barP.Persist(t.Context(), storage)
+	require.NoError(t, err)
 	barP.Unlock()
 
 	req.Data = map[string]any{

@@ -483,9 +483,7 @@ func TestIdentityStore_RenameAlias_CannotMergeEntity(t *testing.T) {
 	_, err = client.Logical().Write("identity/entity-alias/id/"+aliasID2, map[string]any{
 		"name": "bsmith",
 	})
-	if err == nil {
-		t.Fatal("expected rename over existing entity to fail")
-	}
+	require.Error(t, err, "expected rename over existing entity to fail")
 }
 
 func TestIdentityStore_MergeEntities_FailsDueToClash(t *testing.T) {
@@ -541,9 +539,7 @@ func TestIdentityStore_MergeEntities_FailsDueToClash(t *testing.T) {
 		"to_entity_id":    entityIdBob,
 		"from_entity_ids": entityIdAlice,
 	})
-	if err == nil {
-		t.Fatalf("Expected error upon merge. Resp:%#v", mergeResp)
-	}
+	require.Errorf(t, err, "Expected error upon merge. Resp:%#v", mergeResp)
 	if !strings.Contains(err.Error(), "toEntity and at least one fromEntity have aliases with the same mount accessor") {
 		t.Fatalf("Error was not due to conflicting alias mount accessors. Error: %v", err)
 	}
@@ -629,9 +625,7 @@ func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities(t *testing.T)
 		"to_entity_id":    entityIdBob,
 		"from_entity_ids": []string{entityIdAlice, entityIdClara},
 	})
-	if err == nil {
-		t.Fatalf("Expected error upon merge. Resp:%#v", mergeResp)
-	}
+	require.Errorf(t, err, "Expected error upon merge. Resp:%#v", mergeResp)
 	if !strings.Contains(err.Error(), fmt.Sprintf("mount accessor %s found in multiple fromEntities, merge should be done with one fromEntity at a time", mountAccessorAppRole)) {
 		t.Fatalf("Error was not due to conflicting alias mount accessors in fromEntities. Error: %v", err)
 	}
@@ -725,9 +719,7 @@ func TestIdentityStore_MergeEntities_FailsDueToDoubleClash(t *testing.T) {
 		"to_entity_id":    entityIdBob,
 		"from_entity_ids": []string{entityIdAlice, entityIdClara},
 	})
-	if err == nil {
-		t.Fatalf("Expected error upon merge. Resp:%#v", mergeResp)
-	}
+	require.Errorf(t, err, "Expected error upon merge. Resp:%#v", mergeResp)
 	if mergeResp != nil {
 		t.Fatalf("Response was non-nil. Resp:%#v", mergeResp)
 	}
@@ -816,9 +808,7 @@ func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities_CheckRawReque
 	})
 
 	resp, err := client.RawRequest(req)
-	if err == nil {
-		t.Fatalf("Expected error but did not get one. Response: %v", resp)
-	}
+	require.Errorf(t, err, "Expected error but did not get one. Response: %v", resp)
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -830,9 +820,8 @@ func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities_CheckRawReque
 	}
 
 	var mapOutput map[string]any
-	if err = json.Unmarshal([]byte(bodyString), &mapOutput); err != nil {
-		t.Fatal(err)
-	}
+	err = json.Unmarshal([]byte(bodyString), &mapOutput)
+	require.NoError(t, err)
 
 	errorStrings, ok := mapOutput["errors"].([]any)
 	if !ok {
@@ -1098,9 +1087,7 @@ func TestIdentityStore_MergeEntities_FailsDueToMultipleClashMergesAttempted(t *t
 		"from_entity_ids":               []string{entityIdAlice, entityIdClara},
 		"conflicting_alias_ids_to_keep": []string{aliasIdAlice, aliasIdClara},
 	})
-	if err == nil {
-		t.Fatalf("Expected error upon merge. Resp:%#v", mergeResp)
-	}
+	require.Errorf(t, err, "Expected error upon merge. Resp:%#v", mergeResp)
 	if !strings.Contains(err.Error(), "merge one entity at a time") {
 		t.Fatalf("did not error for the right reason. Error: %v", err)
 	}

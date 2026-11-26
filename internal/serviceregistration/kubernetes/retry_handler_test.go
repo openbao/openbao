@@ -27,12 +27,8 @@ func TestRetryHandlerSimple(t *testing.T) {
 	client.Scheme = testConf.ClientScheme
 	client.TokenFile = testConf.PathToTokenFile
 	client.RootCAFile = testConf.PathToRootCAFile
-	if err := os.Setenv(client.EnvVarKubernetesServiceHost, testConf.ServiceHost); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Setenv(client.EnvVarKubernetesServicePort, testConf.ServicePort); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.Setenv(client.EnvVarKubernetesServiceHost, testConf.ServiceHost))
+	require.NoError(t, os.Setenv(client.EnvVarKubernetesServicePort, testConf.ServicePort))
 
 	logger := hclog.NewNullLogger()
 	shutdownCh := make(chan struct{})
@@ -80,12 +76,8 @@ func TestRetryHandlerAdd(t *testing.T) {
 	client.Scheme = testConf.ClientScheme
 	client.TokenFile = testConf.PathToTokenFile
 	client.RootCAFile = testConf.PathToRootCAFile
-	if err := os.Setenv(client.EnvVarKubernetesServiceHost, testConf.ServiceHost); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Setenv(client.EnvVarKubernetesServicePort, testConf.ServicePort); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.Setenv(client.EnvVarKubernetesServiceHost, testConf.ServiceHost))
+	require.NoError(t, os.Setenv(client.EnvVarKubernetesServicePort, testConf.ServicePort))
 
 	logger := hclog.NewNullLogger()
 	c, err := client.New(logger)
@@ -193,12 +185,8 @@ func TestRetryHandlerRacesAndDeadlocks(t *testing.T) {
 	client.Scheme = testConf.ClientScheme
 	client.TokenFile = testConf.PathToTokenFile
 	client.RootCAFile = testConf.PathToRootCAFile
-	if err := os.Setenv(client.EnvVarKubernetesServiceHost, testConf.ServiceHost); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Setenv(client.EnvVarKubernetesServicePort, testConf.ServicePort); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.Setenv(client.EnvVarKubernetesServiceHost, testConf.ServiceHost))
+	require.NoError(t, os.Setenv(client.EnvVarKubernetesServicePort, testConf.ServicePort))
 
 	logger := hclog.NewNullLogger()
 	shutdownCh := make(chan struct{})
@@ -266,12 +254,8 @@ func TestRetryHandlerAPIConnectivityProblemsInitialState(t *testing.T) {
 	client.TokenFile = testConf.PathToTokenFile
 	client.RootCAFile = testConf.PathToRootCAFile
 	client.RetryMax = 0
-	if err := os.Setenv(client.EnvVarKubernetesServiceHost, testConf.ServiceHost); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Setenv(client.EnvVarKubernetesServicePort, testConf.ServicePort); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.Setenv(client.EnvVarKubernetesServiceHost, testConf.ServiceHost))
+	require.NoError(t, os.Setenv(client.EnvVarKubernetesServicePort, testConf.ServicePort))
 
 	shutdownCh := make(chan struct{})
 	wait := &sync.WaitGroup{}
@@ -286,9 +270,7 @@ func TestRetryHandlerAPIConnectivityProblemsInitialState(t *testing.T) {
 		IsPerformanceStandby: true,
 	})
 	require.NoError(t, err)
-	if err := reg.Run(shutdownCh, wait, ""); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, reg.Run(shutdownCh, wait, ""))
 
 	// At this point, since the initial state can't be set,
 	// remotely we should have false for all these labels.
@@ -355,12 +337,8 @@ func TestRetryHandlerAPIConnectivityProblemsNotifications(t *testing.T) {
 	client.TokenFile = testConf.PathToTokenFile
 	client.RootCAFile = testConf.PathToRootCAFile
 	client.RetryMax = 0
-	if err := os.Setenv(client.EnvVarKubernetesServiceHost, testConf.ServiceHost); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Setenv(client.EnvVarKubernetesServicePort, testConf.ServicePort); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.Setenv(client.EnvVarKubernetesServiceHost, testConf.ServiceHost))
+	require.NoError(t, os.Setenv(client.EnvVarKubernetesServicePort, testConf.ServicePort))
 
 	shutdownCh := make(chan struct{})
 	wait := &sync.WaitGroup{}
@@ -376,22 +354,12 @@ func TestRetryHandlerAPIConnectivityProblemsNotifications(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	if err := reg.NotifyActiveStateChange(true); err != nil {
-		t.Fatal(err)
-	}
-	if err := reg.NotifyInitializedStateChange(true); err != nil {
-		t.Fatal(err)
-	}
-	if err := reg.NotifyPerformanceStandbyStateChange(true); err != nil {
-		t.Fatal(err)
-	}
-	if err := reg.NotifySealedStateChange(true); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, reg.NotifyActiveStateChange(true))
+	require.NoError(t, reg.NotifyInitializedStateChange(true))
+	require.NoError(t, reg.NotifyPerformanceStandbyStateChange(true))
+	require.NoError(t, reg.NotifySealedStateChange(true))
 
-	if err := reg.Run(shutdownCh, wait, ""); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, reg.Run(shutdownCh, wait, ""))
 
 	// At this point, since the initial state can't be set,
 	// remotely we should have false for all these labels.

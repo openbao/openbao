@@ -69,17 +69,13 @@ func TestPki_RoleGenerateLease(t *testing.T) {
 	}
 
 	var role roleEntry
-	if err := entry.DecodeJSON(&role); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, entry.DecodeJSON(&role))
 
 	role.GenerateLease = nil
 
 	entry, err = logical.StorageEntryJSON("role/testrole", role)
 	require.NoError(t, err)
-	if err := storage.Put(t.Context(), entry); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, storage.Put(t.Context(), entry))
 
 	// Reading should upgrade generate_lease
 	resp, err = b.HandleRequest(t.Context(), roleReq)
@@ -168,18 +164,14 @@ func TestPki_RoleKeyUsage(t *testing.T) {
 	}
 
 	var role roleEntry
-	if err := entry.DecodeJSON(&role); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, entry.DecodeJSON(&role))
 
 	role.KeyUsageOld = "KeyEncipherment,DigitalSignature"
 	role.KeyUsage = nil
 
 	entry, err = logical.StorageEntryJSON("role/testrole", role)
 	require.NoError(t, err)
-	if err := storage.Put(t.Context(), entry); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, storage.Put(t.Context(), entry))
 
 	// Reading should upgrade key_usage
 	resp, err = b.HandleRequest(t.Context(), roleReq)
@@ -199,9 +191,7 @@ func TestPki_RoleKeyUsage(t *testing.T) {
 		t.Fatal("role should not be nil")
 	}
 	var result roleEntry
-	if err := entry.DecodeJSON(&result); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, entry.DecodeJSON(&result))
 
 	if result.KeyUsageOld != "" {
 		t.Fatal("old key usage value should be blank")
@@ -259,9 +249,7 @@ func TestPki_RoleOUOrganizationUpgrade(t *testing.T) {
 	}
 
 	var role roleEntry
-	if err := entry.DecodeJSON(&role); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, entry.DecodeJSON(&role))
 	role.OUOld = "abc,123"
 	role.OU = nil
 	role.OrganizationOld = "org1,org2"
@@ -269,9 +257,7 @@ func TestPki_RoleOUOrganizationUpgrade(t *testing.T) {
 
 	entry, err = logical.StorageEntryJSON("role/testrole", role)
 	require.NoError(t, err)
-	if err := storage.Put(t.Context(), entry); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, storage.Put(t.Context(), entry))
 
 	// Reading should upgrade key_usage
 	resp, err = b.HandleRequest(t.Context(), roleReq)
@@ -295,9 +281,7 @@ func TestPki_RoleOUOrganizationUpgrade(t *testing.T) {
 		t.Fatal("role should not be nil")
 	}
 	var result roleEntry
-	if err := entry.DecodeJSON(&result); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, entry.DecodeJSON(&result))
 
 	if result.OUOld != "" {
 		t.Fatal("old ou value should be blank")
@@ -355,17 +339,13 @@ func TestPki_RoleAllowedDomains(t *testing.T) {
 	}
 
 	var role roleEntry
-	if err := entry.DecodeJSON(&role); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, entry.DecodeJSON(&role))
 	role.AllowedDomainsOld = "foobar.com,*example.com"
 	role.AllowedDomains = nil
 
 	entry, err = logical.StorageEntryJSON("role/testrole", role)
 	require.NoError(t, err)
-	if err := storage.Put(t.Context(), entry); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, storage.Put(t.Context(), entry))
 
 	// Reading should upgrade key_usage
 	resp, err = b.HandleRequest(t.Context(), roleReq)
@@ -385,9 +365,7 @@ func TestPki_RoleAllowedDomains(t *testing.T) {
 		t.Fatal("role should not be nil")
 	}
 	var result roleEntry
-	if err := entry.DecodeJSON(&result); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, entry.DecodeJSON(&result))
 
 	if result.AllowedDomainsOld != "" {
 		t.Fatal("old allowed_domains value should be blank")

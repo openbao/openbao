@@ -117,11 +117,10 @@ func TestExternalPlugin_RollbackAndReload(t *testing.T) {
 	client.SetToken(cluster.RootToken)
 
 	testRegisterAndEnable(t, client, plugin)
-	if _, err := client.Sys().ReloadPlugin(&api.ReloadPluginInput{
+	_, err := client.Sys().ReloadPlugin(&api.ReloadPluginInput{
 		Plugin: plugin.Name,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	})
+	require.NoError(t, err)
 }
 
 func testRegisterAndEnable(t *testing.T, client *api.Client, plugin pluginhelpers.TestPlugin) {
@@ -131,31 +130,25 @@ func testRegisterAndEnable(t *testing.T, client *api.Client, plugin pluginhelper
 }
 
 func testRegisterPlugin(t *testing.T, client *api.Client, plugin pluginhelpers.TestPlugin) {
-	if err := client.Sys().RegisterPlugin(&api.RegisterPluginInput{
+	require.NoError(t, client.Sys().RegisterPlugin(&api.RegisterPluginInput{
 		Name:    plugin.Name,
 		Type:    api.PluginType(plugin.Typ),
 		Command: plugin.Name,
 		SHA256:  plugin.Sha256,
 		Version: plugin.Version,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 }
 
 func testEnablePlugin(t *testing.T, client *api.Client, plugin pluginhelpers.TestPlugin) {
 	switch plugin.Typ {
 	case consts.PluginTypeSecrets:
-		if err := client.Sys().Mount(plugin.Name, &api.MountInput{
+		require.NoError(t, client.Sys().Mount(plugin.Name, &api.MountInput{
 			Type: plugin.Name,
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 	case consts.PluginTypeCredential:
-		if err := client.Sys().EnableAuthWithOptions(plugin.Name, &api.EnableAuthOptions{
+		require.NoError(t, client.Sys().EnableAuthWithOptions(plugin.Name, &api.EnableAuthOptions{
 			Type: plugin.Name,
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 	}
 }
 
@@ -268,13 +261,9 @@ func testExternalPlugin_ContinueOnError(t *testing.T, mismatch bool, pluginType 
 
 		switch pluginType {
 		case consts.PluginTypeSecrets:
-			if err := client.Sys().Unmount(plugin.Name); err != nil {
-				t.Fatalf("failed to unmount after re-loading plugin: %v", err)
-			}
+			require.NoError(t, client.Sys().Unmount(plugin.Name), "failed to unmount after re-loading plugin")
 		case consts.PluginTypeCredential:
-			if err := client.Sys().DisableAuth(plugin.Name); err != nil {
-				t.Fatalf("failed to unmount after re-loading plugin: %v", err)
-			}
+			require.NoError(t, client.Sys().DisableAuth(plugin.Name), "failed to unmount after re-loading plugin")
 		}
 	}
 
@@ -311,15 +300,13 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 	client.SetToken(cluster.RootToken)
 
 	// Register
-	if err := client.Sys().RegisterPlugin(&api.RegisterPluginInput{
+	require.NoError(t, client.Sys().RegisterPlugin(&api.RegisterPluginInput{
 		Name:    plugin.Name,
 		Type:    api.PluginType(plugin.Typ),
 		Command: plugin.Name,
 		SHA256:  plugin.Sha256,
 		Version: plugin.Version,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 
 	// define a group of parallel tests so we wait for their execution before
 	// continuing on to cleanup
@@ -334,11 +321,9 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 				t.Parallel()
 				client.SetToken(cluster.RootToken)
 				// Enable
-				if err := client.Sys().EnableAuthWithOptions(pluginPath, &api.EnableAuthOptions{
+				require.NoError(t, client.Sys().EnableAuthWithOptions(pluginPath, &api.EnableAuthOptions{
 					Type: plugin.Name,
-				}); err != nil {
-					t.Fatal(err)
-				}
+				}))
 
 				// Configure the new mount; this takes some time as the
 				// secondary has not yet invalidated the mount from the call
@@ -385,9 +370,8 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 
 				revokeToken := resp.Auth.ClientToken
 				// Revoke
-				if err = client.Auth().Token().RevokeSelf(revokeToken); err != nil {
-					t.Fatal(err)
-				}
+				err = client.Auth().Token().RevokeSelf(revokeToken)
+				require.NoError(t, err)
 
 				// Reset root token
 				client.SetToken(cluster.RootToken)
@@ -405,13 +389,11 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 	})
 
 	// Deregister
-	if err := client.Sys().DeregisterPlugin(&api.DeregisterPluginInput{
+	require.NoError(t, client.Sys().DeregisterPlugin(&api.DeregisterPluginInput{
 		Name:    plugin.Name,
 		Type:    api.PluginType(plugin.Typ),
 		Version: plugin.Version,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 }
 
 // TestExternalPlugin_AuthMethodReload tests that we can use an external auth
@@ -455,11 +437,10 @@ func TestExternalPlugin_AuthMethodReload(t *testing.T) {
 	client.SetToken(cluster.RootToken)
 
 	// Reload plugin
-	if _, err := client.Sys().ReloadPlugin(&api.ReloadPluginInput{
+	_, err = client.Sys().ReloadPlugin(&api.ReloadPluginInput{
 		Plugin: plugin.Name,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	})
+	require.NoError(t, err)
 
 	_, err = client.Auth().Login(t.Context(), authMethod)
 	require.NoError(t, err)
@@ -468,13 +449,11 @@ func TestExternalPlugin_AuthMethodReload(t *testing.T) {
 	client.SetToken(cluster.RootToken)
 
 	// Deregister
-	if err := client.Sys().DeregisterPlugin(&api.DeregisterPluginInput{
+	require.NoError(t, client.Sys().DeregisterPlugin(&api.DeregisterPluginInput{
 		Name:    plugin.Name,
 		Type:    api.PluginType(plugin.Typ),
 		Version: plugin.Version,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 }
 
 // TestExternalPlugin_SecretsEngine tests that we can build, register and use an
@@ -488,15 +467,13 @@ func TestExternalPlugin_SecretsEngine(t *testing.T) {
 	client.SetToken(cluster.RootToken)
 
 	// Register
-	if err := client.Sys().RegisterPlugin(&api.RegisterPluginInput{
+	require.NoError(t, client.Sys().RegisterPlugin(&api.RegisterPluginInput{
 		Name:    plugin.Name,
 		Type:    api.PluginType(plugin.Typ),
 		Command: plugin.Name,
 		SHA256:  plugin.Sha256,
 		Version: plugin.Version,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 
 	// define a group of parallel tests so we wait for their execution before
 	// continuing on to cleanup
@@ -509,11 +486,9 @@ func TestExternalPlugin_SecretsEngine(t *testing.T) {
 			t.Run(pluginPath, func(t *testing.T) {
 				t.Parallel()
 				// Enable
-				if err := client.Sys().Mount(pluginPath, &api.MountInput{
+				require.NoError(t, client.Sys().Mount(pluginPath, &api.MountInput{
 					Type: plugin.Name,
-				}); err != nil {
-					t.Fatal(err)
-				}
+				}))
 
 				// Configure
 				_, err := client.Logical().Write(pluginPath+"/data/creds", map[string]any{
@@ -532,13 +507,11 @@ func TestExternalPlugin_SecretsEngine(t *testing.T) {
 	})
 
 	// Deregister
-	if err := client.Sys().DeregisterPlugin(&api.DeregisterPluginInput{
+	require.NoError(t, client.Sys().DeregisterPlugin(&api.DeregisterPluginInput{
 		Name:    plugin.Name,
 		Type:    api.PluginType(plugin.Typ),
 		Version: plugin.Version,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 }
 
 // TestExternalPlugin_SecretsEngineReload tests that we can use an external
@@ -566,11 +539,10 @@ func TestExternalPlugin_SecretsEngineReload(t *testing.T) {
 	}
 
 	// Reload plugin
-	if _, err := client.Sys().ReloadPlugin(&api.ReloadPluginInput{
+	_, err = client.Sys().ReloadPlugin(&api.ReloadPluginInput{
 		Plugin: plugin.Name,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	})
+	require.NoError(t, err)
 
 	resp, err = client.Logical().Read(plugin.Name + "/data/creds")
 	require.NoError(t, err)
@@ -579,13 +551,11 @@ func TestExternalPlugin_SecretsEngineReload(t *testing.T) {
 	}
 
 	// Deregister
-	if err := client.Sys().DeregisterPlugin(&api.DeregisterPluginInput{
+	require.NoError(t, client.Sys().DeregisterPlugin(&api.DeregisterPluginInput{
 		Name:    plugin.Name,
 		Type:    api.PluginType(plugin.Typ),
 		Version: plugin.Version,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 }
 
 // TestExternalPlugin_Database tests that we can build, register and use an
@@ -599,22 +569,18 @@ func TestExternalPlugin_Database(t *testing.T) {
 	client.SetToken(cluster.RootToken)
 
 	// Register
-	if err := client.Sys().RegisterPlugin(&api.RegisterPluginInput{
+	require.NoError(t, client.Sys().RegisterPlugin(&api.RegisterPluginInput{
 		Name:    plugin.Name,
 		Type:    api.PluginType(consts.PluginTypeDatabase),
 		Command: plugin.Name,
 		SHA256:  plugin.Sha256,
 		Version: plugin.Version,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 
 	// Enable
-	if err := client.Sys().Mount(consts.PluginTypeDatabase.String(), &api.MountInput{
+	require.NoError(t, client.Sys().Mount(consts.PluginTypeDatabase.String(), &api.MountInput{
 		Type: consts.PluginTypeDatabase.String(),
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 
 	// define a group of parallel tests so we wait for their execution before
 	// continuing on to cleanup
@@ -682,30 +648,25 @@ func TestExternalPlugin_Database(t *testing.T) {
 				}
 
 				// Revoke
-				if err = client.Sys().Revoke(revokeLease); err != nil {
-					t.Fatal(err)
-				}
+				err = client.Sys().Revoke(revokeLease)
+				require.NoError(t, err)
 
 				// Reset root token
 				client.SetToken(cluster.RootToken)
 
 				// Lookup - expect FAILURE
 				_, err = client.Sys().Lookup(revokeLease)
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
+				require.Error(t, err)
 			})
 		}
 	})
 
 	// Deregister
-	if err := client.Sys().DeregisterPlugin(&api.DeregisterPluginInput{
+	require.NoError(t, client.Sys().DeregisterPlugin(&api.DeregisterPluginInput{
 		Name:    plugin.Name,
 		Type:    api.PluginType(plugin.Typ),
 		Version: plugin.Version,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 }
 
 // TestExternalPlugin_DatabaseReload tests that we can use an external database
@@ -722,22 +683,18 @@ func TestExternalPlugin_DatabaseReload(t *testing.T) {
 	client.SetToken(cluster.RootToken)
 
 	// Register
-	if err := client.Sys().RegisterPlugin(&api.RegisterPluginInput{
+	require.NoError(t, client.Sys().RegisterPlugin(&api.RegisterPluginInput{
 		Name:    plugin.Name,
 		Type:    api.PluginType(consts.PluginTypeDatabase),
 		Command: plugin.Name,
 		SHA256:  plugin.Sha256,
 		Version: plugin.Version,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 
 	// Enable
-	if err := client.Sys().Mount(consts.PluginTypeDatabase.String(), &api.MountInput{
+	require.NoError(t, client.Sys().Mount(consts.PluginTypeDatabase.String(), &api.MountInput{
 		Type: consts.PluginTypeDatabase.String(),
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 
 	dbName := fmt.Sprintf("%s-%d", plugin.Name, 0)
 	roleName := "test-role-" + dbName
@@ -768,11 +725,10 @@ func TestExternalPlugin_DatabaseReload(t *testing.T) {
 	}
 
 	// Reload plugin
-	if _, err := client.Sys().ReloadPlugin(&api.ReloadPluginInput{
+	_, err = client.Sys().ReloadPlugin(&api.ReloadPluginInput{
 		Plugin: plugin.Name,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	})
+	require.NoError(t, err)
 
 	// Generate credentials after reload
 	resp, err = client.Logical().Read("database/creds/" + roleName)
@@ -782,13 +738,11 @@ func TestExternalPlugin_DatabaseReload(t *testing.T) {
 	}
 
 	// Deregister
-	if err := client.Sys().DeregisterPlugin(&api.DeregisterPluginInput{
+	require.NoError(t, client.Sys().DeregisterPlugin(&api.DeregisterPluginInput{
 		Name:    plugin.Name,
 		Type:    api.PluginType(plugin.Typ),
 		Version: plugin.Version,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 }
 
 const testRole = `
@@ -872,13 +826,11 @@ func TestExternalPlugin_AuditEnabled_ShouldLogPluginMetadata_Auth(t *testing.T) 
 	}
 
 	// Deregister
-	if err := client.Sys().DeregisterPlugin(&api.DeregisterPluginInput{
+	require.NoError(t, client.Sys().DeregisterPlugin(&api.DeregisterPluginInput{
 		Name:    plugin.Name,
 		Type:    api.PluginType(plugin.Typ),
 		Version: plugin.Version,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 }
 
 // TestExternalPlugin_AuditEnabled_ShouldLogPluginMetadata_Secret tests that we have plugin metadata of a secret plugin
@@ -937,11 +889,9 @@ func TestExternalPlugin_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T
 	}
 
 	// Deregister
-	if err := client.Sys().DeregisterPlugin(&api.DeregisterPluginInput{
+	require.NoError(t, client.Sys().DeregisterPlugin(&api.DeregisterPluginInput{
 		Name:    plugin.Name,
 		Type:    api.PluginType(plugin.Typ),
 		Version: plugin.Version,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 }

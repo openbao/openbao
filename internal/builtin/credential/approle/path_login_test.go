@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAppRole_BoundCIDRLogin(t *testing.T) {
@@ -78,9 +79,7 @@ func TestAppRole_BoundCIDRLogin(t *testing.T) {
 		},
 	}
 	_, err = b.HandleRequest(t.Context(), roleSecretIDReq)
-	if err == nil {
-		t.Fatal("expected error due to mismatching subnet relationship")
-	}
+	require.Error(t, err, "expected error due to mismatching subnet relationship")
 
 	roleSecretIDReq.Data["token_bound_cidrs"] = "10.0.0.0/24"
 	resp = b.requestNoErr(t, roleSecretIDReq)

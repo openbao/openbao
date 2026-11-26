@@ -36,9 +36,8 @@ func TestJSONUtil_CompressDecompressJSON(t *testing.T) {
 	// Decompress and decode the compressed information and verify the functional
 	// behavior
 	var actual map[string]any
-	if err = DecodeJSON(compressedBytes, &actual); err != nil {
-		t.Fatal(err)
-	}
+	err = DecodeJSON(compressedBytes, &actual)
+	require.NoError(t, err)
 	if !reflect.DeepEqual(expected, actual) {
 		t.Fatalf("bad: expected: %#v\nactual: %#v", expected, actual)
 	}
@@ -47,16 +46,14 @@ func TestJSONUtil_CompressDecompressJSON(t *testing.T) {
 	}
 
 	// Test invalid data
-	if err = DecodeJSON([]byte{}, &actual); err == nil {
-		t.Fatal("expected a failure")
-	}
+	err = DecodeJSON([]byte{}, &actual)
+	require.Error(t, err)
 
 	// Test invalid data after the canary byte
 	var buf bytes.Buffer
 	buf.Write([]byte{compressutil.CompressionCanaryGzip})
-	if err = DecodeJSON(buf.Bytes(), &actual); err == nil {
-		t.Fatal("expected a failure")
-	}
+	err = DecodeJSON(buf.Bytes(), &actual)
+	require.Error(t, err)
 
 	// Compress an object
 	compressedBytes, err = EncodeJSONAndCompress(expected, &compressutil.CompressionConfig{
@@ -75,9 +72,8 @@ func TestJSONUtil_CompressDecompressJSON(t *testing.T) {
 
 	// Decompress and decode the compressed information and verify the functional
 	// behavior
-	if err = DecodeJSON(compressedBytes, &actual); err != nil {
-		t.Fatal(err)
-	}
+	err = DecodeJSON(compressedBytes, &actual)
+	require.NoError(t, err)
 	if !reflect.DeepEqual(expected, actual) {
 		t.Fatalf("bad: expected: %#v\nactual: %#v", expected, actual)
 	}

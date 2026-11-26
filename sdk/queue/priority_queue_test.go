@@ -58,16 +58,12 @@ func TestPriorityQueue_Push(t *testing.T) {
 	pq := New()
 
 	// don't allow nil pushing
-	if err := pq.Push(nil); err == nil {
-		t.Fatal("Expected error on pushing nil")
-	}
+	require.Error(t, pq.Push(nil), "Expected error on pushing nil")
 
 	tc := testCases()
 	tcl := len(tc)
 	for _, i := range tc {
-		if err := pq.Push(i); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, pq.Push(i))
 	}
 
 	if pq.Len() != tcl {
@@ -113,9 +109,7 @@ func TestPriorityQueue_Pop(t *testing.T) {
 
 	tc := testCases()
 	for _, i := range tc {
-		if err := pq.Push(i); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, pq.Push(i))
 	}
 
 	topItem, err := pq.Pop()
@@ -144,9 +138,7 @@ func TestPriorityQueue_PopByKey(t *testing.T) {
 
 	tc := testCases()
 	for _, i := range tc {
-		if err := pq.Push(i); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, pq.Push(i))
 	}
 
 	// grab the top priority item, to capture it's value for checking later

@@ -38,9 +38,7 @@ import (
 
 func compareFSMs(t *testing.T, fsm1, fsm2 *FSM) {
 	t.Helper()
-	if err := compareFSMsWithErr(t, fsm1, fsm2); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, compareFSMsWithErr(t, fsm1, fsm2))
 }
 
 func compareFSMsWithErr(t *testing.T, fsm1, fsm2 *FSM) error {
@@ -209,9 +207,7 @@ func TestRaft_ParseAutopilotUpgradeVersion(t *testing.T) {
 	}
 
 	_, err := NewRaftBackend(conf, hclog.NewNullLogger())
-	if err == nil {
-		t.Fatal("expected an error but got none")
-	}
+	require.Error(t, err)
 
 	if !strings.Contains(err.Error(), "does not parse") {
 		t.Fatal("expected an error about unparseable versions but got none")
@@ -261,9 +257,7 @@ func TestRaft_ParseNonVoter(t *testing.T) {
 					backend, err := NewRaftBackend(conf, hclog.NewNullLogger())
 					switch {
 					case tc.invalidNonVoterValue || (retryJoinConf == "" && tc.expectNonVoter):
-						if err == nil {
-							t.Fatal("expected an error but got none")
-						}
+						require.Error(t, err)
 					default:
 						require.NoError(t, err)
 
@@ -332,9 +326,7 @@ func TestRaft_Backend_LargeKey(t *testing.T) {
 	entry := &physical.Entry{Key: key, Value: []byte(key)}
 
 	err = b.Put(t.Context(), entry)
-	if err == nil {
-		t.Fatal("expected error for put entry")
-	}
+	require.Error(t, err, "expected error for put entry")
 
 	if !strings.Contains(err.Error(), physical.ErrKeyTooLarge) {
 		t.Fatalf("expected %q, got %v", physical.ErrKeyTooLarge, err)
@@ -356,9 +348,7 @@ func TestRaft_Backend_LargeValue(t *testing.T) {
 	entry := &physical.Entry{Key: "foo", Value: value}
 
 	err := b.Put(t.Context(), entry)
-	if err == nil {
-		t.Fatal("expected error for put entry")
-	}
+	require.Error(t, err, "expected error for put entry")
 
 	if !strings.Contains(err.Error(), physical.ErrValueTooLarge) {
 		t.Fatalf("expected %q, got %v", physical.ErrValueTooLarge, err)

@@ -19,6 +19,7 @@ import (
 	"github.com/moby/moby/client"
 
 	"github.com/openbao/openbao/sdk/v2/helper/docker"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -64,9 +65,7 @@ func PrepareTestContainerWithVaultUser(t *testing.T, ctx context.Context, versio
 
 	cmd := []string{"psql", "-U", "postgres", "-c", "CREATE USER vaultadmin WITH LOGIN PASSWORD 'vaultpass' SUPERUSER"}
 	_, err := runner.RunCmdInBackground(ctx, id, cmd)
-	if err != nil {
-		t.Fatalf("Could not run command (%v) in container: %v", cmd, err)
-	}
+	require.NoErrorf(t, err, "Could not run command (%v) in container", cmd)
 
 	return cleanup, url
 }
@@ -119,9 +118,7 @@ func PrepareTestContainerRaw(t *testing.T, name, repo, version, password string,
 	}
 
 	runner, err := docker.NewServiceRunner(runOpts)
-	if err != nil {
-		t.Fatalf("Could not start docker Postgres: %s", err)
-	}
+	require.NoError(t, err, "Could not start docker Postgres")
 
 	upCheck := connectPostgres(password)
 	if !wait {
@@ -129,9 +126,7 @@ func PrepareTestContainerRaw(t *testing.T, name, repo, version, password string,
 	}
 
 	svc, containerID, err := runner.StartNewService(t.Context(), addSuffix, forceLocalAddr, upCheck)
-	if err != nil {
-		t.Fatalf("Could not start docker Postgres: %s", err)
-	}
+	require.NoError(t, err, "Could not start docker Postgres")
 
 	return runner, svc, svc.Cleanup, svc.Config.URL().String(), containerID
 }
@@ -177,15 +172,11 @@ func connectPostgresNoWait(password string) docker.ServiceAdapter {
 }
 
 func StopContainer(t *testing.T, ctx context.Context, runner *docker.Runner, containerID string) {
-	if err := runner.Stop(ctx, containerID); err != nil {
-		t.Fatalf("Could not stop docker Postgres: %s", err)
-	}
+	require.NoError(t, runner.Stop(ctx, containerID), "Could not stop docker Postgres")
 }
 
 func RestartContainer(t *testing.T, ctx context.Context, runner *docker.Runner, containerID string) {
-	if err := runner.Restart(ctx, containerID); err != nil {
-		t.Fatalf("Could not restart docker Postgres: %s", err)
-	}
+	require.NoError(t, runner.Restart(ctx, containerID), "Could not restart docker Postgres")
 }
 
 type ClusterConfig struct {

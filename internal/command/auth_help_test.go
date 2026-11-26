@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/cli"
 
 	credUserpass "github.com/openbao/openbao/v2/internal/builtin/credential/userpass"
+	"github.com/stretchr/testify/require"
 )
 
 func testAuthHelpCommand(tb testing.TB) (*cli.MockUi, *AuthHelpCommand) {
@@ -79,9 +80,7 @@ func TestAuthHelpCommand_Run(t *testing.T) {
 		client, closer := testVaultServer(t)
 		defer closer()
 
-		if err := client.Sys().EnableAuth("foo", "userpass", ""); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, client.Sys().EnableAuth("foo", "userpass", ""))
 
 		ui, cmd := testAuthHelpCommand(t)
 		cmd.client = client

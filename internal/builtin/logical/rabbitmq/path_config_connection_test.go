@@ -17,9 +17,8 @@ func TestBackend_ConfigConnection_DefaultUsernameTemplate(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
 	b := Backend()
-	if err = b.Setup(t.Context(), config); err != nil {
-		t.Fatal(err)
-	}
+	err = b.Setup(t.Context(), config)
+	require.NoError(t, err)
 
 	configData := map[string]any{
 		"connection_uri":    "uri",
@@ -62,9 +61,8 @@ func TestBackend_ConfigConnection_CustomUsernameTemplate(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
 	b := Backend()
-	if err = b.Setup(t.Context(), config); err != nil {
-		t.Fatal(err)
-	}
+	err = b.Setup(t.Context(), config)
+	require.NoError(t, err)
 
 	configData := map[string]any{
 		"connection_uri":    "uri",

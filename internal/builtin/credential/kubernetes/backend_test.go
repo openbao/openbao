@@ -211,12 +211,10 @@ func Test_kubeAuthBackend_updateTLSConfig(t *testing.T) {
 				tlsConfig:  tt.tlsConfig,
 			}
 
-			if err := b.Setup(t.Context(),
+			require.NoError(t, b.Setup(t.Context(),
 				&logical.BackendConfig{
 					Logger: hclog.NewNullLogger(),
-				}); err != nil {
-				t.Fatalf("failed to setup the backend, err=%v", err)
-			}
+				}), "failed to setup the backend")
 
 			localFile := filepath.Join(t.TempDir(), "ca.crt")
 			b.localCACertReader = &cachingFileReader{
@@ -227,13 +225,9 @@ func Test_kubeAuthBackend_updateTLSConfig(t *testing.T) {
 			for idx, config := range tt.configs {
 				t.Run(fmt.Sprintf("config-%d", idx), func(t *testing.T) {
 					if config.localCACert != "" {
-						if err := os.WriteFile(localFile, []byte(config.localCACert), 0o600); err != nil {
-							t.Fatalf("failed to write local file %q", localFile)
-						}
+						require.NoErrorf(t, os.WriteFile(localFile, []byte(config.localCACert), 0o600), "failed to write local file %q", localFile)
 						t.Cleanup(func() {
-							if err := os.Remove(localFile); err != nil {
-								t.Fatal(err)
-							}
+							require.NoError(t, os.Remove(localFile))
 						})
 					}
 
@@ -328,21 +322,17 @@ func Test_kubeAuthBackend_initialize(t *testing.T) {
 				tlsConfig:  tt.tlsConfig,
 			}
 
-			if err := b.Setup(t.Context(),
+			require.NoError(t, b.Setup(t.Context(),
 				&logical.BackendConfig{
 					Logger:      hclog.NewNullLogger(),
 					StorageView: tt.req.Storage,
-				}); err != nil {
-				t.Fatalf("failed to setup the backend, err=%v", err)
-			}
+				}), "failed to setup the backend")
 
 			if tt.config != nil {
 				entry, err := logical.StorageEntryJSON(configPath, tt.config)
 				require.NoError(t, err)
 
-				if err := tt.req.Storage.Put(tt.ctx, entry); err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, tt.req.Storage.Put(tt.ctx, entry))
 			}
 
 			b.tlsMu.RLock()
@@ -461,13 +451,11 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 				tlsConfig:  tt.tlsConfig,
 			}
 
-			if err := b.Setup(t.Context(),
+			require.NoError(t, b.Setup(t.Context(),
 				&logical.BackendConfig{
 					Logger:      hclog.NewNullLogger(),
 					StorageView: tt.storage,
-				}); err != nil {
-				t.Fatalf("failed to setup the backend, err=%v", err)
-			}
+				}), "failed to setup the backend")
 
 			b.tlsMu.RLock()
 			if b.tlsConfigUpdaterRunning {
@@ -507,9 +495,7 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 							entry, err := logical.StorageEntryJSON(configPath, config.config)
 							require.NoError(t, err)
 
-							if err := tt.storage.Put(tt.ctx, entry); err != nil {
-								t.Fatal(err)
-							}
+							require.NoError(t, tt.storage.Put(tt.ctx, entry))
 						}
 
 						time.Sleep(tt.horizon * 2)

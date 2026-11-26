@@ -45,9 +45,7 @@ func TestWAL(t *testing.T) {
 	}
 
 	// Should be able to delete the value
-	if err := DeleteWAL(ctx, s, id); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, DeleteWAL(ctx, s, id))
 	entry, err = GetWAL(ctx, s, id)
 	require.NoError(t, err)
 	if entry != nil {

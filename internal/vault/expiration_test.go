@@ -60,9 +60,7 @@ func TestExpiration_Metrics(t *testing.T) {
 
 	exp := testCore.expiration
 
-	if err := exp.Restore(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, exp.Restore())
 
 	// Set up a count function to calculate number of leases
 	count := 0
@@ -75,9 +73,7 @@ func TestExpiration_Metrics(t *testing.T) {
 	idView := exp.tokenIndexView(namespace.RootNamespace)
 
 	// Scan the storage with the count func set
-	if err := logical.ScanView(ctx, idView, countFunc); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, logical.ScanView(ctx, idView, countFunc))
 
 	// Check that there are no leases to begin with
 	if count != 0 {
@@ -145,9 +141,7 @@ func TestExpiration_Metrics(t *testing.T) {
 	}
 
 	count = 0
-	if err := logical.ScanView(t.Context(), idView, countFunc); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, logical.ScanView(t.Context(), idView, countFunc))
 
 	conf := metricsutil.TelemetryConstConfig{
 		LeaseMetricsEpsilon:         time.Hour,
@@ -451,9 +445,7 @@ func TestExpiration_Tidy(t *testing.T) {
 
 	exp := testCore.expiration
 
-	if err := exp.Restore(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, exp.Restore())
 
 	// Set up a count function to calculate number of leases
 	count := 0
@@ -465,9 +457,7 @@ func TestExpiration_Tidy(t *testing.T) {
 	view := exp.leaseView(namespace.RootNamespace)
 
 	// Scan the storage with the count func set
-	if err := logical.ScanView(ctx, view, countFunc); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, logical.ScanView(ctx, view, countFunc))
 
 	// Check that there are no leases to begin with
 	if count != 0 {
@@ -482,14 +472,10 @@ func TestExpiration_Tidy(t *testing.T) {
 	}
 
 	// Persist the invalid lease entry
-	if err := exp.persistEntry(ctx, le); err != nil {
-		t.Fatalf("error persisting entry: %v", err)
-	}
+	require.NoError(t, exp.persistEntry(ctx, le), "error persisting entry")
 
 	count = 0
-	if err := logical.ScanView(ctx, view, countFunc); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, logical.ScanView(ctx, view, countFunc))
 
 	// Check that the storage was successful and that the count of leases is now 1
 	if count != 1 {
@@ -501,9 +487,7 @@ func TestExpiration_Tidy(t *testing.T) {
 	require.NoError(t, err)
 
 	count = 0
-	if err := logical.ScanView(ctx, view, countFunc); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, logical.ScanView(ctx, view, countFunc))
 
 	// Post the tidy operation, the invalid lease entry should have been gone
 	if count != 0 {
@@ -514,14 +498,12 @@ func TestExpiration_Tidy(t *testing.T) {
 	le.ClientToken = "invalidtoken"
 
 	// Persist the invalid lease entry
-	if err = exp.persistEntry(ctx, le); err != nil {
-		t.Fatalf("error persisting entry: %v", err)
-	}
+	err = exp.persistEntry(ctx, le)
+	require.NoError(t, err, "error persisting entry")
 
 	count = 0
-	if err = logical.ScanView(ctx, view, countFunc); err != nil {
-		t.Fatal(err)
-	}
+	err = logical.ScanView(ctx, view, countFunc)
+	require.NoError(t, err)
 
 	// Check that the storage was successful and that the count of leases is
 	// now 1
@@ -534,9 +516,8 @@ func TestExpiration_Tidy(t *testing.T) {
 	require.NoError(t, err)
 
 	count = 0
-	if err = logical.ScanView(ctx, view, countFunc); err != nil {
-		t.Fatal(err)
-	}
+	err = logical.ScanView(ctx, view, countFunc)
+	require.NoError(t, err)
 
 	// Post the tidy operation, the invalid lease entry should have been gone
 	if count != 0 {
@@ -544,23 +525,20 @@ func TestExpiration_Tidy(t *testing.T) {
 	}
 
 	// Attach an invalid token with 2 leases
-	if err = exp.persistEntry(ctx, le); err != nil {
-		t.Fatalf("error persisting entry: %v", err)
-	}
+	err = exp.persistEntry(ctx, le)
+	require.NoError(t, err, "error persisting entry")
 
 	le.LeaseID = "another/invalid/lease"
-	if err = exp.persistEntry(ctx, le); err != nil {
-		t.Fatalf("error persisting entry: %v", err)
-	}
+	err = exp.persistEntry(ctx, le)
+	require.NoError(t, err, "error persisting entry")
 
 	// Run the tidy operation
 	err = exp.Tidy(ctx)
 	require.NoError(t, err)
 
 	count = 0
-	if err = logical.ScanView(ctx, view, countFunc); err != nil {
-		t.Fatal(err)
-	}
+	err = logical.ScanView(ctx, view, countFunc)
+	require.NoError(t, err)
 
 	// Post the tidy operation, the invalid lease entry should have been gone
 	if count != 0 {
@@ -589,9 +567,8 @@ func TestExpiration_Tidy(t *testing.T) {
 	}
 
 	count = 0
-	if err = logical.ScanView(ctx, view, countFunc); err != nil {
-		t.Fatal(err)
-	}
+	err = logical.ScanView(ctx, view, countFunc)
+	require.NoError(t, err)
 
 	// Check that there are 1000 leases now
 	if count != 1000 {
@@ -633,18 +610,16 @@ func TestExpiration_Tidy(t *testing.T) {
 	le.ClientToken = root.ID
 
 	// Attach a valid token with the leases
-	if err = exp.persistEntry(ctx, le); err != nil {
-		t.Fatalf("error persisting entry: %v", err)
-	}
+	err = exp.persistEntry(ctx, le)
+	require.NoError(t, err, "error persisting entry")
 
 	// Run the tidy operation
 	err = exp.Tidy(ctx)
 	require.NoError(t, err)
 
 	count = 0
-	if err = logical.ScanView(ctx, view, countFunc); err != nil {
-		t.Fatal(err)
-	}
+	err = logical.ScanView(ctx, view, countFunc)
+	require.NoError(t, err)
 
 	// Post the tidy operation, the valid lease entry should not get affected
 	if count != 1 {
@@ -1056,9 +1031,7 @@ func TestExpiration_RegisterAuth(t *testing.T) {
 		NamespaceID: namespace.RootNamespaceID,
 	}
 	err = exp.RegisterAuth(ctx, te, auth, "", true)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 }
 
 func TestExpiration_RegisterAuth_Role(t *testing.T) {
@@ -1087,9 +1060,7 @@ func TestExpiration_RegisterAuth_Role(t *testing.T) {
 		NamespaceID: namespace.RootNamespaceID,
 	}
 	err = exp.RegisterAuth(ctx, te, auth, role, true)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 }
 
 func TestExpiration_RegisterAuth_NoLease(t *testing.T) {
@@ -1157,9 +1128,7 @@ func TestExpiration_RegisterAuth_NoTTL(t *testing.T) {
 
 	auth.TokenPolicies[0] = "default"
 	_, err = c.RegisterAuth(ctx, 0, "auth/github/login", auth, "", true, nil)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	// Now expiration
 	// Should work, root token with zero TTL
@@ -1175,9 +1144,7 @@ func TestExpiration_RegisterAuth_NoTTL(t *testing.T) {
 	// Test non-root token with zero TTL
 	te.Policies = []string{"default"}
 	err = exp.RegisterAuth(ctx, te, auth, "", true)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 }
 
 func TestExpiration_Revoke(t *testing.T) {
@@ -1211,9 +1178,7 @@ func TestExpiration_Revoke(t *testing.T) {
 	id, err := exp.Register(namespace.RootContext(t.Context()), req, resp, "")
 	require.NoError(t, err)
 
-	if err := exp.Revoke(namespace.RootContext(t.Context()), id); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, exp.Revoke(namespace.RootContext(t.Context()), id))
 
 	req = noop.Requests[0]
 	if req.Operation != logical.RevokeOperation {
@@ -1311,9 +1276,7 @@ func TestExpiration_RevokePrefix(t *testing.T) {
 	}
 
 	// Should nuke all the keys
-	if err := exp.RevokePrefix(namespace.RootContext(t.Context()), "prod/aws/", true); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, exp.RevokePrefix(namespace.RootContext(t.Context()), "prod/aws/", true))
 
 	if len(noop.Requests) != 3 {
 		t.Fatalf("Bad: %v", noop.Requests)
@@ -1378,9 +1341,7 @@ func TestExpiration_RevokeByToken(t *testing.T) {
 		ID:          "foobarbaz",
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	if err := exp.RevokeByToken(namespace.RootContext(t.Context()), te); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, exp.RevokeByToken(namespace.RootContext(t.Context()), te))
 
 	limit := time.Now().Add(3 * time.Second)
 	for time.Now().Before(limit) {
@@ -1469,9 +1430,7 @@ func TestExpiration_RevokeByToken_Blocking(t *testing.T) {
 		ID:          "foobarbaz",
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	if err := exp.RevokeByToken(namespace.RootContext(t.Context()), te); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, exp.RevokeByToken(namespace.RootContext(t.Context()), te))
 
 	// Lock and check that no requests has gone through yet
 	noop.Lock()
@@ -1557,9 +1516,7 @@ func TestExpiration_RenewToken_period(t *testing.T) {
 		NamespaceID:  namespace.RootNamespaceID,
 	}
 	ctx := namespace.RootContext(t.Context())
-	if err := exp.tokenStore.create(ctx, root, true); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, exp.tokenStore.create(ctx, root, true))
 
 	// Register a token
 	auth := &logical.Auth{
@@ -2087,12 +2044,8 @@ func TestExpiration_revokeEntry_token(t *testing.T) {
 		namespace:   namespace.RootNamespace,
 	}
 
-	if err := exp.persistEntry(ctx, le); err != nil {
-		t.Fatalf("error persisting entry: %v", err)
-	}
-	if err := exp.createIndexByToken(ctx, le, le.ClientToken); err != nil {
-		t.Fatalf("error creating secondary index: %v", err)
-	}
+	require.NoError(t, exp.persistEntry(ctx, le), "error persisting entry")
+	require.NoError(t, exp.createIndexByToken(ctx, le, le.ClientToken), "error creating secondary index")
 	exp.updatePending(le)
 
 	indexEntry, err := exp.indexByToken(ctx, le)
@@ -2336,9 +2289,7 @@ func TestExpiration_PersistLoadDelete(t *testing.T) {
 		LastRenewalTime: lastTime,
 		namespace:       namespace.RootNamespace,
 	}
-	if err := exp.persistEntry(namespace.RootContext(t.Context()), le); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, exp.persistEntry(namespace.RootContext(t.Context()), le))
 
 	out, err := exp.loadEntry(namespace.RootContext(t.Context()), "foo/bar/1234")
 	require.NoError(t, err)
@@ -2457,9 +2408,7 @@ func TestExpiration_RevokeForce(t *testing.T) {
 	req.Path = "sys/leases/revoke-prefix/badrenew/creds"
 
 	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	req.Path = "sys/leases/revoke-force/badrenew/creds"
 	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -2512,9 +2461,7 @@ func TestExpiration_RevokeForceSingle(t *testing.T) {
 	req.Path = "sys/leases/revoke-prefix/" + leaseID
 
 	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	req.Path = "sys/leases/revoke-force/" + leaseID
 	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
@@ -2523,9 +2470,7 @@ func TestExpiration_RevokeForceSingle(t *testing.T) {
 	req.Path = "sys/leases/lookup"
 	req.Data = map[string]any{"lease_id": leaseID}
 	_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	if !strings.Contains(err.Error(), "invalid request") {
 		t.Fatalf("bad error: %v", err)
 	}
@@ -3102,9 +3047,8 @@ func TestExpiration_getIrrevocableLeaseCounts(t *testing.T) {
 	expectedPerMount := 10
 	for range expectedPerMount {
 		for _, backend := range backends {
-			if _, err := c.AddIrrevocableLease(namespace.RootContext(t.Context()), backend.path); err != nil {
-				t.Fatal(err)
-			}
+			_, err = c.AddIrrevocableLease(namespace.RootContext(t.Context()), backend.path)
+			require.NoError(t, err)
 		}
 	}
 
@@ -3235,9 +3179,8 @@ func TestExpiration_listIrrevocableLeases_includeAll(t *testing.T) {
 
 	expectedNumLeases := MaxIrrevocableLeasesToReturn + 10
 	for range expectedNumLeases {
-		if _, err := c.AddIrrevocableLease(namespace.RootContext(t.Context()), "foo/"); err != nil {
-			t.Fatal(err)
-		}
+		_, err := c.AddIrrevocableLease(namespace.RootContext(t.Context()), "foo/")
+		require.NoError(t, err)
 	}
 
 	dataRaw, warn, err := exp.listIrrevocableLeases(namespace.RootContext(t.Context()), false, false, MaxIrrevocableLeasesToReturn)

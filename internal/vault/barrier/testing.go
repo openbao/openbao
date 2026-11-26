@@ -9,25 +9,20 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/v2/internal/physical/inmem"
+	"github.com/stretchr/testify/require"
 )
 
 // MockBarrier returns a physical backend, security barrier, and root key
 func MockBarrier(t testing.TB, logger hclog.Logger) (physical.Backend, SecurityBarrier, []byte) {
 	inm, err := inmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	b := NewAESGCMBarrier(inm, nil)
 
 	// Initialize and unseal
 	key, _ := b.GenerateKey()
 	err = b.Initialize(t.Context(), key, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = b.Unseal(t.Context(), key)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return inm, b, key
 }

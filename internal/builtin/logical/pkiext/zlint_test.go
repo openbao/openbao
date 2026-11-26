@@ -48,9 +48,7 @@ func RunZLintRootTest(t *testing.T, keyType string, keyBits int, usePSS bool, ig
 	var parsed map[string]any
 	output := RunZLint(t, rootCert)
 
-	if err := json.Unmarshal(output, &parsed); err != nil {
-		t.Fatalf("failed to parse zlint output as JSON: %v\nOutput:\n%v\n\n", err, string(output))
-	}
+	require.NoErrorf(t, json.Unmarshal(output, &parsed), "failed to parse zlint output as JSON, output:\n%v", string(output))
 
 	for key, rawValue := range parsed {
 		value := rawValue.(map[string]any)

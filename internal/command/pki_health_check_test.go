@@ -24,7 +24,7 @@ func TestPKIHC_AllGood(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	if err := client.Sys().Mount("pki", &api.MountInput{
+	require.NoError(t, client.Sys().Mount("pki", &api.MountInput{
 		Type: "pki",
 		Config: api.MountConfigInput{
 			AuditNonHMACRequestKeys:   healthcheck.VisibleReqParams,
@@ -33,9 +33,7 @@ func TestPKIHC_AllGood(t *testing.T) {
 			AllowedResponseHeaders:    []string{"Last-Modified", "Replay-Nonce", "Link", "Location"},
 			MaxLeaseTTL:               "36500d",
 		},
-	}); err != nil {
-		t.Fatalf("pki mount error: %#v", err)
-	}
+	}), "pki mount error")
 
 	if resp, err := client.Logical().Write("pki/root/generate/internal", map[string]any{
 		"key_type":    "ec",
@@ -45,44 +43,38 @@ func TestPKIHC_AllGood(t *testing.T) {
 		t.Fatalf("failed to prime CA: %v", err)
 	}
 
-	if _, err := client.Logical().Read("pki/crl/rotate"); err != nil {
-		t.Fatalf("failed to rotate CRLs: %v", err)
-	}
+	_, err := client.Logical().Read("pki/crl/rotate")
+	require.NoError(t, err, "failed to rotate CRLs")
 
-	if _, err := client.Logical().Write("pki/roles/testing", map[string]any{
+	_, err = client.Logical().Write("pki/roles/testing", map[string]any{
 		"allow_any_name": true,
 		"no_store":       true,
-	}); err != nil {
-		t.Fatalf("failed to write role: %v", err)
-	}
+	})
+	require.NoError(t, err, "failed to write role")
 
-	if _, err := client.Logical().Write("pki/config/auto-tidy", map[string]any{
+	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]any{
 		"enabled":         true,
 		"tidy_cert_store": true,
-	}); err != nil {
-		t.Fatalf("failed to write auto-tidy config: %v", err)
-	}
+	})
+	require.NoError(t, err, "failed to write auto-tidy config")
 
-	if _, err := client.Logical().Write("pki/tidy", map[string]any{
+	_, err = client.Logical().Write("pki/tidy", map[string]any{
 		"tidy_cert_store": true,
-	}); err != nil {
-		t.Fatalf("failed to run tidy: %v", err)
-	}
+	})
+	require.NoError(t, err, "failed to run tidy")
 
 	path, err := url.Parse(client.Address())
 	require.NoError(t, err, "failed parsing client address")
 
-	if _, err := client.Logical().Write("pki/config/cluster", map[string]any{
+	_, err = client.Logical().Write("pki/config/cluster", map[string]any{
 		"path": path.JoinPath("/v1/", "pki/").String(),
-	}); err != nil {
-		t.Fatalf("failed to update local cluster: %v", err)
-	}
+	})
+	require.NoError(t, err, "failed to update local cluster")
 
-	if _, err := client.Logical().Write("pki/config/acme", map[string]any{
+	_, err = client.Logical().Write("pki/config/acme", map[string]any{
 		"enabled": "true",
-	}); err != nil {
-		t.Fatalf("failed to update acme config: %v", err)
-	}
+	})
+	require.NoError(t, err, "failed to update acme config")
 
 	_, _, results := execPKIHC(t, client, "pki", true)
 
@@ -95,11 +87,9 @@ func TestPKIHC_AllBad(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	if err := client.Sys().Mount("pki", &api.MountInput{
+	require.NoError(t, client.Sys().Mount("pki", &api.MountInput{
 		Type: "pki",
-	}); err != nil {
-		t.Fatalf("pki mount error: %#v", err)
-	}
+	}), "pki mount error")
 
 	if resp, err := client.Logical().Write("pki/root/generate/internal", map[string]any{
 		"key_type":    "ec",
@@ -109,19 +99,17 @@ func TestPKIHC_AllBad(t *testing.T) {
 		t.Fatalf("failed to prime CA: %v", err)
 	}
 
-	if _, err := client.Logical().Write("pki/config/crl", map[string]any{
+	_, err := client.Logical().Write("pki/config/crl", map[string]any{
 		"expiry": "5s",
-	}); err != nil {
-		t.Fatalf("failed to issue leaf cert: %v", err)
-	}
+	})
+	require.NoError(t, err, "failed to issue leaf cert")
 
-	if _, err := client.Logical().Read("pki/crl/rotate"); err != nil {
-		t.Fatalf("failed to rotate CRLs: %v", err)
-	}
+	_, err = client.Logical().Read("pki/crl/rotate")
+	require.NoError(t, err, "failed to rotate CRLs")
 
 	time.Sleep(5 * time.Second)
 
-	if _, err := client.Logical().Write("pki/roles/testing", map[string]any{
+	_, err = client.Logical().Write("pki/roles/testing", map[string]any{
 		"allow_localhost":             true,
 		"allowed_domains":             "*.example.com",
 		"allow_glob_domains":          true,
@@ -129,22 +117,19 @@ func TestPKIHC_AllBad(t *testing.T) {
 		"no_store":                    false,
 		"key_type":                    "ec",
 		"ttl":                         "30d",
-	}); err != nil {
-		t.Fatalf("failed to write role: %v", err)
-	}
+	})
+	require.NoError(t, err, "failed to write role")
 
-	if _, err := client.Logical().Write("pki/issue/testing", map[string]any{
+	_, err = client.Logical().Write("pki/issue/testing", map[string]any{
 		"common_name": "something.example.com",
-	}); err != nil {
-		t.Fatalf("failed to issue leaf cert: %v", err)
-	}
+	})
+	require.NoError(t, err, "failed to issue leaf cert")
 
-	if _, err := client.Logical().Write("pki/config/auto-tidy", map[string]any{
+	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]any{
 		"enabled":         false,
 		"tidy_cert_store": false,
-	}); err != nil {
-		t.Fatalf("failed to write auto-tidy config: %v", err)
-	}
+	})
+	require.NoError(t, err, "failed to write auto-tidy config")
 
 	_, _, results := execPKIHC(t, client, "pki", true)
 
@@ -157,11 +142,9 @@ func TestPKIHC_OnlyIssuer(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	if err := client.Sys().Mount("pki", &api.MountInput{
+	require.NoError(t, client.Sys().Mount("pki", &api.MountInput{
 		Type: "pki",
-	}); err != nil {
-		t.Fatalf("pki mount error: %#v", err)
-	}
+	}), "pki mount error")
 
 	if resp, err := client.Logical().Write("pki/root/generate/internal", map[string]any{
 		"key_type":    "ec",
@@ -197,11 +180,9 @@ func TestPKIHC_ExpectedEmptyMount(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	if err := client.Sys().Mount("pki", &api.MountInput{
+	require.NoError(t, client.Sys().Mount("pki", &api.MountInput{
 		Type: "pki",
-	}); err != nil {
-		t.Fatalf("pki mount error: %#v", err)
-	}
+	}), "pki mount error")
 
 	code, message, _ := execPKIHC(t, client, "pki", false)
 	if code != 1 {
@@ -219,11 +200,9 @@ func TestPKIHC_NoPerm(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	if err := client.Sys().Mount("pki", &api.MountInput{
+	require.NoError(t, client.Sys().Mount("pki", &api.MountInput{
 		Type: "pki",
-	}); err != nil {
-		t.Fatalf("pki mount error: %#v", err)
-	}
+	}), "pki mount error")
 
 	if resp, err := client.Logical().Write("pki/root/generate/internal", map[string]any{
 		"key_type":    "ec",
@@ -233,19 +212,17 @@ func TestPKIHC_NoPerm(t *testing.T) {
 		t.Fatalf("failed to prime CA: %v", err)
 	}
 
-	if _, err := client.Logical().Write("pki/config/crl", map[string]any{
+	_, err := client.Logical().Write("pki/config/crl", map[string]any{
 		"expiry": "5s",
-	}); err != nil {
-		t.Fatalf("failed to issue leaf cert: %v", err)
-	}
+	})
+	require.NoError(t, err, "failed to issue leaf cert")
 
-	if _, err := client.Logical().Read("pki/crl/rotate"); err != nil {
-		t.Fatalf("failed to rotate CRLs: %v", err)
-	}
+	_, err = client.Logical().Read("pki/crl/rotate")
+	require.NoError(t, err, "failed to rotate CRLs")
 
 	time.Sleep(5 * time.Second)
 
-	if _, err := client.Logical().Write("pki/roles/testing", map[string]any{
+	_, err = client.Logical().Write("pki/roles/testing", map[string]any{
 		"allow_localhost":             true,
 		"allowed_domains":             "*.example.com",
 		"allow_glob_domains":          true,
@@ -253,22 +230,19 @@ func TestPKIHC_NoPerm(t *testing.T) {
 		"no_store":                    false,
 		"key_type":                    "ec",
 		"ttl":                         "30d",
-	}); err != nil {
-		t.Fatalf("failed to write role: %v", err)
-	}
+	})
+	require.NoError(t, err, "failed to write role")
 
-	if _, err := client.Logical().Write("pki/issue/testing", map[string]any{
+	_, err = client.Logical().Write("pki/issue/testing", map[string]any{
 		"common_name": "something.example.com",
-	}); err != nil {
-		t.Fatalf("failed to issue leaf cert: %v", err)
-	}
+	})
+	require.NoError(t, err, "failed to issue leaf cert")
 
-	if _, err := client.Logical().Write("pki/config/auto-tidy", map[string]any{
+	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]any{
 		"enabled":         false,
 		"tidy_cert_store": false,
-	}); err != nil {
-		t.Fatalf("failed to write auto-tidy config: %v", err)
-	}
+	})
+	require.NoError(t, err, "failed to write auto-tidy config")
 
 	// Remove client token.
 	client.ClearToken()
@@ -292,9 +266,7 @@ func TestPKIHC_InvalidMounts(t *testing.T) {
 		t.Fatalf("Expected failure to talk about no issuers, got exit code %v\nOutput: %v", code, message)
 	}
 
-	if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
-		t.Fatalf("kv mount error: %#v", err)
-	}
+	require.NoError(t, client.Sys().EnableAuth("userpass", "userpass", ""), "kv mount error")
 
 	code, message, _ = execPKIHC(t, client, "auth/userpass", false)
 	if code != 1 {

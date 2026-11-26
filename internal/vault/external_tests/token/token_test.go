@@ -88,9 +88,7 @@ func TestTokenStore_TokenInvalidEntityID(t *testing.T) {
 	client.SetToken(clientToken)
 
 	_, err = client.Logical().Write("auth/token/lookup-self", nil)
-	if err == nil {
-		t.Fatal("expected error due to token being invalid when its entity is invalid")
-	}
+	require.Error(t, err, "expected error due to token being invalid when its entity is invalid")
 }
 
 /*
@@ -443,9 +441,7 @@ path "auth/token/create" {
 	require.NoError(t, err)
 	client.SetToken(secret.Auth.ClientToken)
 	_, err = client.Auth().Token().LookupSelf()
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	if !strings.Contains(err.Error(), "permission denied") {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -474,9 +470,7 @@ path "auth/token/create" {
 	require.NoError(t, err)
 	client.SetToken(secret.Auth.ClientToken)
 	_, err = client.Auth().Token().LookupSelf()
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	if !strings.Contains(err.Error(), "permission denied") {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -540,9 +534,7 @@ func TestTokenStore_RevocationOnStartup(t *testing.T) {
 		secret, err = client.Logical().Read(leasePath + lease.(string))
 		require.NoError(t, err)
 		var entry leaseEntry
-		if err := jsonutil.DecodeJSON([]byte(secret.Data["value"].(string)), &entry); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, jsonutil.DecodeJSON([]byte(secret.Data["value"].(string)), &entry))
 		if entry.ExpireTime.IsZero() {
 			continue
 		}
@@ -551,16 +543,13 @@ func TestTokenStore_RevocationOnStartup(t *testing.T) {
 		entry.ExpireTime = entry.ExpireTime.Add(-1 * time.Hour * 24 * 365)
 		jsonEntry, err := jsonutil.EncodeJSON(&entry)
 		require.NoError(t, err)
-		if _, err := client.Logical().Write(leasePath+lease.(string), map[string]any{
+		_, err = client.Logical().Write(leasePath+lease.(string), map[string]any{
 			"value": string(jsonEntry),
-		}); err != nil {
-			t.Fatal(err)
-		}
+		})
+		require.NoError(t, err)
 	}
 
-	if err := client.Sys().Seal(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, client.Sys().Seal())
 
 	var status *api.SealStatusResponse
 	for i := 0; i < len(cluster.BarrierKeys); i++ {

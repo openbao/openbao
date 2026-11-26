@@ -416,9 +416,7 @@ func TestServerRun(t *testing.T) {
 				fileCount++
 
 				secret := secretRender{}
-				if err := json.Unmarshal(content, &secret); err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, json.Unmarshal(content, &secret))
 				var expectedValues secretRender
 				if tc.expectedValues != nil {
 					expectedValues = *tc.expectedValues

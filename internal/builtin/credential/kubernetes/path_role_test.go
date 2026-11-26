@@ -45,9 +45,7 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 	defaultLeaseTTLVal := time.Hour * 12
 	maxLeaseTTLVal := time.Hour * 24
 	b := Backend()
-	if err := b.validateHTTPClientInit(); err != nil {
-		t.Fatalf("unable to create backend: %v", err)
-	}
+	require.NoError(t, b.validateHTTPClientInit(), "unable to create backend")
 
 	config := &logical.BackendConfig{
 		Logger: logging.NewVaultLogger(log.Trace),
@@ -58,9 +56,7 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 		},
 		StorageView: &logical.InmemStorage{},
 	}
-	if err := b.Setup(t.Context(), config); err != nil {
-		t.Fatalf("unable to setup backend: %v", err)
-	}
+	require.NoError(t, b.Setup(t.Context(), config), "unable to setup backend")
 
 	return b, config.StorageView
 }
@@ -557,9 +553,7 @@ func TestPath_Update(t *testing.T) {
 				Value:    data,
 				SealWrap: false,
 			}
-			if err := storage.Put(t.Context(), entry); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, storage.Put(t.Context(), entry))
 
 			req := &logical.Request{
 				Operation: logical.UpdateOperation,

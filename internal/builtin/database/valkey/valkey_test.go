@@ -67,7 +67,7 @@ func prepareValkeyTestContainer(t *testing.T) (string, int) {
 	)
 
 	address := "127.0.0.1:6379"
-	if err = pool.Retry(t.Context(), 10*time.Second, func() error {
+	err = pool.Retry(t.Context(), 10*time.Second, func() error {
 		t.Log("Waiting for the database to start...")
 		poolConfig := radix.PoolConfig{}
 		_, err := poolConfig.New(t.Context(), "tcp", address)
@@ -76,9 +76,8 @@ func prepareValkeyTestContainer(t *testing.T) (string, int) {
 		}
 
 		return nil
-	}); err != nil {
-		t.Fatalf("Could not connect to valkey: %s", err)
-	}
+	})
+	require.NoError(t, err, "Could not connect to valkey")
 	time.Sleep(3 * time.Second)
 	return "0.0.0.0", 6379
 }
@@ -251,13 +250,9 @@ func testValkeyDBCreateUser(t *testing.T, address string, port int) {
 	userResp, err := db.NewUser(t.Context(), createReq)
 	require.NoError(t, err)
 
-	if err := db.Close(); err != nil {
-		t.Fatalf("failed to close db: %v", err)
-	}
+	require.NoError(t, db.Close(), "failed to close db")
 
-	if err := checkCredsExist(t, userResp.Username, password, address, port); err != nil {
-		t.Fatalf("Could not connect with new credentials: %s", err)
-	}
+	require.NoError(t, checkCredsExist(t, userResp.Username, password, address, port), "Could not connect with new credentials")
 
 	err = revokeUser(t, userResp.Username, address, port)
 	require.NoErrorf(t, err, "Could not revoke user %q: %v", userResp.Username, err)
@@ -319,19 +314,13 @@ func testValkeyDBCreateUser_WithCreationStatements(t *testing.T, address string,
 	userResp, err := db.NewUser(t.Context(), createReq)
 
 	defer func() {
-		if err := db.Close(); err != nil {
-			t.Fatalf("failed to close DB connection during cleanup: %v", err)
-		}
+		require.NoError(t, db.Close(), "failed to close DB connection during cleanup")
 	}()
 	require.NoError(t, err)
 
-	if err := checkRuleAllowed(t, userResp.Username, password, address, port, "get", []string{"somekey"}); err != nil {
-		t.Fatalf("get command should be allowed with +@read rule, but failed: %s", err)
-	}
+	require.NoError(t, checkRuleAllowed(t, userResp.Username, password, address, port, "get", []string{"somekey"}), "get command should be allowed with +@read rule, but failed")
 
-	if err := checkRuleAllowed(t, userResp.Username, password, address, port, "set", []string{"somekey", "value"}); err == nil {
-		t.Fatal("set command should be denied, but it was allowed")
-	}
+	require.Error(t, checkRuleAllowed(t, userResp.Username, password, address, port, "set", []string{"somekey", "value"}), "set command should be denied, but it was allowed")
 
 	err = revokeUser(t, userResp.Username, address, port)
 	require.NoErrorf(t, err, "Could not revoke user: %s", userResp.Username)
@@ -518,18 +507,13 @@ func testValkeyDBCreateUser_DefaultRule(t *testing.T, address string, port int) 
 	userResp, err := db.NewUser(t.Context(), createReq)
 	require.NoError(t, err)
 
-	if err := checkCredsExist(t, userResp.Username, password, address, port); err != nil {
-		t.Fatalf("Could not connect with new credentials: %s", err)
-	}
+	require.NoError(t, checkCredsExist(t, userResp.Username, password, address, port), "Could not connect with new credentials")
 	rules := []string{"foo"}
-	if err := checkRuleAllowed(t, userResp.Username, password, address, port, "get", rules); err != nil {
-		t.Fatalf("get failed with +@read rule: %s", err)
-	}
+	require.NoError(t, checkRuleAllowed(t, userResp.Username, password, address, port, "get", rules), "get failed with +@read rule")
 
 	rules = []string{"foo", "bar"}
-	if err = checkRuleAllowed(t, userResp.Username, password, address, port, "set", rules); err == nil {
-		t.Fatalf("set did not fail with +@read rule: %s", err)
-	}
+	err = checkRuleAllowed(t, userResp.Username, password, address, port, "set", rules)
+	require.Error(t, err, "set did not fail with +@read rule")
 
 	err = revokeUser(t, userResp.Username, address, port)
 	require.NoErrorf(t, err, "Could not revoke user: %s", username)
@@ -594,9 +578,7 @@ func testValkeyDBCreateUser_plusRole(t *testing.T, address string, port int) {
 
 	db.Close()
 
-	if err := checkCredsExist(t, userResp.Username, password, address, port); err != nil {
-		t.Fatalf("Could not connect with new credentials: %s", err)
-	}
+	require.NoError(t, checkCredsExist(t, userResp.Username, password, address, port), "Could not connect with new credentials")
 
 	err = revokeUser(t, userResp.Username, address, port)
 	require.NoErrorf(t, err, "Could not revoke user: %s", userResp.Username)
@@ -664,9 +646,7 @@ func testValkeyDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 
 	db.Close()
 
-	if err := checkCredsExist(t, userResp.Username, password, address, port); err != nil {
-		t.Fatalf("Could not connect with new credentials: %s", err)
-	}
+	require.NoError(t, checkCredsExist(t, userResp.Username, password, address, port), "Could not connect with new credentials")
 
 	err = revokeUser(t, userResp.Username, address, port)
 	require.NoErrorf(t, err, "Could not revoke user: %s", userResp.Username)
@@ -733,9 +713,7 @@ func testValkeyDBCreateUser_roleAndGroup(t *testing.T, address string, port int)
 
 	db.Close()
 
-	if err := checkCredsExist(t, userResp.Username, password, address, port); err != nil {
-		t.Fatalf("Could not connect with new credentials: %s", err)
-	}
+	require.NoError(t, checkCredsExist(t, userResp.Username, password, address, port), "Could not connect with new credentials")
 
 	err = revokeUser(t, userResp.Username, address, port)
 	require.NoErrorf(t, err, "Could not revoke user: %s", userResp.Username)
@@ -793,9 +771,7 @@ func testValkeyDBRotateRootCredentials(t *testing.T, address string, port int) {
 	// defer setting the password back in case the test fails.
 	defer doValkeyDBSetCredentials(t, "rotate-root", "rotate-rootpassword", address, port)
 
-	if err := checkCredsExist(t, db.Username, "newpassword", address, port); err != nil {
-		t.Fatalf("Could not connect with new RotatedRootcredentials: %s", err)
-	}
+	require.NoError(t, checkCredsExist(t, db.Username, "newpassword", address, port), "Could not connect with new RotatedRootcredentials")
 }
 
 func doValkeyDBSetCredentials(t *testing.T, username, password, address string, port int) {
@@ -842,9 +818,7 @@ func doValkeyDBSetCredentials(t *testing.T, username, password, address string, 
 	ctx, cancel := context.WithTimeout(t.Context(), 5000*time.Millisecond)
 	defer cancel()
 	_, err = db.UpdateUser(ctx, updateReq)
-	if err == nil {
-		t.Fatalf("err: did not error on setting password for userThatDoesNotExist")
-	}
+	require.Error(t, err, "err: did not error on setting password for userThatDoesNotExist")
 
 	updateReq = dbplugin.UpdateUserRequest{
 		Username: username,
@@ -858,9 +832,7 @@ func doValkeyDBSetCredentials(t *testing.T, username, password, address string, 
 
 	db.Close()
 
-	if err := checkCredsExist(t, username, password, address, port); err != nil {
-		t.Fatalf("Could not connect with rotated credentials: %s", err)
-	}
+	require.NoError(t, checkCredsExist(t, username, password, address, port), "Could not connect with rotated credentials")
 }
 
 func testValkeyDBSetCredentials(t *testing.T, address string, port int) {

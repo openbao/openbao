@@ -49,15 +49,12 @@ func TestCustomPath(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	if err := client.Sys().EnableAuth("my-auth", "userpass", ""); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.Logical().Write("auth/my-auth/users/test", map[string]any{
+	require.NoError(t, client.Sys().EnableAuth("my-auth", "userpass", ""))
+	_, err := client.Logical().Write("auth/my-auth/users/test", map[string]any{
 		"password": "test",
 		"policies": "default",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	})
+	require.NoError(t, err)
 
 	ui, cmd := testLoginCommand(t)
 	cmd.client = client
@@ -173,15 +170,12 @@ func TestTokenOnly(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
+	require.NoError(t, client.Sys().EnableAuth("userpass", "userpass", ""))
+	_, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 		"password": "test",
 		"policies": "default",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	})
+	require.NoError(t, err)
 
 	ui, cmd := testLoginCommand(t)
 	cmd.client = client
@@ -247,15 +241,12 @@ func TestWrapAutoUnwrap(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
+	require.NoError(t, client.Sys().EnableAuth("userpass", "userpass", ""))
+	_, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 		"password": "test",
 		"policies": "default",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	})
+	require.NoError(t, err)
 
 	_, cmd := testLoginCommand(t)
 	cmd.client = client
@@ -304,15 +295,12 @@ func TestWrapTokenOnly(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
+	require.NoError(t, client.Sys().EnableAuth("userpass", "userpass", ""))
+	_, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 		"password": "test",
 		"policies": "default",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	})
+	require.NoError(t, err)
 
 	ui, cmd := testLoginCommand(t)
 	cmd.client = client
@@ -363,15 +351,12 @@ func TestWrapNoStore(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
+	require.NoError(t, client.Sys().EnableAuth("userpass", "userpass", ""))
+	_, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 		"password": "test",
 		"policies": "default",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	})
+	require.NoError(t, err)
 
 	ui, cmd := testLoginCommand(t)
 	cmd.client = client

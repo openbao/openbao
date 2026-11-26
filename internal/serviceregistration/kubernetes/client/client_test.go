@@ -20,12 +20,8 @@ func TestClient(t *testing.T) {
 	Scheme = testConf.ClientScheme
 	TokenFile = testConf.PathToTokenFile
 	RootCAFile = testConf.PathToRootCAFile
-	if err := os.Setenv(EnvVarKubernetesServiceHost, testConf.ServiceHost); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Setenv(EnvVarKubernetesServicePort, testConf.ServicePort); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.Setenv(EnvVarKubernetesServiceHost, testConf.ServiceHost))
+	require.NoError(t, os.Setenv(EnvVarKubernetesServicePort, testConf.ServicePort))
 
 	client, err := New(hclog.Default())
 	require.NoError(t, err)
@@ -54,9 +50,7 @@ func (e *env) TestGetPod(t *testing.T) {
 
 func (e *env) TestGetPodNotFound(t *testing.T) {
 	_, err := e.client.GetPod(kubetest.ExpectedNamespace, "no-exist")
-	if err == nil {
-		t.Fatal("expected error because pod is unfound")
-	}
+	require.Error(t, err, "expected error because pod is unfound")
 	if wrapped := errors.Unwrap(err); wrapped != nil {
 		err = wrapped
 	}
@@ -66,13 +60,11 @@ func (e *env) TestGetPodNotFound(t *testing.T) {
 }
 
 func (e *env) TestUpdatePodTags(t *testing.T) {
-	if err := e.client.PatchPod(kubetest.ExpectedNamespace, kubetest.ExpectedPodName, &Patch{
+	require.NoError(t, e.client.PatchPod(kubetest.ExpectedNamespace, kubetest.ExpectedPodName, &Patch{
 		Operation: Add,
 		Path:      "/metadata/labels/fizz",
 		Value:     "buzz",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 	if e.testState.NumPatches() != 1 {
 		t.Fatalf("expected 1 label but received %+v", e.testState)
 	}
@@ -90,9 +82,7 @@ func (e *env) TestUpdatePodTagsNotFound(t *testing.T) {
 		Path:      "/metadata/labels/fizz",
 		Value:     "buzz",
 	})
-	if err == nil {
-		t.Fatal("expected error because pod is unfound")
-	}
+	require.Error(t, err, "expected error because pod is unfound")
 	if wrapped := errors.Unwrap(err); wrapped != nil {
 		err = wrapped
 	}

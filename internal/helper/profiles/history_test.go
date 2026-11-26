@@ -32,9 +32,7 @@ func TestAddRequest_Success(t *testing.T) {
 		},
 	}
 
-	if err := h.AddRequest("initialize", "userpass", req); err != nil {
-		t.Fatalf("AddRequest failed: %v", err)
-	}
+	require.NoError(t, h.AddRequest("initialize", "userpass", req), "AddRequest failed")
 
 	got, err := h.GetRequest("initialize", "userpass")
 	require.NoError(t, err)
@@ -71,9 +69,7 @@ func TestAddAndGetResponse_Success(t *testing.T) {
 		Warnings: []string{"auth deprecated"},
 	}
 
-	if err := h.AddResponse("initialize", "userpass", resp); err != nil {
-		t.Fatalf("AddResponse failed: %v", err)
-	}
+	require.NoError(t, h.AddResponse("initialize", "userpass", resp), "AddResponse failed")
 
 	got, err := h.GetResponse("initialize", "userpass")
 	require.NoError(t, err)
@@ -105,9 +101,7 @@ func TestAddAndGetRequestData_Success(t *testing.T) {
 			"test": "test",
 		},
 	}
-	if err := history.AddRequestData("initialize", "userpass", payload); err != nil {
-		t.Fatalf("AddRequestData error: %v", err)
-	}
+	require.NoError(t, history.AddRequestData("initialize", "userpass", payload), "AddRequestData error")
 
 	retrieved, err := history.GetRequest("initialize", "userpass")
 	require.NoError(t, err)
@@ -126,20 +120,14 @@ func TestAddRequestData_Duplicate(t *testing.T) {
 			"test": "test",
 		},
 	}
-	if err := history.AddRequestData("initialize", "add-test-data", sample); err != nil {
-		t.Fatalf("first AddRequestData: %v", err)
-	}
-	if err := history.AddRequestData("initialize", "add-test-data", sample); err == nil {
-		t.Fatal("expected error on duplicate AddRequestData, got nil")
-	}
+	require.NoError(t, history.AddRequestData("initialize", "add-test-data", sample), "first AddRequestData")
+	require.Error(t, history.AddRequestData("initialize", "add-test-data", sample), "expected error on duplicate AddRequestData, got nil")
 }
 
 func TestGetRequest_NotFound(t *testing.T) {
 	history := newHistory()
 	_, err := history.GetRequest("bootstrap", "configure-auth")
-	if err == nil {
-		t.Fatal("expected error for missing outer block, got nil")
-	}
+	require.Error(t, err, "expected error for missing outer block, got nil")
 	expected := "missing outer block 'bootstrap'"
 	if err.Error() != expected {
 		t.Fatalf("expected error %q, got %q", expected, err.Error())
@@ -153,9 +141,7 @@ func TestGetRequestField_SingleKey(t *testing.T) {
 		"path":      "auth/token/create",
 		"token_ttl": float64(3600),
 	}
-	if err := history.AddRequestData("tokenInit", "create-token", data); err != nil {
-		t.Fatalf("AddRequestData: %v", err)
-	}
+	require.NoError(t, history.AddRequestData("tokenInit", "create-token", data), "AddRequestData")
 
 	value, err := history.GetRequestField("tokenInit", "create-token", []any{"token_ttl"})
 	require.NoError(t, err)
@@ -177,9 +163,7 @@ func TestGetRequestField_NestedKeyPath(t *testing.T) {
 			"data": nestedData,
 		},
 	}
-	if err := history.AddRequestData("secretInit", "write-config", data); err != nil {
-		t.Fatalf("AddRequestData: %v", err)
-	}
+	require.NoError(t, history.AddRequestData("secretInit", "write-config", data), "AddRequestData")
 
 	selector := []any{"data", "data", "config_key"}
 	value, err := history.GetRequestField("secretInit", "write-config", selector)
@@ -195,14 +179,10 @@ func TestGetRequestField_MissingKey(t *testing.T) {
 		"operation": "read",
 		"path":      "sys/health",
 	}
-	if err := history.AddRequestData("healthInit", "check-health", data); err != nil {
-		t.Fatalf("AddRequestData: %v", err)
-	}
+	require.NoError(t, history.AddRequestData("healthInit", "check-health", data), "AddRequestData")
 
 	_, err := history.GetRequestField("healthInit", "check-health", []any{"status"})
-	if err == nil {
-		t.Fatal("expected error for missing field, got nil")
-	}
+	require.Error(t, err, "expected error for missing field, got nil")
 }
 
 func TestAddAndGetResponseData_Success(t *testing.T) {
@@ -212,9 +192,7 @@ func TestAddAndGetResponseData_Success(t *testing.T) {
 		"lease_duration": float64(0),
 		"warnings":       nil,
 	}
-	if err := history.AddResponseData("initialize", "userpass", responsePayload); err != nil {
-		t.Fatalf("AddResponseData: %v", err)
-	}
+	require.NoError(t, history.AddResponseData("initialize", "userpass", responsePayload), "AddResponseData")
 	result, err := history.GetResponse("initialize", "userpass")
 	require.NoError(t, err)
 	if !reflect.DeepEqual(result, responsePayload) {
@@ -225,9 +203,7 @@ func TestAddAndGetResponseData_Success(t *testing.T) {
 func TestGetResponse_NotFound(t *testing.T) {
 	history := newHistory()
 	_, err := history.GetResponse("auditInit", "enable-audit")
-	if err == nil {
-		t.Fatal("expected error for missing response, got nil")
-	}
+	require.Error(t, err, "expected error for missing response, got nil")
 	if !strings.Contains(err.Error(), "missing outer block") ||
 		!strings.Contains(err.Error(), "auditInit") {
 		t.Fatalf("unexpected error: %q", err.Error())
@@ -242,9 +218,7 @@ func TestGetResponseField_Success(t *testing.T) {
 			"lease_duration": float64(3600),
 		},
 	}
-	if err := history.AddResponseData("tokenInit", "create-token", respData); err != nil {
-		t.Fatalf("AddResponseData: %v", err)
-	}
+	require.NoError(t, history.AddResponseData("tokenInit", "create-token", respData), "AddResponseData")
 
 	selector := []any{"auth", "client_token"}
 	value, err := history.GetResponseField("tokenInit", "create-token", selector)
@@ -259,14 +233,10 @@ func TestGetResponseField_InvalidSelectorType(t *testing.T) {
 	respData := map[string]any{
 		"data": map[string]any{"foo": "bar"},
 	}
-	if err := history.AddResponseData("configInit", "read-config", respData); err != nil {
-		t.Fatalf("AddResponseData: %v", err)
-	}
+	require.NoError(t, history.AddResponseData("configInit", "read-config", respData), "AddResponseData")
 
 	_, err := history.GetResponseField("configInit", "read-config", []any{42.00})
-	if err == nil {
-		t.Fatal("expected selector type error, got nil")
-	}
+	require.Error(t, err, "expected selector type error, got nil")
 	if !strings.Contains(err.Error(), "selector") {
 		t.Fatalf("unexpected error: %q", err.Error())
 	}

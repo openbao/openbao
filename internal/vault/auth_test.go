@@ -345,9 +345,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 	}
 
 	c.auth.Entries[1].Local = true
-	if err := c.persistAuth(ctx, c.barrier, c.auth, nil, ""); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.persistAuth(ctx, c.barrier, c.auth, nil, ""))
 
 	localEntries, err = c.barrier.List(ctx, coreLocalAuthConfigPath+"/")
 	require.NoError(t, err)
@@ -362,9 +360,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 		}
 
 		localMountEntry := &routing.MountEntry{}
-		if err := jsonutil.DecodeJSON(rawLocal.Value, localMountEntry); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, jsonutil.DecodeJSON(rawLocal.Value, localMountEntry))
 		if localMountEntry.Path != "noop2/" {
 			t.Fatalf("expected only noop2/ entry in local auth table, got %#v at %v", localMountEntry, coreLocalAuthConfigPath+"/"+localEntry)
 		}
@@ -381,9 +377,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 		oldCredential.Entries[i] = entry
 	}
 
-	if err := c.loadCredentials(ctx, false); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.loadCredentials(ctx, false))
 
 	if diff := deep.Equal(oldCredential, c.auth); diff != nil {
 		t.Fatalf("expected\n%#v\ngot\n%#v\ndiff: %#v\n", oldCredential, c.auth, diff)
@@ -522,9 +516,7 @@ func TestCore_DisableCredential_Cleanup(t *testing.T) {
 		Key:   "plstodelete",
 		Value: []byte("test"),
 	}
-	if err := view.Put(t.Context(), se); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, view.Put(t.Context(), se))
 
 	// Generate a new token auth
 	noop.Response = &logical.Response{
@@ -737,9 +729,7 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 		Key:   "plstodelete",
 		Value: []byte("test"),
 	}
-	if err := view.Put(t.Context(), se); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, view.Put(t.Context(), se))
 
 	// Generate a new token auth
 	noop.Response = &logical.Response{

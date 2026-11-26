@@ -173,11 +173,8 @@ func testAgentExitAfterAuth(t *testing.T, viaFlag bool) {
 	t.Logf("config: %s", conf)
 
 	jwtToken, _ := agent.GetTestJWT(t)
-	if err := os.WriteFile(in, []byte(jwtToken), 0o600); err != nil {
-		t.Fatal(err)
-	} else {
-		logger.Trace("wrote test jwt", "path", in)
-	}
+	require.NoError(t, os.WriteFile(in, []byte(jwtToken), 0o600))
+	logger.Trace("wrote test jwt", "path", in)
 
 	exitAfterAuthTemplText := "exit_after_auth = true"
 	if viaFlag {
@@ -212,11 +209,8 @@ auto_auth {
 `
 
 	config = fmt.Sprintf(config, exitAfterAuthTemplText, in, sink1, sink2)
-	if err := os.WriteFile(conf, []byte(config), 0o600); err != nil {
-		t.Fatal(err)
-	} else {
-		logger.Trace("wrote test config", "path", conf)
-	}
+	require.NoError(t, os.WriteFile(conf, []byte(config), 0o600))
+	logger.Trace("wrote test config", "path", conf)
 
 	doneCh := make(chan struct{})
 	go func() {
@@ -401,9 +395,7 @@ listener "tcp" {
 	// to 'true', with the header missing from the request.
 	agentClient = newApiClient("http://"+listenAddr3, false)
 	resp, err := agentClient.Logical().ReadRaw("sys/health")
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	if resp.StatusCode != http.StatusPreconditionFailed {
 		t.Fatalf("expected status code %d, not %d", http.StatusPreconditionFailed, resp.StatusCode)
 	}
@@ -415,9 +407,7 @@ listener "tcp" {
 	h[consts.RequestHeaderName] = []string{"bogus"}
 	agentClient.SetHeaders(h)
 	resp, err = agentClient.Logical().ReadRaw("sys/health")
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	if resp.StatusCode != http.StatusPreconditionFailed {
 		t.Fatalf("expected status code %d, not %d", http.StatusPreconditionFailed, resp.StatusCode)
 	}
@@ -512,9 +502,7 @@ func TestAgent_Template_UserAgent(t *testing.T) {
 	// make some template files
 	var templatePaths []string
 	fileName := filepath.Join(tmpDir, "render_0.tmpl")
-	if err := os.WriteFile(fileName, []byte(templateContents(0)), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(fileName, []byte(templateContents(0)), 0o600))
 	templatePaths = append(templatePaths, fileName)
 
 	// build up the template config to be added to the Agent config.hcl file
@@ -627,9 +615,7 @@ auto_auth {
 	verify("")
 
 	fileName = filepath.Join(tmpDir, "render_0.tmpl")
-	if err := os.WriteFile(fileName, []byte(templateContents(0)+"{}"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(fileName, []byte(templateContents(0)+"{}"), 0o600))
 
 	verify("{}")
 }
@@ -696,9 +682,7 @@ func TestAgent_Template_Basic(t *testing.T) {
 			var templatePaths []string
 			for i := 0; i < tc.templateCount; i++ {
 				fileName := filepath.Join(tmpDir, fmt.Sprintf("render_%d.tmpl", i))
-				if err := os.WriteFile(fileName, []byte(templateContents(i)), 0o600); err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, os.WriteFile(fileName, []byte(templateContents(i)), 0o600))
 				templatePaths = append(templatePaths, fileName)
 			}
 
@@ -822,9 +806,7 @@ auto_auth {
 
 			for i := 0; i < tc.templateCount; i++ {
 				fileName := filepath.Join(tmpDir, fmt.Sprintf("render_%d.tmpl", i))
-				if err := os.WriteFile(fileName, []byte(templateContents(i)+"{}"), 0o600); err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, os.WriteFile(fileName, []byte(templateContents(i)+"{}"), 0o600))
 			}
 
 			verify("{}")
@@ -978,9 +960,7 @@ func TestAgent_Template_VaultClientFromEnv(t *testing.T) {
 
 			// Make a template.
 			templateFile := filepath.Join(tmpDir, "render.tmpl")
-			if err := os.WriteFile(templateFile, []byte(templateContents(0)), 0o600); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, os.WriteFile(templateFile, []byte(templateContents(0)), 0o600))
 
 			// build up the template config to be added to the Agent config.hcl file
 			targetFile := filepath.Join(tmpDir, "render.json")
@@ -1442,9 +1422,7 @@ func TestAgent_Template_Retry(t *testing.T) {
 
 			// make some template files
 			templatePath := filepath.Join(tmpDir, "render_0.tmpl")
-			if err := os.WriteFile(templatePath, []byte(templateContents(0)), 0o600); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, os.WriteFile(templatePath, []byte(templateContents(0)), 0o600))
 			templateConfig := fmt.Sprintf(templateConfigString, templatePath, tmpDir, "render_0.json")
 
 			var retryConf string
@@ -1558,9 +1536,7 @@ path "/secret/*" {
 }
 `
 	// Add an kv-admin policy
-	if err := client.Sys().PutPolicy("test-autoauth", policyAutoAuthAppRole); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, client.Sys().PutPolicy("test-autoauth", policyAutoAuthAppRole))
 
 	// Enable approle
 	err := client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
@@ -2580,9 +2556,7 @@ cache {}
 
 	// First try on listener 1 where the API should be disabled.
 	resp, err := client.RawRequest(client.NewRequest(http.MethodPost, "/agent/v1/quit"))
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	if resp != nil && resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected %d but got: %d", http.StatusNotFound, resp.StatusCode)
 	}
@@ -2769,9 +2743,7 @@ func TestAgent_Config_ReloadTls(t *testing.T) {
 		t.Fatal("timeout")
 	}
 
-	if err := testCertificateName("foo.example.com"); err != nil {
-		t.Fatalf("certificate name didn't check out: %s", err)
-	}
+	require.NoError(t, testCertificateName("foo.example.com"), "certificate name didn't check out")
 
 	// Swap out certs
 	inBytes, err = os.ReadFile(filepath.Join(workingDir, barCert))
@@ -2792,9 +2764,7 @@ func TestAgent_Config_ReloadTls(t *testing.T) {
 		t.Fatal("timeout")
 	}
 
-	if err := testCertificateName("bar.example.com"); err != nil {
-		t.Fatalf("certificate name didn't check out: %s", err)
-	}
+	require.NoError(t, testCertificateName("bar.example.com"), "certificate name didn't check out")
 
 	// Shut down
 	cmd.ShutdownCh <- struct{}{}

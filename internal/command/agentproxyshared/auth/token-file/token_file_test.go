@@ -20,9 +20,7 @@ func TestNewTokenFileAuthMethodEmptyConfig(t *testing.T) {
 		Logger: logger.Named("auth.method"),
 		Config: map[string]any{},
 	})
-	if err == nil {
-		t.Fatal("Expected error due to empty config")
-	}
+	require.Error(t, err, "Expected error due to empty config")
 }
 
 func TestNewTokenFileEmptyFilePath(t *testing.T) {
@@ -33,9 +31,7 @@ func TestNewTokenFileEmptyFilePath(t *testing.T) {
 			"token_file_path": "",
 		},
 	})
-	if err == nil {
-		t.Fatal("Expected error when giving empty file path")
-	}
+	require.Error(t, err, "Expected error when giving empty file path")
 }
 
 func TestNewTokenFileAuthenticate(t *testing.T) {

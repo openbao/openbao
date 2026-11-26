@@ -15,6 +15,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -74,27 +76,17 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 
 	// Plant our token in a place where it can be read for the config.
 	tmpToken, err := os.CreateTemp(tmpDir, "token")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = tmpToken.WriteString(token); err != nil {
-		t.Fatal(err)
-	}
-	if err := tmpToken.Close(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	_, err = tmpToken.WriteString(token)
+	require.NoError(t, err)
+	require.NoError(t, tmpToken.Close())
 	testConf.PathToTokenFile = tmpToken.Name()
 
 	tmpCACrt, err := os.CreateTemp(tmpDir, "ca.crt")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = tmpCACrt.WriteString(caCrt); err != nil {
-		t.Fatal(err)
-	}
-	if err := tmpCACrt.Close(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	_, err = tmpCACrt.WriteString(caCrt)
+	require.NoError(t, err)
+	require.NoError(t, tmpCACrt.Close())
 	testConf.PathToRootCAFile = tmpCACrt.Name()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

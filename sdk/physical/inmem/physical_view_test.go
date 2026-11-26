@@ -27,28 +27,20 @@ func TestPhysicalView_BadKeysKeys(t *testing.T) {
 	view := physical.NewView(backend, "foo/")
 
 	_, err = view.List(t.Context(), "../")
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	_, err = view.Get(t.Context(), "../")
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	err = view.Delete(t.Context(), "../foo")
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	le := &physical.Entry{
 		Key:   "../foo",
 		Value: []byte("test"),
 	}
 	err = view.Put(t.Context(), le)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 }
 
 func TestPhysicalView(t *testing.T) {
@@ -59,9 +51,7 @@ func TestPhysicalView(t *testing.T) {
 
 	// Write a key outside of foo/
 	entry := &physical.Entry{Key: "test", Value: []byte("test")}
-	if err := backend.Put(t.Context(), entry); err != nil {
-		t.Fatalf("bad: %v", err)
-	}
+	require.NoError(t, backend.Put(t.Context(), entry))
 
 	// List should have no visibility
 	keys, err := view.List(t.Context(), "")
@@ -78,9 +68,7 @@ func TestPhysicalView(t *testing.T) {
 	}
 
 	// Try to put the same entry via the view
-	if err := view.Put(t.Context(), entry); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, view.Put(t.Context(), entry))
 
 	// Check it is nested
 	entry, err = backend.Get(t.Context(), "foo/test")
@@ -90,9 +78,7 @@ func TestPhysicalView(t *testing.T) {
 	}
 
 	// Delete nested
-	if err := view.Delete(t.Context(), "test"); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, view.Delete(t.Context(), "test"))
 
 	// Check the nested key
 	entry, err = backend.Get(t.Context(), "foo/test")

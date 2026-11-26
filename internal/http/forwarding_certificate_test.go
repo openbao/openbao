@@ -103,9 +103,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 			req.Headers = make(http.Header)
 			req.Headers.Add("X-Forwarded-For-Client-Cert", "invalid")
 			resp, err := client.RawRequest(req)
-			if err == nil {
-				t.Fatal("expected error")
-			}
+			require.Error(t, err)
 			defer func(Body io.ReadCloser) {
 				err := Body.Close()
 				require.NoError(t, err)
@@ -190,9 +188,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 			req.Headers = make(http.Header)
 			req.Headers.Add("X-Forwarded-For-Client-Cert", testItem.value)
 			resp, err := client.RawRequest(req)
-			if err == nil {
-				t.Fatal("expected error")
-			}
+			require.Error(t, err)
 			defer func(Body io.ReadCloser) {
 				err := Body.Close()
 				require.NoError(t, err)
@@ -227,9 +223,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		clientCertPemTextHeader := strings.ReplaceAll(clientCertPemText, "\n", "\r\n\t")
 		req.Headers.Add("X-Forwarded-For-Client-Cert", clientCertPemTextHeader)
 		_, err := client.RawRequest(req)
-		if err == nil {
-			t.Fatal("expected error")
-		}
+		require.Error(t, err)
 		if !strings.Contains(err.Error(), "net/http: invalid header field value for \"X-Forwarded-For-Client-Cert\"") {
 			t.Fatalf("bad error: %s", err)
 		}
@@ -274,9 +268,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		invalidPem := strings.ReplaceAll(clientCertPemText, "CERTIFICATE", "INVALID")
 		req.Headers.Add("X-Forwarded-For-Client-Cert", url.QueryEscape(invalidPem))
 		resp, err := client.RawRequest(req)
-		if err == nil {
-			t.Fatal("expected error")
-		}
+		require.Error(t, err)
 		defer func(Body io.ReadCloser) {
 			err := Body.Close()
 			require.NoError(t, err)
@@ -308,9 +300,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		urlencodedCert += "%GG"
 		req.Headers.Add("X-Forwarded-For-Client-Cert", urlencodedCert)
 		resp, err := client.RawRequest(req)
-		if err == nil {
-			t.Fatal("expected error")
-		}
+		require.Error(t, err)
 		defer func(Body io.ReadCloser) {
 			err := Body.Close()
 			require.NoError(t, err)

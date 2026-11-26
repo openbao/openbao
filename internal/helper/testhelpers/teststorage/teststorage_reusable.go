@@ -12,6 +12,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/v2/internal/physical/raft"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 // ReusableStorage is a physical backend that can be re-used across
@@ -103,9 +104,7 @@ func MakeReusableRaftStorage(t testing.T, logger hclog.Logger, numCores int, add
 // CloseRaftStorage closes open files being used by raft.
 func CloseRaftStorage(t testing.T, cluster *vault.TestCluster, idx int) {
 	raftStorage := cluster.Cores[idx].UnderlyingRawStorage.(*raft.RaftBackend)
-	if err := raftStorage.Close(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, raftStorage.Close())
 }
 
 func MakeReusableRaftHAStorage(t testing.T, logger hclog.Logger, numCores int, bundle *vault.PhysicalBackendBundle) (ReusableStorage, StorageCleanup) {
@@ -131,9 +130,7 @@ func MakeReusableRaftHAStorage(t testing.T, logger hclog.Logger, numCores int, b
 		Cleanup: func(t testing.T, cluster *vault.TestCluster) {
 			for _, core := range cluster.Cores {
 				raftStorage := core.UnderlyingHAStorage.(*raft.RaftBackend)
-				if err := raftStorage.Close(); err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, raftStorage.Close())
 			}
 		},
 	}
@@ -158,9 +155,7 @@ func makeReusableRaftBackend(t testing.T, coreIdx int, logger hclog.Logger, raft
 	}
 
 	backend, err := raft.NewRaftBackend(conf, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if addressProvider != nil {
 		backend.(*raft.RaftBackend).SetServerAddressProvider(addressProvider)

@@ -98,12 +98,10 @@ func TestCompressUtil_InvalidConfigurations(t *testing.T) {
 	inputJSONBytes := []byte(`{"sample":"data","verification":"process"}`)
 
 	// Test nil configuration
-	if _, err := Compress(inputJSONBytes, nil); err == nil {
-		t.Fatal("expected an error")
-	}
+	_, err := Compress(inputJSONBytes, nil)
+	require.Error(t, err)
 
 	// Test invalid configuration
-	if _, err := Compress(inputJSONBytes, &CompressionConfig{}); err == nil {
-		t.Fatal("expected an error")
-	}
+	_, err = Compress(inputJSONBytes, &CompressionConfig{})
+	require.Error(t, err)
 }

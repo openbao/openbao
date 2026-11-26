@@ -6,6 +6,8 @@ package vault
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseFactors(t *testing.T) {
@@ -53,9 +55,7 @@ func TestParseFactors(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := parseMfaFactors(tc.invalidMFAHeaderVal)
-			if err == nil {
-				t.Fatal("nil error returned")
-			}
+			require.Error(t, err)
 			if !strings.Contains(err.Error(), tc.expectedError) {
 				t.Fatalf("expected %s, got %v", tc.expectedError, err)
 			}

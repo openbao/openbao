@@ -145,12 +145,11 @@ func TestOperatorInitCommand_Run(t *testing.T) {
 		}
 
 		// Now init to verify the init response code
-		if _, err := client.Sys().Init(&api.InitRequest{
+		_, err := client.Sys().Init(&api.InitRequest{
 			SecretShares:    1,
 			SecretThreshold: 1,
-		}); err != nil {
-			t.Fatal(err)
-		}
+		})
+		require.NoError(t, err)
 
 		// Verify the init response code
 		ui, cmd = testOperatorInitCommand(t)
@@ -307,9 +306,8 @@ func TestOperatorInitCommand_Run(t *testing.T) {
 
 		// Try unsealing with one key
 		decryptedKey := testPGPDecrypt(t, pgpkeys.TestPrivKey1, keys[0])
-		if _, err := client.Sys().Unseal(decryptedKey); err != nil {
-			t.Fatal(err)
-		}
+		_, err = client.Sys().Unseal(decryptedKey)
+		require.NoError(t, err)
 
 		// Decrypt the root token
 		reToken := regexp.MustCompile(`Root Token: (.+)`)

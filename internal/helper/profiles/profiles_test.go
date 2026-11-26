@@ -174,9 +174,7 @@ func TestValidate_EmptySourceName(t *testing.T) {
 	}
 
 	err := engine.validate()
-	if err == nil {
-		t.Fatal("expected error for empty source name, got nil")
-	}
+	require.Error(t, err, "expected error for empty source name, got nil")
 	if !strings.Contains(err.Error(), "a source is missing a name") {
 		t.Fatalf("expected 'a source is missing a name' error, got: %v", err)
 	}
@@ -193,9 +191,7 @@ func TestValidate_NilBuilder(t *testing.T) {
 	}
 
 	err := engine.validate()
-	if err == nil {
-		t.Fatal("expected error for nil builder, got nil")
-	}
+	require.Error(t, err, "expected error for nil builder, got nil")
 	if !strings.Contains(err.Error(), "source 'nil_builder' has nil builder") {
 		t.Fatalf("expected 'source 'nil_builder' has nil builder' error, got: %v", err)
 	}
@@ -210,9 +206,7 @@ func TestProfileEngine_Validate_SuccessSingleBlock(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	if err := engine.validate(); err != nil {
-		t.Fatalf("validate error: %v", err)
-	}
+	require.NoError(t, engine.validate(), "validate error")
 }
 
 func TestProfileEngine_Validate_MissingHandler(t *testing.T) {
@@ -301,9 +295,8 @@ func TestValidateNameConvention_Fail(t *testing.T) {
 			"#bad",
 		),
 	)
-	if err == nil {
-		t.Fatal("expected error for invalid outer block name, got nil")
-	} else if !strings.Contains(err.Error(), "outer block name '#bad' is invalid") {
+	require.Error(t, err, "expected error for invalid outer block name, got nil")
+	if !strings.Contains(err.Error(), "outer block name '#bad' is invalid") {
 		t.Fatalf("expected naming-convention error, got: %v", err)
 	}
 }
@@ -466,9 +459,7 @@ func TestEvaluateField_NilDestination(t *testing.T) {
 	}
 	hist := &EvaluationHistory{Requests: map[string]map[string]map[string]any{}, Responses: map[string]map[string]map[string]any{}}
 	err := engine.evaluateField(t.Context(), hist, "foo", nil)
-	if err == nil {
-		t.Fatal("expected error for nil destination, got nil")
-	}
+	require.Error(t, err, "expected error for nil destination, got nil")
 }
 
 func TestEvaluateField_EvalSourceSuccess(t *testing.T) {
@@ -606,9 +597,7 @@ func TestEvaluateTypedField_EvaluateError(t *testing.T) {
 	obj := map[string]any{}
 	_, err := eng.evaluateTypedField(t.Context(), &EvaluationHistory{}, obj, "src", "string")
 
-	if err == nil {
-		t.Fatalf("expected evaluate-error, got: %v", err)
-	}
+	require.Error(t, err, "expected evaluate-error")
 	if !strings.Contains(err.Error(), "eval fail") {
 		t.Fatalf("expected evaluate-error, got: %v", err)
 	}

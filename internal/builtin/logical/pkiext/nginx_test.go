@@ -240,9 +240,7 @@ func CheckWithClients(t *testing.T, network string, address string, url string, 
 		wgetCmd = []string{"wget", "--verbose", "--ca-certificate=/root.pem", "--certificate=/client-cert.pem", "--private-key=/client-privkey.pem", url}
 		curlCmd = []string{"curl", "--verbose", "--cacert", "/root.pem", "--cert", "/client-cert.pem", "--key", "/client-privkey.pem", url}
 	}
-	if err := cwRunner.CopyTo(result.Container.ID, "/", certCtx); err != nil {
-		t.Fatalf("Could not copy certificate and key into container: %v", err)
-	}
+	require.NoError(t, cwRunner.CopyTo(result.Container.ID, "/", certCtx), "Could not copy certificate and key into container")
 
 	for _, cmd := range [][]string{hostPrimeCmd, wgetCmd, curlCmd} {
 		t.Logf("Running client connection command: %v", cmd)
@@ -291,9 +289,7 @@ func CheckDeltaCRL(t *testing.T, network string, address string, url string, roo
 	certCtx := docker.NewBuildContext()
 	certCtx["root.pem"] = docker.PathContentsFromString(rootCert)
 	certCtx["crls.pem"] = docker.PathContentsFromString(crls)
-	if err := cwRunner.CopyTo(result.Container.ID, "/", certCtx); err != nil {
-		t.Fatalf("Could not copy certificate and key into container: %v", err)
-	}
+	require.NoError(t, cwRunner.CopyTo(result.Container.ID, "/", certCtx), "Could not copy certificate and key into container")
 
 	for index, cmd := range [][]string{hostPrimeCmd, wgetCmd} {
 		t.Logf("Running client connection command: %v", cmd)

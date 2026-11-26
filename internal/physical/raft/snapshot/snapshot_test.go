@@ -154,13 +154,10 @@ func TestSnapshot(t *testing.T) {
 		var log bytes.Buffer
 		var copy bytes.Buffer
 		both := io.MultiWriter(&log, &copy)
-		if _, err := io.CopyN(both, rand.Reader, 256); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		_, err := io.CopyN(both, rand.Reader, 256)
+		require.NoError(t, err)
 		future := before.Apply(log.Bytes(), time.Second)
-		if err := future.Error(); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, future.Error())
 		expected = append(expected, copy)
 	}
 
@@ -169,9 +166,7 @@ func TestSnapshot(t *testing.T) {
 	snap, err := New(logger, before)
 	require.NoError(t, err)
 	defer func() {
-		if err := snap.Close(); err != nil {
-			t.Fatalf("failed to close snap: %v", err)
-		}
+		require.NoError(t, snap.Close(), "failed to close snap")
 	}()
 
 	// Verify checksum is populated
@@ -184,9 +179,8 @@ func TestSnapshot(t *testing.T) {
 	// Verify the snapshot. We have to rewind it after for the restore.
 	metadata, err := Verify(snap)
 	require.NoError(t, err)
-	if _, err := snap.file.Seek(0, 0); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	_, err = snap.file.Seek(0, 0)
+	require.NoError(t, err)
 	if int(metadata.Index) != entries+2 {
 		t.Fatalf("bad: %d", metadata.Index)
 	}
@@ -204,19 +198,14 @@ func TestSnapshot(t *testing.T) {
 	// Put some initial data in there that the snapshot should overwrite.
 	for range 16 {
 		var log bytes.Buffer
-		if _, err := io.CopyN(&log, rand.Reader, 256); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		_, err = io.CopyN(&log, rand.Reader, 256)
+		require.NoError(t, err)
 		future := after.Apply(log.Bytes(), time.Second)
-		if err := future.Error(); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, future.Error())
 	}
 
 	// Restore the snapshot.
-	if err := Restore(logger, snap, after); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, Restore(logger, snap, after))
 
 	// Compare the contents.
 	fsm.Lock()
@@ -244,13 +233,10 @@ func TestSnapshotWrite(t *testing.T) {
 		var log bytes.Buffer
 		var copy bytes.Buffer
 		both := io.MultiWriter(&log, &copy)
-		if _, err := io.CopyN(both, rand.Reader, 256); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		_, err := io.CopyN(both, rand.Reader, 256)
+		require.NoError(t, err)
 		future := before.Apply(log.Bytes(), time.Second)
-		if err := future.Error(); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, future.Error())
 		expected = append(expected, copy)
 	}
 
@@ -262,14 +248,11 @@ func TestSnapshotWrite(t *testing.T) {
 	err = Write(logger, before, nil, snap)
 	require.NoError(t, err)
 	defer func() {
-		if err := snap.Close(); err != nil {
-			t.Fatalf("failed to close snap: %v", err)
-		}
+		require.NoError(t, snap.Close(), "failed to close snap")
 	}()
 
-	if _, err := snap.Seek(0, 0); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	_, err = snap.Seek(0, 0)
+	require.NoError(t, err)
 
 	metadata, err := Verify(snap)
 	require.NoError(t, err)
@@ -283,9 +266,8 @@ func TestSnapshotWrite(t *testing.T) {
 		t.Fatalf("bad: %d", metadata.Version)
 	}
 
-	if _, err := snap.Seek(0, 0); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	_, err = snap.Seek(0, 0)
+	require.NoError(t, err)
 
 	// Make a new, independent Raft.
 	after, fsm := makeRaft(t, filepath.Join(dir, "after"))
@@ -294,19 +276,14 @@ func TestSnapshotWrite(t *testing.T) {
 	// Put some initial data in there that the snapshot should overwrite.
 	for range 16 {
 		var log bytes.Buffer
-		if _, err := io.CopyN(&log, rand.Reader, 256); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		_, err = io.CopyN(&log, rand.Reader, 256)
+		require.NoError(t, err)
 		future := after.Apply(log.Bytes(), time.Second)
-		if err := future.Error(); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, future.Error())
 	}
 
 	// Restore the snapshot.
-	if err := Restore(logger, snap, after); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, Restore(logger, snap, after))
 
 	// Compare the contents.
 	fsm.Lock()
@@ -333,9 +310,7 @@ func TestSnapshot_Nil(t *testing.T) {
 		t.Fatalf("bad: %d %v", n, err)
 	}
 
-	if err := snap.Close(); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, snap.Close())
 }
 
 func TestSnapshot_BadVerify(t *testing.T) {
@@ -363,9 +338,7 @@ func TestSnapshot_TruncatedVerify(t *testing.T) {
 		require.NoError(t, err)
 
 		future := before.Apply(log.Bytes(), time.Second)
-		if future.Error() != nil {
-			t.Fatalf("err: %v", future.Error())
-		}
+		require.NoError(t, future.Error())
 	}
 
 	// Take a snapshot.
@@ -373,9 +346,7 @@ func TestSnapshot_TruncatedVerify(t *testing.T) {
 	snap, err := New(logger, before)
 	require.NoError(t, err)
 	defer func() {
-		if err := snap.Close(); err != nil {
-			t.Fatalf("failed to close snap: %v", err)
-		}
+		require.NoError(t, snap.Close(), "failed to close snap")
 	}()
 
 	var data []byte
@@ -392,9 +363,7 @@ func TestSnapshot_TruncatedVerify(t *testing.T) {
 			buf := bytes.NewReader(data[0 : len(data)-removeBytes])
 
 			_, err = Verify(buf)
-			if err == nil {
-				t.Fatalf("expected snapshot to fail validation, but did not")
-			}
+			require.Error(t, err, "expected snapshot to fail validation, but did not")
 		})
 	}
 }
@@ -407,13 +376,10 @@ func TestSnapshot_BadRestore(t *testing.T) {
 	defer before.Shutdown()
 	for range 16 * 1024 {
 		var log bytes.Buffer
-		if _, err := io.CopyN(&log, rand.Reader, 256); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		_, err := io.CopyN(&log, rand.Reader, 256)
+		require.NoError(t, err)
 		future := before.Apply(log.Bytes(), time.Second)
-		if err := future.Error(); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, future.Error())
 	}
 
 	// Take a snapshot.
@@ -432,13 +398,10 @@ func TestSnapshot_BadRestore(t *testing.T) {
 		var log bytes.Buffer
 		var copy bytes.Buffer
 		both := io.MultiWriter(&log, &copy)
-		if _, err := io.CopyN(both, rand.Reader, 256); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		_, err = io.CopyN(both, rand.Reader, 256)
+		require.NoError(t, err)
 		future := after.Apply(log.Bytes(), time.Second)
-		if err := future.Error(); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, future.Error())
 		expected = append(expected, copy)
 	}
 

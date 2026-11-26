@@ -158,14 +158,12 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 		Message: entity2Any,
 	}
 
-	if err = c.identityStore.EntityPacker(ctx).PutItem(ctx, item); err != nil {
-		t.Fatal(err)
-	}
+	err = c.identityStore.EntityPacker(ctx).PutItem(ctx, item)
+	require.NoError(t, err)
 
 	// Seal and ensure that unseal works
-	if err = c.Seal(root); err != nil {
-		t.Fatal(err)
-	}
+	err = c.Seal(root)
+	require.NoError(t, err)
 
 	var unsealed bool
 	for i := range 3 {
@@ -203,9 +201,7 @@ func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
 		EntityID:     entity.ID,
 		NamespaceID:  namespace.RootNamespaceID,
 	}
-	if err := core.tokenStore.create(ctx, ent, true); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, core.tokenStore.create(ctx, ent, true))
 
 	// Set a request handler to the noop backend which responds with the entity
 	// ID received in the request object
@@ -899,9 +895,8 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	}
 
 	// Seal and unseal to trigger identityStore initialize
-	if err = c.Seal(root); err != nil {
-		t.Fatal(err)
-	}
+	err = c.Seal(root)
+	require.NoError(t, err)
 
 	var unsealed bool
 	for i := range unsealKey {

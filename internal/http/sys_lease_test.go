@@ -8,6 +8,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSysRenew(t *testing.T) {
@@ -28,9 +29,7 @@ func TestSysRenew(t *testing.T) {
 	var result struct {
 		LeaseID string `json:"lease_id"`
 	}
-	if err := jsonutil.DecodeJSONFromReader(resp.Body, &result); err != nil {
-		t.Fatalf("bad: %s", err)
-	}
+	require.NoError(t, jsonutil.DecodeJSONFromReader(resp.Body, &result))
 
 	var renewResult struct {
 		LeaseID string         `json:"lease_id"`
@@ -39,9 +38,7 @@ func TestSysRenew(t *testing.T) {
 
 	resp = testHttpPut(t, token, addr+"/v1/sys/leases/renew/"+result.LeaseID, nil)
 	testResponseStatus(t, resp, 200)
-	if err := jsonutil.DecodeJSONFromReader(resp.Body, &renewResult); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, jsonutil.DecodeJSONFromReader(resp.Body, &renewResult))
 	if result.LeaseID != renewResult.LeaseID {
 		t.Fatal("lease id changed in renew request")
 	}

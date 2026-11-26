@@ -1550,9 +1550,7 @@ func TestBackend_DefExtTemplatingEnabled(t *testing.T) {
 		"public_key": publicKey4096,
 		"extensions": invalidUserProvidedExtensionPermissions,
 	})
-	if err == nil {
-		t.Fatal("expected an error while attempting to sign a key with invalid permissions")
-	}
+	require.Error(t, err, "expected an error while attempting to sign a key with invalid permissions")
 }
 
 func TestBackend_EmptyAllowedExtensionFailsClosed(t *testing.T) {
@@ -1589,9 +1587,7 @@ func TestBackend_EmptyAllowedExtensionFailsClosed(t *testing.T) {
 		"public_key": publicKey4096,
 		"extensions": userProvidedAnyExtensionPermissions,
 	})
-	if err == nil {
-		t.Fatal("Expected failure we should not have allowed specifying custom extensions")
-	}
+	require.Error(t, err, "Expected failure we should not have allowed specifying custom extensions")
 
 	if !strings.Contains(err.Error(), "are not on allowed list") {
 		t.Fatalf("Expected failure to contain 'are not on allowed list' but was %s", err)
@@ -1862,17 +1858,14 @@ func getSshCaTestCluster(t *testing.T, userIdentity string) (*vault.TestCluster,
 	require.NoError(t, err)
 
 	// Enable userpass auth method.
-	if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, client.Sys().EnableAuth("userpass", "userpass", ""))
 
 	// Configure test role for userpass.
-	if _, err := client.Logical().Write("auth/userpass/users/"+userIdentity, map[string]any{
+	_, err = client.Logical().Write("auth/userpass/users/"+userIdentity, map[string]any{
 		"password": "test",
 		"policies": "test",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	})
+	require.NoError(t, err)
 
 	// Login userpass for test role and keep client token.
 	secret, err := client.Logical().Write("auth/userpass/login/"+userIdentity, map[string]any{
@@ -3217,9 +3210,7 @@ func TestSSHBackend_DefaultIssuerBehavior(t *testing.T) {
 	defer cleanup()
 
 	err = testSSH(testUserName, sshAddress, ssh.PublicKeys(certSigner), "date")
-	if err == nil {
-		t.Fatalf("expected error but got none")
-	}
+	require.Error(t, err)
 }
 
 // TestSSHBackend_RoleIssuerBinding tests the relationship between roles and issuers

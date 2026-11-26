@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/cli"
+	"github.com/stretchr/testify/require"
 )
 
 func testListCommand(tb testing.TB) (*cli.MockUi, *ListCommand) {
@@ -78,11 +79,10 @@ func TestListCommand_Run(t *testing.T) {
 					"secret/list/baz",
 				}
 				for _, k := range keys {
-					if _, err := client.Logical().Write(k, map[string]any{
+					_, err := client.Logical().Write(k, map[string]any{
 						"foo": "bar",
-					}); err != nil {
-						t.Fatal(err)
-					}
+					})
+					require.NoError(t, err)
 				}
 
 				ui, cmd := testListCommand(t)

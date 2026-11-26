@@ -316,9 +316,7 @@ func crlEnableDisableTestForBackend(t *testing.T, b *backend, s logical.Storage,
 			_, err = CBWrite(b, s, "revoke", map[string]any{
 				"serial_number": caSerial,
 			})
-			if err == nil {
-				t.Fatal("expected error")
-			}
+			require.Error(t, err)
 		}
 	}
 

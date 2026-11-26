@@ -247,14 +247,10 @@ func testPolicyStorePredefined(t *testing.T, ps *policy.Store, ns *namespace.Nam
 	}
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	err = ps.SetPolicy(ctx, pCubby, nil)
-	if err == nil {
-		t.Fatalf("expected err setting %s", pCubby.Name)
-	}
+	require.Errorf(t, err, "expected err setting %s", pCubby.Name)
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	err = ps.DeletePolicy(ctx, pCubby.Name, policy.TypeACL)
-	if err == nil {
-		t.Fatalf("expected err deleting %s", pCubby.Name)
-	}
+	require.Errorf(t, err, "expected err deleting %s", pCubby.Name)
 
 	// Root policy checks, behavior depending on namespace
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
@@ -274,14 +270,10 @@ func testPolicyStorePredefined(t *testing.T, ps *policy.Store, ns *namespace.Nam
 	}
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	err = ps.SetPolicy(ctx, pRoot, nil)
-	if err == nil {
-		t.Fatalf("expected err setting %s", pRoot.Name)
-	}
+	require.Errorf(t, err, "expected err setting %s", pRoot.Name)
 	ctx = namespace.ContextWithNamespace(t.Context(), ns)
 	err = ps.DeletePolicy(ctx, pRoot.Name, policy.TypeACL)
-	if err == nil {
-		t.Fatalf("expected err deleting %s", pRoot.Name)
-	}
+	require.Errorf(t, err, "expected err deleting %s", pRoot.Name)
 }
 
 func TestPolicyStore_ACL(t *testing.T) {

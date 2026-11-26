@@ -10,32 +10,25 @@ import (
 	"testing"
 
 	"github.com/hashicorp/cli"
+	"github.com/stretchr/testify/require"
 )
 
 // Test is a public function that can be used in other tests to
 // test that a helper is functioning properly.
 func Test(t *testing.T, h TokenHelper) {
-	if err := h.Store("foo"); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, h.Store("foo"))
 
 	v, err := h.Get()
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if v != "foo" {
 		t.Fatalf("bad: %#v", v)
 	}
 
-	if err := h.Erase(); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, h.Erase())
 
 	v, err = h.Get()
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	if v != "" {
 		t.Fatalf("bad: %#v", v)

@@ -33,9 +33,7 @@ func TestSysHostInfo(t *testing.T) {
 	require.NoError(t, err)
 
 	var infoActive hostutil.HostInfo
-	if err := json.Unmarshal(dataBytes, &infoActive); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, json.Unmarshal(dataBytes, &infoActive))
 
 	if infoActive.Timestamp.IsZero() {
 		t.Fatal("expected non-zero Timestamp")
@@ -64,9 +62,7 @@ func TestSysHostInfo(t *testing.T) {
 	require.NoError(t, err)
 
 	var infoStandby hostutil.HostInfo
-	if err := json.Unmarshal(dataBytes, &infoStandby); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, json.Unmarshal(dataBytes, &infoStandby))
 
 	if infoStandby.Host.Hostname != infoActive.Host.Hostname {
 		t.Fatal("request should be answered by active (standby forwarded)")

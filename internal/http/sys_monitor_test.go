@@ -28,16 +28,13 @@ func TestSysMonitorUnknownLogLevel(t *testing.T) {
 	params := url.Values{"log_level": []string{"haha"}}
 	_, err := client.Logical().ReadRawWithData("sys/monitor", params)
 
-	if err == nil {
-		t.Fatal("expected to get an error, but didn't")
-	} else {
-		if !strings.Contains(err.Error(), "Code: 400") {
-			t.Fatalf("expected to receive a 400 error, but got %s instead", err)
-		}
+	require.Error(t, err, "expected to get an error, but didn't")
+	if !strings.Contains(err.Error(), "Code: 400") {
+		t.Fatalf("expected to receive a 400 error, but got %s instead", err)
+	}
 
-		if !strings.Contains(err.Error(), "unknown log level") {
-			t.Fatalf("expected to receive a message indicating an unknown log level, but got %s instead", err)
-		}
+	if !strings.Contains(err.Error(), "unknown log level") {
+		t.Fatalf("expected to receive a message indicating an unknown log level, but got %s instead", err)
 	}
 }
 
@@ -53,16 +50,13 @@ func TestSysMonitorUnknownLogFormat(t *testing.T) {
 	params := url.Values{"log_format": []string{"haha"}}
 	_, err := client.Logical().ReadRawWithData("sys/monitor", params)
 
-	if err == nil {
-		t.Fatal("expected to get an error, but didn't")
-	} else {
-		if !strings.Contains(err.Error(), "Code: 400") {
-			t.Fatalf("expected to receive a 400 error, but got %s instead", err)
-		}
+	require.Error(t, err, "expected to get an error, but didn't")
+	if !strings.Contains(err.Error(), "Code: 400") {
+		t.Fatalf("expected to receive a 400 error, but got %s instead", err)
+	}
 
-		if !strings.Contains(err.Error(), "unknown log format") {
-			t.Fatalf("expected to receive a message indicating an unknown log format, but got %s instead", err)
-		}
+	if !strings.Contains(err.Error(), "unknown log format") {
+		t.Fatalf("expected to receive a message indicating an unknown log format, but got %s instead", err)
 	}
 }
 

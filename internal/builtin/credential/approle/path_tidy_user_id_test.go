@@ -42,9 +42,7 @@ func TestAppRole_TidyDanglingAccessors_Normal(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	if err := storage.Put(t.Context(), entry1); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, storage.Put(t.Context(), entry1))
 
 	entry2, err := logical.StorageEntryJSON(
 		"accessor/invalid2",
@@ -53,9 +51,7 @@ func TestAppRole_TidyDanglingAccessors_Normal(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	if err := storage.Put(t.Context(), entry2); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, storage.Put(t.Context(), entry2))
 
 	accessorHashes, err = storage.List(t.Context(), "accessor/")
 	require.NoError(t, err)
@@ -132,9 +128,7 @@ func TestAppRole_TidyDanglingAccessors_RaceTest(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		if err := storage.Put(t.Context(), entry); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, storage.Put(t.Context(), entry))
 
 		count++
 		time.Sleep(100 * time.Microsecond)

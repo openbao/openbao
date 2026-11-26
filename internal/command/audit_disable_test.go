@@ -65,14 +65,12 @@ func TestAuditDisableCommand_Run(t *testing.T) {
 			client, closer := testVaultServer(t)
 			defer closer()
 
-			if err := client.Sys().EnableAuditWithOptions("file", &api.EnableAuditOptions{
+			require.NoError(t, client.Sys().EnableAuditWithOptions("file", &api.EnableAuditOptions{
 				Type: "file",
 				Options: map[string]string{
 					"file_path": "discard",
 				},
-			}); err != nil {
-				t.Fatal(err)
-			}
+			}))
 
 			ui, cmd := testAuditDisableCommand(t)
 			cmd.client = client
@@ -95,14 +93,12 @@ func TestAuditDisableCommand_Run(t *testing.T) {
 		client, closer := testVaultServer(t)
 		defer closer()
 
-		if err := client.Sys().EnableAuditWithOptions("integration_audit_disable", &api.EnableAuditOptions{
+		require.NoError(t, client.Sys().EnableAuditWithOptions("integration_audit_disable", &api.EnableAuditOptions{
 			Type: "file",
 			Options: map[string]string{
 				"file_path": "discard",
 			},
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 
 		ui, cmd := testAuditDisableCommand(t)
 		cmd.client = client

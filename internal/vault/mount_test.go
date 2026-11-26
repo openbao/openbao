@@ -301,9 +301,7 @@ func TestCore_Mount_Local(t *testing.T) {
 		}
 
 		localMountEntry := &routing.MountEntry{}
-		if err := jsonutil.DecodeJSON(rawLocal.Value, localMountEntry); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, jsonutil.DecodeJSON(rawLocal.Value, localMountEntry))
 
 		if localMountEntry.Type != "cubbyhole" {
 			t.Fatalf("expected only cubbyhole entry in local mount table, got %#v at %v", localMountEntry, coreLocalMountConfigPath+"/"+localEntry)
@@ -311,9 +309,7 @@ func TestCore_Mount_Local(t *testing.T) {
 	}
 
 	c.mounts.Entries[1].Local = true
-	if err := c.persistMounts(ctx, c.barrier, c.mounts, nil, ""); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.persistMounts(ctx, c.barrier, c.mounts, nil, ""))
 
 	// This requires some explanation: because we're directly munging the mount
 	// table, the table initially when core unseals contains cubbyhole as per
@@ -332,9 +328,7 @@ func TestCore_Mount_Local(t *testing.T) {
 		}
 
 		localMountEntry := &routing.MountEntry{}
-		if err := jsonutil.DecodeJSON(rawLocal.Value, localMountEntry); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, jsonutil.DecodeJSON(rawLocal.Value, localMountEntry))
 		if localMountEntry.Path != "noop2/" {
 			t.Fatalf("expected only noop2/ entry in local mount table, got %#v at %v", localMountEntry, coreLocalMountConfigPath+"/"+localEntry)
 		}
@@ -351,9 +345,7 @@ func TestCore_Mount_Local(t *testing.T) {
 		oldMounts.Entries[i] = entry
 	}
 
-	if err := c.loadMounts(ctx, false); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.loadMounts(ctx, false))
 	compEntries := c.mounts.Entries[:0]
 	// Filter out required mounts
 	for _, v := range c.mounts.Entries {
@@ -406,9 +398,7 @@ func TestCore_FindOps(t *testing.T) {
 	}
 
 	// Both should set up successfully
-	if err := c.setupMounts(namespace.RootContext(t.Context())); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.setupMounts(namespace.RootContext(t.Context())))
 
 	if len(c.mounts.Entries) != 2 {
 		t.Fatalf("expected two entries, got %d", len(c.mounts.Entries))
@@ -495,9 +485,7 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 		Path:  "test/",
 		Type:  "noop",
 	}
-	if err := c.mount(namespace.RootContext(t.Context()), me); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, c.mount(namespace.RootContext(t.Context()), me))
 
 	// Store the view
 	view := c.router.MatchingStorageByAPIPath(namespace.RootContext(t.Context()), "test/")
@@ -507,9 +495,7 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 		Key:   "plstodelete",
 		Value: []byte("test"),
 	}
-	if err := view.Put(t.Context(), se); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, view.Put(t.Context(), se))
 
 	// Setup response
 	resp := &logical.Response{
@@ -578,12 +564,10 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 	}
 
 	// At this point just in the failure case, check mounting
-	if err := c.mount(namespace.RootContext(t.Context()), me); err == nil {
-		t.Fatal("expected error")
-	} else {
-		if !strings.Contains(err.Error(), "path is already in use at") {
-			t.Fatalf("expected a path is already in use error, got %v", err)
-		}
+	err = c.mount(namespace.RootContext(t.Context()), me)
+	require.Error(t, err)
+	if !strings.Contains(err.Error(), "path is already in use at") {
+		t.Fatalf("expected a path is already in use error, got %v", err)
 	}
 }
 
@@ -625,9 +609,7 @@ func TestCore_Remount_Cleanup(t *testing.T) {
 		Path:  "test/",
 		Type:  "noop",
 	}
-	if err := c.mount(namespace.RootContext(t.Context()), me); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, c.mount(namespace.RootContext(t.Context()), me))
 
 	// Store the view
 	view := c.router.MatchingStorageByAPIPath(namespace.RootContext(t.Context()), "test/")
@@ -637,9 +619,7 @@ func TestCore_Remount_Cleanup(t *testing.T) {
 		Key:   "plstokeep",
 		Value: []byte("test"),
 	}
-	if err := view.Put(t.Context(), se); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, view.Put(t.Context(), se))
 
 	// Setup response
 	resp := &logical.Response{
@@ -668,9 +648,7 @@ func TestCore_Remount_Cleanup(t *testing.T) {
 	}
 
 	// Remount, this should cleanup
-	if err := c.remountSecretsEngineCurrentNamespace(namespace.RootContext(t.Context()), "test/", "new/", true); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, c.remountSecretsEngineCurrentNamespace(namespace.RootContext(t.Context()), "test/", "new/", true))
 
 	// Rollback should be invoked
 	if noop.Requests[1].Operation != logical.RollbackOperation {
@@ -920,9 +898,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 
 		for _, txnEntry := range postTxnEntries {
 			t.Logf("removing entry: %v", path+"/"+txnEntry)
-			if err := c.barrier.Delete(ctx, path+"/"+txnEntry); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, c.barrier.Delete(ctx, path+"/"+txnEntry))
 		}
 	}
 
@@ -931,9 +907,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 		Key:   path,
 		Value: raw,
 	}
-	if err := c.barrier.Put(ctx, entry); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.barrier.Put(ctx, entry))
 
 	var persistFunc func(context.Context, logical.Storage, *routing.MountTable, *bool, string) error
 
@@ -1020,12 +994,8 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	var expectedDecoded map[string]any
 	var actualDecoded map[string]any
 
-	if err := json.Unmarshal(goodJson, &expectedDecoded); err != nil {
-		t.Fatal(err)
-	}
-	if err := json.Unmarshal(actual, &actualDecoded); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, json.Unmarshal(goodJson, &expectedDecoded))
+	require.NoError(t, json.Unmarshal(actual, &actualDecoded))
 
 	if diff := deep.Equal(actualDecoded, expectedDecoded); len(diff) > 0 {
 		t.Fatalf("bad: expected\n%s\nactual\n%s\n\n\tdiff: %#v", string(goodJson), string(actual), diff)
@@ -1034,21 +1004,15 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	// Now try saving invalid versions
 	origTableType := mt.Type
 	mt.Type = "foo"
-	if err := persistFunc(ctx, c.barrier, mt, nil, ""); err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, persistFunc(ctx, c.barrier, mt, nil, ""))
 
 	if len(mt.Entries) > 0 {
 		mt.Type = origTableType
 		mt.Entries[0].Table = "bar"
-		if err := persistFunc(ctx, c.barrier, mt, nil, ""); err == nil {
-			t.Fatal("expected error")
-		}
+		require.Error(t, persistFunc(ctx, c.barrier, mt, nil, ""))
 
 		mt.Entries[0].Table = mt.Type
-		if err := persistFunc(ctx, c.barrier, mt, nil, ""); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, persistFunc(ctx, c.barrier, mt, nil, ""))
 	}
 }
 
@@ -1137,9 +1101,7 @@ func TestCore_MountInitialize(t *testing.T) {
 			Path:  "foo/",
 			Type:  "initable",
 		}
-		if err := c.mount(namespace.RootContext(t.Context()), me); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, c.mount(namespace.RootContext(t.Context()), me))
 
 		if !backend.IsInitialized {
 			t.Fatal("backend is not initialized")

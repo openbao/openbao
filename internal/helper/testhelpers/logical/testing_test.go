@@ -6,6 +6,8 @@ package testing
 import (
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -18,9 +20,7 @@ func init() {
 
 func TestTest_noEnv(t *testing.T) {
 	// Unset the variable
-	if err := os.Setenv(TestEnvVar, ""); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, os.Setenv(TestEnvVar, ""))
 	defer os.Setenv(TestEnvVar, "1")
 
 	mt := new(mockT)

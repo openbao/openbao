@@ -15,6 +15,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/v2/internal/vault/diagnose"
+	"github.com/stretchr/testify/require"
 )
 
 func testOperatorDiagnoseCommand(tb testing.TB) *OperatorDiagnoseCommand {
@@ -469,9 +470,7 @@ func TestOperatorDiagnoseCommand_Run(t *testing.T) {
 				cmd.Run(tc.args)
 				result := cmd.diagnose.Finalize(t.Context())
 
-				if err := compareResults(tc.expected, result.Children); err != nil {
-					t.Fatalf("Did not find expected test results: %v", err)
-				}
+				require.NoError(t, compareResults(tc.expected, result.Children), "Did not find expected test results")
 			})
 		}
 	})

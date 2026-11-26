@@ -27,9 +27,7 @@ var DefaultCustomHeaders = map[string]map[string]string{
 
 func testConfigRaftRetryJoin(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/raft_retry_join.hcl", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	disableSSCTs := true
 	retryJoinConfig := `[{"leader_api_addr":"http://127.0.0.1:8200"},{"leader_api_addr":"http://127.0.0.2:8200"},{"leader_api_addr":"http://127.0.0.3:8200"}]`
@@ -66,9 +64,7 @@ func testConfigRaftRetryJoin(t *testing.T) {
 
 func testLoadConfigFile_topLevel(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config2.hcl", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	disableSSCTs := true
 	expected := &Config{
@@ -194,9 +190,7 @@ func testLoadConfigFile_topLevel(t *testing.T) {
 
 func testLoadConfigFile_json2(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config2.hcl.json", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	disableSSCTs := true
 
@@ -299,9 +293,7 @@ func testLoadConfigFileIntegerAndBooleanValuesJson(t *testing.T) {
 
 func testLoadConfigFileIntegerAndBooleanValuesCommon(t *testing.T, path string) {
 	config, err := LoadConfigFile(path, nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	disableSSCTs := true
 
@@ -349,9 +341,7 @@ func testLoadConfigFileIntegerAndBooleanValuesCommon(t *testing.T, path string) 
 
 func testLoadConfigFile(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config.hcl", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	disableSSCTs := true
 
@@ -451,9 +441,7 @@ func testLoadConfigFile(t *testing.T) {
 
 func testUnknownFieldValidationStorageAndListener(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/storage-listener-config.json", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if len(config.UnusedKeys) != 0 {
 		t.Fatalf("unused keys for valid config are %+v\n", config.UnusedKeys)
 	}
@@ -461,9 +449,7 @@ func testUnknownFieldValidationStorageAndListener(t *testing.T) {
 
 func testUnknownFieldValidation(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config.hcl", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := []configutil.ConfigError{
 		{
@@ -513,9 +499,7 @@ func testUnknownFieldValidation(t *testing.T) {
 // parsed properly.
 func testUnknownFieldValidationJson(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config_small.json", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	errors := config.Validate("./test-fixtures/config_small.json")
 	if errors != nil {
@@ -529,9 +513,7 @@ func testUnknownFieldValidationJson(t *testing.T) {
 // In short, this ensures the same for HCL as we test in testUnknownFieldValidationJson
 func testUnknownFieldValidationHcl(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config_small.hcl", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	errors := config.Validate("./test-fixtures/config_small.hcl")
 	if errors != nil {
@@ -541,9 +523,7 @@ func testUnknownFieldValidationHcl(t *testing.T) {
 
 func testLoadConfigFile_json(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config.hcl.json", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	disableSSCTs := true
 
@@ -630,9 +610,7 @@ func testLoadConfigFile_json(t *testing.T) {
 
 func testLoadConfigDir(t *testing.T) {
 	config, err := LoadConfigDir("./test-fixtures/config-dir")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -695,9 +673,7 @@ func testLoadConfigDir(t *testing.T) {
 
 func testConfig_Sanitized(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config3.hcl", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	sanitizedConfig := config.Sanitized()
 
 	expected := map[string]any{
@@ -964,9 +940,7 @@ EOF
 EOF
 	tls_disable = true
 }`, "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	disableSSCTs := true
 
@@ -1009,9 +983,7 @@ ha_storage "consul" {
 }
 
 `, "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	disableSSCTs := true
 
@@ -1043,9 +1015,7 @@ ha_storage "consul" {
 
 func testParseSeals(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config_seals.hcl", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	config.Listeners[0].RawConfig = nil
 
 	disableSSCTs := true
@@ -1117,9 +1087,7 @@ func testParseSeals(t *testing.T) {
 
 func testLoadConfigFileLeaseMetrics(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config5.hcl", nil)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	disableSSCTs := true
 

@@ -31,9 +31,7 @@ func testNewACL(t *testing.T, ns *namespace.Namespace) {
 	case namespace.RootNamespaceID:
 		require.NoError(t, err)
 	default:
-		if err == nil {
-			t.Fatal("expected an error")
-		}
+		require.Error(t, err)
 	}
 }
 
@@ -425,9 +423,7 @@ func testLayeredACL(t *testing.T, acl *ACL, ns *namespace.Namespace) {
 
 func TestACL_ParseMalformedPolicy(t *testing.T) {
 	_, err := ParseACLPolicy(namespace.RootNamespace, `name{}`)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 }
 
 func TestACL_PolicyMerge(t *testing.T) {

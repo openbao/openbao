@@ -1319,11 +1319,9 @@ func randomData(t testing.TB, s logical.Storage, prefix string, count int, size 
 
 		entry := fmt.Sprintf("%v-%v", prefix, i)
 
-		if err := s.Put(t.Context(), &logical.StorageEntry{
+		require.NoError(t, s.Put(t.Context(), &logical.StorageEntry{
 			Key:   entry,
 			Value: []byte(contents),
-		}); err != nil {
-			t.Fatal(err.Error())
-		}
+		}))
 	}
 }

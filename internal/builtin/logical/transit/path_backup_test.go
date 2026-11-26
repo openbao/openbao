@@ -141,9 +141,7 @@ func testBackupRestore(t *testing.T, keyType, feature string) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("resp: %#v\nerr: %v", resp, err)
 	}
-	if err == nil {
-		t.Fatal("expected an error")
-	}
+	require.Error(t, err)
 
 	plaintextB64 := "dGhlIHF1aWNrIGJyb3duIGZveA==" // "the quick brown fox"
 

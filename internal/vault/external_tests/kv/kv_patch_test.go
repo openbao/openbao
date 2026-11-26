@@ -69,9 +69,7 @@ func TestKV_Patch_BadContentTypeHeader(t *testing.T) {
 			"Content-Type": []string{"application/json"},
 		}
 
-		if err := req.SetJSONBody(kvData); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, req.SetJSONBody(kvData))
 
 		return c.RawRequestWithContext(t.Context(), req)
 	})
@@ -138,11 +136,9 @@ func TestKV_Patch_Audit(t *testing.T) {
 	c := cluster.Cores[0].Client
 	vault.TestWaitActive(t, core)
 
-	if err := c.Sys().Mount("kv/", &api.MountInput{
+	require.NoError(t, c.Sys().Mount("kv/", &api.MountInput{
 		Type: "kv-v2",
-	}); err != nil {
-		t.Fatalf("kv-v2 mount attempt failed - err: %#v\n", err)
-	}
+	}), "kv-v2 mount attempt failed")
 
 	auditLogFile, err := os.CreateTemp("", "httppatch")
 	require.NoError(t, err)

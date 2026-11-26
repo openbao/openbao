@@ -382,9 +382,7 @@ func TestBackend_UserUpgrade(t *testing.T) {
 	if b == nil {
 		t.Fatal("failed to create backend")
 	}
-	if err := b.Setup(ctx, config); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, b.Setup(ctx, config))
 
 	foo := &UserEntry{
 		Policies:   []string{"foo"},

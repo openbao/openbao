@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetClaim(t *testing.T) {
@@ -29,9 +30,7 @@ func TestGetClaim(t *testing.T) {
 		}
 	}`
 	var claims map[string]any
-	if err := json.Unmarshal([]byte(data), &claims); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, json.Unmarshal([]byte(data), &claims))
 
 	tests := []struct {
 		claim string
@@ -75,9 +74,7 @@ func TestSetClaim(t *testing.T) {
 		}
 	}`
 	var claims map[string]any
-	if err := json.Unmarshal([]byte(data), &claims); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, json.Unmarshal([]byte(data), &claims))
 
 	tests := []struct {
 		claim string

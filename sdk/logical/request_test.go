@@ -126,25 +126,19 @@ func TestRequest_ParseMFAHandlers(t *testing.T) {
 		":passcode=123456",
 	}
 	err = req.ParseMFAHeaders()
-	if err == nil {
-		t.Fatalf("expected an error; actual: %#v\n", req.MFACreds)
-	}
+	require.Errorf(t, err, "expected an error; actual: %#v\n", req.MFACreds)
 
 	// Header without method name and method value should error out
 	req.Headers[headerName] = []string{
 		":",
 	}
 	err = req.ParseMFAHeaders()
-	if err == nil {
-		t.Fatalf("expected an error; actual: %#v\n", req.MFACreds)
-	}
+	require.Errorf(t, err, "expected an error; actual: %#v\n", req.MFACreds)
 
 	// Header without method name and method value should error out
 	req.Headers[headerName] = []string{
 		"my_totp:",
 	}
 	err = req.ParseMFAHeaders()
-	if err == nil {
-		t.Fatalf("expected an error; actual: %#v\n", req.MFACreds)
-	}
+	require.Errorf(t, err, "expected an error; actual: %#v\n", req.MFACreds)
 }

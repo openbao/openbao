@@ -120,9 +120,8 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 	defer core1.Shutdown()
 	keys, root := vault.TestCoreInit(t, core1)
 	for _, key := range keys {
-		if _, err := core1.Unseal(vault.TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = core1.Unseal(vault.TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	// Attempt to fix raciness in this test by giving the first core a chance
@@ -140,9 +139,8 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 	require.NoError(t, err)
 	defer core2.Shutdown()
 	for _, key := range keys {
-		if _, err := core2.Unseal(vault.TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = core2.Unseal(vault.TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	// Reduce race window between post-unseal namespaceStore setup and request handling.
@@ -770,11 +768,9 @@ func TestLogical_AuditPort(t *testing.T) {
 	c := cluster.Cores[0].Client
 	vault.TestWaitActive(t, core)
 
-	if err := c.Sys().Mount("kv/", &api.MountInput{
+	require.NoError(t, c.Sys().Mount("kv/", &api.MountInput{
 		Type: "kv-v2",
-	}); err != nil {
-		t.Fatalf("kv-v2 mount attempt failed - err: %#v\n", err)
-	}
+	}), "kv-v2 mount attempt failed")
 
 	auditLogFile, err := os.CreateTemp("", "auditport")
 	require.NoError(t, err)
@@ -959,11 +955,9 @@ func TestLogical_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T) {
 	c := cluster.Cores[0].Client
 	vault.TestWaitActive(t, core)
 
-	if err := c.Sys().Mount("kv/", &api.MountInput{
+	require.NoError(t, c.Sys().Mount("kv/", &api.MountInput{
 		Type: "kv-v2",
-	}); err != nil {
-		t.Fatalf("kv-v2 mount attempt failed - err: %#v\n", err)
-	}
+	}), "kv-v2 mount attempt failed")
 
 	// Enable the audit backend
 	tempDir := t.TempDir()

@@ -148,12 +148,8 @@ func TestFileBackend_ValidatePath(t *testing.T) {
 	}, logger)
 	require.NoError(t, err)
 
-	if err := b.Delete(t.Context(), "foo/bar/../zip"); err == nil {
-		t.Fatal("expected error")
-	}
-	if err := b.Delete(t.Context(), "foo/bar/zip"); err != nil {
-		t.Fatal("did not expect error")
-	}
+	require.Error(t, b.Delete(t.Context(), "foo/bar/../zip"))
+	require.NoError(t, b.Delete(t.Context(), "foo/bar/zip"))
 }
 
 func TestFileBackend(t *testing.T) {

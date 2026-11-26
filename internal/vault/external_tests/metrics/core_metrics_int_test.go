@@ -57,14 +57,13 @@ func TestMountTableMetrics(t *testing.T) {
 	}
 
 	// Mount new kv
-	if err = client.Sys().Mount("kv", &api.MountInput{
+	err = client.Sys().Mount("kv", &api.MountInput{
 		Type: "kv",
 		Options: map[string]string{
 			"version": "2",
 		},
-	}); err != nil {
-		t.Fatal(err)
-	}
+	})
+	require.NoError(t, err)
 
 	data, err = testhelpers.SysMetricsReq(client, cluster, false)
 	require.NoError(t, err)
@@ -148,9 +147,7 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 	var data testhelpers.SysMetricsJSON
 	coreLeaderMetric := false
 	coreUnsealMetric := false
-	if err := json.Unmarshal(bodyBytes, &data); err != nil {
-		t.Fatal("failed to unmarshal:", err)
-	}
+	require.NoError(t, json.Unmarshal(bodyBytes, &data), "failed to unmarshal")
 	for _, gauge := range data.Gauges {
 		if gauge.Name == "core.active" {
 			coreLeaderMetric = true
@@ -180,28 +177,25 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 	require.NoError(t, err)
 	bodyBytes, err = io.ReadAll(respo.Body)
 	require.NoError(t, err)
-	if err := json.Unmarshal(bodyBytes, &data); err != nil {
-		t.Fatal("failed to unmarshal:", err)
-	} else {
-		coreLeaderMetric = false
-		coreUnsealMetric = false
-		for _, gauge := range data.Gauges {
-			if gauge.Name == "core.active" {
-				coreLeaderMetric = true
-				if gauge.Value != 1 {
-					t.Error("metric incorrectly reports active status")
-				}
-			}
-			if gauge.Name == "core.unsealed" {
-				coreUnsealMetric = true
-				if gauge.Value != 1 {
-					t.Error("metric incorrectly reports unseal status of leader")
-				}
+	require.NoError(t, json.Unmarshal(bodyBytes, &data), "failed to unmarshal")
+	coreLeaderMetric = false
+	coreUnsealMetric = false
+	for _, gauge := range data.Gauges {
+		if gauge.Name == "core.active" {
+			coreLeaderMetric = true
+			if gauge.Value != 1 {
+				t.Error("metric incorrectly reports active status")
 			}
 		}
-		if !coreLeaderMetric || !coreUnsealMetric {
-			t.Error("unseal metric or leader metric are missing")
+		if gauge.Name == "core.unsealed" {
+			coreUnsealMetric = true
+			if gauge.Value != 1 {
+				t.Error("metric incorrectly reports unseal status of leader")
+			}
 		}
+	}
+	if !coreLeaderMetric || !coreUnsealMetric {
+		t.Error("unseal metric or leader metric are missing")
 	}
 	if respo != nil {
 		defer respo.Body.Close() //nolint:errcheck

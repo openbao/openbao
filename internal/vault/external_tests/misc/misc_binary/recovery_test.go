@@ -55,11 +55,9 @@ func TestRecovery_Docker(t *testing.T) {
 	var secretUUID string
 	{
 		client := cluster.Nodes()[0].APIClient()
-		if err := client.Sys().Mount("secret/", &api.MountInput{
+		require.NoError(t, client.Sys().Mount("secret/", &api.MountInput{
 			Type: "kv-v1",
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 
 		fooVal := map[string]any{"bar": 1.0}
 		_, err := client.Logical().Write("secret/foo", fooVal)
@@ -130,9 +128,7 @@ func TestRecovery_Docker(t *testing.T) {
 		recoveryToken, err := testcluster.GenerateRoot(cluster, testcluster.GenerateRecovery)
 		require.NoError(t, err)
 		_, err = testcluster.GenerateRoot(cluster, testcluster.GenerateRecovery)
-		if err == nil {
-			t.Fatal("expected second generate-root to fail")
-		}
+		require.Error(t, err, "expected second generate-root to fail")
 		client.SetToken(recoveryToken)
 
 		secret, err := client.Logical().List(path.Join("sys/raw/logical", secretUUID))

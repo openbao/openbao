@@ -175,9 +175,7 @@ func TestCoreWithSealAndUINoCleanup(t testing.T, opts *CoreConfig) *Core {
 	if physicalBackend == nil {
 		var err error
 		physicalBackend, err = physInmem.NewInmem(nil, logger)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	errInjector := physical.NewErrorInjector(physicalBackend, 0, logger)
@@ -223,9 +221,7 @@ func TestCoreWithSealAndUINoCleanup(t testing.T, opts *CoreConfig) *Core {
 	}
 
 	c, err := NewCore(conf)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	return c
 }
@@ -299,13 +295,9 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 		RecoveryConfig: recoveryConfig,
 	}
 	result, err := core.Initialize(namespace.RootContext(context.Background()), initParams)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	innerToken, err := core.DecodeSSCToken(result.RootToken)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	return result.SecretShares, result.RecoveryShares, innerToken
 }
 
@@ -441,9 +433,8 @@ func testCoreUnsealed(t testing.T, core *Core) (*Core, [][]byte, string) {
 func TestInitUnsealCore(t testing.T, core *Core) (string, [][]byte) {
 	keys, token := TestCoreInit(t, core)
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(core, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err := TestCoreUnseal(core, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 	if core.Sealed() {
 		t.Fatal("should not be sealed")
@@ -467,9 +458,7 @@ func testCoreAddSecretMountContext(ctx context.Context, t testing.T, core *Core,
 		},
 	}
 	resp, err := core.HandleRequest(ctx, kvReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.IsError() {
 		t.Fatal(err)
 	}
@@ -488,20 +477,15 @@ func TestCoreUnsealedBackend(t testing.T, backend physical.Backend) (*Core, [][]
 	conf.NumExpirationWorkers = numExpirationWorkersTest
 
 	core, err := NewCore(conf)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 
 	keys, token := TestCoreInit(t, core)
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(core, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = TestCoreUnseal(core, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
-	if err := core.UnsealWithStoredKeys(context.Background()); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, core.UnsealWithStoredKeys(context.Background()))
 
 	if core.Sealed() {
 		t.Fatal("should not be sealed")
@@ -582,9 +566,7 @@ func TestDynamicSystemView(c *Core, ns *namespace.Namespace) *dynamicSystemView 
 // stdout: "PASS"
 func TestAddTestPlugin(t testing.T, c *Core, name string, pluginType consts.PluginType, version string, testFunc string, env []string, tempDir string) {
 	file, err := os.Open(os.Args[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer file.Close() //nolint:errcheck
 
 	dirPath := filepath.Dir(os.Args[0])
@@ -592,9 +574,7 @@ func TestAddTestPlugin(t testing.T, c *Core, name string, pluginType consts.Plug
 
 	if tempDir != "" {
 		fi, err := file.Stat()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// Copy over the file to the temp dir
 		dst := filepath.Join(tempDir, fileName)
@@ -602,18 +582,13 @@ func TestAddTestPlugin(t testing.T, c *Core, name string, pluginType consts.Plug
 		// delete the file first to avoid notary failures in macOS
 		_ = os.Remove(dst) // ignore error
 		out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fi.Mode())
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer out.Close() //nolint:errcheck
 
-		if _, err = io.Copy(out, file); err != nil {
-			t.Fatal(err)
-		}
+		_, err = io.Copy(out, file)
+		require.NoError(t, err)
 		err = out.Sync()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		// Ensure that the file is closed and written. This seems to be
 		// necessary on Linux systems.
 		require.NoError(t, out.Close(), "error closing copied file")
@@ -623,23 +598,17 @@ func TestAddTestPlugin(t testing.T, c *Core, name string, pluginType consts.Plug
 
 	// Determine plugin directory full path, evaluating potential symlink path
 	fullPath, err := filepath.EvalSymlinks(dirPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	reader, err := os.Open(filepath.Join(fullPath, fileName))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer reader.Close() //nolint:errcheck
 
 	// Find out the sha256
 	hash := sha256.New()
 
 	_, err = io.Copy(hash, reader)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	sum := hash.Sum(nil)
 
@@ -649,9 +618,7 @@ func TestAddTestPlugin(t testing.T, c *Core, name string, pluginType consts.Plug
 
 	args := []string{fmt.Sprintf("--test.run=%s", testFunc)}
 	err = c.pluginCatalog.Set(context.Background(), name, pluginType, version, fileName, args, env, sum, false /* oci */)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 // TestRunTestPlugin runs the testFunc which has already been registered to the
@@ -661,9 +628,7 @@ func TestRunTestPlugin(t testing.T, c *Core, pluginType consts.PluginType, plugi
 	t.Helper()
 	config := TestPluginClientConfig(c, pluginType, pluginName)
 	client, err := c.pluginCatalog.NewPluginClient(context.Background(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return client
 }
@@ -785,9 +750,7 @@ func GenerateRandBytes(length int) ([]byte, error) {
 
 func TestWaitActive(t testing.T, core *Core) {
 	t.Helper()
-	if err := TestWaitActiveWithError(core); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, TestWaitActiveWithError(core))
 }
 
 func TestWaitActiveForwardingReady(t testing.T, core *Core) {
@@ -904,18 +867,14 @@ WAITACTIVE:
 		_, err := cli.Logical().Write("sys/quotas/rate-limit/rl-NewTestCluster", map[string]any{
 			"rate": 1000000,
 		})
-		if err != nil {
-			t.Fatalf("error setting up global rate limit quota: %v", err)
-		}
+		require.NoError(t, err, "error setting up global rate limit quota")
 	}
 }
 
 // UnsealCores uses the cluster barrier keys to unseal the test cluster cores
 func (c *TestCluster) UnsealCores(t testing.T) {
 	t.Helper()
-	if err := c.UnsealCoresWithError(false); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.UnsealCoresWithError(false))
 }
 
 func (c *TestCluster) UnsealCoresWithError(useStoredKeys bool) error {
@@ -974,9 +933,7 @@ func (c *TestCluster) UnsealCoresWithError(useStoredKeys bool) error {
 
 func (c *TestCluster) UnsealCore(t testing.T, core *TestClusterCore) {
 	err := c.AttemptUnsealCore(core)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func (c *TestCluster) AttemptUnsealCore(core *TestClusterCore) error {
@@ -996,23 +953,17 @@ func (c *TestCluster) AttemptUnsealCore(core *TestClusterCore) error {
 
 func (c *TestCluster) UnsealCoreWithStoredKeys(t testing.T, core *TestClusterCore) {
 	t.Helper()
-	if err := core.UnsealWithStoredKeys(context.Background()); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, core.UnsealWithStoredKeys(context.Background()))
 }
 
 func (c *TestCluster) EnsureCoresSealed(t testing.T) {
 	t.Helper()
-	if err := c.ensureCoresSealed(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.ensureCoresSealed())
 }
 
 func (c *TestClusterCore) Seal(t testing.T) {
 	t.Helper()
-	if err := c.sealInternal(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.sealInternal())
 }
 
 func (c *TestClusterCore) LogicalStorage() logical.Storage {
@@ -1316,16 +1267,12 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 
 	if opts != nil && opts.TempDir != "" {
 		if _, err := os.Stat(opts.TempDir); os.IsNotExist(err) {
-			if err := os.MkdirAll(opts.TempDir, 0o700); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, os.MkdirAll(opts.TempDir, 0o700))
 		}
 		testCluster.TempDir = opts.TempDir
 	} else {
 		tempDir, err := os.MkdirTemp("", "vault-test-cluster-")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		testCluster.TempDir = tempDir
 	}
 
@@ -1334,9 +1281,7 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		caKey = opts.CAKey
 	} else {
 		caKey, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 	testCluster.CAKey = caKey
 	var caBytes []byte
@@ -1357,14 +1302,10 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 			IsCA:                  true,
 		}
 		caBytes, err = x509.CreateCertificate(rand.Reader, caCertTemplate, caCertTemplate, caKey.Public(), caKey)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 	caCert, err := x509.ParseCertificate(caBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	testCluster.CACert = caCert
 	testCluster.CACertBytes = caBytes
 	testCluster.RootCAs = x509.NewCertPool()
@@ -1376,22 +1317,16 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 	testCluster.CACertPEM = pem.EncodeToMemory(caCertPEMBlock)
 	testCluster.CACertPEMFile = filepath.Join(testCluster.TempDir, "ca_cert.pem")
 	err = os.WriteFile(testCluster.CACertPEMFile, testCluster.CACertPEM, 0o755)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	marshaledCAKey, err := x509.MarshalECPrivateKey(caKey)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	caKeyPEMBlock := &pem.Block{
 		Type:  "EC PRIVATE KEY",
 		Bytes: marshaledCAKey,
 	}
 	testCluster.CAKeyPEM = pem.EncodeToMemory(caKeyPEMBlock)
 	err = os.WriteFile(filepath.Join(testCluster.TempDir, "ca_key.pem"), testCluster.CAKeyPEM, 0o755)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	var certInfoSlice []*certInfo
 
@@ -1400,9 +1335,7 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 	//
 	for i := 0; i < numCores; i++ {
 		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		certTemplate := &x509.Certificate{
 			Subject: pkix.Name{
 				CommonName: "localhost",
@@ -1421,22 +1354,16 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 			NotAfter:     time.Now().Add(262980 * time.Hour),
 		}
 		certBytes, err := x509.CreateCertificate(rand.Reader, certTemplate, caCert, key.Public(), caKey)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		cert, err := x509.ParseCertificate(certBytes)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		certPEMBlock := &pem.Block{
 			Type:  "CERTIFICATE",
 			Bytes: certBytes,
 		}
 		certPEM := pem.EncodeToMemory(certPEMBlock)
 		marshaledKey, err := x509.MarshalECPrivateKey(key)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		keyPEMBlock := &pem.Block{
 			Type:  "EC PRIVATE KEY",
 			Bytes: marshaledKey,
@@ -1471,30 +1398,20 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		}
 
 		ln, err := net.ListenTCP("tcp", addr)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		addresses = append(addresses, addr)
 
 		certFile := filepath.Join(testCluster.TempDir, fmt.Sprintf("node%d_port_%d_cert.pem", i+1, ln.Addr().(*net.TCPAddr).Port))
 		keyFile := filepath.Join(testCluster.TempDir, fmt.Sprintf("node%d_port_%d_key.pem", i+1, ln.Addr().(*net.TCPAddr).Port))
 		err = os.WriteFile(certFile, certInfoSlice[i].certPEM, 0o755)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		err = os.WriteFile(keyFile, certInfoSlice[i].keyPEM, 0o755)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		tlsCert, err := tls.X509KeyPair(certInfoSlice[i].certPEM, certInfoSlice[i].keyPEM)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		certGetter := reloadutil.NewCertificateGetter(certFile, keyFile, "")
 		certGetters = append(certGetters, certGetter)
-		if err := certGetter.Reload(); err != nil {
-			t.Fatal("error loading TLS certificate: ", err)
-		}
+		require.NoError(t, certGetter.Reload(), "error loading TLS certificate")
 		tlsConfig := &tls.Config{
 			Certificates:   []tls.Certificate{tlsCert},
 			RootCAs:        testCluster.RootCAs,
@@ -1650,15 +1567,11 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 
 	if coreConfig.Physical == nil && (opts == nil || opts.PhysicalFactory == nil) {
 		coreConfig.Physical, err = physInmem.NewInmemHA(nil, testCluster.Logger)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 	if coreConfig.HAPhysical == nil && (opts == nil || opts.PhysicalFactory == nil) {
 		haPhys, err := physInmem.NewInmemHA(nil, testCluster.Logger)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		coreConfig.HAPhysical = haPhys.(physical.HABackend)
 	}
 
@@ -1667,9 +1580,7 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 			t.Fatal("cannot specify ClusterLayers when InmemClusterLayers is true")
 		}
 		inmemCluster, err := cluster.NewInmemLayerCluster("inmem-cluster", numCores, testCluster.Logger.Named("inmem-cluster"))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		opts.ClusterLayers = inmemCluster
 	}
 
@@ -1793,9 +1704,7 @@ func (cluster *TestCluster) StopCore(t testing.T, idx int) {
 	tcc.Logger().Info("stopping core", "core", idx)
 
 	// Stop listeners and call Finalize()
-	if err := tcc.stop(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, tcc.stop())
 
 	// Run cleanup
 	cluster.cleanupFuncs[idx]()
@@ -1807,9 +1716,7 @@ func GenerateListenerAddr(t testing.T, opts *TestClusterOptions, certIPs []net.I
 
 	if opts != nil && opts.BaseListenAddress != "" {
 		baseAddr, err = net.ResolveTCPAddr("tcp", opts.BaseListenAddress)
-		if err != nil {
-			t.Fatal("could not parse given base IP")
-		}
+		require.NoError(t, err, "could not parse given base IP")
 		certIPs = append(certIPs, baseAddr.IP)
 	} else {
 		baseAddr = &net.TCPAddr{
@@ -1834,9 +1741,7 @@ func (cluster *TestCluster) StartCore(t testing.T, idx int, opts *TestClusterOpt
 
 	// Set up listeners
 	ln, err := net.ListenTCP("tcp", tcc.Address)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	tcc.Listeners = []*TestListener{
 		{
 			Listener: tls.NewListener(ln, tcc.tlsConfig),
@@ -1964,9 +1869,7 @@ func (testCluster *TestCluster) newCore(t testing.T, idx int, coreConfig *CoreCo
 	localConfig.NumExpirationWorkers = numExpirationWorkersTest
 
 	c, err := NewCore(&localConfig)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if opts != nil && opts.HandlerFunc != nil {
 		props := opts.DefaultHandlerProperties
 		props.Core = c
@@ -2041,9 +1944,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 
 	// Write root token and barrier keys
 	err := os.WriteFile(filepath.Join(tc.TempDir, "root_token"), []byte(root), 0o755)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	var buf bytes.Buffer
 	for i, key := range tc.BarrierKeys {
 		buf.Write([]byte(base64.StdEncoding.EncodeToString(key)))
@@ -2052,9 +1953,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		}
 	}
 	err = os.WriteFile(filepath.Join(tc.TempDir, "barrier_keys"), buf.Bytes(), 0o755)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	for i, key := range tc.RecoveryKeys {
 		buf.Write([]byte(base64.StdEncoding.EncodeToString(key)))
 		if i < len(tc.RecoveryKeys)-1 {
@@ -2062,24 +1961,19 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		}
 	}
 	err = os.WriteFile(filepath.Join(tc.TempDir, "recovery_keys"), buf.Bytes(), 0o755)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Unseal first core
 	for _, key := range bKeys {
-		if _, err := leader.Unseal(TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = leader.Unseal(TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	ctx := context.Background()
 
 	// If stored keys is supported, the above will no no-op, so trigger auto-unseal
 	// using stored keys to try to unseal
-	if err := leader.UnsealWithStoredKeys(ctx); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, leader.UnsealWithStoredKeys(ctx))
 
 	// Verify unsealed
 	if leader.Sealed() {
@@ -2109,17 +2003,13 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		},
 	}
 	resp, err := leader.HandleRequest(namespace.RootContext(ctx), kvReq)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.IsError() {
 		t.Fatal(err)
 	}
 
 	cfg, err := leader.seal.BarrierConfig(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Unseal other cores unless otherwise specified
 	numCores := len(tc.Cores)
@@ -2127,16 +2017,13 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		for i := 1; i < numCores; i++ {
 			tc.Cores[i].seal.SetCachedBarrierConfig(cfg)
 			for _, key := range bKeys {
-				if _, err := tc.Cores[i].Unseal(TestKeyCopy(key)); err != nil {
-					t.Fatalf("unseal err: %s", err)
-				}
+				_, err = tc.Cores[i].Unseal(TestKeyCopy(key))
+				require.NoError(t, err, "unseal err")
 			}
 
 			// If stored keys is supported, the above will no no-op, so trigger auto-unseal
 			// using stored keys
-			if err := tc.Cores[i].UnsealWithStoredKeys(ctx); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, tc.Cores[i].UnsealWithStoredKeys(ctx))
 		}
 
 		// Let them come fully up to standby
@@ -2146,9 +2033,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		// Other cores should not come up as leaders.
 		for i := 1; i < numCores; i++ {
 			isLeader, _, _, err := tc.Cores[i].Leader()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if isLeader {
 				t.Fatalf("core[%d] should not be leader", i)
 			}
@@ -2159,9 +2044,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 	// Set test cluster core(s) and test cluster
 	//
 	cluster, err := leader.Cluster(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	tc.ID = cluster.ID
 
 	if addAuditBackend {
@@ -2175,9 +2058,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 			},
 		}
 		resp, err = leader.HandleRequest(namespace.RootContext(ctx), auditReq)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if resp.IsError() {
 			t.Fatal(err)
@@ -2191,9 +2072,7 @@ func (testCluster *TestCluster) getAPIClient(
 ) *api.Client {
 	transport := cleanhttp.DefaultPooledTransport()
 	transport.TLSClientConfig = tlsConfig.Clone()
-	if err := http2.ConfigureTransport(transport); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, http2.ConfigureTransport(transport))
 	client := &http.Client{
 		Transport: transport,
 		CheckRedirect: func(*http.Request, []*http.Request) error {
@@ -2202,16 +2081,12 @@ func (testCluster *TestCluster) getAPIClient(
 		},
 	}
 	config := api.DefaultConfig()
-	if config.Error != nil {
-		t.Fatal(config.Error)
-	}
+	require.NoError(t, config.Error)
 	config.Address = fmt.Sprintf("https://127.0.0.1:%d", port)
 	config.HttpClient = client
 	config.MaxRetries = 0
 	apiClient, err := api.NewClient(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if opts == nil || !opts.SkipInit {
 		apiClient.SetToken(testCluster.RootToken)
 	}

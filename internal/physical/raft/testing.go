@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
+	"github.com/stretchr/testify/require"
 )
 
 func GetRaft(t testing.TB, bootstrap bool, noStoreState bool) *RaftBackend {
@@ -21,9 +22,7 @@ func GetRaft(t testing.TB, bootstrap bool, noStoreState bool) *RaftBackend {
 
 func getRaftWithDir(t testing.TB, bootstrap bool, noStoreState bool, raftDir string) *RaftBackend {
 	id, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:  fmt.Sprintf("raft-%s", id),
@@ -42,9 +41,7 @@ func getRaftWithDir(t testing.TB, bootstrap bool, noStoreState bool, raftDir str
 	}
 
 	backendRaw, err := NewRaftBackend(conf, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	backend := backendRaw.(*RaftBackend)
 
 	if bootstrap {
@@ -54,14 +51,10 @@ func getRaftWithDir(t testing.TB, bootstrap bool, noStoreState bool, raftDir str
 				Address: backend.NodeID(),
 			},
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		err = backend.SetupCluster(context.Background(), SetupOpts{})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		for backend.raft.AppliedIndex() < 2 {
 		}

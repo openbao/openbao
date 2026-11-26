@@ -44,9 +44,7 @@ func TestJsonFormatter(t *testing.T) {
 		t.Fatal(err)
 	}
 	var newUi mockUi
-	if err := jsonutil.DecodeJSON([]byte(output), &newUi); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, jsonutil.DecodeJSON([]byte(output), &newUi))
 	if newUi.SampleData != ui.SampleData {
 		t.Fatalf(`values not equal ("%s" != "%s")`,
 			newUi.SampleData,

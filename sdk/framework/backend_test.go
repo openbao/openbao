@@ -461,13 +461,12 @@ func TestBackendHandleRequest_rollback(t *testing.T) {
 	}
 
 	storage := new(logical.InmemStorage)
-	if _, err := PutWAL(t.Context(), storage, "kind", "foo"); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	_, err := PutWAL(t.Context(), storage, "kind", "foo")
+	require.NoError(t, err)
 
 	time.Sleep(10 * time.Millisecond)
 
-	_, err := b.HandleRequest(t.Context(), &logical.Request{
+	_, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.RollbackOperation,
 		Path:      "",
 		Storage:   storage,
@@ -493,11 +492,10 @@ func TestBackendHandleRequest_rollbackMinAge(t *testing.T) {
 	}
 
 	storage := new(logical.InmemStorage)
-	if _, err := PutWAL(t.Context(), storage, "kind", "foo"); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	_, err := PutWAL(t.Context(), storage, "kind", "foo")
+	require.NoError(t, err)
 
-	_, err := b.HandleRequest(t.Context(), &logical.Request{
+	_, err = b.HandleRequest(t.Context(), &logical.Request{
 		Operation: logical.RollbackOperation,
 		Path:      "",
 		Storage:   storage,

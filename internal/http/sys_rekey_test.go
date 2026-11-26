@@ -33,9 +33,7 @@ func TestSysRekey_Init_pgpKeysEntriesForRekey(t *testing.T) {
 		"secret_threshold": 3,
 		"pgp_keys":         []string{"pgpkey1"},
 	})
-	if err == nil {
-		t.Fatal("should have failed to write pgp key entry due to mismatched keys", err)
-	}
+	require.Error(t, err, "should have failed to write pgp key entry due to mismatched keys")
 }
 
 func TestSysRekey_Init_Status(t *testing.T) {

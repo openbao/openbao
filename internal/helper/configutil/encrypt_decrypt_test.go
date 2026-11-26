@@ -49,9 +49,7 @@ telemetry {
 		inMsg, err := base64.RawURLEncoding.DecodeString(string(matchBytes))
 		require.NoError(t, err)
 		inBlob := new(wrapping.BlobInfo)
-		if err := proto.Unmarshal(inMsg, inBlob); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, proto.Unmarshal(inMsg, inBlob))
 		ct := string(inBlob.Ciphertext)
 		if first {
 			if ct != "raboof" {

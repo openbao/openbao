@@ -186,9 +186,7 @@ func TestPlugin_CreateUser(t *testing.T) {
 		DisplayName: "test",
 		RoleName:    "test",
 	}, time.Now().Add(time.Minute))
-	if err == nil {
-		t.Fatal("expected an error, user wasn't created correctly")
-	}
+	require.Error(t, err, "expected an error, user wasn't created correctly")
 }
 
 func TestPlugin_RenewUser(t *testing.T) {

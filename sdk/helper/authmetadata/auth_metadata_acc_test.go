@@ -212,9 +212,7 @@ func (e *environment) TestDefaultPlusMoreCannotBeSelected(t *testing.T) {
 			authMetadataFields.FieldName: []string{"default", "remote_addr"},
 		},
 	})
-	if err == nil {
-		t.Fatal("expected err")
-	}
+	require.Error(t, err)
 }
 
 func (e *environment) TestOnlyNonDefaultsCanBeSelected(t *testing.T) {
@@ -290,9 +288,7 @@ func (e *environment) TestAddingBadField(t *testing.T) {
 			authMetadataFields.FieldName: []string{"asl;dfkj"},
 		},
 	})
-	if err == nil {
-		t.Fatal("expected err")
-	}
+	require.Error(t, err)
 	if resp == nil {
 		t.Fatal("expected non-nil response")
 	}

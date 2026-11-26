@@ -20,6 +20,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/vault"
 	"github.com/openbao/openbao/v2/internal/vault/seal"
+	"github.com/stretchr/testify/require"
 )
 
 type TransitSealServer struct {
@@ -41,25 +42,21 @@ func NewTransitSealServer(t testing.T, idx int) *TransitSealServer {
 	cluster := vault.NewTestCluster(t, conf, opts)
 	cluster.Start()
 
-	if err := cluster.Cores[0].Client.Sys().Mount("transit", &api.MountInput{
+	require.NoError(t, cluster.Cores[0].Client.Sys().Mount("transit", &api.MountInput{
 		Type: "transit",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 
 	return &TransitSealServer{cluster}
 }
 
 func (tss *TransitSealServer) MakeKey(t testing.T, key string) {
 	client := tss.Cores[0].Client
-	if _, err := client.Logical().Write(path.Join("transit", "keys", key), nil); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.Logical().Write(path.Join("transit", "keys", key, "config"), map[string]any{
+	_, err := client.Logical().Write(path.Join("transit", "keys", key), nil)
+	require.NoError(t, err)
+	_, err = client.Logical().Write(path.Join("transit", "keys", key, "config"), map[string]any{
 		"deletion_allowed": true,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	})
+	require.NoError(t, err)
 }
 
 func (tss *TransitSealServer) MakeSeal(t testing.T, key string) (vault.Seal, error) {
@@ -74,8 +71,6 @@ func (tss *TransitSealServer) MakeSeal(t testing.T, key string) (vault.Seal, err
 			"tls_ca_cert": tss.CACertPEMFile,
 		}),
 	)
-	if err != nil {
-		t.Fatalf("error setting wrapper config: %v", err)
-	}
+	require.NoError(t, err, "error setting wrapper config")
 	return vault.NewAutoSeal(seal.NewAccess(wrapper))
 }

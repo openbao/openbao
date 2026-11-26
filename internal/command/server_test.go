@@ -173,9 +173,7 @@ func TestServer_ReloadListener(t *testing.T) {
 		t.Fatal("timeout")
 	}
 
-	if err := testCertificateName("foo.example.com"); err != nil {
-		t.Fatalf("certificate name didn't check out: %s", err)
-	}
+	require.NoError(t, testCertificateName("foo.example.com"), "certificate name didn't check out")
 
 	relhcl = strings.ReplaceAll(reloadHCL, "TMPDIR", td)
 	inBytes, _ = os.ReadFile(path.Join(wd, "reload_bar.pem"))
@@ -191,9 +189,7 @@ func TestServer_ReloadListener(t *testing.T) {
 		t.Fatal("timeout")
 	}
 
-	if err := testCertificateName("bar.example.com"); err != nil {
-		t.Fatalf("certificate name didn't check out: %s", err)
-	}
+	require.NoError(t, testCertificateName("bar.example.com"), "certificate name didn't check out")
 
 	cmd.ShutdownCh <- struct{}{}
 

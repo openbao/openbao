@@ -121,12 +121,11 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 
 		// Now init to verify the init response
 		//nolint:staticcheck // Testing deprecated (but still supported) functionality
-		if _, err := client.Sys().RekeyInit(&api.RotateInitRequest{
+		_, err := client.Sys().RekeyInit(&api.RotateInitRequest{
 			SecretShares:    1,
 			SecretThreshold: 1,
-		}); err != nil {
-			t.Fatal(err)
-		}
+		})
+		require.NoError(t, err)
 
 		// Verify the init response
 		ui, cmd = testOperatorRekeyCommand(t)
@@ -153,12 +152,11 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 
 		// Initialize a rekey
 		//nolint:staticcheck // Testing deprecated (but still supported) functionality
-		if _, err := client.Sys().RekeyInit(&api.RotateInitRequest{
+		_, err := client.Sys().RekeyInit(&api.RotateInitRequest{
 			SecretShares:    1,
 			SecretThreshold: 1,
-		}); err != nil {
-			t.Fatal(err)
-		}
+		})
+		require.NoError(t, err)
 
 		ui, cmd := testOperatorRekeyCommand(t)
 		cmd.client = client
@@ -372,9 +370,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 
 		// Grab the unseal key and try to unseal
 		unsealKey := match[0][1]
-		if err := client.Sys().Seal(); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, client.Sys().Seal())
 		sealStatus, err := client.Sys().Unseal(unsealKey)
 		require.NoError(t, err)
 		if sealStatus.Sealed {
@@ -445,9 +441,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 
 		// Grab the unseal key and try to unseal
 		unsealKey := match[0][1]
-		if err := client.Sys().Seal(); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, client.Sys().Seal())
 		sealStatus, err := client.Sys().Unseal(unsealKey)
 		require.NoError(t, err)
 		if sealStatus.Sealed {

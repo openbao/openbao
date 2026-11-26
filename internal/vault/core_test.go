@@ -344,9 +344,7 @@ func TestNewCore_badRedirectAddr(t *testing.T) {
 		Physical:     inm,
 	}
 	_, err = NewCore(conf)
-	if err == nil {
-		t.Fatal("should error")
-	}
+	require.Error(t, err)
 }
 
 func TestSealConfig_Invalid(t *testing.T) {
@@ -355,9 +353,7 @@ func TestSealConfig_Invalid(t *testing.T) {
 		SecretThreshold: 1,
 	}
 	err := s.Validate()
-	if err == nil {
-		t.Fatal("expected err")
-	}
+	require.Error(t, err)
 }
 
 // TestCore_HasVaultVersion checks that versionHistory is correct and initialized
@@ -618,9 +614,7 @@ func TestCore_Route_Sealed(t *testing.T) {
 // Attempt to unseal after doing a first seal
 func TestCore_SealUnseal(t *testing.T) {
 	c, keys, root := TestCoreUnsealed(t)
-	if err := c.Seal(root); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, c.Seal(root))
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c, key)
 		require.NoError(t, err)
@@ -769,9 +763,7 @@ func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {
 	require.NoError(t, err)
 
 	// seal and unseal vault
-	if err := core.Seal(root); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, core.Seal(root))
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(core, key)
 		require.NoError(t, err)
@@ -819,9 +811,7 @@ func TestCore_RunLockedUserUpdatesForValidEntry(t *testing.T) {
 	require.NoError(t, err)
 
 	// seal and unseal vault
-	if err := core.Seal(root); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, core.Seal(root))
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(core, key)
 		require.NoError(t, err)
@@ -858,9 +848,7 @@ func TestCore_RunLockedUserUpdatesForValidEntry(t *testing.T) {
 // Attempt to shutdown after unseal
 func TestCore_Shutdown(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	if err := c.Shutdown(); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, c.Shutdown())
 	if !c.Sealed() {
 		t.Fatal("wasn't sealed")
 	}
@@ -895,9 +883,7 @@ func TestCore_ShutdownDone(t *testing.T) {
 // Attempt to seal bad token
 func TestCore_Seal_BadToken(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	if err := c.Seal("foo"); err == nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.Error(t, c.Seal("foo"))
 	if c.Sealed() {
 		t.Fatal("was sealed")
 	}
@@ -956,9 +942,7 @@ func TestCore_Seal_SingleUse(t *testing.T) {
 	}, true)
 	require.NoError(t, err)
 
-	if err := c.Seal("foo"); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, c.Seal("foo"))
 	if !c.Sealed() {
 		t.Fatal("not sealed")
 	}
@@ -969,9 +953,7 @@ func TestCore_Seal_SingleUse(t *testing.T) {
 			t.Fatal("err: should be unsealed")
 		}
 	}
-	if err := c.Seal("foo"); err == nil {
-		t.Fatal("expected error from revoked token")
-	}
+	require.Error(t, c.Seal("foo"), "expected error from revoked token")
 	te, err := c.tokenStore.Lookup(namespace.RootContext(t.Context()), "foo")
 	require.NoError(t, err)
 	if te != nil {
@@ -1286,9 +1268,8 @@ func TestCore_HandleRequest_NoClientToken(t *testing.T) {
 		Operation: logical.UpdateOperation,
 	}
 	req.ClientToken = root
-	if _, err := c.HandleRequest(namespace.RootContext(t.Context()), req); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
 
 	ct := noop.Requests[0].ClientToken
 	if ct == "" || ct == root {
@@ -1320,9 +1301,8 @@ func TestCore_HandleRequest_ConnOnLogin(t *testing.T) {
 		Operation:  logical.UpdateOperation,
 		Connection: &logical.Connection{},
 	}
-	if _, err := c.HandleRequest(namespace.RootContext(t.Context()), req); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
 	if noop.Requests[0].Connection == nil {
 		t.Fatalf("bad: %#v", noop.Requests)
 	}
@@ -1484,9 +1464,8 @@ func TestCore_HandleRequest_AuditTrail(t *testing.T) {
 		ClientToken: root,
 	}
 	req.ClientToken = root
-	if _, err := c.HandleRequest(namespace.RootContext(t.Context()), req); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
 
 	// Check the audit trail on request and response
 	if len(noop.ReqAuth) != 1 {
@@ -1566,9 +1545,8 @@ func TestCore_HandleRequest_AuditTrail_noHMACKeys(t *testing.T) {
 		ClientToken: root,
 	}
 	req.ClientToken = root
-	if _, err := c.HandleRequest(namespace.RootContext(t.Context()), req); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
 
 	// Check the audit trail on request and response
 	if len(noop.ReqAuth) != 1 {
@@ -1610,9 +1588,8 @@ func TestCore_HandleRequest_AuditTrail_noHMACKeys(t *testing.T) {
 	req.ClientToken = root
 	err = c.PopulateTokenEntry(namespace.RootContext(t.Context()), req)
 	require.NoError(t, err)
-	if _, err := c.HandleRequest(namespace.RootContext(t.Context()), req); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
 	if len(noop.RespNonHMACKeys) != 1 || !strutil.EquivalentSlices(noop.RespNonHMACKeys[0], []string{"baz"}) {
 		t.Fatalf("Bad: %#v", noop.RespNonHMACKeys)
 	}
@@ -1850,9 +1827,8 @@ func TestCore_Standby_Seal(t *testing.T) {
 	defer core.Shutdown()
 	keys, root := TestCoreInit(t, core)
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(core, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err := TestCoreUnseal(core, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	// Verify unsealed
@@ -1887,9 +1863,8 @@ func TestCore_Standby_Seal(t *testing.T) {
 	require.NoError(t, err)
 	defer core2.Shutdown()
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(core2, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err := TestCoreUnseal(core2, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	// Verify unsealed
@@ -1915,17 +1890,13 @@ func TestCore_Standby_Seal(t *testing.T) {
 
 	// Seal the standby core with the correct token. Shouldn't go down
 	err = core2.Seal(root)
-	if err == nil {
-		t.Fatalf("should not be sealed: %v", err)
-	}
+	require.Error(t, err, "should not be sealed")
 
 	keyUUID, err := uuid.GenerateUUID()
 	require.NoError(t, err)
 	// Seal the standby core with an invalid token. Shouldn't go down
 	err = core2.Seal(keyUUID)
-	if err == nil {
-		t.Fatal("should not be sealed")
-	}
+	require.Error(t, err, "should not be sealed")
 
 	// Create the third (read-enabled) core and initialize it.
 	redirectOriginal3 := "http://127.0.0.1:8700"
@@ -1938,9 +1909,8 @@ func TestCore_Standby_Seal(t *testing.T) {
 	require.NoError(t, err)
 	defer core3.Shutdown() //nolint:errcheck
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(core3, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err := TestCoreUnseal(core3, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	// Verify unsealed
@@ -1973,16 +1943,13 @@ func TestCore_Standby_Seal(t *testing.T) {
 
 	// Now unseal the node.
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(core3, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err := TestCoreUnseal(core3, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	// Seal the standby core with an invalid token. Shouldn't go down.
 	err = core3.Seal(keyUUID)
-	if err == nil {
-		t.Fatalf("should not be sealed: sealed=%v / err=%v", core3.Sealed(), err)
-	}
+	require.Errorf(t, err, "should not be sealed: sealed=%v", core3.Sealed())
 }
 
 func TestCore_StepDown(t *testing.T) {
@@ -2005,9 +1972,8 @@ func TestCore_StepDown(t *testing.T) {
 	defer core.Shutdown()
 	keys, root := TestCoreInit(t, core)
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(core, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = TestCoreUnseal(core, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	// Verify unsealed
@@ -2039,9 +2005,8 @@ func TestCore_StepDown(t *testing.T) {
 	defer core2.Shutdown()
 	require.NoError(t, err)
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(core2, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = TestCoreUnseal(core2, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	// Verify unsealed
@@ -2161,9 +2126,8 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 	defer core.Shutdown()
 	keys, root := TestCoreInit(t, core)
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(core, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = TestCoreUnseal(core, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	// Verify unsealed
@@ -2216,9 +2180,8 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 	require.NoError(t, err)
 	defer core2.Shutdown()
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(core2, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = TestCoreUnseal(core2, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	// Verify unsealed
@@ -2311,9 +2274,8 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 	defer core.Shutdown()
 	keys, root := TestCoreInit(t, core)
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(core, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = TestCoreUnseal(core, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	// Verify unsealed
@@ -2361,9 +2323,8 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 	require.NoError(t, err)
 	defer core2.Shutdown()
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(core2, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = TestCoreUnseal(core2, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	// Verify unsealed
@@ -2697,9 +2658,7 @@ path "secret/*" {
 
 	ps := c.policyStore
 	policy, _ := policy.ParseACLPolicy(namespace.RootNamespace, secretWritingPolicy)
-	if err := ps.SetPolicy(namespace.RootContext(t.Context()), policy, nil); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ps.SetPolicy(namespace.RootContext(t.Context()), policy, nil))
 
 	// Enable the credential backend
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/auth/foo")
@@ -2802,9 +2761,8 @@ func TestCore_HandleRequest_MountPointType(t *testing.T) {
 		Connection: &logical.Connection{},
 	}
 	req.ClientToken = root
-	if _, err := c.HandleRequest(namespace.RootContext(t.Context()), req); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	_, err = c.HandleRequest(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
 
 	// Verify Path, MountPoint, MountType, and MountAccessor
 	if noop.Requests[0].Path != "test" {
@@ -2840,9 +2798,8 @@ func TestCore_Standby_Rotate(t *testing.T) {
 	defer core.Shutdown()
 	keys, root := TestCoreInit(t, core)
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(core, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = TestCoreUnseal(core, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	// Wait for core to become active
@@ -2858,9 +2815,8 @@ func TestCore_Standby_Rotate(t *testing.T) {
 	require.NoError(t, err)
 	defer core2.Shutdown()
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(core2, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = TestCoreUnseal(core2, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	// Rotate the encryption key
@@ -3042,9 +2998,7 @@ func TestCore_HandleRequest_TokenCreate_RegisterAuthFailure(t *testing.T) {
 	req = logical.TestRequest(t, logical.CreateOperation, "auth/token/create")
 	req.ClientToken = tokenWithRootPolicy
 	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err == nil {
-		t.Fatalf("expected error, got a response: %#v", resp)
-	}
+	require.Errorf(t, err, "expected error, got a response: %#v", resp)
 	core.expiration.testRegisterAuthFailure.Store(false)
 
 	// Do a lookup against the client token that we used for the failed request.
@@ -3135,9 +3089,8 @@ func TestCore_ServiceRegistration(t *testing.T) {
 	// Initialize and unseal the core
 	keys, _ := TestCoreInit(t, core)
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(core, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = TestCoreUnseal(core, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 	if core.Sealed() {
 		t.Fatal("should not be sealed")

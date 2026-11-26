@@ -470,9 +470,7 @@ name = "test"
 bad  = "foo"
 nope = "yes"
 `))
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	if !strings.Contains(err.Error(), `invalid key "bad" on line 2`) {
 		t.Errorf("bad error: %q", err)
@@ -491,9 +489,7 @@ path "/" {
 	capabilites  = ["read"]
 }
 `))
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	if !strings.Contains(err.Error(), `invalid key "capabilites" on line 3`) {
 		t.Errorf("bad error: %s", err)
@@ -506,9 +502,7 @@ path "/" {
 	policy = "banana"
 }
 `))
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	if !strings.Contains(err.Error(), `path "/": invalid policy "banana"`) {
 		t.Errorf("bad error: %s", err)
@@ -523,9 +517,7 @@ path "/" {
 	max_wrapping_ttl = 200
 }
 `))
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	if !strings.Contains(err.Error(), `max_wrapping_ttl cannot be less than min_wrapping_ttl`) {
 		t.Errorf("bad error: %s", err)
@@ -538,9 +530,7 @@ path "/" {
 	capabilities = ["read", "banana"]
 }
 `))
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	if !strings.Contains(err.Error(), `path "/": invalid capability "banana"`) {
 		t.Errorf("bad error: %s", err)
@@ -553,9 +543,7 @@ path "foo/+*" {
 	capabilities = ["read"]
 }
 `))
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	if !strings.Contains(err.Error(), `path "foo/+*": invalid use of wildcards ('+*' is forbidden)`) {
 		t.Errorf("bad error: %s", err)

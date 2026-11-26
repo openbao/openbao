@@ -64,12 +64,11 @@ path "kv/*" {
 	require.NoError(t, err)
 
 	// Tune the mount
-	if err = client.Sys().TuneMount("auth/approle", api.MountConfigInput{
+	err = client.Sys().TuneMount("auth/approle", api.MountConfigInput{
 		DefaultLeaseTTL: "5s",
 		MaxLeaseTTL:     "5s",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	})
+	require.NoError(t, err)
 
 	// Create role, should return HTTP 204 No Content
 	_, err = client.Logical().Write("auth/approle/role/test", map[string]any{
@@ -96,11 +95,10 @@ path "kv/*" {
 	// Login
 	testLogin := func(mountTuneType, roleType string, batch bool) string {
 		t.Helper()
-		if err = client.Sys().TuneMount("auth/approle", api.MountConfigInput{
+		err = client.Sys().TuneMount("auth/approle", api.MountConfigInput{
 			TokenType: mountTuneType,
-		}); err != nil {
-			t.Fatal(err)
-		}
+		})
+		require.NoError(t, err)
 		_, err = client.Logical().Write("auth/approle/role/test", map[string]any{
 			"token_type": roleType,
 		})
@@ -176,9 +174,7 @@ path "kv/*" {
 	resp, err = client.Logical().Write("sys/leases/lookup", map[string]any{
 		"lease_id": leaseID,
 	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 }
 
 func TestBatchToken_ParentLeaseRevoke(t *testing.T) {
@@ -270,17 +266,13 @@ path "kv/*" {
 	// Verify the batch token is not usable anymore
 	client.SetToken(rootToken)
 	_, err = client.Auth().Token().Lookup(batchToken)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	// Verify the lease has been revoked
 	_, err = client.Logical().Write("sys/leases/lookup", map[string]any{
 		"lease_id": leaseID,
 	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 }
 
 func TestTokenStore_Roles_Batch(t *testing.T) {
@@ -325,17 +317,13 @@ func TestTokenStore_Roles_Batch(t *testing.T) {
 			"token_type": "batch",
 		})
 		// Orphan not set so we should error
-		if err == nil {
-			t.Fatal("expected error")
-		}
+		require.Error(t, err)
 		_, err = client.Logical().Write("auth/token/roles/testrole", map[string]any{
 			"token_type": "batch",
 			"orphan":     true,
 		})
 		// Renewable set so we should error
-		if err == nil {
-			t.Fatal("expected error")
-		}
+		require.Error(t, err)
 		_, err = client.Logical().Write("auth/token/roles/testrole", map[string]any{
 			"token_type": "batch",
 			"orphan":     true,

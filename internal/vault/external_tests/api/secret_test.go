@@ -167,15 +167,12 @@ func TestSecret_TokenID(t *testing.T) {
 		client, closer := testVaultServer(t)
 		defer closer()
 
-		if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
+		require.NoError(t, client.Sys().EnableAuth("userpass", "userpass", ""))
+		_, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 			"password": "test",
 			"policies": "default",
-		}); err != nil {
-			t.Fatal(err)
-		}
+		})
+		require.NoError(t, err)
 
 		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]any{
 			"password": "test",
@@ -403,15 +400,12 @@ func TestSecret_TokenAccessor(t *testing.T) {
 		client, closer := testVaultServer(t)
 		defer closer()
 
-		if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
+		require.NoError(t, client.Sys().EnableAuth("userpass", "userpass", ""))
+		_, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 			"password": "test",
 			"policies": "default",
-		}); err != nil {
-			t.Fatal(err)
-		}
+		})
+		require.NoError(t, err)
 
 		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]any{
 			"password": "test",
@@ -607,16 +601,13 @@ func TestSecret_TokenRemainingUses(t *testing.T) {
 
 		uses := 5
 
-		if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
+		require.NoError(t, client.Sys().EnableAuth("userpass", "userpass", ""))
+		_, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 			"password": "test",
 			"policies": "default",
 			"num_uses": uses,
-		}); err != nil {
-			t.Fatal(err)
-		}
+		})
+		require.NoError(t, err)
 
 		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]any{
 			"password": "test",
@@ -878,15 +869,12 @@ func TestSecret_TokenPolicies(t *testing.T) {
 
 		policies := []string{"bar", "default", "foo"}
 
-		if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
+		require.NoError(t, client.Sys().EnableAuth("userpass", "userpass", ""))
+		_, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 			"password": "test",
 			"policies": strings.Join(policies, ","),
-		}); err != nil {
-			t.Fatal(err)
-		}
+		})
+		require.NoError(t, err)
 
 		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]any{
 			"password": "test",
@@ -1144,15 +1132,12 @@ func TestSecret_TokenMetadata(t *testing.T) {
 
 		metadata := map[string]string{"username": "test"}
 
-		if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
+		require.NoError(t, client.Sys().EnableAuth("userpass", "userpass", ""))
+		_, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 			"password": "test",
 			"policies": "default",
-		}); err != nil {
-			t.Fatal(err)
-		}
+		})
+		require.NoError(t, err)
 
 		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]any{
 			"password": "test",
@@ -1402,15 +1387,12 @@ func TestSecret_TokenIsRenewable(t *testing.T) {
 
 		renewable := true
 
-		if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
+		require.NoError(t, client.Sys().EnableAuth("userpass", "userpass", ""))
+		_, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 			"password": "test",
 			"policies": "default",
-		}); err != nil {
-			t.Fatal(err)
-		}
+		})
+		require.NoError(t, err)
 
 		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]any{
 			"password": "test",
@@ -1642,17 +1624,14 @@ func TestSecret_TokenTTL(t *testing.T) {
 
 		ttl := 30 * time.Minute
 
-		if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
+		require.NoError(t, client.Sys().EnableAuth("userpass", "userpass", ""))
+		_, err := client.Logical().Write("auth/userpass/users/test", map[string]any{
 			"password":         "test",
 			"policies":         "default",
 			"ttl":              ttl.String(),
 			"explicit_max_ttl": ttl.String(),
-		}); err != nil {
-			t.Fatal(err)
-		}
+		})
+		require.NoError(t, err)
 
 		secret, err := client.Logical().Write("auth/userpass/login/test", map[string]any{
 			"password": "test",

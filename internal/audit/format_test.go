@@ -72,16 +72,12 @@ func TestFormatRequestErrors(t *testing.T) {
 		AuditFormatWriter: &testingFormatWriter{},
 	}
 
-	if err := formatter.FormatRequest(t.Context(), io.Discard, config, &logical.LogInput{}); err == nil {
-		t.Fatal("expected error due to nil request")
-	}
+	require.Error(t, formatter.FormatRequest(t.Context(), io.Discard, config, &logical.LogInput{}), "expected error due to nil request")
 
 	in := &logical.LogInput{
 		Request: &logical.Request{},
 	}
-	if err := formatter.FormatRequest(t.Context(), nil, config, in); err == nil {
-		t.Fatal("expected error due to nil writer")
-	}
+	require.Error(t, formatter.FormatRequest(t.Context(), nil, config, in), "expected error due to nil writer")
 }
 
 func TestFormatResponseErrors(t *testing.T) {
@@ -90,16 +86,12 @@ func TestFormatResponseErrors(t *testing.T) {
 		AuditFormatWriter: &testingFormatWriter{},
 	}
 
-	if err := formatter.FormatResponse(t.Context(), io.Discard, config, &logical.LogInput{}); err == nil {
-		t.Fatal("expected error due to nil request")
-	}
+	require.Error(t, formatter.FormatResponse(t.Context(), io.Discard, config, &logical.LogInput{}), "expected error due to nil request")
 
 	in := &logical.LogInput{
 		Request: &logical.Request{},
 	}
-	if err := formatter.FormatResponse(t.Context(), nil, config, in); err == nil {
-		t.Fatal("expected error due to nil writer")
-	}
+	require.Error(t, formatter.FormatResponse(t.Context(), nil, config, in), "expected error due to nil writer")
 }
 
 func TestElideListResponses(t *testing.T) {

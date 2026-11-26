@@ -43,6 +43,7 @@ import (
 	dockhelper "github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/http2"
 )
 
@@ -416,9 +417,7 @@ func NewTestDockerCluster(t *testing.T, opts *DockerClusterOptions) *DockerClust
 	t.Cleanup(cancel)
 
 	dc, err := NewDockerCluster(ctx, opts)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	dc.Logger.Trace("cluster started", "helpful_env", fmt.Sprintf("BAO_TOKEN=%s BAO_CACERT=/openbao/config/ca.pem", dc.GetRootToken()))
 	return dc
 }

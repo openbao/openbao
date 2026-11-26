@@ -14,6 +14,7 @@ import (
 
 	"github.com/gocql/gocql"
 	"github.com/openbao/openbao/sdk/v2/helper/docker"
+	"github.com/stretchr/testify/require"
 )
 
 type containerConfig struct {
@@ -82,9 +83,7 @@ func PrepareTestContainer(t *testing.T, opts ...ContainerOpt) (Host, func()) {
 	t.Helper()
 	if os.Getenv("CASSANDRA_HOSTS") != "" {
 		host, port, err := net.SplitHostPort(os.Getenv("CASSANDRA_HOSTS"))
-		if err != nil {
-			t.Fatalf("Failed to split host & port from CASSANDRA_HOSTS (%s): %s", os.Getenv("CASSANDRA_HOSTS"), err)
-		}
+		require.NoErrorf(t, err, "Failed to split host & port from CASSANDRA_HOSTS (%s)", os.Getenv("CASSANDRA_HOSTS"))
 		h := Host{
 			Name: host,
 			Port: port,
@@ -106,9 +105,7 @@ func PrepareTestContainer(t *testing.T, opts ...ContainerOpt) (Host, func()) {
 	copyFromTo := map[string]string{}
 	for from, to := range containerCfg.copyFromTo {
 		absFrom, err := filepath.Abs(from)
-		if err != nil {
-			t.Fatalf("Unable to get absolute path for file %s", from)
-		}
+		require.NoErrorf(t, err, "Unable to get absolute path for file %s", from)
 		copyFromTo[absFrom] = to
 	}
 
@@ -121,9 +118,7 @@ func PrepareTestContainer(t *testing.T, opts ...ContainerOpt) (Host, func()) {
 		Env:           containerCfg.env,
 	}
 	runner, err := docker.NewServiceRunner(runOpts)
-	if err != nil {
-		t.Fatalf("Could not start docker cassandra: %s", err)
-	}
+	require.NoError(t, err, "Could not start docker cassandra")
 
 	svc, err := runner.StartService(context.Background(), func(ctx context.Context, host string, port int) (docker.ServiceConfig, error) {
 		cfg := docker.NewServiceHostPort(host, port)
@@ -146,9 +141,7 @@ func PrepareTestContainer(t *testing.T, opts ...ContainerOpt) (Host, func()) {
 
 		// Create keyspace
 		query := session.Query(`CREATE KEYSPACE "vault" WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };`)
-		if err := query.Exec(); err != nil {
-			t.Fatalf("could not create cassandra keyspace: %v", err)
-		}
+		require.NoError(t, query.Exec(), "could not create cassandra keyspace")
 
 		// Create table
 		query = session.Query(`CREATE TABLE "vault"."entries" (
@@ -157,19 +150,13 @@ func PrepareTestContainer(t *testing.T, opts ...ContainerOpt) (Host, func()) {
 		    value blob,
 		    PRIMARY KEY (bucket, key)
 		) WITH CLUSTERING ORDER BY (key ASC);`)
-		if err := query.Exec(); err != nil {
-			t.Fatalf("could not create cassandra table: %v", err)
-		}
+		require.NoError(t, query.Exec(), "could not create cassandra table")
 		return cfg, nil
 	})
-	if err != nil {
-		t.Fatalf("Could not start docker cassandra: %s", err)
-	}
+	require.NoError(t, err, "Could not start docker cassandra")
 
 	host, port, err := net.SplitHostPort(svc.Config.Address())
-	if err != nil {
-		t.Fatalf("Failed to split host & port from address (%s): %s", svc.Config.Address(), err)
-	}
+	require.NoErrorf(t, err, "Failed to split host & port from address (%s)", svc.Config.Address())
 	h := Host{
 		Name: host,
 		Port: port,

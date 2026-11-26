@@ -44,9 +44,7 @@ func TestFileSource_Validate_Success(t *testing.T) {
 	tmpDir := t.TempDir()
 	fname := filepath.Join(tmpDir, "test.txt")
 	content := []byte("hello world")
-	if err := os.WriteFile(fname, content, 0o600); err != nil {
-		t.Fatalf("failed to write temp file: %v", err)
-	}
+	require.NoError(t, os.WriteFile(fname, content, 0o600), "failed to write temp file")
 
 	src := &FileSource{field: map[string]any{"path": fname}}
 	deps, provides, err := src.Validate()
@@ -82,9 +80,7 @@ func TestFileSource_Validate_WrongType(t *testing.T) {
 func TestFileSource_Validate_OpenError(t *testing.T) {
 	src := &FileSource{field: map[string]any{"path": "/nonexistent/file"}}
 	_, _, err := src.Validate()
-	if err == nil {
-		t.Fatal("expected error opening non-existent file, got nil")
-	}
+	require.Error(t, err, "expected error opening non-existent file, got nil")
 	if !strings.HasPrefix(err.Error(), "failed to open file") {
 		t.Fatalf("expected error starting with 'failed to open file', got %v", err)
 	}
@@ -94,14 +90,11 @@ func TestFileSource_Evaluate_Read(t *testing.T) {
 	tmpDir := t.TempDir()
 	fname := filepath.Join(tmpDir, "eval.txt")
 	content := []byte("data123")
-	if err := os.WriteFile(fname, content, 0o600); err != nil {
-		t.Fatalf("write file error: %v", err)
-	}
+	require.NoError(t, os.WriteFile(fname, content, 0o600), "write file error")
 
 	src := &FileSource{field: map[string]any{"path": fname}}
-	if _, _, err := src.Validate(); err != nil {
-		t.Fatalf("Validate returned %v", err)
-	}
+	_, _, err := src.Validate()
+	require.NoError(t, err, "Validate")
 
 	out, err := src.Evaluate(t.Context(), nil)
 	require.NoError(t, err)
@@ -156,9 +149,7 @@ func TestFileSource_Evaluate_ReadError(t *testing.T) {
 
 	_, err = src.Evaluate(t.Context(), nil)
 
-	if err == nil {
-		t.Fatal("expected error reading from closed file, got nil")
-	}
+	require.Error(t, err, "expected error reading from closed file, got nil")
 
 	if !errors.Is(err, os.ErrInvalid) && !strings.Contains(err.Error(), "closed") {
 		t.Fatalf("expected a file-closed error, got: %v", err)

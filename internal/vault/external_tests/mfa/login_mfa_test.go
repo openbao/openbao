@@ -172,9 +172,7 @@ func TestLoginMFA_Method_CRUD(t *testing.T) {
 			// read the id on another MFA type endpoint should fail
 			invalidPath := fmt.Sprintf("identity/mfa/method/%s/%s", tc.invalidType, methodId)
 			_, err = client.Logical().Read(invalidPath)
-			if err == nil {
-				t.Fatal(err)
-			}
+			require.Error(t, err)
 
 			// read the id globally should succeed
 			globalPath := fmt.Sprintf("identity/mfa/method/%s", methodId)
@@ -186,9 +184,7 @@ func TestLoginMFA_Method_CRUD(t *testing.T) {
 
 			// delete with invalid path should fail
 			_, err = client.Logical().Delete(invalidPath)
-			if err == nil {
-				t.Fatal("expected deleting an MFA method ID with invalid path to fail")
-			}
+			require.Error(t, err, "expected deleting an MFA method ID with invalid path to fail")
 
 			// delete it
 			_, err = client.Logical().Delete(myNewPath)
@@ -299,9 +295,7 @@ func TestLoginMFAMethodName(t *testing.T) {
 
 			// Updating an existing MFA config with another config's name
 			_, err = client.Logical().Write(myNewPath, tc.configData)
-			if err == nil {
-				t.Fatalf("expected a failure for configuring an MFA method with an existing MFA method name, %v", err)
-			}
+			require.Error(t, err, "expected a failure for configuring an MFA method with an existing MFA method name")
 
 			// Create a method with a / in the name
 			tc.configData["method_name"] = fmt.Sprintf("ns1/%s", originalName)
@@ -567,9 +561,7 @@ func TestLoginMFA_LoginEnforcement_MethodIdsIsRequired(t *testing.T) {
 
 	// create a login enforcement config, which should fail
 	_, err := client.Logical().Write("identity/mfa/login-enforcement/foo", map[string]any{})
-	if err == nil {
-		t.Fatal("expected an error but didn't get one")
-	}
+	require.Error(t, err, "expected an error but didn't get one")
 
 	if !strings.Contains(err.Error(), "missing method ids") {
 		t.Fatal("should have received an error about missing method ids but didn't")
@@ -610,9 +602,7 @@ func TestLoginMFA_LoginEnforcement_RequiredParameters(t *testing.T) {
 	_, err := client.Logical().Write("identity/mfa/login-enforcement/foo", map[string]any{
 		"mfa_method_ids": []string{configIDs[0], configIDs[1]},
 	})
-	if err == nil {
-		t.Fatal("expected an error but didn't get one")
-	}
+	require.Error(t, err, "expected an error but didn't get one")
 	if !strings.Contains(err.Error(), "One of auth_method_accessors, auth_method_types, identity_group_ids, identity_entity_ids must be specified") {
 		t.Fatal("expected an error about required fields but didn't get one")
 	}
@@ -638,9 +628,7 @@ func TestLoginMFA_UpdateNonExistentConfig(t *testing.T) {
 		"key_size":  uint(10),
 		"qr_size":   100,
 	})
-	if err == nil {
-		t.Fatal("expected to get an error but didn't")
-	}
+	require.Error(t, err, "expected to get an error but didn't")
 	if !strings.Contains(err.Error(), "Code: 404") {
 		t.Fatal("expected to get a 404 but didn't")
 	}

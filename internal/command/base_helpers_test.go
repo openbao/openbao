@@ -159,9 +159,8 @@ func TestParseFlagFile(t *testing.T) {
 
 	defer os.Remove(tmpFile.Name())
 
-	if _, err := tmpFile.WriteString(content); err != nil {
-		t.Fatalf("failed to write to temporary file: %v", err)
-	}
+	_, err = tmpFile.WriteString(content)
+	require.NoError(t, err, "failed to write to temporary file")
 
 	cases := []struct {
 		value string

@@ -2634,9 +2634,7 @@ func TestOIDC_pathOIDCClientExistenceCheck(t *testing.T) {
 	// Populte storage with a client
 	client := &ident.Client{}
 	entry, _ := logical.StorageEntryJSON(ident.ClientPath+clientName, client)
-	if err := storage.Put(ctx, entry); err != nil {
-		t.Fatal("writing to in mem storage failed")
-	}
+	require.NoError(t, storage.Put(ctx, entry), "writing to in mem storage failed")
 
 	// Expect true with a populated storage
 	exists, err = c.identityStore.PathOIDCClientExistenceCheck(
@@ -2975,9 +2973,7 @@ func TestOIDC_pathOIDCScopeExistenceCheck(t *testing.T) {
 	// Populte storage with a scope
 	scope := &ident.Scope{}
 	entry, _ := logical.StorageEntryJSON(ident.ScopePath+scopeName, scope)
-	if err := storage.Put(ctx, entry); err != nil {
-		t.Fatal("writing to in mem storage failed")
-	}
+	require.NoError(t, storage.Put(ctx, entry), "writing to in mem storage failed")
 
 	// Expect true with a populated storage
 	exists, err = c.identityStore.PathOIDCScopeExistenceCheck(
@@ -3337,9 +3333,7 @@ func TestOIDC_pathOIDCAssignmentExistenceCheck(t *testing.T) {
 	// Populate storage with a assignment
 	assignment := &ident.Assignment{}
 	entry, _ := logical.StorageEntryJSON(ident.AssignmentPath+assignmentName, assignment)
-	if err := storage.Put(ctx, entry); err != nil {
-		t.Fatal("writing to in mem storage failed")
-	}
+	require.NoError(t, storage.Put(ctx, entry), "writing to in mem storage failed")
 
 	// Expect true with a populated storage
 	exists, err = c.identityStore.PathOIDCAssignmentExistenceCheck(

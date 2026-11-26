@@ -63,9 +63,7 @@ func TestParseAuthMetadata(t *testing.T) {
 			testFields.FieldName: FieldSchema(testFields),
 		},
 	}
-	if err := h.ParseAuthMetadata(data); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.ParseAuthMetadata(data))
 	expected := []string{"fizz", "buzz"}
 	sort.Strings(expected)
 	actual := h.AuthMetadata()
@@ -85,21 +83,17 @@ func TestPopulateDesiredAuthMetadata(t *testing.T) {
 			testFields.FieldName: FieldSchema(testFields),
 		},
 	}
-	if err := h.ParseAuthMetadata(data); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.ParseAuthMetadata(data))
 	auth := &logical.Auth{
 		Alias: &logical.Alias{
 			Name: "foo",
 		},
 	}
-	if err := h.PopulateDesiredMetadata(auth, map[string]string{
+	require.NoError(t, h.PopulateDesiredMetadata(auth, map[string]string{
 		"fizz": "fizzval",
 		"buzz": "buzzval",
 		"foo":  "fooval",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 	if len(auth.Alias.Metadata) != 1 {
 		t.Fatal("expected only 1 configured field to be populated")
 	}
@@ -120,9 +114,7 @@ func TestMarshalJSON(t *testing.T) {
 
 func TestUnmarshalJSON(t *testing.T) {
 	h := NewHandler(&Fields{})
-	if err := h.UnmarshalJSON([]byte(`{"auth_metadata":["fizz","buzz"]}`)); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, h.UnmarshalJSON([]byte(`{"auth_metadata":["fizz","buzz"]}`)))
 	if fmt.Sprintf("%s", h.authMetadata) != `[fizz buzz]` {
 		t.Fatal(`expected [fizz buzz]`)
 	}

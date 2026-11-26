@@ -1238,9 +1238,7 @@ func TestSystemBackend_leases_list(t *testing.T) {
 		true,
 	)
 	var keys []string
-	if err := mapstructure.WeakDecode(resp.Data["keys"], &keys); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, mapstructure.WeakDecode(resp.Data["keys"], &keys))
 	if len(keys) != 1 {
 		t.Fatalf("Expected 1 subkey lease, got %d: %#v", len(keys), keys)
 	}
@@ -1256,9 +1254,7 @@ func TestSystemBackend_leases_list(t *testing.T) {
 		t.Fatalf("bad: %#v", resp)
 	}
 	keys = []string{}
-	if err := mapstructure.WeakDecode(resp.Data["keys"], &keys); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, mapstructure.WeakDecode(resp.Data["keys"], &keys))
 	if len(keys) != 1 {
 		t.Fatalf("Expected 1 secret lease, got %d: %#v", len(keys), keys)
 	}
@@ -1291,9 +1287,7 @@ func TestSystemBackend_leases_list(t *testing.T) {
 		t.Fatalf("bad: %#v", resp)
 	}
 	keys = []string{}
-	if err := mapstructure.WeakDecode(resp.Data["keys"], &keys); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, mapstructure.WeakDecode(resp.Data["keys"], &keys))
 	if len(keys) != 3 {
 		t.Fatalf("Expected 3 secret lease, got %d: %#v", len(keys), keys)
 	}
@@ -1326,9 +1320,7 @@ func TestSystemBackend_leases_list(t *testing.T) {
 		t.Fatalf("bad: %#v", resp)
 	}
 	keys = []string{}
-	if err := mapstructure.WeakDecode(resp.Data["keys"], &keys); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, mapstructure.WeakDecode(resp.Data["keys"], &keys))
 	if len(keys) != 2 {
 		t.Fatalf("Expected 2 secret lease, got %d: %#v", len(keys), keys)
 	}
@@ -2074,9 +2066,7 @@ func TestSystemBackend_tuneAuth(t *testing.T) {
 		c.pluginCatalog.directory = tempDir
 		file, err := os.Create(filepath.Join(tempDir, "foo"))
 		require.NoError(t, err)
-		if err := file.Close(); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, file.Close())
 		err = c.pluginCatalog.Set(t.Context(), "token", consts.PluginTypeCredential, "v1.0.0", "foo", []string{}, []string{}, []byte{}, false)
 		require.NoError(t, err)
 	}
@@ -2696,9 +2686,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 
 		req = logical.TestRequest(t, logical.ReadOperation, "raw/test_raw")
 		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err == nil {
-			t.Fatal("expected error if trying to read uncompressed entry with prefix byte")
-		}
+		require.Error(t, err, "expected error if trying to read uncompressed entry with prefix byte")
 		if !resp.IsError() {
 			t.Fatalf("bad: %v", resp)
 		}
@@ -2812,9 +2800,7 @@ func TestSystemBackend_rawReadWrite_base64(t *testing.T) {
 			"encoding": "base64",
 		}
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err == nil {
-			t.Fatal("no error")
-		}
+		require.Error(t, err)
 
 		if err != logical.ErrInvalidRequest {
 			t.Fatalf("unexpected error: %v", err)
@@ -2834,9 +2820,7 @@ func TestSystemBackend_rawReadWrite_base64(t *testing.T) {
 			"encoding": "invalid_encoding",
 		}
 		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err == nil {
-			t.Fatal("no error")
-		}
+		require.Error(t, err)
 
 		if err != logical.ErrInvalidRequest {
 			t.Fatalf("unexpected error: %v", err)
@@ -4313,9 +4297,7 @@ func TestSystemBackend_PathWildcardPreflight(t *testing.T) {
 		Type:    "kv",
 		Options: map[string]string{"version": "1"},
 	}
-	if err := core.mount(ctx, me); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, core.mount(ctx, me))
 
 	// Create the policy, designed to fail
 	rules := `path "foo" { capabilities = ["read"] }`
@@ -4327,13 +4309,11 @@ func TestSystemBackend_PathWildcardPreflight(t *testing.T) {
 		t.Fatalf("bad: %#v", resp)
 	}
 
-	if err := core.identityStore.UpsertEntity(ctx, &identity.Entity{
+	require.NoError(t, core.identityStore.UpsertEntity(ctx, &identity.Entity{
 		ID:        "abcd",
 		Name:      "abcd",
 		BucketKey: "abcd",
-	}, nil, false); err != nil {
-		t.Fatal(err)
-	}
+	}, nil, false))
 
 	te := &logical.TokenEntry{
 		TTL:         300 * time.Second,
@@ -4341,21 +4321,17 @@ func TestSystemBackend_PathWildcardPreflight(t *testing.T) {
 		Policies:    []string{"default", "foo"},
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	if err := core.tokenStore.create(ctx, te, true); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, core.tokenStore.create(ctx, te, true))
 	t.Logf("token id: %s", te.ID)
 
-	if err := core.expiration.RegisterAuth(ctx, te, &logical.Auth{
+	require.NoError(t, core.expiration.RegisterAuth(ctx, te, &logical.Auth{
 		LeaseOptions: logical.LeaseOptions{
 			TTL: te.TTL,
 		},
 		ClientToken: te.ID,
 		Accessor:    te.Accessor,
 		Orphan:      true,
-	}, "", true); err != nil {
-		t.Fatal(err)
-	}
+	}, "", true))
 
 	// Check the mount access func
 	req = logical.TestRequest(t, logical.ReadOperation, "internal/ui/mounts/kv-v1/baz")
@@ -6047,9 +6023,8 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 	err := TestCoreSeal(core)
 	require.NoError(t, err)
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(core, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = TestCoreUnseal(core, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	for _, tc := range testCases {

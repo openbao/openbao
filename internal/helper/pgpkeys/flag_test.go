@@ -49,9 +49,7 @@ func TestPubKeyFilesFlagSetBinary(t *testing.T) {
 	require.NoError(t, err)
 
 	err = pkf.Set(tempDir + "/pubkey3")
-	if err == nil {
-		t.Fatal("err: should not have been able to set a second value")
-	}
+	require.Error(t, err, "err: should not have been able to set a second value")
 
 	expected := []string{strings.ReplaceAll(pubKey1, "\n", ""), strings.ReplaceAll(pubKey2, "\n", "")}
 	if !reflect.DeepEqual(pkf.String(), fmt.Sprint(expected)) {
@@ -74,9 +72,7 @@ func TestPubKeyFilesFlagSetB64(t *testing.T) {
 	require.NoError(t, err)
 
 	err = pkf.Set(path.Join(tempDir, "pubkey3"))
-	if err == nil {
-		t.Fatal("err: should not have been able to set a second value")
-	}
+	require.Error(t, err, "err: should not have been able to set a second value")
 
 	expected := []string{pubKey1, pubKey2}
 	if !reflect.DeepEqual(pkf.String(), fmt.Sprint(expected)) {

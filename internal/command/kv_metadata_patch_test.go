@@ -66,11 +66,9 @@ func TestKvMetadataPatchCommand_EmptyArgs(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	if err := client.Sys().Mount("kv/", &api.MountInput{
+	require.NoError(t, client.Sys().Mount("kv/", &api.MountInput{
 		Type: "kv-v2",
-	}); err != nil {
-		t.Fatalf("kv-v2 mount error: %#v", err)
-	}
+	}), "kv-v2 mount error")
 
 	args := make([]string, 0)
 	code, combined := kvMetadataPatchWithRetry(t, client, args, nil)
@@ -206,11 +204,9 @@ func TestKvMetadataPatchCommand_Flags(t *testing.T) {
 			secretPath := basePath + "my-secret"
 			metadataPath := basePath + "metadata/" + "my-secret"
 
-			if err := client.Sys().Mount(basePath, &api.MountInput{
+			require.NoError(t, client.Sys().Mount(basePath, &api.MountInput{
 				Type: "kv-v2",
-			}); err != nil {
-				t.Fatalf("kv-v2 mount error: %#v", err)
-			}
+			}), "kv-v2 mount error")
 
 			putArgs := []string{"-cas-required=true", "-custom-metadata=foo=abc", "-custom-metadata=bar=def", secretPath}
 			code, combined := kvMetadataPutWithRetry(t, client, putArgs, nil)
@@ -281,11 +277,9 @@ func TestKvMetadataPatchCommand_CasWarning(t *testing.T) {
 	defer closer()
 
 	basePath := "kv/"
-	if err := client.Sys().Mount(basePath, &api.MountInput{
+	require.NoError(t, client.Sys().Mount(basePath, &api.MountInput{
 		Type: "kv-v2",
-	}); err != nil {
-		t.Fatalf("kv-v2 mount error: %#v", err)
-	}
+	}), "kv-v2 mount error")
 
 	secretPath := basePath + "my-secret"
 

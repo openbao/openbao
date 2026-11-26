@@ -301,9 +301,7 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 func TestRequestHandling_LoginWrapping(t *testing.T) {
 	core, _, root := TestCoreUnsealed(t)
 
-	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, core.loadMounts(namespace.RootContext(t.Context()), false))
 
 	core.credentialBackends["userpass"] = credUserpass.Factory
 
@@ -375,9 +373,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 	core, _, root := TestCoreUnsealed(t)
 
-	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, core.loadMounts(namespace.RootContext(t.Context()), false))
 
 	core.credentialBackends["approle"] = approle.Factory
 
@@ -560,9 +556,7 @@ func checkCounter(t *testing.T, inmemSink *metrics.InmemSink, keyPrefix string, 
 func TestRequestHandling_LoginMetric(t *testing.T) {
 	core, _, root, sink := TestCoreUnsealedWithMetrics(t)
 
-	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, core.loadMounts(namespace.RootContext(t.Context()), false))
 
 	core.credentialBackends["userpass"] = credUserpass.Factory
 
@@ -680,9 +674,7 @@ func TestRequestHandling_ListFiltering(t *testing.T) {
 
 	core, _, root := TestCoreUnsealed(t)
 
-	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, core.loadMounts(namespace.RootContext(t.Context()), false))
 
 	core.credentialBackends["userpass"] = credUserpass.Factory
 
@@ -983,9 +975,7 @@ func TestRequestHandling_DisallowLogicalTokenCreation(t *testing.T) {
 
 	core, _, _ := TestCoreUnsealed(t)
 
-	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, core.loadMounts(namespace.RootContext(t.Context()), false))
 
 	core.logicalBackends["test"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
 		return &backendTest.Noop{
@@ -1021,9 +1011,7 @@ func TestRequestHandling_DisallowAuthErrorTokenCreation(t *testing.T) {
 
 	core, _, root := TestCoreUnsealed(t)
 
-	if err := core.loadMounts(namespace.RootContext(t.Context()), false); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, core.loadMounts(namespace.RootContext(t.Context()), false))
 
 	core.credentialBackends["test"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
 		return &backendTest.Noop{

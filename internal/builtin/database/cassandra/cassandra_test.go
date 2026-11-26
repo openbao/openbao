@@ -252,13 +252,12 @@ func assertCreds(t testing.TB, address string, port int, username, password stri
 	bo.MaxInterval = bo.InitialInterval
 	bo.RandomizationFactor = 0.0
 
-	if _, err := backoff.Retry(
+	_, err := backoff.Retry(
 		t.Context(), op,
 		backoff.WithBackOff(bo),
 		backoff.WithMaxElapsedTime(timeout),
-	); err != nil {
-		t.Fatalf("failed to connect after %s: %s", timeout, err)
-	}
+	)
+	require.NoErrorf(t, err, "failed to connect after %s", timeout)
 }
 
 func connect(t testing.TB, address string, port int, username, password string, sslOpts *gocql.SslOptions) error {
@@ -293,13 +292,12 @@ func assertNoCreds(t testing.TB, address string, port int, username, password st
 	bo.MaxInterval = bo.InitialInterval
 	bo.RandomizationFactor = 0.0
 
-	if _, err := backoff.Retry(
+	_, err := backoff.Retry(
 		t.Context(), op,
 		backoff.WithBackOff(bo),
 		backoff.WithMaxElapsedTime(timeout),
-	); err != nil {
-		t.Fatalf("successfully connected after %s when it shouldn't", timeout)
-	}
+	)
+	require.NoErrorf(t, err, "successfully connected after %s when it shouldn't", timeout)
 }
 
 const createUserStatements = `CREATE USER '{{username}}' WITH PASSWORD '{{password}}' NOSUPERUSER;

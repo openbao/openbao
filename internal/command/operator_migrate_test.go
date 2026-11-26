@@ -43,9 +43,7 @@ func TestMigration(t *testing.T) {
 
 		from, err := fromFactory(confFrom, nil)
 		require.NoError(t, err)
-		if err := storeData(t.Context(), from, data); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, storeData(t.Context(), from, data))
 
 		toFactory := physicalBackends["inmem"]
 		confTo := map[string]string{}
@@ -54,13 +52,9 @@ func TestMigration(t *testing.T) {
 		cmd := OperatorMigrateCommand{
 			logger: log.NewNullLogger(),
 		}
-		if err := cmd.migrateAll(t.Context(), from, to, 1); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, cmd.migrateAll(t.Context(), from, to, 1))
 
-		if err := compareStoredData(t.Context(), to, data, ""); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, compareStoredData(t.Context(), to, data, ""))
 	})
 
 	t.Run("Concurrent migration", func(t *testing.T) {
@@ -76,9 +70,7 @@ func TestMigration(t *testing.T) {
 
 		from, err := fromFactory(confFrom, nil)
 		require.NoError(t, err)
-		if err := storeData(t.Context(), from, data); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, storeData(t.Context(), from, data))
 
 		toFactory := physicalBackends["inmem"]
 		confTo := map[string]string{}
@@ -89,12 +81,8 @@ func TestMigration(t *testing.T) {
 			logger: log.NewNullLogger(),
 		}
 
-		if err := cmd.migrateAll(t.Context(), from, to, 10); err != nil {
-			t.Fatal(err)
-		}
-		if err := compareStoredData(t.Context(), to, data, ""); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, cmd.migrateAll(t.Context(), from, to, 10))
+		require.NoError(t, compareStoredData(t.Context(), to, data, ""))
 	})
 
 	t.Run("Start option", func(t *testing.T) {
@@ -104,9 +92,7 @@ func TestMigration(t *testing.T) {
 		confFrom := map[string]string{}
 		from, err := fromFactory(confFrom, nil)
 		require.NoError(t, err)
-		if err := storeData(t.Context(), from, data); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, storeData(t.Context(), from, data))
 
 		toFactory := physFile.NewFileBackend
 		folder := t.TempDir()
@@ -123,13 +109,9 @@ func TestMigration(t *testing.T) {
 			logger:    log.NewNullLogger(),
 			flagStart: start,
 		}
-		if err := cmd.migrateAll(t.Context(), from, to, 1); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, cmd.migrateAll(t.Context(), from, to, 1))
 
-		if err := compareStoredData(t.Context(), to, data, start); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, compareStoredData(t.Context(), to, data, start))
 	})
 
 	t.Run("Start option (parallel)", func(t *testing.T) {
@@ -139,9 +121,7 @@ func TestMigration(t *testing.T) {
 		confFrom := map[string]string{}
 		from, err := fromFactory(confFrom, nil)
 		require.NoError(t, err)
-		if err := storeData(t.Context(), from, data); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, storeData(t.Context(), from, data))
 
 		toFactory := physFile.NewFileBackend
 		folder := t.TempDir()
@@ -158,13 +138,9 @@ func TestMigration(t *testing.T) {
 			logger:    log.NewNullLogger(),
 			flagStart: start,
 		}
-		if err := cmd.migrateAll(t.Context(), from, to, 10); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, cmd.migrateAll(t.Context(), from, to, 10))
 
-		if err := compareStoredData(t.Context(), to, data, start); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, compareStoredData(t.Context(), to, data, start))
 	})
 
 	t.Run("Config parsing", func(t *testing.T) {
@@ -202,9 +178,7 @@ storage_destination "dest_type" {
 		verifyBad := func(cfg string) {
 			os.WriteFile(cfgName, []byte(cfg), 0o644)
 			_, err := cmd.loadMigratorConfig(cfgName)
-			if err == nil {
-				t.Fatalf("expected error but none received from: %v", cfg)
-			}
+			require.Errorf(t, err, "expected error but none received from: %v", cfg)
 		}
 
 		// missing source

@@ -139,9 +139,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 	req.ResponseWriter = hw
 
 	resp, err := b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err == nil {
-		t.Fatal("request did not fail on setting a header that is present in custom response headers")
-	}
+	require.Error(t, err, "request did not fail on setting a header that is present in custom response headers")
 	schema.ValidateResponse(
 		t,
 		schema.FindResponseSchema(t, paths, 3, req.Operation),
@@ -159,9 +157,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 	req.ResponseWriter = hw
 
 	resp, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err == nil {
-		t.Fatal("request did not fail on setting a header that is present in custom response headers")
-	}
+	require.Error(t, err, "request did not fail on setting a header that is present in custom response headers")
 	schema.ValidateResponse(
 		t,
 		schema.FindResponseSchema(t, paths, 3, req.Operation),

@@ -128,9 +128,8 @@ func TestSystem_GRPC_lookupPlugin(t *testing.T) {
 
 	testSystemView := newGRPCSystemView(client)
 
-	if _, err := testSystemView.LookupPlugin(t.Context(), "foo", consts.PluginTypeDatabase); err == nil {
-		t.Fatal("LookPlugin(): expected error on due to unsupported call from plugin")
-	}
+	_, err := testSystemView.LookupPlugin(t.Context(), "foo", consts.PluginTypeDatabase)
+	require.Error(t, err, "LookPlugin(): expected error on due to unsupported call from plugin")
 }
 
 func TestSystem_GRPC_mlockEnabled(t *testing.T) {

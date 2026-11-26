@@ -142,9 +142,7 @@ func TestPKI_RequireCN(t *testing.T) {
 	// Issue a cert with require_cn set to true and with out supplying the
 	// common name. It should error out.
 	_, err = CBWrite(b, s, "issue/example", map[string]any{})
-	if err == nil {
-		t.Fatal("expected an error due to missing common_name")
-	}
+	require.Error(t, err, "expected an error due to missing common_name")
 
 	// Modify the role to make the common name optional
 	_, err = CBWrite(b, s, "roles/example", map[string]any{
@@ -246,17 +244,13 @@ func TestBackend_InvalidParameter(t *testing.T) {
 		"not_after":   "9999-12-31T23:59:59Z",
 		"ttl":         "25h",
 	})
-	if err == nil {
-		t.Fatal(err)
-	}
+	require.Error(t, err)
 
 	_, err = CBWrite(b, s, "root/generate/internal", map[string]any{
 		"common_name": "example.com",
 		"not_after":   "9999-12-31T23:59:59",
 	})
-	if err == nil {
-		t.Fatal(err)
-	}
+	require.Error(t, err)
 }
 
 func TestBackend_CSRValues(t *testing.T) {
@@ -1651,9 +1645,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 						CommonName: issueVals.CommonName,
 					},
 				}
-				if err := handleOtherCSRSANs(csrTemplate, otherSansMap(csrOtherSANs)); err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, handleOtherCSRSANs(csrTemplate, otherSansMap(csrOtherSANs)))
 				block, _ := getCsr(roleVals.KeyType, roleVals.KeyBits, csrTemplate)
 				issueVals.CSR = strings.TrimSpace(string(pem.EncodeToMemory(block)))
 			}
@@ -2984,9 +2976,7 @@ func TestBackend_SignSelfIssued_DifferentTypes(t *testing.T) {
 		},
 		MountPoint: "pki/",
 	})
-	if err == nil {
-		t.Fatal("expected error due to mismatched algorithms")
-	}
+	require.Error(t, err, "expected error due to mismatched algorithms")
 }
 
 // This is a really tricky test because the Go stdlib asn1 package is incapable
@@ -3075,9 +3065,7 @@ func TestBackend_OID_SANs(t *testing.T) {
 		// Not a valid value for the first possibility
 		"other_sans": "1.3.6.1.4.1.311.20.2.3;UTF8:devop@nope.com",
 	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	_, err = CBWrite(b, s, "issue/test", map[string]any{
 		"common_name": "foobar.com",
@@ -3087,9 +3075,7 @@ func TestBackend_OID_SANs(t *testing.T) {
 		// Not a valid OID for the first possibility
 		"other_sans": "1.3.6.1.4.1.311.20.2.5;UTF8:devops@nope.com",
 	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	_, err = CBWrite(b, s, "issue/test", map[string]any{
 		"common_name": "foobar.com",
@@ -3099,9 +3085,7 @@ func TestBackend_OID_SANs(t *testing.T) {
 		// Not a valid name for the second possibility
 		"other_sans": "1.3.6.1.4.1.311.20.2.4;UTF8:d34g@foobar.com",
 	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	_, err = CBWrite(b, s, "issue/test", map[string]any{
 		"common_name": "foobar.com",
@@ -3111,9 +3095,7 @@ func TestBackend_OID_SANs(t *testing.T) {
 		// Not a valid OID for the second possibility
 		"other_sans": "1.3.6.1.4.1.311.20.2.5;UTF8:d34e@foobar.com",
 	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	_, err = CBWrite(b, s, "issue/test", map[string]any{
 		"common_name": "foobar.com",
@@ -3123,9 +3105,7 @@ func TestBackend_OID_SANs(t *testing.T) {
 		// Not a valid type
 		"other_sans": "1.3.6.1.4.1.311.20.2.5;UTF2:d34e@foobar.com",
 	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	// Valid for first possibility
 	resp, err = CBWrite(b, s, "issue/test", map[string]any{
@@ -3252,9 +3232,7 @@ func TestBackend_AllowedSerialNumbers(t *testing.T) {
 		"ttl":           "1h",
 		"serial_number": "foobar",
 	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	// Update the role to allow serial numbers
 	_, err = CBWrite(b, s, "roles/test", map[string]any{
@@ -3270,9 +3248,7 @@ func TestBackend_AllowedSerialNumbers(t *testing.T) {
 		// Not a valid serial number
 		"serial_number": "foobar",
 	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	// Valid for first possibility
 	resp, err = CBWrite(b, s, "issue/test", map[string]any{
@@ -3338,9 +3314,7 @@ func TestBackend_URI_SANs(t *testing.T) {
 		"ttl":         "1h",
 		"uri_sans":    "http://www.mydomain.com/zxf",
 	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	// Test valid single entry
 	_, err = CBWrite(b, s, "issue/test", map[string]any{
@@ -3420,9 +3394,7 @@ func TestBackend_IP_SANs(t *testing.T) {
 		"alt_names":   "foo.foobar.com,bar.foobar.com",
 		"ttl":         "1h",
 	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	// Test valid single entry
 	_, err = CBWrite(b, s, "issue/test", map[string]any{
@@ -3490,17 +3462,14 @@ func TestBackend_AllowedURISANsTemplate(t *testing.T) {
 	require.NoError(t, err)
 
 	// Enable userpass auth method.
-	if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, client.Sys().EnableAuth("userpass", "userpass", ""))
 
 	// Configure test role for userpass.
-	if _, err := client.Logical().Write("auth/userpass/users/userpassname", map[string]any{
+	_, err = client.Logical().Write("auth/userpass/users/userpassname", map[string]any{
 		"password": "test",
 		"policies": "test",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	})
+	require.NoError(t, err)
 
 	// Login userpass for test role and keep client token.
 	secret, err := client.Logical().Write("auth/userpass/login/userpassname", map[string]any{
@@ -3629,17 +3598,14 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 	require.NoError(t, err)
 
 	// Enable userpass auth method.
-	if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, client.Sys().EnableAuth("userpass", "userpass", ""))
 
 	// Configure test role for userpass.
-	if _, err := client.Logical().Write("auth/userpass/users/userpassname", map[string]any{
+	_, err = client.Logical().Write("auth/userpass/users/userpassname", map[string]any{
 		"password": "test",
 		"policies": "test",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	})
+	require.NoError(t, err)
 
 	// Login userpass for test role and set client token
 	userpassAuth, err := auth.NewUserpassAuth("userpassname", &auth.Password{FromString: "test"})

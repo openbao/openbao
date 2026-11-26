@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 func testAuditListCommand(tb testing.TB) (*cli.MockUi, *AuditListCommand) {
@@ -58,14 +59,12 @@ func TestAuditListCommand_Run(t *testing.T) {
 			client, closer := testVaultServer(t)
 			defer closer()
 
-			if err := client.Sys().EnableAuditWithOptions("file", &api.EnableAuditOptions{
+			require.NoError(t, client.Sys().EnableAuditWithOptions("file", &api.EnableAuditOptions{
 				Type: "file",
 				Options: map[string]string{
 					"file_path": "discard",
 				},
-			}); err != nil {
-				t.Fatal(err)
-			}
+			}))
 
 			ui, cmd := testAuditListCommand(t)
 			cmd.client = client

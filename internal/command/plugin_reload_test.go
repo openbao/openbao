@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
+	"github.com/stretchr/testify/require"
 )
 
 func testPluginReloadCommand(tb testing.TB) (*cli.MockUi, *PluginReloadCommand) {
@@ -84,14 +85,12 @@ func TestPluginReloadCommand_Run(t *testing.T) {
 		ui, cmd := testPluginReloadCommand(t)
 		cmd.client = client
 
-		if err := client.Sys().RegisterPlugin(&api.RegisterPluginInput{
+		require.NoError(t, client.Sys().RegisterPlugin(&api.RegisterPluginInput{
 			Name:    pluginName,
 			Type:    api.PluginTypeCredential,
 			Command: pluginName,
 			SHA256:  sha256Sum,
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 
 		code := cmd.Run([]string{
 			"-plugin", pluginName,

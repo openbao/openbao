@@ -79,9 +79,7 @@ func TestPolicyDeleteCommand_Run(t *testing.T) {
 		defer closer()
 
 		policy := `path "secret/" {}`
-		if err := client.Sys().PutPolicy("my-policy", policy); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, client.Sys().PutPolicy("my-policy", policy))
 
 		ui, cmd := testPolicyDeleteCommand(t)
 		cmd.client = client

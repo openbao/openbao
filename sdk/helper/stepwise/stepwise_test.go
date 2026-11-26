@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/stretchr/testify/require"
 )
 
 type testRun struct {
@@ -33,9 +34,7 @@ type testRun struct {
 // the table tests due to the unsetting/re-setting of the environment variable,
 // which is assumed/needed for all other tests.
 func TestStepwise_Run_SkipIfNotAcc(t *testing.T) {
-	if err := os.Setenv(TestEnvVar, ""); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, os.Setenv(TestEnvVar, ""))
 	defer os.Setenv(TestEnvVar, "1")
 	skipCase := Case{
 		Environment: new(mockEnvironment),
@@ -178,9 +177,7 @@ type requestCounts struct {
 
 func TestStepwise_makeRequest(t *testing.T) {
 	me := new(mockEnvironment)
-	if err := me.Setup(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, me.Setup())
 	testT := new(mockT)
 
 	type testRequest struct {

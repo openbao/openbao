@@ -72,9 +72,7 @@ func TestOperatorValidateConfigCommand_Run(t *testing.T) {
 			cmd.Run([]string{"-config", path.Join("./server/test-fixtures/", filename)})
 			result := cmd.diagnose.Finalize(t.Context())
 
-			if err := compareResult(&expected, result); err != nil {
-				t.Fatalf("Did not find expected test results: %v", err)
-			}
+			require.NoError(t, compareResult(&expected, result), "Did not find expected test results")
 		})
 	}
 

@@ -88,9 +88,7 @@ func TestTCPListener_tls(t *testing.T) {
 		TLSDisableClientCerts:         true,
 		TLSClientCAFile:               wd + "reload_ca.pem",
 	}, nil, cli.NewMockUi())
-	if err == nil {
-		t.Fatal("expected error due to mutually exclusive client cert options")
-	}
+	require.Error(t, err, "expected error due to mutually exclusive client cert options")
 
 	ln, _, _, err = tcpListenerFactory(&configutil.Listener{
 		Address:               "127.0.0.1:0",
@@ -162,9 +160,7 @@ func TestTCPListener_tls13(t *testing.T) {
 		TLSClientCAFile:               wd + "reload_ca.pem",
 		TLSMinVersion:                 "tls13",
 	}, nil, cli.NewMockUi())
-	if err == nil {
-		t.Fatal("expected error due to mutually exclusive client cert options")
-	}
+	require.Error(t, err, "expected error due to mutually exclusive client cert options")
 
 	ln, _, _, err = tcpListenerFactory(&configutil.Listener{
 		Address:               "127.0.0.1:0",

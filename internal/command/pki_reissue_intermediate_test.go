@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 // TestPKIReIssueIntermediate tests that the pki reissue command line tool accurately copies information from the
@@ -58,40 +59,32 @@ func createComplicatedIssuerSetUpWithReIssueIntermediate(t *testing.T, client *a
 	// RootX3 has the same name, and is on a different mount
 	// RootX1 has issued IntX1; RootX3 has issued IntX2
 
-	if err := client.Sys().Mount("pki-root", &api.MountInput{
+	require.NoError(t, client.Sys().Mount("pki-root", &api.MountInput{
 		Type: "pki",
 		Config: api.MountConfigInput{
 			MaxLeaseTTL: "36500d",
 		},
-	}); err != nil {
-		t.Fatalf("pki mount error: %#v", err)
-	}
+	}), "pki mount error")
 
-	if err := client.Sys().Mount("pki-newroot", &api.MountInput{
+	require.NoError(t, client.Sys().Mount("pki-newroot", &api.MountInput{
 		Type: "pki",
 		Config: api.MountConfigInput{
 			MaxLeaseTTL: "36500d",
 		},
-	}); err != nil {
-		t.Fatalf("pki mount error: %#v", err)
-	}
+	}), "pki mount error")
 
-	if err := client.Sys().Mount("pki-int", &api.MountInput{
+	require.NoError(t, client.Sys().Mount("pki-int", &api.MountInput{
 		Type: "pki",
 		Config: api.MountConfigInput{
 			MaxLeaseTTL: "36500d",
 		},
-	}); err != nil {
-		t.Fatalf("pki mount error: %#v", err)
-	}
+	}), "pki mount error")
 
 	// Used to check handling empty list responses: Not Used for Any Issuers / Certificates
-	if err := client.Sys().Mount("pki-empty", &api.MountInput{
+	require.NoError(t, client.Sys().Mount("pki-empty", &api.MountInput{
 		Type:   "pki",
 		Config: api.MountConfigInput{},
-	}); err != nil {
-		t.Fatalf("pki mount error: %#v", err)
-	}
+	}), "pki mount error")
 
 	resp, err := client.Logical().Write("pki-root/root/generate/internal", map[string]any{
 		"key_type":    "ec",

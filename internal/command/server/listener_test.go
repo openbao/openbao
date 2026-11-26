@@ -80,9 +80,8 @@ func testListenerImpl(t *testing.T, ln net.Listener, connFn testListenerConnFn, 
 		close(copyCh)
 	}()
 
-	if _, err := client.Write([]byte("foo")); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	_, err = client.Write([]byte("foo"))
+	require.NoError(t, err)
 
 	client.Close()
 

@@ -52,9 +52,7 @@ func TestLoginMFAPriorityQueue_PushPopByKey(t *testing.T) {
 	tc := testCases()
 	tcl := len(tc)
 	for _, i := range tc {
-		if err := pq.Push(i); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, pq.Push(i))
 	}
 
 	if pq.Len() != tcl {
@@ -91,9 +89,7 @@ func TestLoginMFARemoveStaleEntries(t *testing.T) {
 
 	tc := testCases()
 	for _, i := range tc {
-		if err := pq.Push(i); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, pq.Push(i))
 	}
 
 	cutoffTime := time.Now().Add(371 * time.Second)

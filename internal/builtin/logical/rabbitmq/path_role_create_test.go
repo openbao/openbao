@@ -19,9 +19,8 @@ func TestBackend_RoleCreate_DefaultUsernameTemplate(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
 	b := Backend()
-	if err = b.Setup(t.Context(), config); err != nil {
-		t.Fatal(err)
-	}
+	err = b.Setup(t.Context(), config)
+	require.NoError(t, err)
 
 	configData := map[string]any{
 		"connection_uri":    connectionURI,
@@ -95,9 +94,8 @@ func TestBackend_RoleCreate_CustomUsernameTemplate(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
 	b := Backend()
-	if err = b.Setup(t.Context(), config); err != nil {
-		t.Fatal(err)
-	}
+	err = b.Setup(t.Context(), config)
+	require.NoError(t, err)
 
 	configData := map[string]any{
 		"connection_uri":    connectionURI,

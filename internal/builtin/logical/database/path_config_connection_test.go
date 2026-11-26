@@ -94,9 +94,7 @@ func TestWriteConfig_PluginVersionInStorage(t *testing.T) {
 		}
 
 		var config DatabaseConfig
-		if err := entry.DecodeJSON(&config); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, entry.DecodeJSON(&config))
 		return config.PluginVersion
 	}
 

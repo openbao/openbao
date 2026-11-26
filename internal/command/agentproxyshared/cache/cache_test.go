@@ -92,9 +92,7 @@ func TestCache_AutoAuthTokenStripping(t *testing.T) {
 	testClient, err := client.Clone()
 	require.NoError(t, err)
 
-	if err := testClient.SetAddress("http://" + listener.Addr().String()); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, testClient.SetAddress("http://"+listener.Addr().String()))
 
 	// Empty the token in the client. Auto-auth token should be put to use.
 	testClient.SetToken("")
@@ -169,9 +167,7 @@ func TestCache_AutoAuthClientTokenProxyStripping(t *testing.T) {
 	testClient, err := client.Clone()
 	require.NoError(t, err)
 
-	if err := testClient.SetAddress("http://" + listener.Addr().String()); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, testClient.SetAddress("http://"+listener.Addr().String()))
 
 	// Empty the token in the client. Auto-auth token should be put to use.
 	testClient.SetToken(dummyToken)
@@ -220,9 +216,7 @@ func TestCache_ConcurrentRequests(t *testing.T) {
 		})
 	}
 
-	if err := eg.Wait(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, eg.Wait())
 }
 
 func TestCache_TokenRevocations_RevokeOrphan(t *testing.T) {
@@ -707,14 +701,12 @@ func TestCache_NonCacheable(t *testing.T) {
 	require.NoError(t, err)
 
 	// Mount a kv backend
-	if err := testClient.Sys().Mount("kv", &api.MountInput{
+	require.NoError(t, testClient.Sys().Mount("kv", &api.MountInput{
 		Type: "kv",
 		Options: map[string]string{
 			"version": "2",
 		},
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 
 	// Query mounts again
 	newMounts, err := testClient.Sys().ListMounts()
@@ -735,9 +727,7 @@ func TestCache_NonCacheable(t *testing.T) {
 	if apiResp.Error() == nil || (apiResp != nil && apiResp.StatusCode != 404) {
 		t.Fatalf("expected an error response and a 404 from requesting an invalid path, got: %#v", apiResp)
 	}
-	if err == nil {
-		t.Fatal("expected an error from requesting an invalid path")
-	}
+	require.Error(t, err, "expected an error from requesting an invalid path")
 }
 
 func TestCache_Caching_AuthResponse(t *testing.T) {
@@ -931,9 +921,7 @@ func testCachingCacheClearCommon(t *testing.T, clearType string) {
 	}
 
 	r := testClient.NewRequest("PUT", consts.AgentPathCacheClear)
-	if err := r.SetJSONBody(data); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, r.SetJSONBody(data))
 
 	ctx := t.Context()
 	apiResp, err := testClient.RawRequestWithContext(ctx, r)

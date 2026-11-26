@@ -1,0 +1,7 @@
+```release-note:change
+tests: Convert stdlib error guards to testify `require`. Reproduce the scripted commit with:
+  for mod in . sdk api api/auth/approle; do
+    (cd $mod && GOTOOLCHAIN=$(go env GOVERSION) go run github.com/etisserant/testifier@v0.3.0 -fix ./...)
+  done
+  make fmt
+```

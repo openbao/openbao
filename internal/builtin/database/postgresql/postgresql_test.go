@@ -51,9 +51,7 @@ func TestPostgreSQL_Initialize(t *testing.T) {
 	})
 	defer cleanup()
 
-	if err := db.Close(); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, db.Close())
 }
 
 func TestPostgreSQL_InitializeWithStringVals(t *testing.T) {
@@ -62,9 +60,7 @@ func TestPostgreSQL_InitializeWithStringVals(t *testing.T) {
 	})
 	defer cleanup()
 
-	if err := db.Close(); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, db.Close())
 }
 
 func TestPostgreSQL_Initialize_ConnURLWithDSNFormat(t *testing.T) {
@@ -500,9 +496,7 @@ func TestUpdateUser_Password(t *testing.T) {
 		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 		defer cancel()
 		_, err := db.UpdateUser(ctx, updateReq)
-		if err == nil {
-			t.Fatal("err expected, got nil")
-		}
+		require.Error(t, err)
 
 		assertCredsDoNotExist(t, db.ConnectionURL, updateReq.Username, newPass)
 	})
@@ -780,9 +774,7 @@ func assertCredsExist(t testing.TB, connURL, username, password string) {
 func assertCredsDoNotExist(t testing.TB, connURL, username, password string) {
 	t.Helper()
 	err := testCredsExist(t, connURL, username, password)
-	if err == nil {
-		t.Fatal("user should not exist but does")
-	}
+	require.Error(t, err, "user should not exist but does")
 }
 
 func waitUntilCredsDoNotExist(timeout time.Duration) credsAssertion {
@@ -1172,9 +1164,8 @@ func TestPostgreSQL_Repmgr(t *testing.T) {
 	defer db.Close()
 
 	// Add a user to the cluster, then stop the primary container
-	if err = testPostgreSQL_Repmgr_AddUser(ctx, db); err != nil {
-		t.Fatalf("no error expected, got: %s", err)
-	}
+	err = testPostgreSQL_Repmgr_AddUser(ctx, db)
+	require.NoError(t, err)
 	postgresql.StopContainer(t, ctx, runner0, container0)
 
 	// Try adding a new user immediately - expect failure as the database
@@ -1189,21 +1180,17 @@ func TestPostgreSQL_Repmgr(t *testing.T) {
 	// Try adding a new user again which should succeed after the sleep
 	// as the primary failover should have finished. Then, restart
 	// the first container which should become a secondary DB.
-	if err = testPostgreSQL_Repmgr_AddUser(ctx, db); err != nil {
-		t.Fatalf("no error expected, got: %s", err)
-	}
+	err = testPostgreSQL_Repmgr_AddUser(ctx, db)
+	require.NoError(t, err)
 	postgresql.RestartContainer(t, ctx, runner0, container0)
 
 	time.Sleep(10 * time.Second)
 
 	// A final new user to add, which should succeed after the secondary joins.
-	if err = testPostgreSQL_Repmgr_AddUser(ctx, db); err != nil {
-		t.Fatalf("no error expected, got: %s", err)
-	}
+	err = testPostgreSQL_Repmgr_AddUser(ctx, db)
+	require.NoError(t, err)
 
-	if err := db.Close(); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, db.Close())
 }
 
 func testPostgreSQL_Repmgr_Container(t *testing.T, name string) (*PostgreSQL, *docker.Runner, string, string) {
@@ -1228,9 +1215,7 @@ func testPostgreSQL_Repmgr_Container(t *testing.T, name string) (*PostgreSQL, *d
 		t.Fatal("Database should be initialized")
 	}
 
-	if err := db.Close(); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, db.Close())
 
 	return db, runner, connURL, containerID
 }

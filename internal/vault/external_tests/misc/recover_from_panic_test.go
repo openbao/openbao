@@ -42,9 +42,7 @@ func TestRecoverFromPanic(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = client.Logical().Read("noop/panic")
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	// This will deadlock the test if we hit the condition
 	cluster.EnsureCoresSealed(t)

@@ -96,19 +96,15 @@ func TestWalkSecretsTree(t *testing.T) {
 	defer closer()
 
 	// enable kv-v1 backend
-	if err := client.Sys().Mount("kv-v1/", &api.MountInput{
+	require.NoError(t, client.Sys().Mount("kv-v1/", &api.MountInput{
 		Type: "kv-v1",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 	time.Sleep(time.Second)
 
 	// enable kv-v2 backend
-	if err := client.Sys().Mount("kv-v2/", &api.MountInput{
+	require.NoError(t, client.Sys().Mount("kv-v2/", &api.MountInput{
 		Type: "kv-v2",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 	time.Sleep(time.Second)
 
 	ctx, cancelContextFunc := context.WithTimeout(t.Context(), 5*time.Second)
@@ -123,17 +119,14 @@ func TestWalkSecretsTree(t *testing.T) {
 		"app-1/nested/x/y",
 		"app-1/nested/bar",
 	} {
-		if err := client.KVv1("kv-v1").Put(ctx, path, map[string]any{
+		require.NoError(t, client.KVv1("kv-v1").Put(ctx, path, map[string]any{
 			"password": "Hashi123",
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 
-		if _, err := client.KVv2("kv-v2").Put(ctx, path, map[string]any{
+		_, err := client.KVv2("kv-v2").Put(ctx, path, map[string]any{
 			"password": "Hashi123",
-		}); err != nil {
-			t.Fatal(err)
-		}
+		})
+		require.NoError(t, err)
 	}
 
 	type treePath struct {
@@ -258,9 +251,7 @@ func TestWalkSecretsTree(t *testing.T) {
 			})
 
 			if tc.expectedError {
-				if err == nil {
-					t.Fatal("an error was expected but the test succeeded")
-				}
+				require.Error(t, err, "an error was expected but the test succeeded")
 			} else {
 				require.NoError(t, err)
 

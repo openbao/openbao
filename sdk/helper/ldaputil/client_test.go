@@ -24,9 +24,8 @@ func TestDialLDAP(t *testing.T) {
 		Url:            "ldap://localhost:384654786",
 		RequestTimeout: 3,
 	}
-	if _, err := ldapClient.DialLDAP(ce); err == nil {
-		t.Fatal("expected error")
-	}
+	_, err := ldapClient.DialLDAP(ce)
+	require.Error(t, err)
 }
 
 func TestLDAPEscape(t *testing.T) {
@@ -57,9 +56,7 @@ func TestLDAPEscape(t *testing.T) {
 
 func TestGetTLSConfigs(t *testing.T) {
 	config := testConfig(t)
-	if err := config.Validate(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, config.Validate())
 	tlsConfig, err := getTLSConfig(config, "138.91.247.105")
 	require.NoError(t, err)
 	if tlsConfig == nil {

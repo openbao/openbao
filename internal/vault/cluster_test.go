@@ -58,9 +58,8 @@ func TestClusterHAFetching(t *testing.T) {
 	defer c.Shutdown()
 	keys, _ := TestCoreInit(t, c)
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(c, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = TestCoreUnseal(c, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	// Verify unsealed

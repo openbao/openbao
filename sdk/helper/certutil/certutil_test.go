@@ -406,21 +406,19 @@ func TestTLSConfig(t *testing.T) {
 
 			// Verify the leaf certificate against the RootCAs pool to ensure the
 			// server can authenticate itself to the client using the provided CA
-			if _, err := pcbut.Certificate.Verify(x509.VerifyOptions{
+			_, err = pcbut.Certificate.Verify(x509.VerifyOptions{
 				DNSName: "localhost",
 				Roots:   tlsConfig.RootCAs,
-			}); err != nil {
-				t.Fatalf("Leaf certificate verification failed: %v", err)
-			}
+			})
+			require.NoError(t, err, "Leaf certificate verification failed")
 
 			// Verify the leaf certificate against the ClientCAs pool to ensure the
 			// client can authenticate itself to the server using the provided CA
-			if _, err := pcbut.Certificate.Verify(x509.VerifyOptions{
+			_, err = pcbut.Certificate.Verify(x509.VerifyOptions{
 				DNSName: "localhost",
 				Roots:   tlsConfig.ClientCAs,
-			}); err != nil {
-				t.Fatalf("Leaf certificate verification failed: %v", err)
-			}
+			})
+			require.NoError(t, err, "Leaf certificate verification failed")
 		case TLSServer:
 			if tlsConfig.ClientCAs == nil {
 				t.Fatal("ClientCAs pool is nil, but expected a valid pool")
@@ -430,12 +428,11 @@ func TestTLSConfig(t *testing.T) {
 			}
 			// Verify the leaf certificate against the ClientCAs pool to ensure the
 			// server can authenticate client certificates using the provided CA pool
-			if _, err := pcbut.Certificate.Verify(x509.VerifyOptions{
+			_, err = pcbut.Certificate.Verify(x509.VerifyOptions{
 				DNSName: "localhost",
 				Roots:   tlsConfig.ClientCAs,
-			}); err != nil {
-				t.Fatalf("Leaf certificate verification failed: %v", err)
-			}
+			})
+			require.NoError(t, err, "Leaf certificate verification failed")
 		case TLSClient:
 			if tlsConfig.RootCAs == nil {
 				t.Fatal("RootCAs pool is nil, but expected a valid pool")
@@ -445,12 +442,11 @@ func TestTLSConfig(t *testing.T) {
 			}
 			// Verify the leaf certificate against the RootCAs pool to ensure the
 			// client can authenticate the server using the provided CA pool
-			if _, err := pcbut.Certificate.Verify(x509.VerifyOptions{
+			_, err = pcbut.Certificate.Verify(x509.VerifyOptions{
 				DNSName: "localhost",
 				Roots:   tlsConfig.RootCAs,
-			}); err != nil {
-				t.Fatalf("Leaf certificate verification failed: %v", err)
-			}
+			})
+			require.NoError(t, err, "Leaf certificate verification failed")
 		default:
 			if tlsConfig.RootCAs != nil || tlsConfig.ClientCAs != nil {
 				t.Fatal("Found root pools in config object when not expected")
@@ -479,9 +475,8 @@ Q9IFGQFFF8jO18lbyWqnRBGXcS4/G7jQ3S7C121d14YLUeAYOM7pJykI1g4CLx9y
 vitin0L6nprauWkKO38XgM4T75qKZpqtiOcT
 -----END CERTIFICATE-----
 `
-	if _, err := NewCertPool(bytes.NewReader([]byte(caExample))); err != nil {
-		t.Fatal(err)
-	}
+	_, err := NewCertPool(bytes.NewReader([]byte(caExample)))
+	require.NoError(t, err)
 }
 
 func TestGetPublicKeySize(t *testing.T) {
@@ -999,9 +994,7 @@ func TestBasicConstraintExtension(t *testing.T) {
 	t.Run("bad-extension-oid", func(t *testing.T) {
 		// Test invalid type errors out
 		_, _, err := ParseBasicConstraintExtension(pkix.Extension{})
-		if err == nil {
-			t.Fatal("should have failed parsing non-basic constraint extension")
-		}
+		require.Error(t, err, "should have failed parsing non-basic constraint extension")
 	})
 
 	t.Run("garbage-value", func(t *testing.T) {
@@ -1012,9 +1005,7 @@ func TestBasicConstraintExtension(t *testing.T) {
 			Value: extraBytes,
 		}
 		_, _, err = ParseBasicConstraintExtension(ext)
-		if err == nil {
-			t.Fatal("should have failed parsing basic constraint with extra information")
-		}
+		require.Error(t, err, "should have failed parsing basic constraint with extra information")
 	})
 }
 

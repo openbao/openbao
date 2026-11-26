@@ -312,9 +312,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 	getAPIClient := func(port int, tlsConfig *tls.Config) *api.Client {
 		transport := cleanhttp.DefaultPooledTransport()
 		transport.TLSClientConfig = tlsConfig.Clone()
-		if err := http2.ConfigureTransport(transport); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, http2.ConfigureTransport(transport))
 		client := &http.Client{
 			Transport: transport,
 			CheckRedirect: func(*http.Request, []*http.Request) error {
@@ -323,9 +321,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 			},
 		}
 		config := api.DefaultConfig()
-		if config.Error != nil {
-			t.Fatal(config.Error)
-		}
+		require.NoError(t, config.Error)
 		config.Address = fmt.Sprintf("https://127.0.0.1:%d", port)
 		config.HttpClient = client
 
@@ -460,9 +456,7 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 	getAPIClient := func(port int, tlsConfig *tls.Config) *api.Client {
 		transport := cleanhttp.DefaultPooledTransport()
 		transport.TLSClientConfig = tlsConfig.Clone()
-		if err := http2.ConfigureTransport(transport); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, http2.ConfigureTransport(transport))
 		client := &http.Client{
 			Transport: transport,
 			CheckRedirect: func(*http.Request, []*http.Request) error {
@@ -471,9 +465,7 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 			},
 		}
 		config := api.DefaultConfig()
-		if config.Error != nil {
-			t.Fatal(config.Error)
-		}
+		require.NoError(t, config.Error)
 		config.Address = fmt.Sprintf("https://127.0.0.1:%d", port)
 		config.HttpClient = client
 
@@ -510,17 +502,13 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 	require.NoError(t, err)
 
 	_, err = newClient.Logical().Read("kv/cn/not.example.com")
-	if err == nil {
-		t.Fatal("expected access denied")
-	}
+	require.Error(t, err, "expected access denied")
 
 	_, err = newClient.Logical().Read("kv/ext/A UTF8String Extension")
 	require.NoError(t, err)
 
 	_, err = newClient.Logical().Read("kv/ext/bar")
-	if err == nil {
-		t.Fatal("expected access denied")
-	}
+	require.Error(t, err, "expected access denied")
 }
 
 func TestBackend_NonCAExpiry(t *testing.T) {
@@ -589,9 +577,7 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 
 	// Login attempt after certificate expiry should fail
 	_, err = b.HandleRequest(t.Context(), loginReq)
-	if err == nil {
-		t.Fatal("expected error due to expired certificate")
-	}
+	require.Error(t, err, "expected error due to expired certificate")
 }
 
 func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
@@ -824,11 +810,9 @@ func testFactory(t *testing.T) logical.Backend {
 		StorageView: storage,
 	})
 	require.NoError(t, err)
-	if err := b.Initialize(ctx, &logical.InitializationRequest{
+	require.NoError(t, b.Initialize(ctx, &logical.InitializationRequest{
 		Storage: storage,
-	}); err != nil {
-		t.Fatalf("error: %s", err)
-	}
+	}))
 	return b
 }
 
@@ -1298,9 +1282,7 @@ func TestBackend_invalidCIDR(t *testing.T) {
 	loginReq.Connection.RemoteAddr = "127.0.0.1/8"
 
 	_, err = b.HandleRequest(t.Context(), loginReq)
-	if err == nil {
-		t.Fatal("expected \"ERROR: permission denied\"")
-	}
+	require.Error(t, err, "expected \"ERROR: permission denied\"")
 }
 
 func testAccStepAddCRL(t *testing.T, crl []byte, connState tls.ConnectionState) logicaltest.TestStep {
@@ -1824,9 +1806,7 @@ func Test_Renew(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = b.pathLoginRenew(t.Context(), req, empty_login_fd)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	// Put the policies back, this should be okay
 	fd.Raw["policies"] = "bar,foo"
@@ -1884,9 +1864,7 @@ func TestBackend_CertUpgrade(t *testing.T) {
 	if b == nil {
 		t.Fatal("failed to create backend")
 	}
-	if err := b.Setup(ctx, config); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, b.Setup(ctx, config))
 
 	foo := &CertEntry{
 		Policies:   []string{"foo"},
@@ -2017,9 +1995,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	getAPIClient := func(port int, tlsConfig *tls.Config, leafCert string, leafKey string) *api.Client {
 		transport := cleanhttp.DefaultPooledTransport()
 		transport.TLSClientConfig = tlsConfig.Clone()
-		if err := http2.ConfigureTransport(transport); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, http2.ConfigureTransport(transport))
 		client := &http.Client{
 			Transport: transport,
 			CheckRedirect: func(*http.Request, []*http.Request) error {
@@ -2028,9 +2004,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 			},
 		}
 		config := api.DefaultConfig()
-		if config.Error != nil {
-			t.Fatal(config.Error)
-		}
+		require.NoError(t, config.Error)
 		config.Address = fmt.Sprintf("https://127.0.0.1:%d", port)
 		config.HttpClient = client
 
@@ -2053,9 +2027,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	secret, err := newBClient.Logical().Write("auth/cert/login", map[string]any{
 		"name": "trusted-leaf",
 	})
-	if err == nil {
-		t.Fatalf("when logging in with different leaf from trusted, expected err but got none: err=%v / secret=%v", err, secret)
-	}
+	require.Errorf(t, err, "when logging in with different leaf from trusted, secret=%v", secret)
 	if secret != nil {
 		t.Fatalf("when logging in with different leaf from trusted, expected empty secret but got %v", secret)
 	}
@@ -2077,9 +2049,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	secret, err = tamperedAClient.Logical().Write("auth/cert/login", map[string]any{
 		"name": "trusted-leaf",
 	})
-	if err == nil {
-		t.Fatalf("when logging in with different leaf from trusted, expected err but got none: err=%v / secret=%v", err, secret)
-	}
+	require.Errorf(t, err, "when logging in with different leaf from trusted, secret=%v", secret)
 	if secret != nil {
 		t.Fatalf("when logging in with different leaf from trusted, expected empty secret but got %v", secret)
 	}
@@ -2089,9 +2059,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	secret, err = tamperedBClient.Logical().Write("auth/cert/login", map[string]any{
 		"name": "trusted-leaf",
 	})
-	if err == nil {
-		t.Fatalf("when logging in with different leaf from trusted, expected err but got none: err=%v / secret=%v", err, secret)
-	}
+	require.Errorf(t, err, "when logging in with different leaf from trusted, secret=%v", secret)
 	if secret != nil {
 		t.Fatalf("when logging in with different leaf from trusted, expected empty secret but got %v", secret)
 	}

@@ -515,9 +515,7 @@ func TestAppRole_CIDRSubset(t *testing.T) {
 	if resp != nil {
 		t.Fatalf("resp:%#v", resp)
 	}
-	if err == nil {
-		t.Fatal("expected an error")
-	}
+	require.Error(t, err)
 
 	roleData["bound_cidr_list"] = "192.168.27.29/16,172.245.30.40/24,10.20.30.40/30"
 	roleReq.Operation = logical.UpdateOperation
@@ -575,9 +573,7 @@ func TestAppRole_TokenBoundCIDRSubset32Mask(t *testing.T) {
 		t.Fatalf("resp:%#v", resp)
 	}
 
-	if err == nil {
-		t.Fatal("expected an error")
-	}
+	require.Error(t, err)
 }
 
 func TestAppRole_RoleConstraints(t *testing.T) {
@@ -614,9 +610,7 @@ func TestAppRole_RoleConstraints(t *testing.T) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("err:%v, resp:%#v", err, resp)
 	}
-	if err == nil {
-		t.Fatal("expected an error")
-	}
+	require.Error(t, err)
 }
 
 func TestAppRole_RoleIDUpdate(t *testing.T) {
@@ -884,9 +878,7 @@ func TestAppRole_RoleSecretIDAccessorReadDelete(t *testing.T) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
-	if err == nil {
-		t.Fatal("expected an error")
-	}
+	require.Error(t, err)
 }
 
 func TestAppRoleSecretIDLookup(t *testing.T) {
@@ -1910,12 +1902,10 @@ func TestAppRole_TokenutilUpgrade(t *testing.T) {
 			entryVal := fmt.Sprintf(`{"policies": ["foo"], "period": 300000000000, "token_bound_cidrs": ["127.0.0.1", "10.10.10.10/24"]%s}`, tokenTypeKV)
 
 			// Hand craft JSON because there is overlap between fields
-			if err := s.Put(ctx, &logical.StorageEntry{
+			require.NoError(t, s.Put(ctx, &logical.StorageEntry{
 				Key:   "role/" + tt.name,
 				Value: []byte(entryVal),
-			}); err != nil {
-				t.Fatal(err)
-			}
+			}))
 
 			resEntry, err := b.roleEntry(ctx, s, tt.name)
 			require.NoError(t, err)
@@ -2075,7 +2065,5 @@ func TestAppRole_RoleSecretIDAccessorCrossDelete(t *testing.T) {
 		},
 	})
 
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 }

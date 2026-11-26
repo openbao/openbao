@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/helper/docker"
+	"github.com/stretchr/testify/require"
 )
 
 type Config struct {
@@ -38,9 +39,7 @@ func PrepareTestContainer(t *testing.T, legacy bool, pw string) (func(), string)
 		Ports:         []string{"3306/tcp"},
 		Env:           []string{"MYSQL_ROOT_PASSWORD=" + pw},
 	})
-	if err != nil {
-		t.Fatalf("could not start docker mysql: %s", err)
-	}
+	require.NoError(t, err, "could not start docker mysql")
 
 	svc, err := runner.StartService(context.Background(), func(ctx context.Context, host string, port int) (docker.ServiceConfig, error) {
 		hostIP := docker.NewServiceHostPort(host, port)
@@ -56,9 +55,7 @@ func PrepareTestContainer(t *testing.T, legacy bool, pw string) (func(), string)
 		}
 		return &Config{ServiceHostPort: *hostIP, ConnString: connString}, nil
 	})
-	if err != nil {
-		t.Fatalf("could not start docker mysql: %s", err)
-	}
+	require.NoError(t, err, "could not start docker mysql")
 	return svc.Cleanup, svc.Config.(*Config).ConnString
 }
 

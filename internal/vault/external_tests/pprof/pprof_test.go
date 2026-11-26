@@ -45,9 +45,7 @@ func TestSysPprof_MaxRequestDuration(t *testing.T) {
 
 	transport := cleanhttp.DefaultPooledTransport()
 	transport.TLSClientConfig = cluster.Cores[0].TLSConfig()
-	if err := http2.ConfigureTransport(transport); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, http2.ConfigureTransport(transport))
 	httpClient := &http.Client{
 		Transport: transport,
 	}
@@ -69,9 +67,7 @@ func TestSysPprof_MaxRequestDuration(t *testing.T) {
 
 	// If we error here, it means that profiling likely happened, which is not
 	// what we're checking for in this case.
-	if err := json.Unmarshal(httpRespBody, &httpResp); err != nil {
-		t.Fatalf("expected valid error response, got: %v", err)
-	}
+	require.NoError(t, json.Unmarshal(httpRespBody, &httpResp), "expected valid error response")
 
 	errs, ok := httpResp["errors"].([]any)
 	if !ok {

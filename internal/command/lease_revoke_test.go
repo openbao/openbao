@@ -80,20 +80,17 @@ func TestLeaseRevokeCommand_Run(t *testing.T) {
 				client, closer := testVaultServer(t)
 				defer closer()
 
-				if err := client.Sys().Mount("secret-leased", &api.MountInput{
+				require.NoError(t, client.Sys().Mount("secret-leased", &api.MountInput{
 					Type: "generic-leased",
-				}); err != nil {
-					t.Fatal(err)
-				}
+				}))
 
 				path := "secret-leased/revoke/" + tc.name
 				data := map[string]any{
 					"key":   "value",
 					"lease": "1m",
 				}
-				if _, err := client.Logical().Write(path, data); err != nil {
-					t.Fatal(err)
-				}
+				_, err := client.Logical().Write(path, data)
+				require.NoError(t, err)
 				secret, err := client.Logical().Read(path)
 				require.NoError(t, err)
 

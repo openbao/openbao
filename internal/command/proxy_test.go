@@ -134,11 +134,8 @@ func testProxyExitAfterAuth(t *testing.T, viaFlag bool) {
 	t.Logf("config: %s", conf)
 
 	jwtToken, _ := agent.GetTestJWT(t)
-	if err := os.WriteFile(in, []byte(jwtToken), 0o600); err != nil {
-		t.Fatal(err)
-	} else {
-		logger.Trace("wrote test jwt", "path", in)
-	}
+	require.NoError(t, os.WriteFile(in, []byte(jwtToken), 0o600))
+	logger.Trace("wrote test jwt", "path", in)
 
 	exitAfterAuthTemplText := "exit_after_auth = true"
 	if viaFlag {
@@ -173,11 +170,8 @@ auto_auth {
 `
 
 	config = fmt.Sprintf(config, exitAfterAuthTemplText, in, sink1, sink2)
-	if err := os.WriteFile(conf, []byte(config), 0o600); err != nil {
-		t.Fatal(err)
-	} else {
-		logger.Trace("wrote test config", "path", conf)
-	}
+	require.NoError(t, os.WriteFile(conf, []byte(config), 0o600))
+	logger.Trace("wrote test config", "path", conf)
 
 	doneCh := make(chan struct{})
 	go func() {
@@ -937,9 +931,7 @@ cache {}
 
 	// First try on listener 1 where the API should be disabled.
 	resp, err := client.RawRequest(client.NewRequest(http.MethodPost, "/proxy/v1/quit"))
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	if resp != nil && resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected %d but got: %d", http.StatusNotFound, resp.StatusCode)
 	}
@@ -1135,9 +1127,7 @@ func TestProxy_Config_ReloadTls(t *testing.T) {
 		t.Fatal("timeout")
 	}
 
-	if err := testCertificateName("foo.example.com"); err != nil {
-		t.Fatalf("certificate name didn't check out: %s", err)
-	}
+	require.NoError(t, testCertificateName("foo.example.com"), "certificate name didn't check out")
 
 	// Swap out certs
 	inBytes, err = os.ReadFile(filepath.Join(workingDir, barCert))
@@ -1158,9 +1148,7 @@ func TestProxy_Config_ReloadTls(t *testing.T) {
 		t.Fatal("timeout")
 	}
 
-	if err := testCertificateName("bar.example.com"); err != nil {
-		t.Fatalf("certificate name didn't check out: %s", err)
-	}
+	require.NoError(t, testCertificateName("bar.example.com"), "certificate name didn't check out")
 
 	// Shut down
 	cmd.ShutdownCh <- struct{}{}

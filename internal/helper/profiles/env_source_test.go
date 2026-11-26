@@ -92,9 +92,7 @@ func TestEnvSource_Validate_ErrorWrongTypes(t *testing.T) {
 	for _, c := range cases {
 		src := &EnvSource{field: c.field}
 		_, _, err := src.Validate()
-		if err == nil {
-			t.Fatalf("field=%v: expected error %q, got nil", c.field, c.want)
-		}
+		require.Errorf(t, err, "field=%v: expected error %q, got nil", c.field, c.want)
 		if err.Error() != c.want {
 			t.Fatalf("field=%v: expected error %q, got %q", c.field, c.want, err.Error())
 		}

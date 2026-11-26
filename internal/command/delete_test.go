@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/cli"
+	"github.com/stretchr/testify/require"
 )
 
 func testDeleteCommand(tb testing.TB) (*cli.MockUi, *DeleteCommand) {
@@ -82,11 +83,10 @@ func TestDeleteCommand_Run(t *testing.T) {
 		client, closer := testVaultServer(t)
 		defer closer()
 
-		if _, err := client.Logical().Write("secret/delete/foo", map[string]any{
+		_, err := client.Logical().Write("secret/delete/foo", map[string]any{
 			"foo": "bar",
-		}); err != nil {
-			t.Fatal(err)
-		}
+		})
+		require.NoError(t, err)
 
 		ui, cmd := testDeleteCommand(t)
 		cmd.client = client

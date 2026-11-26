@@ -329,12 +329,6 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 		return nil, fmt.Errorf("seal configuration saving failed: %w", err)
 	}
 
-	if c.seal.RecoveryKeySupported() {
-		if err := c.writeLegacyBarrierConfigOnAutoUnseal(ctx); err != nil {
-			return nil, err
-		}
-	}
-
 	keysToStore := [][]byte{barrierKey}
 	results := &InitResult{}
 	// For Shamir, configure the wrapper with the generated seal key and return its shares.

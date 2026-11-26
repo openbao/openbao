@@ -278,10 +278,10 @@ func isTransactionalMountPath(key string) bool {
 }
 
 func isCoreKeyPath(key string) bool {
-	return key == barrierSealConfigPath ||
+	return key == sealConfigPath ||
 		key == barrier.KeyringPath ||
 		key == barrier.LegacyRootKeyPath ||
-		key == recoverySealConfigPath ||
+		key == legacyRecoverySealConfigPath ||
 		key == recoveryKeyPath ||
 		key == barrier.RootKeyPath ||
 		key == barrier.ShamirKekPath ||

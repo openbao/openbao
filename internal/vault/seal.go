@@ -22,17 +22,17 @@ import (
 )
 
 const (
-	// barrierSealConfigPath stores primary Shamir configuration or
-	// legacy auto-unseal provider metadata with placeholder 1-of-1
-	// share parameters. For the root namespace, this record is readable
-	// while sealed.
-	barrierSealConfigPath = "core/seal-config"
+	// sealConfigPath is a path to the entry storing primary or recovery Shamir
+	// share configuration with provider identity. In legacy cases a location of
+	// primary configuration or dummy auto-unseal provider metadata.
+	// For the root namespace, this record is readable while sealed.
+	sealConfigPath = "core/seal-config"
 
-	// recoverySealConfigPath is the path to the recovery key seal configuration.
-	// This is stored in plaintext so that we can perform auto-unseal.
-	recoverySealConfigPath = "core/recovery-config"
+	// legacyRecoverySealConfigPath is a path to the legacy recovery-share
+	// configuration, retained for backward-compatible reads and cleanup.
+	legacyRecoverySealConfigPath = "core/recovery-config"
 
-	// recoveryKeyPath is the path to the recovery key
+	// recoveryKeyPath is the path to recovery-key material.
 	recoveryKeyPath = "core/recovery-key"
 
 	// StoredBarrierKeysPath stores barrier root keys wrapped by the
@@ -139,7 +139,7 @@ func (d *defaultSeal) Config(ctx context.Context) (*SealConfig, error) {
 	}
 
 	// Fetch the seal configuration
-	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+barrierSealConfigPath)
+	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+sealConfigPath)
 	if err != nil {
 		d.core.logger.Error("failed to read seal configuration", "error", err)
 		return nil, fmt.Errorf("failed to check seal configuration: %w", err)
@@ -196,29 +196,29 @@ func (d *defaultSeal) SetConfig(ctx context.Context, config *SealConfig) error {
 		return nil
 	}
 
-	config.Type = d.WrapperType().String()
-	config.Purpose = Primary
+	clone := config.Clone()
+	clone.Type = seal.WrapperTypeShamir.String()
+	clone.Purpose = Primary
 
 	// If we are doing a raft unseal we do not want to persist the barrier config
 	// because storage isn't setup yet.
 	if d.core.isRaftUnseal() {
-		d.config.Store(config.Clone())
+		d.config.Store(clone)
 		return nil
 	}
 
 	// Encode the seal configuration
-	buf, err := json.Marshal(config)
+	buf, err := json.Marshal(clone)
 	if err != nil {
 		return fmt.Errorf("failed to encode seal configuration: %w", err)
 	}
 
-	if err := d.configAccess.Put(ctx, d.metaPrefix+barrierSealConfigPath, buf); err != nil {
+	if err := d.configAccess.Put(ctx, d.metaPrefix+sealConfigPath, buf); err != nil {
 		d.core.logger.Error("failed to write seal configuration", "error", err)
 		return fmt.Errorf("failed to write seal configuration: %w", err)
 	}
 
-	d.SetCachedConfig(config.Clone())
-
+	d.SetCachedConfig(clone)
 	return nil
 }
 

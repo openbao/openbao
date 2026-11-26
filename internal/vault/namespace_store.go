@@ -63,8 +63,8 @@ var knownNamespaceCoreEntriesToCleanup = []string{
 	barrier.KeyringPath,
 	barrier.RootKeyPath,
 	barrier.ShamirKekPath,
-	barrierSealConfigPath,
-	recoverySealConfigPath,
+	sealConfigPath,
+	legacyRecoverySealConfigPath,
 	recoveryKeyPath,
 	StoredBarrierKeysPath,
 }
@@ -234,7 +234,7 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 		// namespace. In that case, we can stop recursing this branch as the
 		// namespace isn't unsealed yet, as we would not be able to read any
 		// children.
-		if sealConfigEntry, err := childView.Get(ctx, barrierSealConfigPath); err != nil {
+		if sealConfigEntry, err := childView.Get(ctx, sealConfigPath); err != nil {
 			return false, fmt.Errorf("failed to read seal config entry for namespace %s: %w", namespace.ID, err)
 		} else if sealConfigEntry != nil {
 			var sealConfig SealConfig
@@ -329,7 +329,7 @@ func (ns *NamespaceStore) Invalidate(ctx context.Context, parentUUID, childUUID 
 	ns.namespacesByUUID[child.UUID] = &child
 	ns.namespacesByAccessor[child.ID] = &child
 
-	if entry, err := NamespaceScopedView(b, &child).Get(ctx, barrierSealConfigPath); err != nil {
+	if entry, err := NamespaceScopedView(b, &child).Get(ctx, sealConfigPath); err != nil {
 		return nil, false, err
 	} else if entry != nil {
 		var config SealConfig

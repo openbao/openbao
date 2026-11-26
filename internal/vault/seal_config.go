@@ -7,14 +7,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
-	"github.com/openbao/openbao/sdk/v2/physical"
+	vaultseal "github.com/openbao/openbao/v2/internal/vault/seal"
 )
 
 type ShamirPurpose string
@@ -26,9 +26,9 @@ const (
 
 // SealConfig is used to describe the shamir seal configuration.
 type SealConfig struct {
-	// Deprecated: Type is retained for legacy storage compatibility, provider
-	// validation and seal migration detection.
-	// Use Purpose to identify the Shamir configuration's role instead.
+	// Type is a seal wrapper provider identity used for legacy storage
+	// compatibility, validation and seal migration detection.
+	// To identify the Shamir's configuration role use Purpose instead.
 	Type string `json:"type" mapstructure:"type"`
 
 	// Purpose of the shamir seal.
@@ -158,28 +158,42 @@ func (s *SealConfig) Clone() *SealConfig {
 	return ret
 }
 
-// writeLegacyBarrierConfigOnAutoUnseal writes a provider-typed barrier
-// configuration for compatibility with older binaries when using auto-unseal.
-// The share parameters are stubs, actual recovery configuration is stored separately.
-func (c *Core) writeLegacyBarrierConfigOnAutoUnseal(ctx context.Context) error {
-	legacySealConfig := &SealConfig{
-		Type:            c.seal.WrapperType().String(),
-		SecretShares:    1,
-		SecretThreshold: 1,
+// Normalize updates the seal config in place to the new (purpose populated) seal configuration,
+// validating purpose and provider, falling back to loading legacy recovery config from storage
+// when necessary. It reports whether the persisted configuration requires storage migration.
+func (s *SealConfig) Normalize(ctx context.Context, sa StorageAccess, metaPrefix string) (bool, error) {
+	switch s.Purpose {
+	case Primary:
+		if s.Type != vaultseal.WrapperTypeShamir.String() {
+			return false, fmt.Errorf("found invalid primary seal configuration with wrapper type of: %q", s.Type)
+		}
+	case Recovery:
+		if s.Type == "" || s.Type == vaultseal.WrapperTypeShamir.String() {
+			return false, fmt.Errorf("found invalid recovery seal configuration with wrapper type of: %q", s.Type)
+		}
+	case "":
+		if s.Type == "" || s.Type == vaultseal.WrapperTypeShamir.String() {
+			s.Type = vaultseal.WrapperTypeShamir.String()
+			s.Purpose = Primary
+		} else {
+			valueBytes, err := sa.Get(ctx, metaPrefix+legacyRecoverySealConfigPath)
+			if err != nil {
+				return false, fmt.Errorf("failed to fetch legacy recovery seal configuration: %w", err)
+			}
+			if valueBytes == nil {
+				return false, errors.New("legacy recovery seal configuration missing")
+			}
+			legacyRecoveryConf := &SealConfig{}
+			if err := jsonutil.DecodeJSON(valueBytes, legacyRecoveryConf); err != nil {
+				return false, fmt.Errorf("failed to decode legacy recovery seal configuration: %w", err)
+			}
+			legacyRecoveryConf.Type = s.Type
+			legacyRecoveryConf.Purpose = Recovery
+			*s = *legacyRecoveryConf
+		}
+		return true, nil
+	default:
+		return false, fmt.Errorf("unknown non-empty seal config purpose encountered: %q", s.Purpose)
 	}
-
-	buf, err := json.Marshal(legacySealConfig)
-	if err != nil {
-		return fmt.Errorf("failed to marshal legacy (barrier) seal configuration: %w", err)
-	}
-
-	if err := c.physical.Put(ctx, &physical.Entry{
-		Key:   barrierSealConfigPath,
-		Value: buf,
-	}); err != nil {
-		c.logger.Error("failed to write legacy (barrier) seal configuration", "error", err)
-		return fmt.Errorf("failed to write legacy (barrier) seal configuration: %w", err)
-	}
-
-	return nil
+	return false, nil
 }

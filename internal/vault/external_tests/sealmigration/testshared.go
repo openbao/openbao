@@ -21,6 +21,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/physical/raft"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -262,16 +263,10 @@ func migrateFromTransitToShamir_Pre14(t *testing.T, logger hclog.Logger, storage
 		t.Fatal(err)
 	}
 
-	// Make sure the seal configs were updated correctly.
-	b, r, err := cluster.Cores[0].PhysicalSealConfigs(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	verifyBarrierConfig(t, b, "shamir", keyShares, keyThreshold, 1)
-	if r != nil {
-		t.Fatalf("expected nil recovery config, got: %#v", r)
-	}
-
+	// Make sure the seal config is updated correctly.
+	sc, _, err := cluster.Cores[0].PhysicalSealConfig(context.Background())
+	require.NoError(t, err)
+	verifyShamirConfig(t, sc, "shamir", vault.Primary, keyShares, keyThreshold)
 	cluster.EnsureCoresSealed(t)
 }
 
@@ -525,36 +520,23 @@ func attemptUnseal(client *api.Client, keys [][]byte) error {
 }
 
 func verifySealConfigShamir(t *testing.T, core *vault.TestClusterCore) {
-	b, r, err := core.PhysicalSealConfigs(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	verifyBarrierConfig(t, b, "shamir", keyShares, keyThreshold, 1)
-	if r != nil {
-		t.Fatal("should not have recovery config for shamir")
-	}
+	sc, _, err := core.PhysicalSealConfig(context.Background())
+	require.NoError(t, err)
+	verifyShamirConfig(t, sc, "shamir", vault.Primary, keyShares, keyThreshold)
 }
 
 func verifySealConfigTransit(t *testing.T, core *vault.TestClusterCore) {
-	b, r, err := core.PhysicalSealConfigs(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	verifyBarrierConfig(t, b, "transit", 1, 1, 1)
-	verifyBarrierConfig(t, r, "shamir", keyShares, keyThreshold, 0)
+	sc, _, err := core.PhysicalSealConfig(context.Background())
+	require.NoError(t, err)
+	verifyShamirConfig(t, sc, "transit", vault.Recovery, keyShares, keyThreshold)
 }
 
-// verifyBarrierConfig verifies that a barrier configuration is correct.
-func verifyBarrierConfig(t *testing.T, cfg *vault.SealConfig, sealType string, shares, threshold int, stored uint) {
-	if cfg.Type != sealType {
-		t.Fatalf("bad seal config: %#v, expected type=%q", cfg, sealType)
-	}
-	if cfg.SecretShares != shares {
-		t.Fatalf("bad seal config: %#v, expected SecretShares=%d", cfg, shares)
-	}
-	if cfg.SecretThreshold != threshold {
-		t.Fatalf("bad seal config: %#v, expected SecretThreshold=%d", cfg, threshold)
-	}
+// verifyShamirConfig verifies that a barrier configuration is correct.
+func verifyShamirConfig(t *testing.T, cfg *vault.SealConfig, sealType string, purpose vault.ShamirPurpose, shares, threshold int) {
+	require.Equal(t, sealType, cfg.Type)
+	require.Equal(t, purpose, cfg.Purpose)
+	require.Equal(t, shares, cfg.SecretShares)
+	require.Equal(t, threshold, cfg.SecretThreshold)
 }
 
 // initializeShamir initializes a brand new backend storage with Shamir.

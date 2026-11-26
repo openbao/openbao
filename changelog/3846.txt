@@ -1,0 +1,3 @@
+```release-note:bug
+core/identity: Fixed incorrect 'identity.num_entities', 'identity.entity.count' and 'identity.entity.alias.count' metrics values when running OpenBao with `unsafe_cross_namespace_identity` enabled.
+```

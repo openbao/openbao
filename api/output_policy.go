@@ -78,7 +78,7 @@ func (d *OutputPolicyError) buildSamplePolicy() (string, error) {
 		capabilities = append(capabilities, "list")
 	}
 
-	// determine whether to add sudo capability
+	// determine whether to add the sudo capability
 	if IsSudoPath(d.path) {
 		capabilities = append(capabilities, "sudo")
 	}

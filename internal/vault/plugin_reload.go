@@ -232,7 +232,7 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *routing.MountEntr
 	// Set paths as well
 	paths := re.Backend.SpecialPaths()
 	if paths != nil {
-		re.SetRootPaths(routing.PathsToRadix(paths.Root))
+		re.SetSudoPaths(routing.PathsToRadix(paths.SudoRequired))
 		loginPathsEntry, err := routing.ParseUnauthenticatedPaths(paths.Unauthenticated)
 		if err != nil {
 			return err

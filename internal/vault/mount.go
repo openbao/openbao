@@ -824,6 +824,11 @@ func (c *Core) splitNamespaceAndMountFromPath(currNs, path string) namespace.Mou
 
 // loadMounts is invoked as part of postUnseal to load the mount table
 func (c *Core) loadMounts(ctx context.Context, standby bool) error {
+	allNamespaces, err := c.ListNamespaces(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list namespaces: %w", err)
+	}
+
 	// Previously, this lock would be held after attempting to read the
 	// storage entries. While we could never read corrupted entries,
 	// we now need to ensure we can gracefully failover from legacy to
@@ -849,7 +854,7 @@ func (c *Core) loadMounts(ctx context.Context, standby bool) error {
 	// to not) is not possible without manual reconstruction.
 	txnableBarrier, ok := c.barrier.(logical.TransactionalStorage)
 	if !ok {
-		_, err := c.loadLegacyMounts(ctx, c.barrier, standby)
+		_, err := c.loadLegacyMounts(ctx, c.barrier, allNamespaces, standby)
 		return err
 	}
 
@@ -865,7 +870,7 @@ func (c *Core) loadMounts(ctx context.Context, standby bool) error {
 	// error.
 	defer txn.Rollback(ctx) //nolint:errcheck
 
-	legacy, err := c.loadLegacyMounts(ctx, txn, standby)
+	legacy, err := c.loadLegacyMounts(ctx, txn, allNamespaces, standby)
 	if err != nil {
 		return fmt.Errorf("failed to load legacy mounts in transaction: %w", err)
 	}
@@ -956,13 +961,12 @@ func (c *Core) loadTransactionalMountsForNamespace(ctx context.Context, ns *name
 // loadLegacyMounts reads the legacy, single-entry combined mount table,
 // returning true if it was used. This will let us know (if we're inside
 // a transaction) if we need to do an upgrade.
-func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage, standby bool) (bool, error) {
-	// Load the existing mount table per namespace
-	allNamespaces, err := c.ListNamespaces(ctx)
-	if err != nil {
-		return false, fmt.Errorf("failed to list namespaces: %w", err)
-	}
-
+func (c *Core) loadLegacyMounts(
+	ctx context.Context,
+	barrier logical.Storage,
+	allNamespaces []*namespace.Namespace,
+	standby bool,
+) (bool, error) {
 	if c.mounts == nil {
 		// Create the mount table if it doesn't exist.
 		c.mounts = &routing.MountTable{
@@ -971,7 +975,7 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage, st
 	}
 
 	for _, ns := range allNamespaces {
-		if err = c.loadLegacyMountsForNamespace(ctx, ns); err != nil {
+		if err := c.loadLegacyMountsForNamespace(ctx, ns); err != nil {
 			return false, err
 		}
 	}
@@ -1001,7 +1005,7 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage, st
 	//    backend.
 	// 2. We may have had a legacy mount table and need to upgrade into the
 	//    new format. runMountUpdates will handle this for us.
-	if err = c.runMountUpdates(ctx, barrier, needPersist, standby); err != nil {
+	if err := c.runMountUpdates(ctx, barrier, needPersist, standby); err != nil {
 		c.logger.Error("failed to run legacy mount table upgrades", "error", err)
 		return false, err
 	}

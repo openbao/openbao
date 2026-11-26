@@ -1832,6 +1832,7 @@ func TestStaticRole_RotationSchedule_Update(t *testing.T) {
 
 // The periodic function rotates a scheduled role each time its schedule fires.
 func TestStaticRole_RotationSchedule_Rotates(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 	b, storage, mockDB := getBackend(t)
 	defer b.Cleanup(ctx)

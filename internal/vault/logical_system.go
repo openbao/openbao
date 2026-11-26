@@ -4567,17 +4567,15 @@ func (c *Core) GetSealStatus(ctx context.Context, lock bool) (*CoreSealStatusRes
 	}
 
 	cssr := &CoreSealStatusResponse{
-		SealStatusResponse: SealStatusResponse{
-			Type:             sealAccess.BarrierType().String(),
-			Initialized:      initialized,
-			Sealed:           sealed,
-			RecoverySeal:     sealAccess.RecoveryKeySupported(),
-			RecoverySealType: recoveryType,
-		},
-		StorageType: c.StorageType(),
-		Version:     version.GetVersion().VersionNumber(),
-		CommitDate:  version.CommitDate,
-		Migration:   c.IsInSealMigrationMode(lock) && !c.IsSealMigrated(lock),
+		Type:             sealAccess.BarrierType().String(),
+		Initialized:      initialized,
+		Sealed:           sealed,
+		RecoverySeal:     sealAccess.RecoveryKeySupported(),
+		RecoverySealType: recoveryType,
+		StorageType:      c.StorageType(),
+		Version:          version.GetVersion().VersionNumber(),
+		CommitDate:       version.CommitDate,
+		Migration:        c.IsSealMigrationPending(ctx, lock),
 	}
 
 	if sealConfig == nil {

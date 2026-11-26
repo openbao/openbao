@@ -336,7 +336,6 @@ func (c *ServerCommand) Flags() *FlagSets {
 		Usage:  "File to write cluster definition to",
 	})
 
-	// TODO: should the below flags be public?
 	f.BoolVar(&BoolVar{
 		Name:    "test-verify-only",
 		Target:  &c.flagTestVerifyOnly,
@@ -1310,7 +1309,7 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 
 	// This needs to happen before we first unseal, so before we trigger dev
-	// mode if it's set
+	// mode if it's set.
 	core.SetClusterListenerAddrs(clusterAddrs)
 	core.SetClusterHandler(vaulthttp.Handler.Handler(&vault.HandlerProperties{
 		Core: core,
@@ -1328,12 +1327,11 @@ func (c *ServerCommand) Run(args []string) int {
 		},
 	}))
 
-	// Attempt unsealing in a background goroutine. This is needed for when a
-	// OpenBao cluster with multiple servers is configured with auto-unseal but is
-	// uninitialized. Once one server initializes the storage backend, this
-	// goroutine will pick up the unseal keys and unseal this instance.
 	var sealShutdownCh chan struct{}
-	if !core.IsInSealMigrationMode(true) {
+	// Skip if there's migration ongoing.
+	if !core.IsInSealMigrationMode() {
+		// We want to retry unseal attempts until any of the nodes finishes up
+		// the initialization.
 		sealShutdownCh = make(chan struct{})
 		go runUnseal(c, core, sealShutdownCh)
 	}
@@ -1351,8 +1349,6 @@ func (c *ServerCommand) Run(args []string) int {
 			return 1
 		}
 	}
-
-	// Perform initialization of HTTP server after the verifyOnly check.
 
 	// Instantiate the wait group
 	c.WaitGroup = &sync.WaitGroup{}

@@ -308,6 +308,7 @@ func (b *databaseBackend) pathStaticRoleDelete(ctx context.Context, req *logical
 
 	// Remove the item from the queue
 	_, _ = b.popFromRotationQueueByKey(name)
+	b.uncacheScheduler(name)
 
 	if err := req.Storage.Delete(ctx, databaseStaticRolePath+name); err != nil {
 		return nil, err

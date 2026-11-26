@@ -73,8 +73,10 @@ func (b *databaseBackend) populateQueue(ctx context.Context, s logical.Storage) 
 		// Rotation parameters were validated against the backend configuration
 		// in effect when the role was written, which may have changed since.
 		// Enqueue anyway, so that credentials keep being rotated.
-		if _, err := b.staticAccountScheduler(role.StaticAccount); err != nil {
+		if sched, err := b.staticAccountScheduler(role.StaticAccount); err != nil {
 			log.Warn("static role rotation parameters are invalid with current configuration", "error", err, "role", roleName)
+		} else {
+			b.cacheScheduler(roleName, sched)
 		}
 
 		item := queue.Item{
@@ -247,8 +249,8 @@ func (b *databaseBackend) rotateCredential(ctx context.Context, s logical.Storag
 		Role:     role,
 	}
 
-	// Create a scheduler to schedule the next rotation.
-	sched, err := scheduling.NewDefaultScheduler(role.StaticAccount)
+	// Get a scheduler to schedule the next rotation.
+	sched, err := b.roleScheduler(roleName, role.StaticAccount)
 	undue := false
 	if err != nil {
 		// Scheduler input is invalid, which can happen
@@ -752,4 +754,63 @@ func (b *databaseBackend) popFromRotationQueueByKey(name string) (*queue.Item, e
 		}
 	}
 	return nil, queue.ErrEmpty
+}
+
+// cachedScheduler is a scheduler detached from the static account it was
+// created for, along with the rotation parameters it parsed. It is never
+// modified once cached.
+type cachedScheduler struct {
+	period   time.Duration
+	cronExpr string
+	sched    scheduling.DefaultScheduler
+}
+
+// cacheScheduler keeps the scheduler of the named role for roleScheduler.
+func (b *databaseBackend) cacheScheduler(name string, sched *scheduling.DefaultScheduler) {
+	cached := &cachedScheduler{
+		period:   sched.GetPeriod(),
+		cronExpr: sched.GetCronExpr(),
+		sched:    *sched,
+	}
+	// Don't keep the static account, which holds credentials
+	cached.sched.Schedulable = nil
+
+	b.schedLock.Lock()
+	defer b.schedLock.Unlock()
+	b.schedulers[name] = cached
+}
+
+// uncacheScheduler forgets the scheduler of the named role.
+func (b *databaseBackend) uncacheScheduler(name string) {
+	b.schedLock.Lock()
+	defer b.schedLock.Unlock()
+	delete(b.schedulers, name)
+}
+
+// roleScheduler returns a scheduler for the static account of the named role,
+// copied from the cached one if the account's rotation schedule didn't change,
+// or else newly created and cached. Unlike staticAccountScheduler, it doesn't
+// check the rotation parameters against the backend configuration.
+func (b *databaseBackend) roleScheduler(name string, sa *staticAccount) (*scheduling.DefaultScheduler, error) {
+	b.schedLock.Lock()
+	cached := b.schedulers[name]
+	b.schedLock.Unlock()
+
+	// rotation_period implies its own cron expression
+	if cached != nil && cached.period == sa.RotationPeriod &&
+		(sa.RotationPeriod != 0 || cached.cronExpr == sa.RotationSchedule) {
+		// duplicate the cached scheduler object to a local copy
+		sched := cached.sched
+		// so that ref to staticAccount is set to local copy only
+		// and then GC can drop it when returned scheduler is discarded
+		sched.Schedulable = sa
+		return &sched, nil
+	}
+
+	sched, err := scheduling.NewDefaultScheduler(sa)
+	if err != nil {
+		return nil, err
+	}
+	b.cacheScheduler(name, sched)
+	return sched, nil
 }

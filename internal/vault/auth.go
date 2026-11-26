@@ -12,6 +12,7 @@ import (
 	"path"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -861,15 +862,18 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 		entry.SyncCache()
 	}
 
+	allNamespaces := sync.OnceValue(func() map[string]*namespace.Namespace {
+		m := make(map[string]*namespace.Namespace)
+		for _, entry := range table.Entries {
+			m[entry.NamespaceID] = entry.Namespace
+		}
+		return m
+	})
+
 	// Handle writing the legacy auth mount table by default.
 	writeTable := func(mt *routing.MountTable, path string) (int, error) {
-		allNamespaces, err := c.ListNamespaces(ctx)
-		if err != nil {
-			return -1, fmt.Errorf("failed to list namespaces: %w", err)
-		}
-
 		var size int
-		for _, ns := range allNamespaces {
+		for _, ns := range allNamespaces() {
 			mountCopy := mt.ShallowClone()
 			mountCopy.Entries = slices.DeleteFunc(mountCopy.Entries, func(e *routing.MountEntry) bool {
 				return e.NamespaceID != ns.ID
@@ -960,17 +964,12 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 			}
 
 			if mount == "" {
-				allNamespaces, err := c.ListNamespaces(ctx)
-				if err != nil {
-					return -1, fmt.Errorf("failed to list namespaces: %w", err)
-				}
-
-				for nsIndex, ns := range allNamespaces {
+				for _, ns := range allNamespaces() {
 					view := NamespaceScopedView(barrier, ns)
 					// List all entries and remove any deleted ones.
 					presentEntries, err := view.List(ctx, prefix+"/")
 					if err != nil {
-						return -1, fmt.Errorf("failed to list entries in namespace %v (%v) for removal: %w", ns.ID, nsIndex, err)
+						return -1, fmt.Errorf("failed to list entries in namespace %v for removal: %w", ns.ID, err)
 					}
 
 					for index, presentEntry := range presentEntries {
@@ -979,7 +978,7 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 						}
 
 						if err := view.Delete(ctx, prefix+"/"+presentEntry); err != nil {
-							return -1, fmt.Errorf("failed to remove deleted mount %v (%d) in namespace %v (%v): %w", presentEntry, index, ns.ID, nsIndex, err)
+							return -1, fmt.Errorf("failed to remove deleted mount %v (%d) in namespace %v: %w", presentEntry, index, ns.ID, err)
 						}
 					}
 

@@ -50,7 +50,8 @@
 
 .button.masked-input-toggle,
 .button.copy-button,
-.button.download-button {
+.button.download-button,
+.button.generate-button {
   min-width: $spacing-xl;
   border-left: 0;
   color: $grey;
@@ -58,7 +59,8 @@
 }
 
 .button.copy-button,
-.button.download-button {
+.button.download-button,
+.button.generate-button {
   border-radius: 0;
 }
 

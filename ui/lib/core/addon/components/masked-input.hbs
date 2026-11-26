@@ -40,6 +40,18 @@
       <Icon data-test-download-icon @name="download" />
     </button>
   {{/if}}
+  {{#if (and @allowGenerate (not @displayOnly))}}
+    <button
+      type="button"
+      class="button generate-button"
+      title="Generate Password"
+      aria-label="Generate Password"
+      {{on "click" this.openGenerator}}
+      data-test-button="generate-password"
+    >
+      <Icon @name="random" />
+    </button>
+  {{/if}}
   <button
     onclick={{this.toggleMask}}
     type="button"
@@ -93,4 +105,8 @@
       </button>
     </footer>
   </Modal>
+{{/if}}
+{{! PASSWORD GENERATOR MODAL }}
+{{#if this.showGenerator}}
+  <PasswordGeneratorModal @onUse={{this.useGeneratedPassword}} @onClose={{this.closeGenerator}} />
 {{/if}}

@@ -26,6 +26,7 @@
     "@hashicorp/ember-flight-icons": "*",
     "@hashicorp/flight-icons": "*",
     "codemirror": "*",
-    "ember-modifier": "*"
+    "ember-modifier": "*",
+    "secure-password-utilities": "*"
   }
 }

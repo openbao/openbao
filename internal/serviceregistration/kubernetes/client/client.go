@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -26,6 +27,10 @@ var (
 	RetryWaitMax = 30 * time.Second
 	RetryMax     = 10
 
+	// HTTP client timeouts
+	DefaultRequestTimeout        = 30 * time.Second
+	DefaultResponseHeaderTimeout = 10 * time.Second
+
 	// Standard errs
 	ErrNamespaceUnset = errors.New(`"namespace" is unset`)
 	ErrPodNameUnset   = errors.New(`"podName" is unset`)
@@ -38,9 +43,10 @@ var (
 // the client into smaller modules, or if we add quite a few methods to this client, it may
 // be worthwhile to revisit that decision.
 type Client struct {
-	logger hclog.Logger
-	config *Config
-	stopCh chan struct{}
+	logger   hclog.Logger
+	config   *Config
+	stopCh   chan struct{}
+	stopOnce sync.Once
 }
 
 // New instantiates a Client. The stopCh is used for exiting retry loops
@@ -58,7 +64,9 @@ func New(logger hclog.Logger) (*Client, error) {
 }
 
 func (c *Client) Shutdown() {
-	close(c.stopCh)
+	c.stopOnce.Do(func() {
+		close(c.stopCh)
+	})
 }
 
 // GetPod gets a pod from the Kubernetes API.
@@ -139,6 +147,13 @@ func (c *Client) do(req *http.Request, ptrToReturnObj any) error {
 	// a stop from our stopChan. This allows us to exit from our retry
 	// loop during a shutdown, rather than hanging.
 	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
+	select {
+	case <-c.stopCh:
+		cancelFunc()
+		return context.Canceled
+	default:
+	}
 	go func() {
 		select {
 		case <-ctx.Done():
@@ -146,23 +161,28 @@ func (c *Client) do(req *http.Request, ptrToReturnObj any) error {
 			cancelFunc()
 		}
 	}()
-	retryableReq.WithContext(ctx)
+	retryableReq = retryableReq.WithContext(ctx)
 
 	retryableReq.Header.Set("Authorization", "Bearer "+c.config.BearerToken)
 	retryableReq.Header.Set("Accept", "application/json")
 
+	transport := cleanhttp.DefaultTransport()
+	transport.TLSClientConfig = &tls.Config{
+		RootCAs: c.config.CACertPool,
+	}
+	transport.ResponseHeaderTimeout = DefaultResponseHeaderTimeout
+
+	httpClient := cleanhttp.DefaultClient()
+	httpClient.Transport = transport
+	httpClient.Timeout = DefaultRequestTimeout
+
 	client := &retryablehttp.Client{
-		HTTPClient:   cleanhttp.DefaultClient(),
+		HTTPClient:   httpClient,
 		RetryWaitMin: RetryWaitMin,
 		RetryWaitMax: RetryWaitMax,
 		RetryMax:     RetryMax,
 		CheckRetry:   c.getCheckRetry(req),
 		Backoff:      retryablehttp.DefaultBackoff,
-	}
-	client.HTTPClient.Transport = &http.Transport{
-		TLSClientConfig: &tls.Config{
-			RootCAs: c.config.CACertPool,
-		},
 	}
 
 	// Execute and retry the request. This client comes with exponential backoff and
@@ -191,6 +211,9 @@ func (c *Client) do(req *http.Request, ptrToReturnObj any) error {
 
 func (c *Client) getCheckRetry(req *http.Request) retryablehttp.CheckRetry {
 	return func(ctx context.Context, resp *http.Response, err error) (bool, error) {
+		if ctx.Err() != nil {
+			return false, ctx.Err()
+		}
 		if resp == nil {
 			return true, fmt.Errorf("nil response: %s", req.URL.RequestURI())
 		}

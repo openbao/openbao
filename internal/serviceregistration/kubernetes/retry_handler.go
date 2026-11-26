@@ -45,12 +45,13 @@ type retryHandler struct {
 }
 
 // Run must be called for retries to be started.
+// Initial registration and periodic updates run asynchronously so listeners
+// can start even if the Kubernetes API is temporarily unreachable, and
+// shutdownCh cancels any in-flight API calls promptly.
 func (r *retryHandler) Run(shutdownCh <-chan struct{}, wait *sync.WaitGroup) {
-	r.setInitialState(shutdownCh)
-
 	// Run this in a go func so this call doesn't block.
 	wait.Go(func() {
-		// Make sure Vault will give us time to finish up here.
+		// Make sure OpenBao will give us time to finish up here.
 
 		var g run.Group
 
@@ -79,26 +80,6 @@ func (r *retryHandler) Run(shutdownCh <-chan struct{}, wait *sync.WaitGroup) {
 			r.logger.Error("error encountered during periodic state update", "error", err)
 		}
 	})
-}
-
-func (r *retryHandler) setInitialState(shutdownCh <-chan struct{}) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
-	doneCh := make(chan struct{})
-
-	go func() {
-		if err := r.setInitialStateInternal(); err != nil {
-			r.logger.Warn("unable to set initial state due; will retry", "err", err)
-		}
-		close(doneCh)
-	}()
-
-	// Wait until the state is set or shutdown happens
-	select {
-	case <-doneCh:
-	case <-shutdownCh:
-	}
 }
 
 // Notify adds a patch to be retried until it's either completed without
@@ -201,6 +182,12 @@ func (r *retryHandler) periodicUpdateState(stopCh chan struct{}) {
 	defer retry.Stop()
 
 	for {
+		select {
+		case <-stopCh:
+			return
+		default:
+		}
+
 		// Call updateState immediately so we don't wait for the first tick
 		// if setting the initial state
 		r.updateState()

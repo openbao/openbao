@@ -4,8 +4,13 @@
 package kubernetes
 
 import (
+	"encoding/pem"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -50,12 +55,16 @@ func TestRetryHandlerSimple(t *testing.T) {
 		initialState:   sr.State{},
 	}
 	r.Run(shutdownCh, wait)
+	t.Cleanup(func() {
+		close(shutdownCh)
+		wait.Wait()
+	})
 
 	// Initial number of patches upon Run from setting the initial state
+	require.Eventually(t, func() bool {
+		return testState.NumPatches() > 0
+	}, 5*time.Second, 10*time.Millisecond)
 	initStatePatches := testState.NumPatches()
-	if initStatePatches == 0 {
-		t.Fatal("expected number of states patches after initial patches to be non-zero")
-	}
 
 	// Send a new patch
 	testPatch := &client.Patch{
@@ -443,5 +452,73 @@ func TestRetryHandlerAPIConnectivityProblemsNotifications(t *testing.T) {
 	val = testState.Get(pathToLabels + labelInitialized)["value"]
 	if val != "true" {
 		t.Fatal("expected true")
+	}
+}
+
+func TestServiceRegistration_UnreachableAPIDoesNotBlockRunOrShutdown(t *testing.T) {
+	var hits atomic.Int32
+	unblock := make(chan struct{})
+	defer close(unblock)
+
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		select {
+		case <-unblock:
+		case <-r.Context().Done():
+		}
+	}))
+	defer srv.Close()
+
+	u, err := url.Parse(srv.URL)
+	require.NoError(t, err)
+	dir := t.TempDir()
+	tokFile := dir + "/token"
+	require.NoError(t, os.WriteFile(tokFile, []byte("test-token"), 0o600))
+	caFile := dir + "/ca.crt"
+	caPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: srv.Certificate().Raw})
+	require.NoError(t, os.WriteFile(caFile, caPEM, 0o600))
+
+	origScheme, origToken, origCA := client.Scheme, client.TokenFile, client.RootCAFile
+	origWaitMin, origWaitMax, origRetries := client.RetryWaitMin, client.RetryWaitMax, client.RetryMax
+	t.Cleanup(func() {
+		client.Scheme, client.TokenFile, client.RootCAFile = origScheme, origToken, origCA
+		client.RetryWaitMin, client.RetryWaitMax, client.RetryMax = origWaitMin, origWaitMax, origRetries
+	})
+	client.Scheme = u.Scheme + "://"
+	client.TokenFile = tokFile
+	client.RootCAFile = caFile
+	client.RetryWaitMin = 5 * time.Second
+	client.RetryWaitMax = 10 * time.Second
+	client.RetryMax = 10
+	t.Setenv(client.EnvVarKubernetesServiceHost, u.Hostname())
+	t.Setenv(client.EnvVarKubernetesServicePort, u.Port())
+
+	reg, err := NewServiceRegistration(map[string]string{
+		"namespace": "default",
+		"pod_name":  "openbao-0",
+	}, hclog.NewNullLogger(), sr.State{VaultVersion: "2.7.3"})
+	require.NoError(t, err)
+
+	shutdownCh := make(chan struct{})
+	wait := &sync.WaitGroup{}
+
+	start := time.Now()
+	require.NoError(t, reg.Run(shutdownCh, wait, ""))
+	require.Less(t, time.Since(start), 500*time.Millisecond, "Run must not block on unreachable Kubernetes API")
+
+	require.Eventually(t, func() bool {
+		return hits.Load() >= 1
+	}, 2*time.Second, 10*time.Millisecond)
+
+	close(shutdownCh)
+	done := make(chan struct{})
+	go func() {
+		wait.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(1 * time.Second):
+		t.Fatal("service registration did not shut down promptly")
 	}
 }

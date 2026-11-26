@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/go-hclog"
 	sr "github.com/openbao/openbao/v2/internal/serviceregistration"
@@ -36,6 +37,11 @@ func TestServiceRegistration(t *testing.T) {
 		t.Fatalf("expected 0 patches but have %d: %+v", testState.NumPatches(), testState)
 	}
 	shutdownCh := make(chan struct{})
+	wait := &sync.WaitGroup{}
+	t.Cleanup(func() {
+		close(shutdownCh)
+		wait.Wait()
+	})
 	config := map[string]string{
 		"namespace": kubetest.ExpectedNamespace,
 		"pod_name":  kubetest.ExpectedPodName,
@@ -50,14 +56,14 @@ func TestServiceRegistration(t *testing.T) {
 	}
 	reg, err := NewServiceRegistration(config, logger, state)
 	require.NoError(t, err)
-	if err := reg.Run(shutdownCh, &sync.WaitGroup{}, ""); err != nil {
+	if err := reg.Run(shutdownCh, wait, ""); err != nil {
 		t.Fatal(err)
 	}
 
-	// Test initial state.
-	if testState.NumPatches() != 5 {
-		t.Fatalf("expected 5 current labels but have %d: %+v", testState.NumPatches(), testState)
-	}
+	// Test initial state (applied asynchronously by the background loop).
+	require.Eventually(t, func() bool {
+		return testState.NumPatches() == 5
+	}, 5*time.Second, 10*time.Millisecond)
 	if testState.Get(pathToLabels + labelVaultVersion)["value"] != testVersion {
 		t.Fatalf("expected %q but received %q", testVersion, testState.Get(pathToLabels + labelVaultVersion)["value"])
 	}

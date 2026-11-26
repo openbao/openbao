@@ -1,2 +1,3 @@
 ```release-note:improvement
 ui: Redirect users to their last viewed page after they sign back in following token expiration.
+```

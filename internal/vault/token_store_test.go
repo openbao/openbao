@@ -911,9 +911,7 @@ path "sys/control-group/request" {
 	req.ClientToken = "approver-token"
 
 	resp, err := c.HandleRequest(ctx, req)
-	if err == nil {
-		t.Fatalf("err: %s; resp: %+v", err, resp)
-	}
+	require.Errorf(t, err, "resp: %+v", resp)
 
 	// if token has control group, expect change to meta data
 	cg := logical.ControlGroup{
@@ -5811,9 +5809,7 @@ func TestTokenStore_HandleTidyCase1(t *testing.T) {
 		require.NoError(t, err)
 
 		// Destroy the token index
-		if ts.idView(namespace.RootNamespace).Delete(ctx, saltedTut); err != nil {
-			t.Fatalf("failed to delete token entry: %v", err)
-		}
+		require.NoError(t, ts.idView(namespace.RootNamespace).Delete(ctx, saltedTut), "failed to delete token entry")
 
 		// Destroy the cubby space
 		err = ts.cubbyholeDestroyer(ctx, ts, te)
@@ -5939,9 +5935,7 @@ func TestTokenStore_HandleTidy_parentCleanup(t *testing.T) {
 		require.NoError(t, err)
 
 		// Destroy the token index
-		if ts.idView(namespace.RootNamespace).Delete(ctx, saltedTut); err != nil {
-			t.Fatalf("failed to delete token entry: %v", err)
-		}
+		require.NoError(t, ts.idView(namespace.RootNamespace).Delete(ctx, saltedTut), "failed to delete token entry")
 
 		// Destroy the cubby space
 		err = ts.cubbyholeDestroyer(ctx, ts, te)
@@ -6110,9 +6104,7 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 	}
 
 	// Destroy the token index
-	if ts.idView(namespace.RootNamespace).Delete(ctx, saltedTut); err != nil {
-		t.Fatalf("failed to delete token entry: %v", err)
-	}
+	require.NoError(t, ts.idView(namespace.RootNamespace).Delete(ctx, saltedTut), "failed to delete token entry")
 	te, err = ts.lookupInternal(ctx, saltedTut, true, true)
 	require.NoError(t, err)
 	if te != nil {

@@ -111,9 +111,7 @@ func CompilePlugin(t testing.T, typ consts.PluginType, pluginVersion string, plu
 		cmd := exec.Command("go", line...)
 		cmd.Dir = dir
 		output, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatal(fmt.Errorf("error running go build %v output: %s", err, output))
-		}
+		require.NoErrorf(t, err, "error running go build, output: %s", output)
 		testPluginCache[key], err = os.ReadFile(pluginPath)
 		require.NoError(t, err)
 		pluginBytes = testPluginCache[key]

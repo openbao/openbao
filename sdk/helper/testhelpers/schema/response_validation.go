@@ -12,6 +12,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 // ValidateResponse is a test helper that validates whether the given response
@@ -37,13 +38,11 @@ func ValidateResponse(t *testing.T, schema *framework.Response, response *logica
 func ValidateResponseData(t *testing.T, schema *framework.Response, data map[string]any, strict bool) {
 	t.Helper()
 
-	if err := validateResponseDataImpl(
+	require.NoErrorf(t, validateResponseDataImpl(
 		schema,
 		data,
 		strict,
-	); err != nil {
-		t.Fatalf("validation error: %v; response data: %#v", err, data)
-	}
+	), "validation error, response data: %#v", data)
 }
 
 // validateResponseDataImpl is extracted so that it can be tested

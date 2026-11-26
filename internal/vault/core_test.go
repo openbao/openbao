@@ -1949,9 +1949,7 @@ func TestCore_Standby_Seal(t *testing.T) {
 
 	// Seal the standby core with an invalid token. Shouldn't go down.
 	err = core3.Seal(keyUUID)
-	if err == nil {
-		t.Fatalf("should not be sealed: sealed=%v / err=%v", core3.Sealed(), err)
-	}
+	require.Errorf(t, err, "should not be sealed: sealed=%v", core3.Sealed())
 }
 
 func TestCore_StepDown(t *testing.T) {

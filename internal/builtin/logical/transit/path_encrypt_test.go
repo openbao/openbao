@@ -76,9 +76,7 @@ func TestTransit_MissingPlaintextInBatchInput(t *testing.T) {
 		Data:      batchData,
 	}
 	resp, err = b.HandleRequest(t.Context(), batchReq)
-	if err == nil {
-		t.Fatalf("expected error due to missing plaintext in request, err:%v resp:%#v", err, resp)
-	}
+	require.Errorf(t, err, "expected error due to missing plaintext in request, resp:%#v", resp)
 }
 
 // Case1: Ensure that batch encryption did not affect the normal flow of

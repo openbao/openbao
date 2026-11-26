@@ -2027,9 +2027,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	secret, err := newBClient.Logical().Write("auth/cert/login", map[string]any{
 		"name": "trusted-leaf",
 	})
-	if err == nil {
-		t.Fatalf("when logging in with different leaf from trusted, expected err but got none: err=%v / secret=%v", err, secret)
-	}
+	require.Errorf(t, err, "when logging in with different leaf from trusted, secret=%v", secret)
 	if secret != nil {
 		t.Fatalf("when logging in with different leaf from trusted, expected empty secret but got %v", secret)
 	}
@@ -2051,9 +2049,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	secret, err = tamperedAClient.Logical().Write("auth/cert/login", map[string]any{
 		"name": "trusted-leaf",
 	})
-	if err == nil {
-		t.Fatalf("when logging in with different leaf from trusted, expected err but got none: err=%v / secret=%v", err, secret)
-	}
+	require.Errorf(t, err, "when logging in with different leaf from trusted, secret=%v", secret)
 	if secret != nil {
 		t.Fatalf("when logging in with different leaf from trusted, expected empty secret but got %v", secret)
 	}
@@ -2063,9 +2059,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	secret, err = tamperedBClient.Logical().Write("auth/cert/login", map[string]any{
 		"name": "trusted-leaf",
 	})
-	if err == nil {
-		t.Fatalf("when logging in with different leaf from trusted, expected err but got none: err=%v / secret=%v", err, secret)
-	}
+	require.Errorf(t, err, "when logging in with different leaf from trusted, secret=%v", secret)
 	if secret != nil {
 		t.Fatalf("when logging in with different leaf from trusted, expected empty secret but got %v", secret)
 	}

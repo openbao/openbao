@@ -3067,11 +3067,13 @@ func TestCore_HandleRequest_TokenCreate_RegisterAuthFailure(t *testing.T) {
 
 // mockServiceRegistration helps test whether standalone ServiceRegistration works
 type mockServiceRegistration struct {
+	mu                sync.Mutex
 	notifyActiveCount int
 	notifySealedCount int
 	notifyPerfCount   int
 	notifyInitCount   int
 	runDiscoveryCount int
+	activeStates      []bool
 }
 
 func (m *mockServiceRegistration) Run(shutdownCh <-chan struct{}, wait *sync.WaitGroup, redirectAddr string) error {
@@ -3079,8 +3081,19 @@ func (m *mockServiceRegistration) Run(shutdownCh <-chan struct{}, wait *sync.Wai
 	return nil
 }
 
+func (m *mockServiceRegistration) drainActiveStates() []bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	activeStates := m.activeStates
+	m.activeStates = nil
+	return activeStates
+}
+
 func (m *mockServiceRegistration) NotifyActiveStateChange(isActive bool) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.notifyActiveCount++
+	m.activeStates = append(m.activeStates, isActive)
 	return nil
 }
 
@@ -3155,6 +3168,77 @@ func TestCore_ServiceRegistration(t *testing.T) {
 	}); diff != nil {
 		t.Fatal(diff)
 	}
+}
+
+// TestCore_ServiceRegistration_PostUnsealFailure checks that when a node
+// acquires the HA lock but post-unseal setup fails, it notifies service registration
+// that it is a standby again.
+func TestCore_ServiceRegistration_PostUnsealFailure(t *testing.T) {
+	// Make a mock service discovery
+	sr := &mockServiceRegistration{}
+
+	// Create the core
+	logger = logging.NewVaultLogger(log.Trace)
+	inm, err := inmem.NewInmemHA(nil, logger)
+	require.NoError(t, err)
+	inmha, err := inmem.NewInmemHA(nil, logger)
+	require.NoError(t, err)
+	const redirectAddr = "http://127.0.0.1:8200"
+	core, err := NewCore(&CoreConfig{
+		ServiceRegistration: sr,
+		Physical:            inm,
+		HAPhysical:          inmha.(physical.HABackend),
+		RedirectAddr:        redirectAddr,
+	})
+	require.NoError(t, err)
+	defer core.Shutdown() //nolint:errcheck
+
+	// Initialize and unseal the core
+	keys, root := TestCoreInit(t, core)
+	for _, key := range keys {
+		if _, err := TestCoreUnseal(core, TestKeyCopy(key)); err != nil {
+			t.Fatalf("unseal err: %s", err)
+		}
+	}
+	if core.Sealed() {
+		t.Fatal("should not be sealed")
+	}
+
+	// Wait for core to become active
+	TestWaitActive(t, core)
+
+	require.Equal(t, []bool{true}, sr.drainActiveStates())
+
+	req := &logical.Request{
+		ClientToken: root,
+		Path:        "sys/step-down",
+	}
+
+	// Step down core
+	err = core.StepDown(namespace.RootContext(t.Context()), req)
+	require.NoError(t, err)
+	var seen []bool
+	require.Eventually(t, func() bool {
+		seen = append(seen, sr.drainActiveStates()...)
+		return len(seen) == 1 && !seen[0]
+	},
+		30*time.Second, 100*time.Millisecond,
+	)
+
+	err = inm.Put(t.Context(), &physical.Entry{
+		Key:   "core/mounts",
+		Value: []byte("{not valid json}"),
+	})
+	require.NoError(t, err)
+
+	seen = nil
+
+	require.Eventually(t, func() bool {
+		seen = append(seen, sr.drainActiveStates()...)
+		return len(seen) >= 2 && seen[0] && !seen[1]
+	},
+		30*time.Second, 100*time.Millisecond,
+	)
 }
 
 func TestExpiration_DeadlockDetection(t *testing.T) {

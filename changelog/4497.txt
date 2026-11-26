@@ -1,0 +1,3 @@
+```release-note:bug
+core/ha: Update standby status in service registration when post-unseal setup fails.
+```

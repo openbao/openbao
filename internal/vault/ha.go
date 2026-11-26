@@ -953,6 +953,12 @@ func (c *Core) waitForLeadership(manualStepDown *bool, manualStepDownCh, stopCh 
 		if unlockErr := lock.Unlock(); unlockErr != nil {
 			c.logger.Error("error releasing HA lock", "error", unlockErr)
 		}
+		if c.serviceRegistration != nil {
+			if err := c.serviceRegistration.NotifyActiveStateChange(false); err != nil {
+				c.logger.Warn("failed to notify standby status", "error", err)
+			}
+		}
+
 		metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
 		return false, true
 	}

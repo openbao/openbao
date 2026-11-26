@@ -41,7 +41,7 @@
     "@docusaurus/types": "^3.10.2",
     "@types/webpack-env": "^1.18.8",
     "markdownlint": "^0.42.2",
-    "markdownlint-cli2": "^0.24.0",
+    "markdownlint-cli2": "^0.24.1",
     "typescript": "^7.0.2"
   },
   "browserslist": {

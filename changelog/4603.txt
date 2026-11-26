@@ -1,0 +1,3 @@
+```release-note:bug
+ui:Fix Reauthenticate loses the secret url after token expiry.
+```

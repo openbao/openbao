@@ -79,6 +79,8 @@ path "pki/issue/*" {
   control_group {
     # Allow self-authorization when true:
     self_auth_allowed = false
+    # Max duration for which authorization is valid:
+    ttl = "5d"
 
     factor "pki-approvers" {
       controlled_capabilities = ["update"]
@@ -88,8 +90,6 @@ path "pki/issue/*" {
         group_names = ["pki-approvers", "security-team"]
         # Required number of approvals:
         approvals = 1
-        # Max duration for which authorization is valid:
-        ttl = "5d"
       }
     }
   }

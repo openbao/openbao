@@ -1,0 +1,3 @@
+```release-note:bug
+core/policy: Validate HCL keys on the `control_group` `factor` `identity` block so misplaced fields such as `ttl` fail policy parsing instead of being ignored.
+```

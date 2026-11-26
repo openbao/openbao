@@ -484,6 +484,14 @@ func parsePath(result *Policy, key string, item *ast.ObjectItem, performTemplati
 			if err := hclutil.CheckHCLKeys(factorItem.Val, []string{"controlled_capabilities", "identity"}); err != nil {
 				return multierror.Prefix(err, "path control_group factor:")
 			}
+			if err := hclutil.WhenHCLKeyPresent(factorItem.Val, "identity", func(identityItem *ast.ObjectItem) error {
+				if err := hclutil.CheckHCLKeys(identityItem.Val, []string{"group_names", "approvals"}); err != nil {
+					return multierror.Prefix(err, "path control_group factor identity:")
+				}
+				return nil
+			}); err != nil {
+				return err
+			}
 
 			var factor ControlGroupFactor
 			if err := hcl.DecodeObject(&factor, factorItem.Val); err != nil {

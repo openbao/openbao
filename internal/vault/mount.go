@@ -879,7 +879,7 @@ func (c *Core) loadMounts(ctx context.Context, standby bool) error {
 	// we need to fetch the new mount table.
 	if !legacy {
 		c.logger.Info("reading transactional mount table")
-		if err := c.loadTransactionalMounts(ctx, txn, standby); err != nil {
+		if err := c.loadTransactionalMounts(ctx, txn, allNamespaces, standby); err != nil {
 			return fmt.Errorf("failed to load transactional mount table: %w", err)
 		}
 	}
@@ -907,14 +907,14 @@ func (c *Core) loadMountsForNamespace(ctx context.Context, ns *namespace.Namespa
 
 // loadTransactionalMounts reads the transactional split mount table
 // populates the storage if there are no existing entries.
-func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Storage, standby bool) error {
-	allNamespaces, err := c.ListNamespaces(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to list namespaces: %w", err)
-	}
-
+func (c *Core) loadTransactionalMounts(
+	ctx context.Context,
+	barrier logical.Storage,
+	allNamespaces []*namespace.Namespace,
+	standby bool,
+) error {
 	for _, ns := range allNamespaces {
-		if err = c.loadTransactionalMountsForNamespace(ctx, ns); err != nil {
+		if err := c.loadTransactionalMountsForNamespace(ctx, ns); err != nil {
 			return err
 		}
 	}
@@ -928,7 +928,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 		needPersist = true
 	}
 
-	if err = c.runMountUpdates(ctx, barrier, needPersist, standby); err != nil {
+	if err := c.runMountUpdates(ctx, barrier, needPersist, standby); err != nil {
 		c.logger.Error("failed to run legacy mount table upgrades", "error", err)
 		return err
 	}

@@ -537,7 +537,7 @@ func (c *Core) loadCredentials(ctx context.Context, standby bool) error {
 	// we need to fetch the new auth mount table.
 	if !legacy {
 		c.logger.Info("reading transactional auth mount table")
-		if err := c.loadTransactionalCredentials(ctx, txn, standby); err != nil {
+		if err := c.loadTransactionalCredentials(ctx, txn, allNamespaces, standby); err != nil {
 			return fmt.Errorf("failed to load transactional auth mount table: %w", err)
 		}
 	}
@@ -566,14 +566,14 @@ func (c *Core) loadCredentialsForNamespace(ctx context.Context, ns *namespace.Na
 
 // loadTransactionalCredentials reads the transactional split auth (credential)
 // table, populates the storage if there are no existing entries.
-func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical.Storage, standby bool) error {
-	allNamespaces, err := c.ListNamespaces(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to list namespaces: %w", err)
-	}
-
+func (c *Core) loadTransactionalCredentials(
+	ctx context.Context,
+	barrier logical.Storage,
+	allNamespaces []*namespace.Namespace,
+	standby bool,
+) error {
 	for _, ns := range allNamespaces {
-		if err = c.loadTransactionalCredentialsForNamespace(ctx, ns); err != nil {
+		if err := c.loadTransactionalCredentialsForNamespace(ctx, ns); err != nil {
 			return err
 		}
 	}
@@ -583,6 +583,7 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 	// If there's only root namespace, and there are no auth entries in storage.
 	if len(allNamespaces) == 1 && len(c.auth.Entries) == 0 {
 		c.logger.Info("no auth mounts in transactional auth mount table; adding default auth mount table")
+		var err error
 		c.auth, err = c.defaultAuthTable(ctx)
 		if err != nil {
 			panic(err.Error())
@@ -590,7 +591,7 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 		needPersist = true
 	}
 
-	if err = c.runCredentialUpdates(ctx, barrier, needPersist, standby); err != nil {
+	if err := c.runCredentialUpdates(ctx, barrier, needPersist, standby); err != nil {
 		c.logger.Error("failed to run legacy auth mount table upgrades", "error", err)
 		return err
 	}

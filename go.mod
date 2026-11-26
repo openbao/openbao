@@ -91,8 +91,8 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/mitchellh/pointerstructure v1.2.1
 	github.com/mitchellh/reflectwalk v1.0.2
-	github.com/moby/moby/api v1.56.1
-	github.com/moby/moby/client v0.6.2
+	github.com/moby/moby/api v1.57.0
+	github.com/moby/moby/client v0.6.3
 	github.com/oklog/run v1.2.0
 	github.com/openbao/go-kms-wrapping/kms/transit/v2 v2.1.1
 	github.com/openbao/go-kms-wrapping/plugin/v2 v2.4.0

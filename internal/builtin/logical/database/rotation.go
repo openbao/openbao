@@ -18,11 +18,15 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/queue"
+	"github.com/openbao/openbao/v2/internal/helper/scheduling"
 )
 
 const (
 	// Default interval to check the queue for items needing rotation
 	defaultQueueTickSeconds = 5
+
+	// Minimum allowable rotation window
+	minimumRotationWindow = time.Duration(3600) * time.Second
 
 	// Config key to set an alternate interval
 	queueTickIntervalKey = "rotation_queue_tick_interval"
@@ -64,6 +68,15 @@ func (b *databaseBackend) populateQueue(ctx context.Context, s logical.Storage) 
 		if err != nil {
 			log.Warn("unable to read static role", "error", err, "role", roleName)
 			continue
+		}
+
+		// Rotation parameters were validated against the backend configuration
+		// in effect when the role was written, which may have changed since.
+		// Enqueue anyway, so that credentials keep being rotated.
+		if sched, err := b.staticAccountScheduler(role.StaticAccount); err != nil {
+			log.Warn("static role rotation parameters are invalid with current configuration", "error", err, "role", roleName)
+		} else {
+			b.cacheScheduler(roleName, sched)
 		}
 
 		item := queue.Item{
@@ -170,6 +183,10 @@ func (b *databaseBackend) rotateCredentials(ctx context.Context, s logical.Stora
 	}
 }
 
+func backOffTime() time.Time {
+	return time.Now().Add(10 * time.Second)
+}
+
 func (b *databaseBackend) rotateCredential(ctx context.Context, s logical.Storage) bool {
 	// Quit rotating credentials if shutdown has started
 	select {
@@ -204,7 +221,7 @@ func (b *databaseBackend) rotateCredential(ctx context.Context, s logical.Storag
 	if err != nil {
 		logger.Error("unable to load role", "error", err)
 
-		item.Priority = time.Now().Add(10 * time.Second).Unix()
+		item.Priority = backOffTime().Unix()
 		if err := b.pushItem(item); err != nil {
 			logger.Error("unable to push item on to queue", "error", err)
 		}
@@ -232,10 +249,55 @@ func (b *databaseBackend) rotateCredential(ctx context.Context, s logical.Storag
 		Role:     role,
 	}
 
+	// Get a scheduler to schedule the next rotation.
+	sched, err := b.roleScheduler(roleName, role.StaticAccount)
+	undue := false
+	if err != nil {
+		// Scheduler input is invalid, which can happen
+		// if rotation_* parameters were changed without validation
+		// in which case rotation should not be attempted
+		logger.Error("unable to schedule credential rotation", "error", err)
+		undue = true
+	} else if !sched.IsDue() {
+		// Scheduled rotation is out of any window
+		logger.Debug("missed scheduled rotation window", "WAL ID", input.WALID, "role", input.RoleName)
+		undue = true
+	}
+
 	// If there is a WAL entry related to this Role, the corresponding WAL ID
 	// should be stored in the Item's Value field.
 	if walID, ok := item.Value.(string); ok {
 		input.WALID = walID
+		// WALs don't preempt undue schedules
+		if undue {
+			// Cleanup WAL
+			if err := framework.DeleteWAL(ctx, s, walID); err != nil {
+				b.Logger().Warn("error deleting undue WAL", "WAL ID", walID, "error", err)
+			}
+			b.Logger().Debug("deleted undue WAL", "WAL ID", walID)
+			item.Value = ""
+		}
+	}
+
+	// Rotation was queued to occur now but we missed the window
+	if undue {
+		if sched != nil {
+			item.Priority = sched.NextOccurrence().Unix()
+		} else {
+			item.Priority = backOffTime().Unix()
+		}
+		// Push back to queue
+		if err := b.pushItem(item); err != nil {
+			logger.Error("unable to push item on to queue", "error", err)
+		}
+		// Go to next item
+		return true
+	}
+
+	var next time.Time
+	if sched != nil {
+		// Tell the scheduler that the rotation is happening
+		next = sched.MarkOccurredNow()
 	}
 
 	resp, err := b.setStaticAccount(ctx, s, input)
@@ -244,7 +306,7 @@ func (b *databaseBackend) rotateCredential(ctx context.Context, s logical.Storag
 
 		// Increment the priority enough so that the next call to this method
 		// likely will not attempt to rotate it, as a back-off of sorts
-		item.Priority = time.Now().Add(10 * time.Second).Unix()
+		item.Priority = backOffTime().Unix()
 
 		// Preserve the WALID if it was returned
 		if resp != nil && resp.WALID != "" {
@@ -257,17 +319,16 @@ func (b *databaseBackend) rotateCredential(ctx context.Context, s logical.Storag
 		// Go to next item
 		return true
 	}
+
 	// Clear any stored WAL ID as we must have successfully deleted our WAL to get here.
 	item.Value = ""
 
-	lvr := resp.RotationTime
-	if lvr.IsZero() {
-		lvr = time.Now()
-	}
-
 	// Update priority and push updated Item to the queue
-	nextRotation := lvr.Add(role.StaticAccount.RotationPeriod)
-	item.Priority = nextRotation.Unix()
+	if next.IsZero() {
+		// in case next occurrence couldn't be computed, postpone
+		next = backOffTime()
+	}
+	item.Priority = next.Unix()
 	if err := b.pushItem(item); err != nil {
 		logger.Warn("unable to push item on to queue", "error", err)
 	}
@@ -310,7 +371,6 @@ type setStaticAccountInput struct {
 }
 
 type setStaticAccountOutput struct {
-	RotationTime time.Time
 	// Optional return field, in the event WAL was created and not destroyed
 	// during the operation
 	WALID string
@@ -489,11 +549,6 @@ func (b *databaseBackend) setStaticAccount(ctx context.Context, s logical.Storag
 	}
 
 	// Store updated role information
-	// lvr is the known LastVaultRotation
-	lvr := time.Now()
-	input.Role.StaticAccount.LastVaultRotation = lvr
-	output.RotationTime = lvr
-
 	entry, err := logical.StorageEntryJSON(databaseStaticRolePath+input.RoleName, input.Role)
 	if err != nil {
 		return output, err
@@ -510,7 +565,7 @@ func (b *databaseBackend) setStaticAccount(ctx context.Context, s logical.Storag
 	b.Logger().Debug("deleted WAL", "WAL ID", output.WALID)
 
 	// The WAL has been deleted, return new setStaticAccountOutput without it
-	return &setStaticAccountOutput{RotationTime: lvr}, nil
+	return &setStaticAccountOutput{}, nil
 }
 
 // initQueue preforms the necessary checks and initializations needed to perform
@@ -568,17 +623,24 @@ func (b *databaseBackend) initQueue(ctx context.Context, conf *logical.BackendCo
 		b.populateQueue(ctx, conf.StorageView)
 
 		// Launch ticker
-		queueTickerInterval := defaultQueueTickSeconds * time.Second
-		if strVal, ok := conf.Config[queueTickIntervalKey]; ok {
-			newVal, err := strconv.Atoi(strVal)
-			if err == nil {
-				queueTickerInterval = time.Duration(newVal) * time.Second
-			} else {
-				b.Logger().Error("bad value for %q option: %q", queueTickIntervalKey, strVal)
-			}
-		}
-		go b.runTicker(ctx, queueTickerInterval, conf.StorageView)
+		go b.runTicker(ctx, b.queueTickInterval, conf.StorageView)
 	}
+}
+
+// queueTickInterval returns the interval at which the queue is checked for
+// items needing rotation, as set by queueTickIntervalKey in the backend
+// config, or the default one.
+func queueTickInterval(conf *logical.BackendConfig) time.Duration {
+	if strVal, ok := conf.Config[queueTickIntervalKey]; ok {
+		newVal, err := strconv.Atoi(strVal)
+		if err == nil {
+			return time.Duration(newVal) * time.Second
+		}
+		if conf.Logger != nil {
+			conf.Logger.Error("bad value for option", "option", queueTickIntervalKey, "value", strVal)
+		}
+	}
+	return defaultQueueTickSeconds * time.Second
 }
 
 // loadStaticWALs reads WAL entries and returns a map of roles and their
@@ -692,4 +754,63 @@ func (b *databaseBackend) popFromRotationQueueByKey(name string) (*queue.Item, e
 		}
 	}
 	return nil, queue.ErrEmpty
+}
+
+// cachedScheduler is a scheduler detached from the static account it was
+// created for, along with the rotation parameters it parsed. It is never
+// modified once cached.
+type cachedScheduler struct {
+	period   time.Duration
+	cronExpr string
+	sched    scheduling.DefaultScheduler
+}
+
+// cacheScheduler keeps the scheduler of the named role for roleScheduler.
+func (b *databaseBackend) cacheScheduler(name string, sched *scheduling.DefaultScheduler) {
+	cached := &cachedScheduler{
+		period:   sched.GetPeriod(),
+		cronExpr: sched.GetCronExpr(),
+		sched:    *sched,
+	}
+	// Don't keep the static account, which holds credentials
+	cached.sched.Schedulable = nil
+
+	b.schedLock.Lock()
+	defer b.schedLock.Unlock()
+	b.schedulers[name] = cached
+}
+
+// uncacheScheduler forgets the scheduler of the named role.
+func (b *databaseBackend) uncacheScheduler(name string) {
+	b.schedLock.Lock()
+	defer b.schedLock.Unlock()
+	delete(b.schedulers, name)
+}
+
+// roleScheduler returns a scheduler for the static account of the named role,
+// copied from the cached one if the account's rotation schedule didn't change,
+// or else newly created and cached. Unlike staticAccountScheduler, it doesn't
+// check the rotation parameters against the backend configuration.
+func (b *databaseBackend) roleScheduler(name string, sa *staticAccount) (*scheduling.DefaultScheduler, error) {
+	b.schedLock.Lock()
+	cached := b.schedulers[name]
+	b.schedLock.Unlock()
+
+	// rotation_period implies its own cron expression
+	if cached != nil && cached.period == sa.RotationPeriod &&
+		(sa.RotationPeriod != 0 || cached.cronExpr == sa.RotationSchedule) {
+		// duplicate the cached scheduler object to a local copy
+		sched := cached.sched
+		// so that ref to staticAccount is set to local copy only
+		// and then GC can drop it when returned scheduler is discarded
+		sched.Schedulable = sa
+		return &sched, nil
+	}
+
+	sched, err := scheduling.NewDefaultScheduler(sa)
+	if err != nil {
+		return nil, err
+	}
+	b.cacheScheduler(name, sched)
+	return sched, nil
 }

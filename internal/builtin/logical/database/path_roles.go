@@ -5,6 +5,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/queue"
+	"github.com/openbao/openbao/v2/internal/helper/scheduling"
 )
 
 func pathListRoles(b *databaseBackend) []*framework.Path {
@@ -231,13 +233,28 @@ func staticFields() map[string]*framework.FieldSchema {
 		"username": {
 			Type: framework.TypeString,
 			Description: `Name of the static user account for OpenBao to manage.
-	Requires "rotation_period" to be specified`,
+	Requires either "rotation_period" or "rotation_schedule" to be specified`,
 		},
 		"rotation_period": {
 			Type: framework.TypeDurationSecond,
 			Description: `Period for automatic
 	credential rotation of the given username. Not valid unless used with
-	"username".`,
+	"username". Mutually exclusive with "rotation_schedule".`,
+		},
+		"rotation_schedule": {
+			Type: framework.TypeString,
+			Description: `Cron-style schedule for automatic
+	credential rotation of the given username, evaluated in the server's local
+	time zone unless prefixed with "CRON_TZ=<zone> ". Not valid unless used
+	with "username". Mutually exclusive with "rotation_period".`,
+		},
+		"rotation_window": {
+			Type: framework.TypeDurationSecond,
+			Description: `Amount of time, in seconds, after each
+	scheduled rotation during which the rotation is still allowed to occur.
+	If the credential is not rotated within this window, it is rotated at the
+	next scheduled time instead. Minimum of 3600 seconds. Applies to both
+	"rotation_period" and "rotation_schedule".`,
 		},
 		"rotation_statements": {
 			Type: framework.TypeStringSlice,
@@ -291,6 +308,7 @@ func (b *databaseBackend) pathStaticRoleDelete(ctx context.Context, req *logical
 
 	// Remove the item from the queue
 	_, _ = b.popFromRotationQueueByKey(name)
+	b.uncacheScheduler(name)
 
 	if err := req.Storage.Delete(ctx, databaseStaticRolePath+name); err != nil {
 		return nil, err
@@ -343,9 +361,22 @@ func (b *databaseBackend) pathStaticRoleRead(ctx context.Context, req *logical.R
 	if role.StaticAccount != nil {
 		data["username"] = role.StaticAccount.Username
 		data["rotation_statements"] = role.Statements.Rotation
-		data["rotation_period"] = role.StaticAccount.RotationPeriod.Seconds()
+		if role.StaticAccount.RotationPeriod != 0 {
+			data["rotation_period"] = role.StaticAccount.RotationPeriod.Seconds()
+		} else if role.StaticAccount.RotationSchedule != "" {
+			// `else` is important here since the scheduler implicitly
+			// sets RotationShedule when RotationPeriod is used
+			data["rotation_schedule"] = role.StaticAccount.RotationSchedule
+		}
+		if (role.StaticAccount.RotationSchedule != "" || role.StaticAccount.RotationPeriod != 0) &&
+			role.StaticAccount.RotationWindow != 0 {
+			data["rotation_window"] = role.StaticAccount.RotationWindow.Seconds()
+		}
 		if !role.StaticAccount.LastVaultRotation.IsZero() {
 			data["last_vault_rotation"] = role.StaticAccount.LastVaultRotation
+		}
+		if !role.StaticAccount.NextVaultRotation.IsZero() {
+			data["next_vault_rotation"] = role.StaticAccount.NextVaultRotation
 		}
 	}
 
@@ -603,20 +634,40 @@ func (b *databaseBackend) pathStaticRoleCreateUpdate(ctx context.Context, req *l
 	}
 	role.StaticAccount.Username = username
 
-	// If it's a Create operation, both username and rotation_period must be included
-	rotationPeriodSecondsRaw, ok := data.GetOk("rotation_period")
-	if !ok && createRole {
-		return logical.ErrorResponse("rotation_period is required to create static accounts"), nil
+	// If it's a Create operation, both username and either rotation_period or
+	// rotation_schedule must be included. The two are mutually exclusive, and
+	// setting one on update clears the other.
+	rotationPeriodSecondsRaw, periodOk := data.GetOk("rotation_period")
+	rotationScheduleRaw, scheduleOk := data.GetOk("rotation_schedule")
+	if periodOk && scheduleOk {
+		return logical.ErrorResponse("mutually exclusive fields rotation_period and rotation_schedule were both specified; only one of them can be provided"), nil
 	}
-	if ok {
-		rotationPeriodSeconds := rotationPeriodSecondsRaw.(int)
-		if rotationPeriodSeconds < defaultQueueTickSeconds {
-			// If rotation frequency is specified, and this is an update, the value
-			// must be at least that of the queue tick interval (5 seconds at
-			// time of writing), otherwise we wont be able to rotate in time
-			return logical.ErrorResponse("rotation_period must be %d seconds or more", defaultQueueTickSeconds), nil
+	if !periodOk && !scheduleOk && createRole {
+		return logical.ErrorResponse("one of rotation_period or rotation_schedule is required to create static accounts"), nil
+	}
+	if periodOk {
+		role.StaticAccount.RotationPeriod = time.Duration(rotationPeriodSecondsRaw.(int)) * time.Second
+		role.StaticAccount.RotationSchedule = ""
+	}
+	if scheduleOk {
+		rotationSchedule := strings.TrimSpace(rotationScheduleRaw.(string))
+		if rotationSchedule == "" {
+			return logical.ErrorResponse("rotation_schedule must not be empty"), nil
 		}
-		role.StaticAccount.RotationPeriod = time.Duration(rotationPeriodSeconds) * time.Second
+		role.StaticAccount.RotationSchedule = rotationSchedule
+		role.StaticAccount.RotationPeriod = 0
+	}
+
+	if rotationWindowSecondsRaw, ok := data.GetOk("rotation_window"); ok {
+		role.StaticAccount.RotationWindow = time.Duration(rotationWindowSecondsRaw.(int)) * time.Second
+	} else if createRole {
+		role.StaticAccount.RotationWindow = 0
+	}
+
+	// Create a dispensable scheduler to check and apply new/updated role's rotation parameters
+	sched, err := b.staticAccountScheduler(role.StaticAccount)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), nil
 	}
 
 	if rotationStmtsRaw, ok := data.GetOk("rotation_statements"); ok {
@@ -642,14 +693,14 @@ func (b *databaseBackend) pathStaticRoleCreateUpdate(ctx context.Context, req *l
 		return logical.ErrorResponse("credential_config validation failed: %s", err), nil
 	}
 
-	// lvr represents the roles' LastVaultRotation
-	lvr := role.StaticAccount.LastVaultRotation
-
 	// Only call setStaticAccount if we're creating the role for the
 	// first time
 	var item *queue.Item
+	var next time.Time
 	switch req.Operation {
 	case logical.CreateOperation:
+		// Role creation counts as a first rotation
+		next = sched.MarkOccurredNow()
 		// setStaticAccount calls Storage.Put and saves the role to storage
 		resp, err := b.setStaticAccount(ctx, req.Storage, &setStaticAccountInput{
 			RoleName: name,
@@ -670,12 +721,13 @@ func (b *databaseBackend) pathStaticRoleCreateUpdate(ctx context.Context, req *l
 
 			return nil, err
 		}
-		// guard against RotationTime not being set or zero-value
-		lvr = resp.RotationTime
+
 		item = &queue.Item{
 			Key: name,
 		}
 	case logical.UpdateOperation:
+		// Update the Role's next rotation time, but does not count as a rotation
+		next = sched.NextOccurrence()
 		// store updated Role
 		entry, err := logical.StorageEntryJSON(databaseStaticRolePath+name, role)
 		if err != nil {
@@ -690,7 +742,8 @@ func (b *databaseBackend) pathStaticRoleCreateUpdate(ctx context.Context, req *l
 		}
 	}
 
-	item.Priority = lvr.Add(role.StaticAccount.RotationPeriod).Unix()
+	// Update the Role's rotation time in the queue
+	item.Priority = next.Unix()
 
 	// Add their rotation to the queue
 	if err := b.pushItem(item); err != nil {
@@ -702,6 +755,43 @@ func (b *databaseBackend) pathStaticRoleCreateUpdate(ctx context.Context, req *l
 	}
 
 	return nil, nil
+}
+
+// staticAccountScheduler checks the static account's rotation parameters
+// against the backend configuration, and returns a scheduler for it.
+func (b *databaseBackend) staticAccountScheduler(sa *staticAccount) (*scheduling.DefaultScheduler, error) {
+	tickSeconds := int(b.queueTickInterval / time.Second)
+
+	// Rotations must not be more frequent than the queue tick interval
+	// (5 seconds by default), otherwise we wont be able to rotate in time
+	if sa.RotationPeriod != 0 && sa.RotationPeriod < b.queueTickInterval {
+		return nil, fmt.Errorf("rotation_period must be %d seconds or more", tickSeconds)
+	}
+
+	if sa.RotationWindow != 0 && sa.RotationWindow < minimumRotationWindow {
+		return nil, fmt.Errorf("rotation_window must be %s or more", minimumRotationWindow)
+	}
+
+	sched, err := scheduling.NewDefaultScheduler(sa)
+	if err != nil {
+		return nil, err
+	}
+
+	if sa.RotationPeriod == 0 && sched.MinInterval() < b.queueTickInterval {
+		return nil, fmt.Errorf("credential rotation interval must be at least %d seconds", tickSeconds)
+	}
+
+	// filter-out rotation_window incompatible with rotation_period or MinInterval(rotation_schedule)
+	if sa.RotationWindow != 0 {
+		if sa.RotationPeriod != 0 && sa.RotationWindow >= sa.RotationPeriod {
+			return nil, errors.New("rotation_window must be smaller than rotation_period")
+		}
+		if sa.RotationPeriod == 0 && sa.RotationWindow >= sched.MinInterval() {
+			return nil, errors.New("rotation_window must be smaller than minimal rotation_schedule interval")
+		}
+	}
+
+	return sched, nil
 }
 
 type roleEntry struct {
@@ -800,21 +890,73 @@ type staticAccount struct {
 
 	// LastVaultRotation represents the last time Vault rotated the password
 	LastVaultRotation time.Time `json:"last_vault_rotation"`
+	// NextVaultRotation represents the time the next password rotation is expected to occur.
+	NextVaultRotation time.Time `json:"next_vault_rotation"`
 
 	// RotationPeriod is number in seconds between each rotation, effectively a
 	// "time to live". This value is compared to the LastVaultRotation to
 	// determine if a password needs to be rotated
 	RotationPeriod time.Duration `json:"rotation_period"`
 
+	// RotationSchedule is a cron-style expression defining when the credential
+	// is rotated. Mutually exclusive with RotationPeriod.
+	RotationSchedule string `json:"rotation_schedule"`
+
+	// RotationWindow is how long after a scheduled rotation the rotation may
+	// still occur. Zero means there is no window. Applies to both
+	// RotationPeriod and RotationSchedule.
+	RotationWindow time.Duration `json:"rotation_window"`
+
 	// RevokeUser is a boolean flag to indicate if Vault should revoke the
 	// database user when the role is deleted
 	RevokeUserOnDelete bool `json:"revoke_user_on_delete"`
 }
 
-// NextRotationTime calculates the next rotation by adding the Rotation Period
-// to the last known vault rotation
+// Schedulable interface
+func (s *staticAccount) GetPeriod() time.Duration {
+	return s.RotationPeriod
+}
+
+func (s *staticAccount) SetPeriod(period time.Duration) {
+	s.RotationPeriod = period
+}
+
+func (s *staticAccount) GetCronExpr() string {
+	return s.RotationSchedule
+}
+
+func (s *staticAccount) SetCronExpr(cronExpr string) {
+	s.RotationSchedule = cronExpr
+}
+
+func (s *staticAccount) GetWindow() time.Duration {
+	return s.RotationWindow
+}
+
+func (s *staticAccount) SetWindow(window time.Duration) {
+	s.RotationWindow = window
+}
+
+func (s *staticAccount) GetNext() time.Time {
+	return s.NextVaultRotation
+}
+
+func (s *staticAccount) SetNext(next time.Time) {
+	s.NextVaultRotation = next
+}
+
+func (s *staticAccount) GetLast() time.Time {
+	return s.LastVaultRotation
+}
+
+func (s *staticAccount) SetLast(last time.Time) {
+	s.LastVaultRotation = last
+}
+
+// NextRotationTime returns next rotation time
+// computed during last rotation
 func (s *staticAccount) NextRotationTime() time.Time {
-	return s.LastVaultRotation.Add(s.RotationPeriod)
+	return s.NextVaultRotation
 }
 
 // CredentialTTL calculates the approximate time remaining until the credential is
@@ -826,6 +968,8 @@ func (s *staticAccount) NextRotationTime() time.Time {
 // Zero TTL, as they are likely in the process of being rotated and will quickly
 // be invalidated.
 func (s *staticAccount) CredentialTTL() time.Duration {
+	// TODO: returned TTL should reflect runTicker() to be more accurate.
+	//       i.e. align with occurrence of databaseBackend.tick
 	next := s.NextRotationTime()
 	ttl := time.Until(next).Round(time.Second)
 	if ttl < 0 {

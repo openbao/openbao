@@ -241,7 +241,20 @@ func (b *databaseBackend) pathRotateRoleCredentialsUpdate() framework.OperationF
 				item.Value = resp.WALID
 			}
 		} else {
-			item.Priority = resp.RotationTime.Add(role.StaticAccount.RotationPeriod).Unix()
+			// Get a scheduler to schedule the next rotation.
+			sched, err := b.roleScheduler(name, role.StaticAccount)
+			if err != nil {
+				b.logger.Error("unable to schedule next credential rotation in rotate-role", "error", err)
+
+				return nil, err
+			}
+
+			// Tell the scheduler that the last rotation has happened
+			next := sched.MarkOccurredNow()
+
+			// Update priority and push updated Item to the queue
+			item.Priority = next.Unix()
+
 			// Clear any stored WAL ID as we must have successfully deleted our WAL to get here.
 			item.Value = ""
 		}

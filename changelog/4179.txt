@@ -1,0 +1,3 @@
+```release-note:improvement
+database: Add `rotation_schedule` and `rotation_window`.
+```

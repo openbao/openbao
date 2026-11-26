@@ -121,6 +121,8 @@ func Backend(conf *logical.BackendConfig) *databaseBackend {
 	b.logger = conf.Logger
 	b.connections = make(map[string]*dbPluginInstance)
 	b.queueCtx, b.cancelQueueCtx = context.WithCancel(context.Background())
+	b.queueTickInterval = queueTickInterval(conf)
+	b.schedulers = make(map[string]*cachedScheduler)
 	b.roleLocks = locksutil.CreateLocks()
 	return &b
 }
@@ -170,6 +172,15 @@ type databaseBackend struct {
 	queueCtx context.Context
 	// cancelQueueCtx is used to terminate the background ticker
 	cancelQueueCtx context.CancelFunc
+	// queueTickInterval is the interval at which the queue is checked for
+	// items needing rotation
+	queueTickInterval time.Duration
+
+	// schedLock is used to synchronize access to the schedulers map
+	schedLock sync.Mutex
+	// schedulers holds static roles' schedulers by role name, so that rotation
+	// schedules are not parsed again on each rotation
+	schedulers map[string]*cachedScheduler
 
 	// roleLocks is used to lock modifications to roles in the queue, to ensure
 	// concurrent requests are not modifying the same role and possibly causing

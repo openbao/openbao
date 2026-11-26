@@ -192,15 +192,15 @@ type raftInformation struct {
 }
 
 type migrationInformation struct {
-	// seal to use during a migration operation. It is the
-	// seal we're migrating *from*.
+	// seal to use during seal migration. It is the 'old' seal we're migrating *from*
+	// where `Core.seal` is the 'new' seal we're migrating *to*.
 	seal Seal
 
-	// unsealKey was the unseal key provided for the migration seal.
-	// This will be set as the recovery key when migrating from shamir to auto-seal.
-	// We don't need to do anything with it when migrating auto->shamir because
-	// we don't store the shamir combined key for shamir seals, nor when
-	// migrating auto->auto because then the recovery key doesn't change.
+	// unsealKey is the unseal key of the seal we're migrating *from* during seal
+	// migration. This will be used as the recovery key when migrating from shamir
+	// to auto-seal. We don't need it after migrating auto->shamir because we don't
+	// store the Shamir combined key for Shamir primary seal, nor when migrating
+	// auto->auto because recovery key won't change.
 	unsealKey []byte
 }
 
@@ -256,10 +256,8 @@ type Core struct {
 	// races and casted to raftInformation wherever it is used.
 	raftInfo atomic.Pointer[raftInformation]
 
-	// migrationInfo is used during (and possibly after) a seal migration.
-	// This contains information about the seal we are migrating *from*. Even
-	// post seal migration, provided the old seal is still in configuration
-	// migrationInfo will be populated, which may be necessary for seal rewrap.
+	// migrationInfo is used for seal migration, contains information about
+	// the seal we are migrating *from*.
 	migrationInfo     *migrationInformation
 	sealMigrationDone atomic.Bool
 
@@ -1783,9 +1781,7 @@ func (c *Core) migrateSeal(ctx context.Context) error {
 		return fmt.Errorf("error storing new seal configs: %w", err)
 	}
 
-	// Flag migration performed for seal-rewrap later
 	c.sealMigrationDone.Store(true)
-
 	c.logger.Info("seal migration complete")
 	return nil
 }
@@ -2695,7 +2691,7 @@ func (c *Core) adjustForSealMigration(unwrapSeal Seal) error {
 		// and after migration.
 		c.adjustSealConfigDuringMigration(existBarrierSealConfig, existRecoverySealConfig)
 	}
-	c.logger.Warn("entering seal migration mode; Vault will not automatically unseal even if using an autoseal", "from_barrier_type", c.migrationInfo.seal.BarrierType(), "to_barrier_type", c.seal.BarrierType())
+	c.logger.Warn("entering seal migration mode; Vault will not automatically unseal", "from_barrier_type", c.migrationInfo.seal.BarrierType(), "to_barrier_type", c.seal.BarrierType())
 
 	return nil
 }
@@ -2765,37 +2761,31 @@ func (c *Core) adjustSealConfigDuringMigration(existBarrierSealConfig, existReco
 	}
 }
 
-// IsInSealMigrationMode returns true if we're configured to perform a seal migration,
-// meaning either that we have a disabled seal in HCL configuration or the seal
-// configuration in storage is Shamir but the seal in HCL is not.  In this
-// mode we should not auto-unseal (even if the migration is done) and we will
-// accept unseal requests with and without the `migrate` option, though the migrate
-// option is required if we haven't yet performed the seal migration. Lock
-// should only be false if the caller is already holding the read
-// statelock (such as calls originating from switchedLockHandleRequest).
-func (c *Core) IsInSealMigrationMode(lock bool) bool {
-	if lock {
-		c.stateLock.RLock()
-		defer c.stateLock.RUnlock()
-	}
+// IsInSealMigrationMode reports whether the node is configured for seal migration.
+// Migration mode persists after migration finishes until Core gets restarted with
+// the 'old' disabled seal removed (if present) from Core configuration.
+// To check whether migration is still pending, use IsSealMigrationPending instead.
+func (c *Core) IsInSealMigrationMode() bool {
+	c.stateLock.RLock()
+	defer c.stateLock.RUnlock()
 	return c.migrationInfo != nil
 }
 
-// IsSealMigrated returns true if we're in seal migration mode but migration
-// has already been performed (possibly by another node, or prior to this node's
-// current invocation). Lock should only be false if the caller is already
-// holding the read statelock (such as calls originating from switchedLockHandleRequest).
-func (c *Core) IsSealMigrated(lock bool) bool {
-	if !c.IsInSealMigrationMode(lock) {
-		return false
-	}
-
+// IsSealMigrationPending reports whether the node is in migration mode and migration
+// remains incomplete. Lock should only be false if the caller is already holding the
+// read statelock (such as calls originating from switchedLockHandleRequest).
+func (c *Core) IsSealMigrationPending(ctx context.Context, lock bool) bool {
 	if lock {
 		c.stateLock.RLock()
 		defer c.stateLock.RUnlock()
 	}
-	done, _ := c.sealMigrated(context.Background())
-	return done
+
+	if c.migrationInfo == nil {
+		return false
+	}
+
+	done, _ := c.sealMigrated(ctx)
+	return !done
 }
 
 func (c *Core) PhysicalAccess() *physical.PhysicalAccess {

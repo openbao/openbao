@@ -1,0 +1,3 @@
+﻿```release-note:bug
+service-registration/kubernetes: Prevent unreachable Kubernetes APIs from delaying HTTP listener startup and blocking graceful shutdown.
+```

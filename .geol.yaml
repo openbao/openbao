@@ -11,23 +11,22 @@ stack:
   - name: Go
     version: "1.27"
     id_eol: go
+  
   # Dockerfile:21 FROM alpine:3.24.4@sha256:... AS default (official image)
   - name: Alpine Linux
     version: "3.24"
     id_eol: alpine-linux
-  # Dockerfile:62 FROM registry.access.redhat.com/ubi10-minimal:10.3 AS ubi
-  # UBI follows the lifecycle of the RHEL major it is built from
-  - name: Red Hat UBI 10
-    version: "10"
-    id_eol: rhel
+  
   # ui/package.json:195 engines "node": "26" (build of the web UI embedded in the bao binary)
   - name: Node.js
     version: "26"
     id_eol: nodejs
+  
   # ui/package.json:219 "packageManager": "pnpm@10.34.4"
   - name: pnpm
     version: "10"
     id_eol: pnpm
+  
   # ui/package.json:132 "ember-source": "5.12.0" (framework of the web UI, served in production)
   - name: Ember.js
     version: "5.12"

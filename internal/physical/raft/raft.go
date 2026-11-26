@@ -2091,6 +2091,8 @@ func (b *RaftBackend) SetDesiredSuffrage(nonVoter bool) error {
 		return err
 	}
 
+	b.nonVoter = nonVoter
+
 	return nil
 }
 

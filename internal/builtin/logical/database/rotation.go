@@ -26,7 +26,7 @@ const (
 	defaultQueueTickSeconds = 5
 
 	// Minimum allowable rotation window
-	minimumRotationWindowSeconds = 3600
+	minimumRotationWindow = time.Duration(3600) * time.Second
 
 	// Config key to set an alternate interval
 	queueTickIntervalKey = "rotation_queue_tick_interval"

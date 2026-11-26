@@ -5,13 +5,16 @@ package vault
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
+	vaultseal "github.com/openbao/openbao/v2/internal/vault/seal"
 )
 
 type ShamirPurpose string
@@ -153,4 +156,73 @@ func (s *SealConfig) Clone() *SealConfig {
 		copy(ret.VerificationKey, s.VerificationKey)
 	}
 	return ret
+}
+
+// Normalize updates the seal config in place to the new (purpose populated) seal configuration,
+// validating purpose and provider, falling back to loading legacy recovery config from storage
+// when necessary. It reports whether the persisted configuration requires storage migration.
+func (s *SealConfig) Normalize(ctx context.Context, sa StorageAccess, metaPrefix string) (bool, error) {
+	if s.Purpose != "" {
+		return false, s.validatePurpose()
+	}
+
+	// Legacy shamir - return early.
+	if s.Type == "" || s.Type == vaultseal.WrapperTypeShamir.String() {
+		s.Type = vaultseal.WrapperTypeShamir.String()
+		s.Purpose = Primary
+		return true, nil
+	} else {
+		valueBytes, err := sa.Get(ctx, metaPrefix+legacyRecoverySealConfigPath)
+		if err != nil {
+			return false, fmt.Errorf("failed to fetch legacy recovery seal configuration: %w", err)
+		}
+		if valueBytes == nil {
+			// We might be racing against other nodes, try to read the new updated entry once.
+			valueBytes, err = sa.Get(ctx, metaPrefix+sealConfigPath)
+			if err != nil {
+				return false, fmt.Errorf("failed to re-read seal configuration: %w", err)
+			}
+
+			if valueBytes == nil {
+				return false, errors.New("legacy recovery seal configuration missing")
+			}
+
+			config := &SealConfig{}
+			if err := jsonutil.DecodeJSON(valueBytes, config); err != nil {
+				return false, fmt.Errorf("failed to decode re-read seal configuration: %w", err)
+			}
+
+			if err := config.validatePurpose(); err != nil {
+				return false, err
+			}
+
+			*s = *config
+			return false, nil
+		}
+		legacyRecoveryConf := &SealConfig{}
+		if err := jsonutil.DecodeJSON(valueBytes, legacyRecoveryConf); err != nil {
+			return false, fmt.Errorf("failed to decode legacy recovery seal configuration: %w", err)
+		}
+
+		legacyRecoveryConf.Type = s.Type
+		legacyRecoveryConf.Purpose = Recovery
+		*s = *legacyRecoveryConf
+		return true, nil
+	}
+}
+
+func (s *SealConfig) validatePurpose() error {
+	switch s.Purpose {
+	case Primary:
+		if s.Type != vaultseal.WrapperTypeShamir.String() {
+			return fmt.Errorf("found invalid primary seal configuration with wrapper type of: %q", s.Type)
+		}
+	case Recovery:
+		if s.Type == "" || s.Type == vaultseal.WrapperTypeShamir.String() {
+			return fmt.Errorf("found invalid recovery seal configuration with wrapper type of: %q", s.Type)
+		}
+	default:
+		return fmt.Errorf("unknown seal config purpose encountered: %q", s.Purpose)
+	}
+	return nil
 }

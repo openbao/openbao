@@ -26,7 +26,7 @@ func TestCore_Init(t *testing.T) {
 	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
 	autoSeal, err := NewAutoSeal(testSeal)
 	require.NoError(t, err)
-	testCoreInitCommon(t, autoSeal, &SealConfig{Type: "test-auto", Purpose: Recovery, SecretShares: 0, SecretThreshold: 0})
+	testCoreInitCommon(t, autoSeal, &SealConfig{Type: wrapping.WrapperTypeTest.String(), Purpose: Recovery, SecretShares: 0, SecretThreshold: 0})
 }
 
 func testCoreNewTestCore(t *testing.T, seal Seal) (*Core, *CoreConfig) {

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/stretchr/testify/require"
@@ -206,6 +207,37 @@ func testBackend_RotateInitStatus(t *testing.T, b *SystemBackend, ns *namespace.
 		require.Empty(t, res.Data["verification_nonce"])
 		require.NotEmpty(t, res.Data["nonce"])
 	})
+}
+
+func TestBackend_AutoUnsealRoot_RotateInitStatus(t *testing.T) {
+	t.Parallel()
+	c, _, _ := TestCoreUnsealedWithConfigSealOpts(t, &SealConfig{
+		Type:            wrapping.WrapperTypeTest.String(),
+		Purpose:         Recovery,
+		SecretShares:    3,
+		SecretThreshold: 2,
+	}, nil)
+	b := c.systemBackend
+	ctx := namespace.RootContext(t.Context())
+
+	req := logical.TestRequest(t, logical.UpdateOperation, "rotate/root/init")
+	req.Data["secret_shares"] = 5
+	req.Data["secret_threshold"] = 3
+	res, err := b.HandleRequest(ctx, req)
+	require.NoError(t, err)
+	require.Equal(t, true, res.Data["started"])
+	require.Equal(t, 0, res.Data["n"])
+	require.Equal(t, 0, res.Data["t"])
+	require.Equal(t, 2, res.Data["required"])
+	require.Equal(t, 0, res.Data["progress"])
+
+	req = logical.TestRequest(t, logical.ReadOperation, "rotate/root/init")
+	res, err = b.HandleRequest(ctx, req)
+	require.NoError(t, err)
+	require.Equal(t, true, res.Data["started"])
+	require.Equal(t, 0, res.Data["n"])
+	require.Equal(t, 0, res.Data["t"])
+	require.Equal(t, 2, res.Data["required"])
 }
 
 func TestBackend_RotateInitDispatch(t *testing.T) {

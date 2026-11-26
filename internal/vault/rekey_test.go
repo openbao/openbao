@@ -20,7 +20,7 @@ import (
 )
 
 func TestCore_Rekey_Lifecycle(t *testing.T) {
-	c, rootKeys, _, _ := TestCoreUnsealedWithConfigs(t, &SealConfig{
+	c, rootKeys, _ := TestCoreUnsealedWithConfigs(t, &SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
 	})
@@ -127,7 +127,7 @@ func testCore_Rekey_Init_Common(t *testing.T, c *Core, recovery bool) {
 }
 
 func TestCore_Rekey_Update(t *testing.T) {
-	c, rootKeys, _, root := TestCoreUnsealedWithConfigs(t, &SealConfig{
+	c, rootKeys, root := TestCoreUnsealedWithConfigs(t, &SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
 	})
@@ -285,7 +285,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 }
 
 func TestCore_Rekey_Invalid(t *testing.T) {
-	c, rootKeys, _, _ := TestCoreUnsealedWithConfigs(t, &SealConfig{
+	c, rootKeys, _ := TestCoreUnsealedWithConfigs(t, &SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
 	})
@@ -427,7 +427,7 @@ func TestCore_Rekey_Standby(t *testing.T) {
 // TestSysRekey_Verification_Invalid verifies that auto-unseal root rekey
 // rejects verification because it generates no new Shamir shares.
 func TestSysRekey_Verification_Invalid(t *testing.T) {
-	core, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
+	core, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
 		&SealConfig{Purpose: Recovery, SecretShares: 1, SecretThreshold: 1},
 		&seal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
 

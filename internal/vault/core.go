@@ -1633,71 +1633,101 @@ func (c *Core) unsealWithRaft(combinedKey []byte) error {
 	return nil
 }
 
-// sealMigrated reports whether seal migration has completed. It checks persisted
-// provider metadata and, for auto-unseal targets with missing metadata or an unchanged
-// provider type, attempts to decrypt stored keys. The caller must hold stateLock.
+// sealMigrated reports whether seal migration has completed. It checks
+// persisted seal provider metadata and, for auto-unseal seals with an
+// unchanged provider type, attempts to decrypt stored keys.
+// The caller must hold stateLock.
 func (c *Core) sealMigrated(ctx context.Context) (bool, error) {
 	if c.sealMigrationDone.Load() {
 		return true, nil
 	}
 
-	primarySealConfig, recoverySealConfig, err := c.PhysicalSealConfigs(ctx)
+	sealConfig, _, err := c.PhysicalSealConfig(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	switch c.seal.WrapperType() {
-	case vaultseal.WrapperTypeShamir:
-		// For migration to Shamir require the persisted primary Shamir seal config.
-		if primarySealConfig == nil {
-			return false, nil
-		}
-	default:
-		if c.seal.RecoveryKeySupported() && recoverySealConfig != nil && recoverySealConfig.Purpose != Recovery {
-			return false, nil
-		}
+	return c.sealMigratedWithConfig(ctx, sealConfig)
+}
 
-		// For migration to Auto seal verify the seal can decrypt stored keys when
-		// seal provider (type) metadata is missing or if we've haven't changed the
-		// provider with the migration.
-		if primarySealConfig == nil || c.seal.WrapperType() == c.migrationInfo.seal.WrapperType() {
-			keysMig, errMig := c.migrationInfo.seal.GetStoredKeys(ctx)
-			keys, err := c.seal.GetStoredKeys(ctx)
-
-			switch {
-			case len(keys) > 0 && err == nil:
-				return true, nil
-			case len(keysMig) > 0 && errMig == nil:
-				return false, nil
-			case errors.Is(err, &ErrDecrypt{}) && errors.Is(errMig, &ErrDecrypt{}):
-				return false, fmt.Errorf("decrypt error, neither the old nor new seal can read stored keys: old seal err=%v, new seal err=%v", errMig, err)
-			default:
-				return false, fmt.Errorf("neither the old nor new seal can read stored keys: old seal err=%v, new seal err=%v", errMig, err)
-			}
-		}
-
+// sealMigratedWithConfig reports whether migration to the new seal has
+// completed, using an already normalized and validated seal config.
+// For same-provider auto-seal migration, it attempts decryption of the
+// stored keys using newer then older seal if necessary
+// The caller must hold stateLock.
+func (c *Core) sealMigratedWithConfig(ctx context.Context, sealConfig *SealConfig) (bool, error) {
+	if sealConfig == nil {
+		return false, errors.New("no configuration to migrate")
 	}
 
-	return primarySealConfig.Type == c.seal.WrapperType().String(), nil
+	expectedPurpose := Primary
+	if c.seal.RecoveryKeySupported() {
+		expectedPurpose = Recovery
+	}
+
+	if sealConfig.Purpose != expectedPurpose {
+		return false, nil
+	}
+
+	// If the provider type is unchanged, verify that the seal we are migrating to
+	// can decrypt the stored keys.
+	if c.seal.WrapperType() == c.migrationInfo.seal.WrapperType() && expectedPurpose == Recovery {
+		destinationKeys, destinationErr := c.seal.GetStoredKeys(ctx)
+		if len(destinationKeys) > 0 && destinationErr == nil {
+			return true, nil
+		}
+
+		sourceKeys, sourceErr := c.migrationInfo.seal.GetStoredKeys(ctx)
+		if len(sourceKeys) > 0 && sourceErr == nil {
+			return false, nil
+		}
+
+		if errors.Is(destinationErr, &ErrDecrypt{}) && errors.Is(sourceErr, &ErrDecrypt{}) {
+			return false, fmt.Errorf("decrypt error, neither the old nor new seal can read stored keys: old seal err=%v, new seal err=%v", sourceErr, destinationErr)
+		}
+		return false, fmt.Errorf("neither the old nor new seal can read stored keys: old seal err=%v, new seal err=%v", sourceErr, destinationErr)
+	}
+
+	return sealConfig.Type == c.seal.WrapperType().String(), nil
 }
 
 // migrateSeal must be called with the stateLock held.
 func (c *Core) migrateSeal(ctx context.Context) error {
-	if c.migrationInfo == nil {
-		return nil
+	config, needsConversion, err := c.PhysicalSealConfig(ctx)
+	if err != nil {
+		return err
 	}
 
-	ok, err := c.sealMigrated(ctx)
+	if config == nil {
+		return errors.New("no configuration to migrate")
+	}
+
+	if c.migrationInfo == nil || c.sealMigrationDone.Load() {
+		return c.finalizeSealConfigConversion(ctx, config, needsConversion)
+	}
+
+	ok, err := c.sealMigratedWithConfig(ctx, config)
 	if err != nil {
 		return fmt.Errorf("error checking if seal is migrated or not: %w", err)
 	}
 
 	if ok {
 		c.logger.Info("migration is already performed")
-		return nil
+		return c.finalizeSealConfigConversion(ctx, config, needsConversion)
 	}
 
 	c.logger.Info("seal migration initiated")
+
+	sealConfig := config.Clone()
+	sealConfig.Type = c.seal.WrapperType().String()
+	sealConfig.Purpose = Primary
+	if c.seal.RecoveryKeySupported() {
+		sealConfig.Purpose = Recovery
+	}
+
+	if err := sealConfig.Validate(); err != nil {
+		return fmt.Errorf("failed to validate seal configuration during migration: %w", err)
+	}
 
 	switch {
 	case c.migrationInfo.seal.RecoveryKeySupported() && c.seal.RecoveryKeySupported():
@@ -1779,15 +1809,45 @@ func (c *Core) migrateSeal(ctx context.Context) error {
 		return errors.New("unhandled migration case (shamir to shamir)")
 	}
 
-	err = c.migrateSealConfig(ctx)
-	if err != nil {
-		return fmt.Errorf("error storing new seal configs: %w", err)
+	if err := c.seal.SetConfig(ctx, sealConfig); err != nil {
+		return fmt.Errorf("error storing seal config after migration: %w", err)
 	}
 
-	// Flag migration performed for seal-rewrap later
 	c.sealMigrationDone.Store(true)
-
 	c.logger.Info("seal migration complete")
+
+	return c.pruneLegacyRecoverySealConfig(ctx)
+}
+
+func (c *Core) finalizeSealConfigConversion(ctx context.Context, config *SealConfig, needsConversion bool) error {
+	expectedPurpose := Primary
+	if c.seal.RecoveryKeySupported() {
+		expectedPurpose = Recovery
+	}
+
+	if config.Purpose != expectedPurpose {
+		return fmt.Errorf("seal purpose of %q does not match loaded purpose of %q", expectedPurpose, config.Purpose)
+	}
+
+	if config.Type != c.seal.WrapperType().String() {
+		return fmt.Errorf("seal wrapper of %q does not match loaded wrapper of %q", c.seal.WrapperType().String(), config.Type)
+	}
+
+	if needsConversion {
+		if err := c.seal.SetConfig(ctx, config); err != nil {
+			return fmt.Errorf("error storing converted seal config: %w", err)
+		}
+	} else {
+		c.seal.SetCachedConfig(config)
+	}
+
+	return c.pruneLegacyRecoverySealConfig(ctx)
+}
+
+func (c *Core) pruneLegacyRecoverySealConfig(ctx context.Context) error {
+	if err := c.physical.Delete(ctx, legacyRecoverySealConfigPath); err != nil {
+		c.logger.Warn("failed to cleanup legacy recovery seal configuration entry", "error", err)
+	}
 	return nil
 }
 
@@ -2193,11 +2253,11 @@ type standardUnsealStrategy struct {
 func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c *Core) error {
 	c.logger.Debug("standard unseal starting")
 
-	// Force a refresh of seal configs to account for e.g., rotations or
+	// Force a refresh of seal config to account for e.g., rotations or
 	// snapshot restores. Notably, we do not do this when unsealing a standby
 	// because seal migration may be pending, in which case we want to keep
-	// the cached configs specially prepared by adjustForSealMigration around.
-	// Refreshing configs normally may otherwise error on standbys in seal
+	// the cached config specially prepared by adjustForSealMigration around.
+	// Refreshing config normally may otherwise error on standbys in seal
 	// migration mode due to a mismatch between instantiated seal type and
 	// stored seal type.
 	_ = c.seal.SetConfig(ctx, nil)
@@ -2560,101 +2620,78 @@ func (c *Core) AuditedHeadersConfig() *AuditedHeadersConfig {
 	return c.auditedHeaders
 }
 
-func (c *Core) PhysicalSealConfigs(ctx context.Context) (*SealConfig, *SealConfig, error) {
-	pe, err := c.physical.Get(ctx, barrierSealConfigPath)
+// PhysicalSealConfig reads and validates the persisted seal configuration, normalizing legacy
+// format without modifying storage. New (single) seal config entry take precedence over legacy
+// recovery configuration. The boolean signifies whether the stored configuration requires adjustment
+// to single config entry, false value does not imply that legacy recovery-entry cleanup is complete.
+func (c *Core) PhysicalSealConfig(ctx context.Context) (*SealConfig, bool, error) {
+	pe, err := c.physical.Get(ctx, sealConfigPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to fetch barrier seal configuration at migration check time: %w", err)
+		return nil, false, fmt.Errorf("failed to fetch seal configuration at migration check time: %w", err)
 	}
 
-	var barrierConf *SealConfig
-	if pe != nil {
-		barrierConf = &SealConfig{}
-		if err := jsonutil.DecodeJSON(pe.Value, barrierConf); err != nil {
-			return nil, nil, fmt.Errorf("failed to decode barrier seal configuration at migration check time: %w", err)
-		}
-		if err = barrierConf.Validate(); err != nil {
-			return nil, nil, fmt.Errorf("failed to validate barrier seal configuration at migration check time: %w", err)
-		}
-		// In older versions of vault the default seal would not store a type. This
-		// is here to offer backwards compatibility for older seal configs.
-		if barrierConf.Type == "" {
-			barrierConf.Type = vaultseal.WrapperTypeShamir.String()
-		}
-		if barrierConf.Purpose == "" {
-			barrierConf.Purpose = Primary
-		}
+	if pe == nil {
+		return nil, false, nil
 	}
 
-	pe, err = c.physical.Get(ctx, recoverySealConfigPath)
+	conf := &SealConfig{}
+	if err := jsonutil.DecodeJSON(pe.Value, conf); err != nil {
+		return nil, false, fmt.Errorf("failed to decode seal configuration at migration check time: %w", err)
+	}
+
+	needsConversion, err := conf.Normalize(ctx, &directStorageAccess{c.physical}, "")
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to fetch recovery seal configuration at migration check time: %w", err)
+		return nil, false, err
 	}
 
-	var recoveryConf *SealConfig
-	if pe != nil {
-		recoveryConf = &SealConfig{}
-		if err := jsonutil.DecodeJSON(pe.Value, recoveryConf); err != nil {
-			return nil, nil, fmt.Errorf("failed to decode recovery seal configuration at migration check time: %w", err)
-		}
-		if err = recoveryConf.Validate(); err != nil {
-			return nil, nil, fmt.Errorf("failed to validate recovery seal configuration at migration check time: %w", err)
-		}
-		if recoveryConf.Purpose == "" {
-			recoveryConf.Purpose = Recovery
-		}
+	if err = conf.Validate(); err != nil {
+		return nil, false, fmt.Errorf("failed to validate seal configuration at migration check time: %w", err)
 	}
 
-	return barrierConf, recoveryConf, nil
+	return conf, needsConversion, nil
 }
 
 // adjustForSealMigration prepares migration state using the configured seals
 // and persisted configuration. Without an explicit unwrap seal, stored Shamir
 // configuration and a configured auto-seal imply migration from Shamir.
-// Matching providers, uninitialized storage and recovery-only auto-unseal
-// storage require no inferred migration. Other provider changes require an
-// explicit disabled seal (disabled=true in seal stanza).
+// Matching providers, uninitialized storage require no inferred migration.
+// Other provider changes require an explicit disabled seal
+// (disabled=true in seal stanza).
 func (c *Core) adjustForSealMigration(unwrapSeal Seal) error {
-	ctx := namespace.RootContext(context.Background())
-	primarySealConfig, recoverySealConfig, err := c.PhysicalSealConfigs(ctx)
-	if err != nil {
-		return fmt.Errorf("error checking for existing seal configuration: %s", err)
-	}
-
 	// If we are migrating away from shamir, then it should be removed from
 	// configuration (seal stanza), not disabled.
 	if unwrapSeal != nil && unwrapSeal.WrapperType().String() == vaultseal.WrapperTypeShamir.String() {
 		return errors.New("shamir cannot be explicitly configured as a disabled seal")
 	}
 
-	// If neither a primary configuration record nor a recovery configuration
-	// exists, there is no stored configuration to migrate.
-	if primarySealConfig == nil && recoverySealConfig == nil {
+	ctx := namespace.RootContext(context.Background())
+	sealConfig, _, err := c.PhysicalSealConfig(ctx)
+	if err != nil {
+		return fmt.Errorf("error checking for existing seal configuration: %s", err)
+	}
+
+	// If there is no stored configuration to migrate then return nil.
+	if sealConfig == nil {
 		return nil
 	}
 
 	if unwrapSeal != nil {
-		// Explicit auto -> auto/shamir
-		// prepare migration/completion checking
-		c.adjustSealConfigDuringMigration(recoverySealConfig, unwrapSeal)
+		// Explicit auto -> auto/shamir, prepare migration/completion checking.
+		c.adjustSealConfigDuringMigration(sealConfig, unwrapSeal)
 		return nil
 	}
 
 	// No explicit old provider: infer existing mechanism from storage.
-	if primarySealConfig != nil && (primarySealConfig.Type == "" || primarySealConfig.Type == vaultseal.WrapperTypeShamir.String()) {
+	if sealConfig.Purpose == Primary {
 		if c.seal.WrapperType() == vaultseal.WrapperTypeShamir {
 			// We have the same barrier type and the unwrap seal is nil so we're not
 			// migrating from same to same, IOW we assume it's not a migration.
 			return nil
 		}
 		unwrapSeal = NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
-		// prepare Shamir -> auto migration
-		c.adjustSealConfigDuringMigration(primarySealConfig, unwrapSeal)
+		// prepare Shamir -> auto migration.
+		c.adjustSealConfigDuringMigration(sealConfig, unwrapSeal)
 		return nil
-	}
-
-	// Legacy auto metadata or recovery-only auto storage.
-	if recoverySealConfig == nil {
-		return errors.New("recovery seal configuration not found for existing auto seal")
 	}
 
 	if c.seal.WrapperType() == vaultseal.WrapperTypeShamir {
@@ -2662,46 +2699,15 @@ func (c *Core) adjustForSealMigration(unwrapSeal Seal) error {
 		// in config, and either no configured seal (which equates to Shamir)
 		// or an explicitly configured Shamir seal.
 		return fmt.Errorf("cannot seal migrate from %q to Shamir, no disabled seal in configuration",
-			recoverySealConfig.Type)
+			sealConfig.Type)
 	}
 
-	if primarySealConfig != nil && primarySealConfig.Type != c.seal.WrapperType().String() {
+	if sealConfig.Type != c.seal.WrapperType().String() {
 		// We know at this point that there is a configured non-Shamir seal,
 		// that it does not match the stored non-Shamir seal config, and that
 		// there is no explicit disabled seal stanza.
 		return fmt.Errorf("cannot seal migrate from %q to %q, no disabled seal in configuration",
-			primarySealConfig.Type, c.seal.WrapperType())
-	}
-
-	return nil
-}
-
-func (c *Core) migrateSealConfig(ctx context.Context) error {
-	primarySealConfig, recoverySealConfig, err := c.PhysicalSealConfigs(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to read existing seal configuration during migration: %v", err)
-	}
-
-	var config *SealConfig
-	switch {
-	case c.migrationInfo.seal.RecoveryKeySupported() && c.seal.RecoveryKeySupported(), c.migrationInfo.seal.RecoveryKeySupported():
-		// Migrating from auto->auto or auto->shamir, copy the existing
-		// recovery config over.
-		config = recoverySealConfig.Clone()
-	case c.seal.RecoveryKeySupported():
-		// Migrating from shamir->auto, set recovery config to a clone
-		// of shamir's barrier config.
-		config = primarySealConfig.Clone()
-	}
-
-	if err := c.seal.SetConfig(ctx, config); err != nil {
-		return fmt.Errorf("error storing seal config after migration: %w", err)
-	}
-
-	if !c.seal.RecoveryKeySupported() {
-		if err := c.physical.Delete(ctx, recoverySealConfigPath); err != nil {
-			return fmt.Errorf("failed to delete old recovery seal configuration during migration: %w", err)
-		}
+			sealConfig.Type, c.seal.WrapperType())
 	}
 
 	return nil

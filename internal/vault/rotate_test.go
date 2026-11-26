@@ -22,7 +22,7 @@ import (
 )
 
 func TestRotateLifecycle(t *testing.T) {
-	c, rootKeys, _, _ := TestCoreUnsealedWithConfigs(t, &SealConfig{
+	c, rootKeys, _ := TestCoreUnsealedWithConfigs(t, &SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
 	})
@@ -186,7 +186,7 @@ func testInitRotationCommon(t *testing.T, sm *SealManager, ns *namespace.Namespa
 }
 
 func TestUpdateRotation(t *testing.T) {
-	c, rootKeys, _, root := TestCoreUnsealedWithConfigs(t, &SealConfig{
+	c, rootKeys, root := TestCoreUnsealedWithConfigs(t, &SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
 	})
@@ -333,7 +333,7 @@ func testUpdateRotationCommon(t *testing.T, c *Core, ns *namespace.Namespace, ke
 }
 
 func TestRotateInvalid(t *testing.T) {
-	c, rootKeys, _, _ := TestCoreUnsealedWithConfigs(t, &SealConfig{
+	c, rootKeys, _ := TestCoreUnsealedWithConfigs(t, &SealConfig{
 		SecretShares:    3,
 		SecretThreshold: 3,
 	})
@@ -470,7 +470,7 @@ func TestRotationStandby(t *testing.T) {
 // TestVerficationInvalid verifies that auto-unseal root rotation
 // rejects verification because it generates no new Shamir shares.
 func TestVerficationInvalid(t *testing.T) {
-	core, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
+	core, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
 		&SealConfig{Purpose: Recovery, SecretShares: 1, SecretThreshold: 1},
 		&vaultseal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
 
@@ -481,7 +481,7 @@ func TestVerficationInvalid(t *testing.T) {
 }
 
 func TestRotationGenerateRecoveryKey(t *testing.T) {
-	core, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
+	core, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
 		&SealConfig{Purpose: Recovery, SecretShares: 0, SecretThreshold: 0},
 		&vaultseal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
 
@@ -498,11 +498,11 @@ func TestRotationGenerateRecoveryKey(t *testing.T) {
 }
 
 func TestRotateBarrierRootKey(t *testing.T) {
-	c1, unsealShares, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
+	c1, unsealShares, _ := TestCoreUnsealedWithConfigSealOpts(t,
 		&SealConfig{Purpose: Primary, SecretShares: 3, SecretThreshold: 2},
 		&vaultseal.TestSealOpts{Wrapper: vaultseal.WrapperTypeShamir})
 
-	c2, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
+	c2, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
 		&SealConfig{Purpose: Recovery, SecretShares: 3, SecretThreshold: 2},
 		&vaultseal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
 
@@ -570,7 +570,7 @@ func testRotateBarrierRootKey(t *testing.T, c *Core, ns *namespace.Namespace, un
 
 func TestRotationBackedUpKeys(t *testing.T) {
 	t.Run("root namespace barrier keys", func(t *testing.T) {
-		c, barrierKeys, _, _ := TestCoreUnsealedWithConfigSealOpts(t, &SealConfig{
+		c, barrierKeys, _ := TestCoreUnsealedWithConfigSealOpts(t, &SealConfig{
 			Purpose:         Primary,
 			SecretShares:    3,
 			SecretThreshold: 2,
@@ -579,7 +579,7 @@ func TestRotationBackedUpKeys(t *testing.T) {
 	})
 
 	t.Run("root namespace recovery keys", func(t *testing.T) {
-		c, _, recoveryKeys, _ := TestCoreUnsealedWithConfigSealOpts(t, &SealConfig{
+		c, recoveryKeys, _ := TestCoreUnsealedWithConfigSealOpts(t, &SealConfig{
 			Purpose:         Recovery,
 			SecretShares:    3,
 			SecretThreshold: 2,
@@ -588,7 +588,7 @@ func TestRotationBackedUpKeys(t *testing.T) {
 	})
 
 	t.Run("child namespace barrier keys", func(t *testing.T) {
-		c, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t, &SealConfig{
+		c, _, _ := TestCoreUnsealedWithConfigSealOpts(t, &SealConfig{
 			Purpose:         Primary,
 			SecretShares:    3,
 			SecretThreshold: 2,

@@ -139,7 +139,7 @@ func (sm *SealManager) RotateBarrierKey(ctx context.Context, ns *namespace.Names
 	return nil
 }
 
-// InitRotation will either initialize the rotation of barrier or recovery key
+// InitRotation will either initialize the rotation of root or recovery key
 // depending on the value of recovery parameter.
 func (sm *SealManager) InitRotation(ctx context.Context, ns *namespace.Namespace, newConfig *SealConfig, recovery bool) (*RekeyResult, error) {
 	sm.lock.Lock()
@@ -488,10 +488,10 @@ func (sm *SealManager) validateRotationConfig(seal Seal, newConfig *SealConfig, 
 	}
 
 	if !recovery && seal.RecoveryKeySupported() {
-		// Auto-unseal root rotation generates no Shamir shares, so shamir
-		// configuration does not apply. Recovery shares authorize the operation.
-		// We are only validating that the user provided request body doesn't
-		// contain properties not handled by this operation.
+		// Auto-unseal root key rotation generates no Shamir shares, so user
+		// provided shamir configuration does not apply. Recovery key shares
+		// authorize the operation. We are only validating absence of invalid
+		// properties for this operation.
 		if len(newConfig.PGPKeys) > 0 {
 			return logical.CodedError(http.StatusBadRequest, "PGP key encryption not supported when rotating the barrier key with recovery keys")
 		}
@@ -501,6 +501,8 @@ func (sm *SealManager) validateRotationConfig(seal Seal, newConfig *SealConfig, 
 		if newConfig.VerificationRequired {
 			return logical.CodedError(http.StatusBadRequest, "requiring verification not supported when rotating the barrier key with recovery keys")
 		}
+		newConfig.SecretShares = 0
+		newConfig.SecretThreshold = 0
 		sm.logger.Debug("using recovery seal configuration to rotate barrier key")
 		return nil
 	}

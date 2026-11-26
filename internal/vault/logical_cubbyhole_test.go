@@ -45,9 +45,8 @@ func TestCubbyholeBackend_Read(t *testing.T) {
 	require.NoError(t, err)
 	req.ClientToken = clientToken
 
-	if _, err := b.HandleRequest(t.Context(), req); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	_, err = b.HandleRequest(t.Context(), req)
+	require.NoError(t, err)
 
 	req = logical.TestRequest(t, logical.ReadOperation, "foo")
 	req.Storage = storage
@@ -76,9 +75,8 @@ func TestCubbyholeBackend_Delete(t *testing.T) {
 	require.NoError(t, err)
 	req.ClientToken = clientToken
 
-	if _, err := b.HandleRequest(t.Context(), req); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	_, err = b.HandleRequest(t.Context(), req)
+	require.NoError(t, err)
 
 	req = logical.TestRequest(t, logical.DeleteOperation, "foo")
 	req.Storage = storage
@@ -108,18 +106,16 @@ func TestCubbyholeBackend_List(t *testing.T) {
 	req.ClientToken = clientToken
 	storage := req.Storage
 
-	if _, err := b.HandleRequest(t.Context(), req); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	_, err = b.HandleRequest(t.Context(), req)
+	require.NoError(t, err)
 
 	req = logical.TestRequest(t, logical.UpdateOperation, "bar")
 	req.Data["raw"] = "baz"
 	req.ClientToken = clientToken
 	req.Storage = storage
 
-	if _, err := b.HandleRequest(t.Context(), req); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	_, err = b.HandleRequest(t.Context(), req)
+	require.NoError(t, err)
 
 	req = logical.TestRequest(t, logical.ListOperation, "")
 	req.Storage = storage

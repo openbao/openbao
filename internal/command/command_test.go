@@ -79,18 +79,14 @@ func testVaultServerWithSecrets(ctx context.Context, tb testing.TB) (*api.Client
 	client, _, closer := testVaultServerUnseal(tb)
 
 	// enable kv-v1 backend
-	if err := client.Sys().Mount("kv-v1/", &api.MountInput{
+	require.NoError(tb, client.Sys().Mount("kv-v1/", &api.MountInput{
 		Type: "kv-v1",
-	}); err != nil {
-		tb.Fatal(err)
-	}
+	}))
 
 	// enable kv-v2 backend
-	if err := client.Sys().Mount("kv-v2/", &api.MountInput{
+	require.NoError(tb, client.Sys().Mount("kv-v2/", &api.MountInput{
 		Type: "kv-v2",
-	}); err != nil {
-		tb.Fatal(err)
-	}
+	}))
 
 	// populate dummy secrets
 	for _, path := range []string{
@@ -99,19 +95,16 @@ func testVaultServerWithSecrets(ctx context.Context, tb testing.TB) (*api.Client
 		"app-1/bar",
 		"app-1/nested/baz",
 	} {
-		if err := client.KVv1("kv-v1").Put(ctx, path, map[string]any{
+		require.NoError(tb, client.KVv1("kv-v1").Put(ctx, path, map[string]any{
 			"user":     "test",
 			"password": "Hashi123",
-		}); err != nil {
-			tb.Fatal(err)
-		}
+		}))
 
-		if _, err := client.KVv2("kv-v2").Put(ctx, path, map[string]any{
+		_, err := client.KVv2("kv-v2").Put(ctx, path, map[string]any{
 			"user":     "test",
 			"password": "Hashi123",
-		}); err != nil {
-			tb.Fatal(err)
-		}
+		})
+		require.NoError(tb, err)
 	}
 
 	return client, closer

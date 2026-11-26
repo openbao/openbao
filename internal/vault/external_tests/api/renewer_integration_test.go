@@ -21,11 +21,10 @@ func TestRenewer_Renew(t *testing.T) {
 		t.Run("kv", func(t *testing.T) {
 			t.Parallel()
 
-			if _, err := client.Logical().Write("secret/value", map[string]any{
+			_, err := client.Logical().Write("secret/value", map[string]any{
 				"foo": "bar",
-			}); err != nil {
-				t.Fatal(err)
-			}
+			})
+			require.NoError(t, err)
 
 			secret, err := client.Logical().Read("secret/value")
 			require.NoError(t, err)
@@ -52,11 +51,9 @@ func TestRenewer_Renew(t *testing.T) {
 		t.Run("transit", func(t *testing.T) {
 			t.Parallel()
 
-			if err := client.Sys().Mount("transit", &api.MountInput{
+			require.NoError(t, client.Sys().Mount("transit", &api.MountInput{
 				Type: "transit",
-			}); err != nil {
-				t.Fatal(err)
-			}
+			}))
 
 			secret, err := client.Logical().Write("transit/encrypt/my-app", map[string]any{
 				"plaintext": "Zm9vCg==",

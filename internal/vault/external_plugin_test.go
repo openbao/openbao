@@ -235,9 +235,7 @@ func TestCore_EnableExternalPlugin_Deregister_SealUnseal(t *testing.T) {
 	// Now pull the rug out from underneath us
 	deregisterPlugin(t, c.systemBackend, pluginName, consts.PluginTypeCredential.String(), "", "", "")
 
-	if err := c.Seal(root); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, c.Seal(root))
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c, key)
 		require.NoError(t, err)
@@ -301,9 +299,7 @@ func TestCore_Unseal_isMajorVersionFirstMount_PendingRemoval_Plugin(t *testing.T
 		t.Fatal("expected major version to register as mounted")
 	}
 
-	if err := c.Seal(root); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, c.Seal(root))
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c, key)
 		require.NoError(t, err)
@@ -315,9 +311,7 @@ func TestCore_Unseal_isMajorVersionFirstMount_PendingRemoval_Plugin(t *testing.T
 	// Now remove version history and try again
 	vaultVersionPath := "core/versions/"
 	key := vaultVersionPath + version.Version
-	if err := c.barrier.Delete(t.Context(), key); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.barrier.Delete(t.Context(), key))
 
 	// loadVersionHistory doesn't care about invalidating old entries, since
 	// they shouldn't really be deleted from the version store. It just updates
@@ -331,9 +325,7 @@ func TestCore_Unseal_isMajorVersionFirstMount_PendingRemoval_Plugin(t *testing.T
 	}
 
 	// Seal again and check for unseal failure.
-	if err := c.Seal(root); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, c.Seal(root))
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c, key)
 		if i+1 == len(keys) {
@@ -369,9 +361,7 @@ func TestCore_EnableExternalPlugin_PendingRemoval(t *testing.T) {
 
 	// Create a new auth method with builtin pending-removal-test-plugin
 	resp, err := mountPluginWithResponse(t, c.systemBackend, pluginName, consts.PluginTypeCredential, "", "")
-	if err == nil {
-		t.Fatal("expected error when mounting deprecated backend")
-	}
+	require.Error(t, err, "expected error when mounting deprecated backend")
 	if resp == nil || resp.Data == nil || !strings.Contains(resp.Data["error"].(string), pendingRemovalString) {
 		t.Fatalf("expected error response to contain %q but got %+v", pendingRemovalString, resp)
 	}
@@ -419,43 +409,33 @@ func TestCore_EnableExternalPlugin_ShadowBuiltin(t *testing.T) {
 	mountPlugin(t, c.systemBackend, pluginName, consts.PluginTypeCredential, "", "")
 
 	// Read the auth table to verify deprecation status
-	if err := verifyAuthListDeprecationStatus(pluginName, true); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, verifyAuthListDeprecationStatus(pluginName, true))
 
 	// Register a shadow plugin
 	registerPlugin(t, c.systemBackend, pluginName, consts.PluginTypeCredential.String(), "v1.2.3", plugin.Sha256, plugin.FileName)
 
 	// Verify auth table hasn't changed
-	if err := verifyAuthListDeprecationStatus(pluginName, true); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, verifyAuthListDeprecationStatus(pluginName, true))
 
 	// Remount auth method using registered shadow plugin
 	unmountPlugin(t, c.systemBackend, pluginName, consts.PluginTypeCredential, "", "")
 	mountPlugin(t, c.systemBackend, pluginName, consts.PluginTypeCredential, "", "")
 
 	// Verify auth table has changed
-	if err := verifyAuthListDeprecationStatus(pluginName, false); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, verifyAuthListDeprecationStatus(pluginName, false))
 
 	// Deregister shadow plugin
 	deregisterPlugin(t, c.systemBackend, pluginName, consts.PluginTypeSecrets.String(), "v1.2.3", plugin.Sha256, plugin.FileName)
 
 	// Verify auth table hasn't changed
-	if err := verifyAuthListDeprecationStatus(pluginName, false); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, verifyAuthListDeprecationStatus(pluginName, false))
 
 	// Remount auth method
 	unmountPlugin(t, c.systemBackend, pluginName, consts.PluginTypeCredential, "", "")
 	mountPlugin(t, c.systemBackend, pluginName, consts.PluginTypeCredential, "", "")
 
 	// Verify auth table has changed
-	if err := verifyAuthListDeprecationStatus(pluginName, false); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, verifyAuthListDeprecationStatus(pluginName, false))
 }
 
 func TestCore_EnableExternalKv_MultipleVersions(t *testing.T) {
@@ -478,9 +458,7 @@ func TestCore_EnableExternalKv_MultipleVersions(t *testing.T) {
 	req := logical.TestRequest(t, logical.ReadOperation, "plugins/catalog")
 	resp, err := c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoError(t, err)
-	if resp.Error() != nil {
-		t.Fatalf("%#v", resp)
-	}
+	require.NoErrorf(t, resp.Error(), "%#v", resp)
 	found := false
 	for _, plugin := range resp.Data["detailed"].([]map[string]any) {
 		if plugin["name"] == pluginName && plugin["version"] == "v1.2.3" {
@@ -500,9 +478,7 @@ func TestCore_EnableExternalKv_MultipleVersions(t *testing.T) {
 	}
 	resp, err = c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoError(t, err)
-	if resp.Error() == nil {
-		t.Fatal("Expected resp error but got successful response")
-	}
+	require.Error(t, resp.Error(), "Expected resp error but got successful response")
 }
 
 func TestCore_EnableExternalNoop_MultipleVersions(t *testing.T) {
@@ -525,9 +501,7 @@ func TestCore_EnableExternalNoop_MultipleVersions(t *testing.T) {
 	req := logical.TestRequest(t, logical.ReadOperation, "plugins/catalog")
 	resp, err := c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoError(t, err)
-	if resp.Error() != nil {
-		t.Fatalf("%#v", resp)
-	}
+	require.NoErrorf(t, resp.Error(), "%#v", resp)
 	found := false
 	for _, plugin := range resp.Data["detailed"].([]map[string]any) {
 		if plugin["name"] == "noop" && plugin["version"] == "v1.2.3" {
@@ -547,9 +521,7 @@ func TestCore_EnableExternalNoop_MultipleVersions(t *testing.T) {
 	}
 	resp, err = c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
 	require.NoError(t, err)
-	if resp.Error() == nil {
-		t.Fatal("Expected resp error but got successful response")
-	}
+	require.Error(t, resp.Error(), "Expected resp error but got successful response")
 }
 
 func TestCore_EnableExternalPlugin_NoVersionsOkay(t *testing.T) {
@@ -708,13 +680,9 @@ func TestExternalPlugin_getBackendTypeVersion(t *testing.T) {
 
 func TestExternalPlugin_CheckFilePermissions(t *testing.T) {
 	// Turn on the check.
-	if err := os.Setenv(consts.VaultEnableFilePermissionsCheckEnv, "true"); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.Setenv(consts.VaultEnableFilePermissionsCheckEnv, "true"))
 	defer func() {
-		if err := os.Unsetenv(consts.VaultEnableFilePermissionsCheckEnv); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, os.Unsetenv(consts.VaultEnableFilePermissionsCheckEnv))
 	}()
 
 	for name, tc := range map[string]struct {
@@ -753,9 +721,7 @@ func TestExternalPlugin_CheckFilePermissions(t *testing.T) {
 			}
 			resp, err := c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
 			require.NoError(t, err)
-			if resp.Error() != nil {
-				t.Fatal(resp.Error())
-			}
+			require.NoError(t, resp.Error())
 
 			// Now attempt to mount the plugin, which should trigger checking the permissions again.
 			req = logical.TestRequest(t, logical.UpdateOperation, mountTable(tc.pluginType))
@@ -769,9 +735,7 @@ func TestExternalPlugin_CheckFilePermissions(t *testing.T) {
 			}
 			resp, err = c.systemBackend.HandleRequest(namespace.RootContext(t.Context()), req)
 			require.NoError(t, err)
-			if resp.Error() != nil {
-				t.Fatal(resp.Error())
-			}
+			require.NoError(t, resp.Error())
 		})
 	}
 }

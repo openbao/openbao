@@ -11,6 +11,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/seal"
+	"github.com/stretchr/testify/require"
 )
 
 func NewTestSeal(t testing.T, opts *seal.TestSealOpts) Seal {
@@ -33,9 +34,7 @@ func NewTestSeal(t testing.T, opts *seal.TestSealOpts) Seal {
 	default:
 		access, _ := seal.NewTestSeal(opts)
 		seal, err := NewAutoSeal(access)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		return seal
 	}
 }
@@ -58,18 +57,15 @@ func TestCoreUnsealedWithConfigSealOpts(t testing.T, barrierConf, recoveryConf *
 		BarrierConfig:  barrierConf,
 		RecoveryConfig: recoveryConf,
 	})
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if err = core.UnsealWithStoredKeys(ctx); err != nil && IsFatalError(err) {
 		t.Fatalf("err: %s", err)
 	}
 
 	if core.Sealed() {
 		for _, key := range result.SecretShares {
-			if _, err := core.Unseal(TestKeyCopy(key)); err != nil {
-				t.Fatalf("unseal err: %s", err)
-			}
+			_, err = core.Unseal(TestKeyCopy(key))
+			require.NoError(t, err, "unseal err")
 		}
 
 		if core.Sealed() {

@@ -96,9 +96,7 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 	// Should fail but we should not see the header since it's
 	// not in the allowed list
 	resp, err = client.Logical().ReadRaw("auth/headtest/login")
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	if resp.StatusCode != 401 {
 		t.Fatalf("expected code 401, got %d", resp.StatusCode)
 	}
@@ -122,9 +120,7 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 	}
 
 	resp, err = client.Logical().ReadRaw("auth/headtest/login")
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	if resp.StatusCode != 401 {
 		t.Fatalf("expected code 401, got %d", resp.StatusCode)
 	}

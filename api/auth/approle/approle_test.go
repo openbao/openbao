@@ -50,12 +50,9 @@ func TestLogin(t *testing.T) {
 	err = os.Setenv(secretIDEnvVar, allowedSecretID)
 	require.NoError(t, err)
 
-	if _, err := tmpfile.Write(content); err != nil {
-		t.Fatalf("error writing to temp file: %v", err)
-	}
-	if err := tmpfile.Close(); err != nil {
-		t.Fatalf("error closing temp file: %v", err)
-	}
+	_, err = tmpfile.Write(content)
+	require.NoError(t, err, "error writing to temp file")
+	require.NoError(t, tmpfile.Close(), "error closing temp file")
 
 	// a response to return if the correct values were passed to login
 	authSecret := &api.Secret{

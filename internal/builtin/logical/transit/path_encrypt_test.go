@@ -223,9 +223,7 @@ func TestTransit_BatchEncryptionCase3(t *testing.T) {
 		Data:      batchData,
 	}
 	_, err = b.HandleRequest(t.Context(), batchReq)
-	if err == nil {
-		t.Fatal("expected an error")
-	}
+	require.Error(t, err)
 }
 
 // Case4: Test batch encryption with an existing key (and test references)
@@ -408,9 +406,7 @@ func TestTransit_BatchEncryptionCase6(t *testing.T) {
 
 	for _, responseItem := range batchResponseItems {
 		var item EncryptBatchResponseItem
-		if err := mapstructure.Decode(responseItem, &item); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, mapstructure.Decode(responseItem, &item))
 
 		if item.KeyVersion != 1 {
 			t.Fatalf("unexpected key version; got: %d, expected: %d", item.KeyVersion, 1)
@@ -534,9 +530,7 @@ func TestTransit_BatchEncryptionCase8(t *testing.T) {
 		Data:      encData,
 	}
 	_, err = b.HandleRequest(t.Context(), encReq)
-	if err == nil {
-		t.Fatal("expected an error")
-	}
+	require.Error(t, err)
 }
 
 // Case9: If both plaintext and batch inputs are supplied, plaintext should be
@@ -595,9 +589,7 @@ func TestTransit_BatchEncryptionCase10(t *testing.T) {
 		Data:      batchData,
 	}
 	_, err = b.HandleRequest(t.Context(), batchReq)
-	if err == nil {
-		t.Fatal("expected an error")
-	}
+	require.Error(t, err)
 }
 
 // Case11: Incorrect inputs for context should not fail the operation
@@ -644,9 +636,7 @@ func TestTransit_BatchEncryptionCase12(t *testing.T) {
 		Data:      batchData,
 	}
 	_, err = b.HandleRequest(t.Context(), batchReq)
-	if err == nil {
-		t.Fatal("expected an error")
-	}
+	require.Error(t, err)
 }
 
 // Test that the fast path function decodeBatchRequestItems behave like mapstructure.Decode() to decode []BatchRequestItem.
@@ -805,9 +795,7 @@ func TestTransit_decodeBatchRequestItems(t *testing.T) {
 			gotDest := tt.dest
 
 			if expectedErr {
-				if gotErr == nil {
-					t.Fatal("decodeBatchRequestItems unexpected error value; expected error but got none")
-				}
+				require.Error(t, gotErr, "decodeBatchRequestItems unexpected error value; expected error but got none")
 				if tt.wantErrContains == "" {
 					t.Fatal("missing error condition")
 				}

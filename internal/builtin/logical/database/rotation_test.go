@@ -429,13 +429,9 @@ func createTestPGUser(t *testing.T, connURL string, username, password, query st
 		"name":     username,
 		"password": password,
 	}
-	if err := dbtxn.ExecuteTxQueryDirect(ctx, tx, m, query); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, dbtxn.ExecuteTxQueryDirect(ctx, tx, m, query))
 	// Commit the transaction
-	if err := tx.Commit(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, tx.Commit())
 }
 
 func verifyPgConn(t *testing.T, username, password, connURL string) {
@@ -443,9 +439,7 @@ func verifyPgConn(t *testing.T, username, password, connURL string) {
 	cURL := strings.Replace(connURL, "postgres:secret", username+":"+password, 1)
 	db, err := sql.Open("pgx", cURL)
 	require.NoError(t, err)
-	if err := db.Ping(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, db.Ping())
 }
 
 // WAL testing
@@ -1074,9 +1068,7 @@ func TestStoredWALsCorrectlyProcessed(t *testing.T) {
 			b := Backend(config)
 			defer b.Cleanup(ctx)
 			mockDB := setupMockDB(b)
-			if err := b.Setup(ctx, config); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, b.Setup(ctx, config))
 			b.credRotationQueue = queue.New()
 			configureDBMount(t, config.StorageView)
 			createRole(t, b, config.StorageView, mockDB, "hashicorp")
@@ -1181,9 +1173,7 @@ func generateWALFromFailedRotation(t *testing.T, b *databaseBackend, storage log
 		Path:      "rotate-role/" + roleName,
 		Storage:   storage,
 	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 }
 
 func rotateRole(t *testing.T, b *databaseBackend, storage logical.Storage, mockDB *mockNewDatabase, roleName string) {
@@ -1220,9 +1210,7 @@ func getBackend(t *testing.T) (*databaseBackend, logical.Storage, *mockNewDataba
 	// Create and init the backend ourselves instead of using a Factory because
 	// the factory function kicks off threads that cause racy tests.
 	b := Backend(config)
-	if err := b.Setup(t.Context(), config); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, b.Setup(t.Context(), config))
 	b.credRotationQueue = queue.New()
 	b.populateQueue(t.Context(), config.StorageView)
 

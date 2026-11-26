@@ -249,9 +249,7 @@ func TestQuotas_RateLimit_DupPath(t *testing.T) {
 		"path": "",
 	})
 
-	if err == nil {
-		t.Fatal("Duplicated paths were accepted")
-	}
+	require.Error(t, err, "Duplicated paths were accepted")
 }
 
 func TestQuotas_RateLimitQuota_ExemptPaths(t *testing.T) {

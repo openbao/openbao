@@ -12,6 +12,7 @@ import (
 
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestListener(tb testing.TB) (net.Listener, string) {
@@ -96,9 +97,8 @@ func TestServer(tb testing.TB, core *vault.Core) (net.Listener, string) {
 }
 
 func TestServerAuth(tb testing.TB, addr string, token string) {
-	if _, err := http.Get(addr + "/_test/auth?token=" + token); err != nil {
-		tb.Fatalf("error authenticating: %s", err)
-	}
+	_, err := http.Get(addr + "/_test/auth?token=" + token)
+	require.NoError(tb, err, "error authenticating")
 }
 
 func testHandleAuth(w http.ResponseWriter, req *http.Request) {

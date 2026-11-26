@@ -40,9 +40,7 @@ func TestParseConfig_badKeys(t *testing.T) {
 token_helper = "/token"
 nope = "true"
 `)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	if !strings.Contains(err.Error(), `invalid key "nope" on line 3`) {
 		t.Errorf("bad error: %s", err.Error())

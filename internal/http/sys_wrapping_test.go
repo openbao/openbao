@@ -53,49 +53,35 @@ func TestHTTP_Wrapping(t *testing.T) {
 	// First test: basic things that should fail, lookup edition
 	// Root token isn't a wrapping token
 	_, err = client.Logical().Write("sys/wrapping/lookup", nil)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	// Not supplied
 	_, err = client.Logical().Write("sys/wrapping/lookup", map[string]any{
 		"foo": "bar",
 	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	// Nonexistent token isn't a wrapping token
 	_, err = client.Logical().Write("sys/wrapping/lookup", map[string]any{
 		"token": "bar",
 	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	// Second: basic things that should fail, unwrap edition
 	// Root token isn't a wrapping token
 	_, err = client.Logical().Unwrap(cluster.RootToken)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	// Root token isn't a wrapping token
 	_, err = client.Logical().Write("sys/wrapping/unwrap", nil)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	// Not supplied
 	_, err = client.Logical().Write("sys/wrapping/unwrap", map[string]any{
 		"foo": "bar",
 	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	// Nonexistent token isn't a wrapping token
 	_, err = client.Logical().Write("sys/wrapping/unwrap", map[string]any{
 		"token": "bar",
 	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	//
 	// Test lookup
@@ -152,9 +138,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	ret1 := secret
 	// Should be expired and fail
 	_, err = client.Logical().Write("sys/wrapping/unwrap", nil)
-	if err == nil {
-		t.Fatal("expected err")
-	}
+	require.Error(t, err)
 
 	// Create a wrapping token
 	client.SetToken(cluster.RootToken)
@@ -175,9 +159,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	_, err = client.Logical().Write("sys/wrapping/unwrap", map[string]any{
 		"token": wrapInfo.Token,
 	})
-	if err == nil {
-		t.Fatal("expected err")
-	}
+	require.Error(t, err)
 
 	// Create a wrapping token
 	secret, err = client.Logical().Read("secret/foo")
@@ -194,9 +176,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	ret3 := secret
 	// Should be expired and fail
 	_, err = client.Logical().Write("cubbyhole/response", nil)
-	if err == nil {
-		t.Fatal("expected err")
-	}
+	require.Error(t, err)
 
 	// Create a wrapping token
 	client.SetToken(cluster.RootToken)
@@ -216,9 +196,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	ret4 := secret
 	// Should be expired and fail
 	_, err = client.Logical().Unwrap(wrapInfo.Token)
-	if err == nil {
-		t.Fatal("expected err")
-	}
+	require.Error(t, err)
 
 	if !reflect.DeepEqual(ret1.Data, map[string]any{
 		"zip": "zap",
@@ -259,9 +237,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 		return ""
 	})
 	_, err = client.Logical().Write("sys/wrapping/wrap", data)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	// Re-set the lookup function
 	client.SetWrappingLookupFunc(func(operation, path string) string {
@@ -320,9 +296,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	_, err = client.Logical().Write("sys/wrapping/unwrap", map[string]any{
 		"token": wrapInfo.Token,
 	})
-	if err == nil {
-		t.Fatal("expected err")
-	}
+	require.Error(t, err)
 
 	// Attempt unwrapping the rewrapped token
 	wrapToken := secret.WrapInfo.Token
@@ -330,9 +304,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	require.NoError(t, err)
 	// Should be expired and fail
 	_, err = client.Logical().Unwrap(wrapToken)
-	if err == nil {
-		t.Fatal("expected err")
-	}
+	require.Error(t, err)
 
 	if !reflect.DeepEqual(secret.Data, map[string]any{
 		"zip": "zap",
@@ -347,9 +319,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 		t.Fatalf("expected no response: %#v", secret)
 	}
 
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	var respError *api.ResponseError
 	if errors.As(err, &respError); respError.StatusCode != 403 {

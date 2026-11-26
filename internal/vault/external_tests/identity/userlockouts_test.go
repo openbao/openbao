@@ -138,9 +138,7 @@ func TestIdentityStore_DisableUserLockoutTest(t *testing.T) {
 				_, err = client.Logical().Write("auth/userpass/login/bsmith", map[string]any{
 					"password": "wrongPassword",
 				})
-				if err == nil {
-					t.Fatal("expected login to fail due to wrong credentials")
-				}
+				require.Error(t, err, "expected login to fail due to wrong credentials")
 				if !strings.Contains(err.Error(), "invalid username or password") {
 					t.Fatal(err)
 				}
@@ -150,9 +148,7 @@ func TestIdentityStore_DisableUserLockoutTest(t *testing.T) {
 			_, err = client.Logical().Write("auth/userpass/login/bsmith", map[string]any{
 				"password": "wrongPassword",
 			})
-			if err == nil {
-				t.Fatal("expected login to fail due to wrong credentials")
-			}
+			require.Error(t, err, "expected login to fail due to wrong credentials")
 
 			switch tt.expectedUserLocked {
 			case true:
@@ -160,9 +156,8 @@ func TestIdentityStore_DisableUserLockoutTest(t *testing.T) {
 					t.Fatalf("expected user to get locked but got %v", err)
 				}
 				// user locked, unlock user to perform next test iteration
-				if _, err = client.Logical().Write("sys/locked-users/"+mountAccessor+"/unlock/bsmith", nil); err != nil {
-					t.Fatal(err)
-				}
+				_, err = client.Logical().Write("sys/locked-users/"+mountAccessor+"/unlock/bsmith", nil)
+				require.NoError(t, err)
 
 			default:
 				if !strings.Contains(err.Error(), "invalid username or password") {

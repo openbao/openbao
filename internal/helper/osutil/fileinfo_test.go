@@ -101,9 +101,7 @@ func TestOwnerPermissionsMatchFile(t *testing.T) {
 	info, err := os.Stat(path)
 	require.NoError(t, err)
 
-	if err := OwnerPermissionsMatchFile(f, int(uid), int(info.Mode())); err != nil {
-		t.Fatalf("expected no error but got %v", err)
-	}
+	require.NoError(t, OwnerPermissionsMatchFile(f, int(uid), int(info.Mode())))
 }
 
 // TestOwnerPermissionsMatchFile_OtherUser creates a file using the user that started the current process and verifies
@@ -122,9 +120,7 @@ func TestOwnerPermissionsMatchFile_OtherUser(t *testing.T) {
 	info, err := os.Stat(path)
 	require.NoError(t, err)
 
-	if err := OwnerPermissionsMatchFile(f, int(uid)+1, int(info.Mode())); err == nil {
-		t.Fatal("expected error but none")
-	}
+	require.Error(t, OwnerPermissionsMatchFile(f, int(uid)+1, int(info.Mode())))
 }
 
 // TestOwnerPermissionsMatchFile_Symlink creates a file and a symlink to that file. The test verifies that the current
@@ -147,7 +143,5 @@ func TestOwnerPermissionsMatchFile_Symlink(t *testing.T) {
 	require.NoError(t, err)
 	info, err := os.Stat(symlink)
 	require.NoError(t, err)
-	if err := OwnerPermissionsMatchFile(symlinkedFile, int(uid), int(info.Mode())); err != nil {
-		t.Fatalf("expected no error but got %v", err)
-	}
+	require.NoError(t, OwnerPermissionsMatchFile(symlinkedFile, int(uid), int(info.Mode())))
 }

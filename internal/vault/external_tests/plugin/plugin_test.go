@@ -189,9 +189,7 @@ func TestSystemBackend_Plugin_MissingBinary(t *testing.T) {
 			req = logical.TestRequest(t, logical.ReadOperation, "sys/mounts/mock-0/tune")
 			req.ClientToken = core.Client.Token()
 			_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-			if err == nil {
-				t.Fatal("expected error")
-			}
+			require.Error(t, err)
 		})
 	}
 }
@@ -319,9 +317,7 @@ func testPlugin_CatalogRemoved(t *testing.T, btype logical.BackendType, testMoun
 						"type": "test",
 					})
 				}
-				if err == nil {
-					t.Fatal("expected error when mounting on existing path")
-				}
+				require.Error(t, err, "expected error when mounting on existing path")
 			}
 		})
 	}
@@ -362,9 +358,7 @@ func TestSystemBackend_Plugin_autoReload(t *testing.T) {
 			req = logical.TestRequest(t, logical.ReadOperation, "mock-0/errors/rpc")
 			req.ClientToken = core.Client.Token()
 			_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-			if err == nil {
-				t.Fatal("expected error from error/rpc request")
-			}
+			require.Error(t, err, "expected error from error/rpc request")
 
 			// Check internal value to make sure it's reset
 			req = logical.TestRequest(t, logical.ReadOperation, "mock-0/internal")

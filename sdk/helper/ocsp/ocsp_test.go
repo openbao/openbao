@@ -131,24 +131,18 @@ func TestUnitEncodeCertIDGood(t *testing.T) {
 			require.NoError(t, err)
 			var ost *ocspStatus
 			_, ost = extractCertIDKeyFromRequest(ocspReq)
-			if ost.err != nil {
-				t.Fatalf("failed to extract cert ID from the OCSP request. err: %v", ost.err)
-			}
+			require.NoError(t, ost.err, "failed to extract cert ID from the OCSP request")
 			// better hash. Not sure if the actual OCSP server accepts this, though.
 			ocspReq, err = ocsp.CreateRequest(subject, issuer, &ocsp.RequestOptions{Hash: crypto.SHA512})
 			require.NoError(t, err)
 			_, ost = extractCertIDKeyFromRequest(ocspReq)
-			if ost.err != nil {
-				t.Fatalf("failed to extract cert ID from the OCSP request. err: %v", ost.err)
-			}
+			require.NoError(t, ost.err, "failed to extract cert ID from the OCSP request")
 			// tweaked request binary
 			ocspReq, err = ocsp.CreateRequest(subject, issuer, &ocsp.RequestOptions{Hash: crypto.SHA512})
 			require.NoError(t, err)
 			ocspReq[10] = 0 // random change
 			_, ost = extractCertIDKeyFromRequest(ocspReq)
-			if ost.err == nil {
-				t.Fatal("should have failed")
-			}
+			require.Error(t, ost.err)
 		}
 	}
 }

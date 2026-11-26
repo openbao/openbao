@@ -209,13 +209,11 @@ func prepKeyStorage(t *testing.T) Storage {
 	s := &InmemStorage{}
 
 	for _, key := range keyList {
-		if err := s.Put(t.Context(), &StorageEntry{
+		require.NoError(t, s.Put(t.Context(), &StorageEntry{
 			Key:      key,
 			Value:    nil,
 			SealWrap: false,
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 	}
 
 	return s

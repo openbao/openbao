@@ -32,9 +32,7 @@ func TestCacheMemDB_Get(t *testing.T) {
 
 	// Test invalid index name
 	_, err = cache.Get("foo", "bar")
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	// Test on empty cache
 	index, err := cache.Get(IndexNameID, "foo")
@@ -54,9 +52,7 @@ func TestCacheMemDB_Get(t *testing.T) {
 		Response:      []byte("hello world"),
 	}
 
-	if err := cache.Set(in); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, cache.Set(in))
 
 	testCases := []struct {
 		name        string
@@ -107,9 +103,7 @@ func TestCacheMemDB_GetByPrefix(t *testing.T) {
 
 	// Test invalid index name
 	_, err = cache.GetByPrefix("foo", "bar", "baz")
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	// Test on empty cache
 	index, err := cache.GetByPrefix(IndexNameRequestPath, "foo", "bar")
@@ -131,9 +125,7 @@ func TestCacheMemDB_GetByPrefix(t *testing.T) {
 		Response:      []byte("hello world"),
 	}
 
-	if err := cache.Set(in); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, cache.Set(in))
 
 	// Populate cache
 	in2 := &Index{
@@ -148,9 +140,7 @@ func TestCacheMemDB_GetByPrefix(t *testing.T) {
 		Response:      []byte("hello world"),
 	}
 
-	if err := cache.Set(in2); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, cache.Set(in2))
 
 	testCases := []struct {
 		name        string
@@ -246,9 +236,7 @@ func TestCacheMemDB_Evict(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test on empty cache
-	if err := cache.Evict(IndexNameID, "foo"); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, cache.Evict(IndexNameID, "foo"))
 
 	testIndex := &Index{
 		ID:            "test_id",
@@ -321,9 +309,7 @@ func TestCacheMemDB_Evict(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.insertIndex != nil {
-				if err := cache.Set(tc.insertIndex); err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, cache.Set(tc.insertIndex))
 			}
 
 			if err := cache.Evict(tc.indexName, tc.indexValues...); (err != nil) != tc.wantErr {
@@ -357,14 +343,10 @@ func TestCacheMemDB_Flush(t *testing.T) {
 		Response:    []byte("hello world"),
 	}
 
-	if err := cache.Set(in); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, cache.Set(in))
 
 	// Reset the cache
-	if err := cache.Flush(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, cache.Flush())
 
 	// Check the cache doesn't contain inserted index
 	out, err := cache.Get(IndexNameID, "test_id")

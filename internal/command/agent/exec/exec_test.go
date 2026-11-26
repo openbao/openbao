@@ -90,13 +90,9 @@ func TestExecServer_Run(t *testing.T) {
 
 	testAppBinary := filepath.Join(os.TempDir(), "test-app")
 
-	if err := exec.Command(goBinary, "build", "-o", testAppBinary, "./test-app").Run(); err != nil {
-		t.Fatalf("could not build the test application: %s", err)
-	}
+	require.NoError(t, exec.Command(goBinary, "build", "-o", testAppBinary, "./test-app").Run(), "could not build the test application")
 	defer func() {
-		if err := os.Remove(testAppBinary); err != nil {
-			t.Fatalf("could not remove %q test application: %s", testAppBinary, err)
-		}
+		require.NoErrorf(t, os.Remove(testAppBinary), "could not remove %q test application", testAppBinary)
 	}()
 
 	testCases := map[string]struct {
@@ -342,9 +338,8 @@ func TestExecServer_Run(t *testing.T) {
 				time.Sleep(testCase.simulateShutdownWaitDuration)
 
 				// check if the test app is still alive
-				if _, err := http.Head(testAppAddr); err == nil {
-					t.Fatalf("the test app is still alive %v after a simulated shutdown!", testCase.simulateShutdownWaitDuration)
-				}
+				_, err := http.Head(testAppAddr)
+				require.Errorf(t, err, "the test app is still alive %v after a simulated shutdown!", testCase.simulateShutdownWaitDuration)
 
 				return
 			}
@@ -361,9 +356,7 @@ func TestExecServer_Run(t *testing.T) {
 				EnvironmentVariables map[string]string `json:"environment_variables"`
 				ProcessID            int               `json:"process_id"`
 			}
-			if err := decoder.Decode(&response); err != nil {
-				t.Fatalf("unable to parse response from test app: %s", err)
-			}
+			require.NoError(t, decoder.Decode(&response), "unable to parse response from test app")
 
 			for key, expectedValue := range testCase.expected {
 				actualValue, ok := response.EnvironmentVariables[key]

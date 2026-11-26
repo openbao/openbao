@@ -80,24 +80,20 @@ func TestRouter_UnmountRollbackIsntFatal(t *testing.T) {
 	vault.TestWaitActive(t, cluster.Cores[0].Core)
 	client := cluster.Cores[0].Client
 
-	if err := client.Sys().Mount("noop", &api.MountInput{
+	require.NoError(t, client.Sys().Mount("noop", &api.MountInput{
 		Type: "noop",
-	}); err != nil {
-		t.Fatalf("failed to mount PKI: %v", err)
-	}
+	}), "failed to mount PKI")
 
-	if _, err := client.Logical().Write("sys/plugins/reload/backend", map[string]any{
+	_, err := client.Logical().Write("sys/plugins/reload/backend", map[string]any{
 		"mounts": "noop",
-	}); err != nil {
-		t.Fatalf("expected reload of noop with broken periodic func to succeed; got err=%v", err)
-	}
+	})
+	require.NoError(t, err, "expected reload of noop with broken periodic func to succeed; got")
 
-	if _, err := client.Logical().Write("sys/remount", map[string]any{
+	_, err = client.Logical().Write("sys/remount", map[string]any{
 		"from": "noop",
 		"to":   "noop-to",
-	}); err != nil {
-		t.Fatalf("expected remount of noop with broken periodic func to succeed; got err=%v", err)
-	}
+	})
+	require.NoError(t, err, "expected remount of noop with broken periodic func to succeed; got")
 
 	cluster.EnsureCoresSealed(t)
 	cluster.UnsealCores(t)

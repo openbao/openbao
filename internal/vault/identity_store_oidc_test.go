@@ -979,14 +979,10 @@ func TestOIDC_SignIDToken_NilSigningKey(t *testing.T) {
 		NextRotation:     time.Now(),
 	}
 	s := c.router.MatchingStorageByAPIPath(ctx, "identity/oidc")
-	if err := namedKey.GenerateAndSetNextKey(ctx, hclog.NewNullLogger(), s); err != nil {
-		t.Fatal("failed to set next signing key")
-	}
+	require.NoError(t, namedKey.GenerateAndSetNextKey(ctx, hclog.NewNullLogger(), s), "failed to set next signing key")
 	// Store namedKey
 	entry, _ := logical.StorageEntryJSON(ident.NamedKeyConfigPath+namedKey.Name, namedKey)
-	if err := s.Put(ctx, entry); err != nil {
-		t.Fatal("writing to in mem storage failed")
-	}
+	require.NoError(t, s.Put(ctx, entry), "writing to in mem storage failed")
 
 	// Create a test role "test-role" -- expect no warning
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
@@ -1087,22 +1083,16 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 			storage := c.router.MatchingStorageByAPIPath(ctx, "identity/oidc")
 
 			if testSet.setSigningKey {
-				if err := testSet.namedKey.GenerateAndSetKey(ctx, hclog.NewNullLogger(), storage); err != nil {
-					t.Fatal("failed to set signing key")
-				}
+				require.NoError(t, testSet.namedKey.GenerateAndSetKey(ctx, hclog.NewNullLogger(), storage), "failed to set signing key")
 			}
 			if testSet.setNextSigningKey {
-				if err := testSet.namedKey.GenerateAndSetNextKey(ctx, hclog.NewNullLogger(), storage); err != nil {
-					t.Fatal("failed to set next signing key")
-				}
+				require.NoError(t, testSet.namedKey.GenerateAndSetNextKey(ctx, hclog.NewNullLogger(), storage), "failed to set next signing key")
 			}
 			testSet.namedKey.NextRotation = time.Now().Add(testSet.namedKey.RotationPeriod)
 
 			// Store namedKey
 			entry, _ := logical.StorageEntryJSON(ident.NamedKeyConfigPath+testSet.namedKey.Name, testSet.namedKey)
-			if err := storage.Put(ctx, entry); err != nil {
-				t.Fatal("writing to in mem storage failed")
-			}
+			require.NoError(t, storage.Put(ctx, entry), "writing to in mem storage failed")
 
 			for i := 0; i < len(testSet.expectedKeyCounts); i++ {
 				// sleep for the rotation period
@@ -1140,9 +1130,7 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 				}
 			}
 
-			if err := storage.Delete(ctx, ident.NamedKeyConfigPath+testSet.namedKey.Name); err != nil {
-				t.Fatal("deleting from in mem storage failed")
-			}
+			require.NoError(t, storage.Delete(ctx, ident.NamedKeyConfigPath+testSet.namedKey.Name), "deleting from in mem storage failed")
 		})
 	}
 }
@@ -1160,20 +1148,14 @@ func TestOIDC_PeriodicFunc_NonRootNamespace(t *testing.T) {
 	storage := c.router.MatchingStorageByAPIPath(nsCtx, "identity/oidc")
 
 	key := testNamedKey("test-key-ns")
-	if err := key.GenerateAndSetKey(nsCtx, hclog.NewNullLogger(), storage); err != nil {
-		t.Fatal("failed to set signing key")
-	}
-	if err := key.GenerateAndSetNextKey(nsCtx, hclog.NewNullLogger(), storage); err != nil {
-		t.Fatal("failed to set next signing key")
-	}
+	require.NoError(t, key.GenerateAndSetKey(nsCtx, hclog.NewNullLogger(), storage), "failed to set signing key")
+	require.NoError(t, key.GenerateAndSetNextKey(nsCtx, hclog.NewNullLogger(), storage), "failed to set next signing key")
 
 	key.NextRotation = time.Now().Add(-time.Second) // past time
 
 	// Store namedKey
 	entry, _ := logical.StorageEntryJSON(ident.NamedKeyConfigPath+key.Name, key)
-	if err := storage.Put(nsCtx, entry); err != nil {
-		t.Fatal("writing to in mem storage failed")
-	}
+	require.NoError(t, storage.Put(nsCtx, entry), "writing to in mem storage failed")
 
 	// run periodicFunc
 	c.identityStore.OidcPeriodicFunc(nsCtx)
@@ -1184,9 +1166,7 @@ func TestOIDC_PeriodicFunc_NonRootNamespace(t *testing.T) {
 
 	// verify the number of keys
 	var namedKey ident.NamedKey
-	if err := namedKeyEntry.DecodeJSON(&namedKey); err != nil {
-		t.Fatal("failed to decode named key entry")
-	}
+	require.NoError(t, namedKeyEntry.DecodeJSON(&namedKey), "failed to decode named key entry")
 
 	expectedKeyCount := 3 // existing 2 + newly created on rotation
 	actualKeyRingLen := len(namedKey.KeyRing)
@@ -1305,9 +1285,7 @@ func TestOIDC_pathOIDCKeyExistenceCheck(t *testing.T) {
 	// Populte storage with a namedKey
 	namedKey := &ident.NamedKey{}
 	entry, _ := logical.StorageEntryJSON(ident.NamedKeyConfigPath+keyName, namedKey)
-	if err := storage.Put(ctx, entry); err != nil {
-		t.Fatal("writing to in mem storage failed")
-	}
+	require.NoError(t, storage.Put(ctx, entry), "writing to in mem storage failed")
 
 	// Expect true with a populated storage
 	exists, err = c.identityStore.PathOIDCKeyExistenceCheck(
@@ -1361,9 +1339,7 @@ func TestOIDC_pathOIDCRoleExistenceCheck(t *testing.T) {
 	// Populate storage with a role
 	role := &ident.Role{}
 	entry, _ := logical.StorageEntryJSON(ident.RoleConfigPath+roleName, role)
-	if err := storage.Put(ctx, entry); err != nil {
-		t.Fatal("writing to in mem storage failed")
-	}
+	require.NoError(t, storage.Put(ctx, entry), "writing to in mem storage failed")
 
 	// Expect true with a populated storage
 	exists, err = c.identityStore.PathOIDCRoleExistenceCheck(
@@ -1588,9 +1564,7 @@ func TestOIDC_Flush(t *testing.T) {
 	populateNs := func() {
 		for i := range ns {
 			for _, val := range []string{"keyA", "keyB", "keyC"} {
-				if err := c.Set(ns[i], val, struct{}{}); err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, c.Set(ns[i], val, struct{}{}))
 			}
 		}
 	}
@@ -1621,17 +1595,13 @@ func TestOIDC_Flush(t *testing.T) {
 
 	// flushing ns1 should flush ns1 and nilNamespace but not ns2
 	populateNs()
-	if err := c.Flush(ns[1]); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.Flush(ns[1]))
 	items := c.Items()
 	verify(items, []*namespace.Namespace{ns[0], ns[2]}, []*namespace.Namespace{ns[1]})
 
 	// flushing nilNamespace should flush nilNamespace but not ns1 or ns2
 	populateNs()
-	if err := c.Flush(ns[0]); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.Flush(ns[0]))
 	items = c.Items()
 	verify(items, []*namespace.Namespace{ns[1], ns[2]}, []*namespace.Namespace{ns[0]})
 }
@@ -1639,17 +1609,12 @@ func TestOIDC_Flush(t *testing.T) {
 func TestOIDC_CacheNamespaceNilCheck(t *testing.T) {
 	cache := ident.NewOIDCCache(zcache.NoExpiration, zcache.NoExpiration)
 
-	if _, _, err := cache.Get(nil, "foo"); err == nil {
-		t.Fatal("expected error, got nil")
-	}
+	_, _, err := cache.Get(nil, "foo")
+	require.Error(t, err)
 
-	if err := cache.Set(nil, "foo", 42); err == nil {
-		t.Fatal("expected error, got nil")
-	}
+	require.Error(t, cache.Set(nil, "foo", 42))
 
-	if err := cache.Flush(nil); err == nil {
-		t.Fatal("expected error, got nil")
-	}
+	require.Error(t, cache.Flush(nil))
 }
 
 func TestOIDC_GetKeysCacheControlHeader(t *testing.T) {
@@ -1666,9 +1631,8 @@ func TestOIDC_GetKeysCacheControlHeader(t *testing.T) {
 
 	// set nextRun
 	nextRun := time.Now().Add(24 * time.Hour)
-	if err = c.identityStore.OidcCache.Set(namespace.RootNamespace, "nextRun", nextRun); err != nil {
-		t.Fatal(err)
-	}
+	err = c.identityStore.OidcCache.Set(namespace.RootNamespace, "nextRun", nextRun)
+	require.NoError(t, err)
 
 	header, err = c.identityStore.GetKeysCacheControlHeader(namespace.RootNamespace)
 	require.NoError(t, err)
@@ -1681,9 +1645,8 @@ func TestOIDC_GetKeysCacheControlHeader(t *testing.T) {
 	// set jwksCacheControlMaxAge
 	durationSeconds := 60
 	jwksCacheControlMaxAge := time.Duration(durationSeconds) * time.Second
-	if err = c.identityStore.OidcCache.Set(namespace.RootNamespace, "jwksCacheControlMaxAge", jwksCacheControlMaxAge); err != nil {
-		t.Fatal(err)
-	}
+	err = c.identityStore.OidcCache.Set(namespace.RootNamespace, "jwksCacheControlMaxAge", jwksCacheControlMaxAge)
+	require.NoError(t, err)
 
 	header, err = c.identityStore.GetKeysCacheControlHeader(namespace.RootNamespace)
 	require.NoError(t, err)

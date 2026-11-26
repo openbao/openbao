@@ -356,9 +356,8 @@ func TestCore_Rekey_Standby(t *testing.T) {
 	defer core.Shutdown()
 	keys, root := TestCoreInit(t, core)
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(core, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = TestCoreUnseal(core, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	// Wait for core to become active
@@ -375,9 +374,8 @@ func TestCore_Rekey_Standby(t *testing.T) {
 	require.NoError(t, err)
 	defer core2.Shutdown()
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(core2, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = TestCoreUnseal(core2, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	// Rekey the root key

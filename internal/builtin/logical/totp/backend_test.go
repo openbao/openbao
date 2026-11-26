@@ -90,9 +90,7 @@ func TestBackend_KeyName(t *testing.T) {
 			},
 		})
 		if tc.Fail {
-			if err == nil {
-				t.Fatalf("expected an error for test %q", tc.Name)
-			}
+			require.Errorf(t, err, "expected an error for test %q", tc.Name)
 			continue
 		} else if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("bad: test name: %q\nresp: %#v\nerr: %v", tc.Name, resp, err)

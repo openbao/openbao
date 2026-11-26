@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/stretchr/testify/require"
 )
 
 func getRequestTimeout(t *testing.T) time.Duration {
@@ -24,9 +25,7 @@ func getRequestTimeout(t *testing.T) time.Duration {
 	}
 
 	dur, err := parseutil.ParseDurationSecond(rawDur)
-	if err != nil {
-		t.Fatalf("Failed to parse custom request timeout %q: %s", rawDur, err)
-	}
+	require.NoErrorf(t, err, "Failed to parse custom request timeout %q", rawDur)
 	return dur
 }
 
@@ -58,9 +57,7 @@ func AssertInitializeCircleCiTest(t *testing.T, db dbplugin.Database, req dbplug
 func AssertInitialize(t *testing.T, db dbplugin.Database, req dbplugin.InitializeRequest) dbplugin.InitializeResponse {
 	t.Helper()
 	resp, err := verifyInitialize(t, db, req)
-	if err != nil {
-		t.Fatalf("Failed to initialize: %s", err)
-	}
+	require.NoError(t, err, "Failed to initialize")
 	return resp
 }
 
@@ -78,9 +75,7 @@ func AssertNewUser(t *testing.T, db dbplugin.Database, req dbplugin.NewUserReque
 	defer cancel()
 
 	resp, err := db.NewUser(ctx, req)
-	if err != nil {
-		t.Fatalf("Failed to create new user: %s", err)
-	}
+	require.NoError(t, err, "Failed to create new user")
 
 	if resp.Username == "" {
 		t.Fatal("Missing username from NewUser response")
@@ -95,9 +90,7 @@ func AssertUpdateUser(t *testing.T, db dbplugin.Database, req dbplugin.UpdateUse
 	defer cancel()
 
 	_, err := db.UpdateUser(ctx, req)
-	if err != nil {
-		t.Fatalf("Failed to update user: %s", err)
-	}
+	require.NoError(t, err, "Failed to update user")
 }
 
 func AssertDeleteUser(t *testing.T, db dbplugin.Database, req dbplugin.DeleteUserRequest) {
@@ -107,15 +100,11 @@ func AssertDeleteUser(t *testing.T, db dbplugin.Database, req dbplugin.DeleteUse
 	defer cancel()
 
 	_, err := db.DeleteUser(ctx, req)
-	if err != nil {
-		t.Fatalf("Failed to delete user %q: %s", req.Username, err)
-	}
+	require.NoErrorf(t, err, "Failed to delete user %q", req.Username)
 }
 
 func AssertClose(t *testing.T, db dbplugin.Database) {
 	t.Helper()
 	err := db.Close()
-	if err != nil {
-		t.Fatalf("Failed to close database: %s", err)
-	}
+	require.NoError(t, err, "Failed to close database")
 }

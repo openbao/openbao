@@ -20,6 +20,7 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/stretchr/testify/require"
 )
 
 type ExecDevCluster struct {
@@ -68,9 +69,7 @@ func NewTestExecDevCluster(t *testing.T, opts *ExecDevClusterOptions) *ExecDevCl
 	t.Cleanup(cancel)
 
 	dc, err := NewExecDevCluster(ctx, opts)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return dc
 }
 

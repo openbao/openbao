@@ -14,6 +14,7 @@ import (
 	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -23,9 +24,7 @@ func TestInitDatabase_missingDB(t *testing.T) {
 
 	req := v5.InitializeRequest{}
 	resp, err := dbw.Initialize(t.Context(), req)
-	if err == nil {
-		t.Fatal("err expected, got nil")
-	}
+	require.Error(t, err)
 
 	expectedResp := v5.InitializeResponse{}
 	if !reflect.DeepEqual(resp, expectedResp) {
@@ -183,9 +182,7 @@ func TestNewUser_missingDB(t *testing.T) {
 
 	req := v5.NewUserRequest{}
 	resp, pass, err := dbw.NewUser(t.Context(), req)
-	if err == nil {
-		t.Fatal("err expected, got nil")
-	}
+	require.Error(t, err)
 
 	expectedResp := v5.NewUserResponse{}
 	if !reflect.DeepEqual(resp, expectedResp) {
@@ -346,9 +343,7 @@ func TestUpdateUser_missingDB(t *testing.T) {
 
 	req := v5.UpdateUserRequest{}
 	resp, err := dbw.UpdateUser(t.Context(), req, false)
-	if err == nil {
-		t.Fatal("err expected, got nil")
-	}
+	require.Error(t, err)
 
 	expectedConfig := map[string]any(nil)
 	if !reflect.DeepEqual(resp, expectedConfig) {
@@ -649,9 +644,7 @@ func TestDeleteUser_missingDB(t *testing.T) {
 
 	req := v5.DeleteUserRequest{}
 	_, err := dbw.DeleteUser(t.Context(), req)
-	if err == nil {
-		t.Fatal("err expected, got nil")
-	}
+	require.Error(t, err)
 }
 
 func TestDeleteUser_newDB(t *testing.T) {

@@ -127,11 +127,9 @@ func TestWriteCommand_Run(t *testing.T) {
 		client, closer := testVaultServer(t)
 		defer closer()
 
-		if err := client.Sys().Mount("transit/", &api.MountInput{
+		require.NoError(t, client.Sys().Mount("transit/", &api.MountInput{
 			Type: "transit",
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 
 		ui, cmd := testWriteCommand(t)
 		cmd.client = client

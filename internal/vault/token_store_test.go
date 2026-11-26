@@ -342,9 +342,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		Value: enc,
 	}
 
-	if err := ts.idView(namespace.RootNamespace).Put(ctx, le); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ts.idView(namespace.RootNamespace).Put(ctx, le))
 
 	// Register with exp manager so lookup works
 	auth := &logical.Auth{
@@ -369,9 +367,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		NamespaceID:    namespace.RootNamespaceID,
 	}
 
-	if err := ts.expiration.RegisterAuth(ctx, registryEntry, auth, "", true); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ts.expiration.RegisterAuth(ctx, registryEntry, auth, "", true))
 
 	out, err := ts.Lookup(ctx, entry.ID)
 	require.NoError(t, err)
@@ -398,9 +394,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		NumUses:        10,
 		NamespaceID:    namespace.RootNamespaceID,
 	}
-	if err := ts.create(ctx, ent, true); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, ts.create(ctx, ent, true))
 	auth = &logical.Auth{
 		DisplayName:    ent.DisplayName,
 		CreationPath:   ent.Path,
@@ -412,9 +406,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		},
 		ClientToken: ent.ID,
 	}
-	if err := ts.expiration.RegisterAuth(ctx, ent, auth, "", true); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ts.expiration.RegisterAuth(ctx, ent, auth, "", true))
 
 	out, err = ts.Lookup(ctx, ent.ID)
 	require.NoError(t, err)
@@ -447,9 +439,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		NumUses:        10,
 		NamespaceID:    ns.ID,
 	}
-	if err := ts.create(nsCtx, ent, true); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, ts.create(nsCtx, ent, true))
 	auth = &logical.Auth{
 		DisplayName:    ent.DisplayName,
 		CreationPath:   ent.Path,
@@ -461,9 +451,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		},
 		ClientToken: ent.ID,
 	}
-	if err := ts.expiration.RegisterAuth(nsCtx, ent, auth, "", true); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ts.expiration.RegisterAuth(nsCtx, ent, auth, "", true))
 
 	out, err = ts.Lookup(nsCtx, ent.ID)
 	require.NoError(t, err)
@@ -496,9 +484,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		NumUsesDeprecated:        10,
 		NamespaceID:              namespace.RootNamespaceID,
 	}
-	if err := ts.create(ctx, ent, true); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, ts.create(ctx, ent, true))
 	auth = &logical.Auth{
 		DisplayName:    ent.DisplayName,
 		CreationPath:   ent.Path,
@@ -510,9 +496,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		},
 		ClientToken: ent.ID,
 	}
-	if err := ts.expiration.RegisterAuth(ctx, ent, auth, "", true); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ts.expiration.RegisterAuth(ctx, ent, auth, "", true))
 
 	out, err = ts.Lookup(ctx, ent.ID)
 	require.NoError(t, err)
@@ -536,9 +520,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		NumUsesDeprecated: 10,
 		NamespaceID:       namespace.RootNamespaceID,
 	}
-	if err := ts.create(ctx, ent, true); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, ts.create(ctx, ent, true))
 	auth = &logical.Auth{
 		DisplayName:    ent.DisplayName,
 		CreationPath:   ent.Path,
@@ -550,9 +532,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		},
 		ClientToken: ent.ID,
 	}
-	if err := ts.expiration.RegisterAuth(ctx, ent, auth, "", true); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ts.expiration.RegisterAuth(ctx, ent, auth, "", true))
 
 	out, err = ts.Lookup(ctx, ent.ID)
 	require.NoError(t, err)
@@ -568,9 +548,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		NumUsesDeprecated: 5,
 		NamespaceID:       namespace.RootNamespaceID,
 	}
-	if err := ts.create(ctx, ent, true); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, ts.create(ctx, ent, true))
 	auth = &logical.Auth{
 		DisplayName:    ent.DisplayName,
 		CreationPath:   ent.Path,
@@ -582,9 +560,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		},
 		ClientToken: ent.ID,
 	}
-	if err := ts.expiration.RegisterAuth(ctx, ent, auth, "", true); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ts.expiration.RegisterAuth(ctx, ent, auth, "", true))
 
 	out, err = ts.Lookup(ctx, ent.ID)
 	require.NoError(t, err)
@@ -652,9 +628,7 @@ func testMakeTokenViaRequestContext(t testing.TB, ctx context.Context, ts *Token
 	}
 
 	if resp.Auth.TokenType != logical.TokenTypeBatch {
-		if err := ts.expiration.RegisterAuth(ctx, te, resp.Auth, "", true); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, ts.expiration.RegisterAuth(ctx, te, resp.Auth, "", true))
 	}
 
 	te, err = ts.Lookup(ctx, resp.Auth.ClientToken)
@@ -673,9 +647,7 @@ func testMakeTokenDirectly(t testing.TB, ctx context.Context, ts *TokenStore, te
 	if te.CreationTime == 0 {
 		te.CreationTime = time.Now().Unix()
 	}
-	if err := ts.create(ctx, te, true); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ts.create(ctx, te, true))
 	if te.Type == logical.TokenTypeDefault {
 		te.Type = logical.TokenTypeService
 	}
@@ -1332,9 +1304,7 @@ func TestTokenStore_HandleRequest_ListAccessors(t *testing.T) {
 		require.NoError(t, err)
 
 		le := &logical.StorageEntry{Key: saltID, Value: []byte(aEntry.TokenID)}
-		if err := ts.accessorView(namespace.RootNamespace).Put(ctx, le); err != nil {
-			t.Fatalf("failed to persist accessor index entry: %v", err)
-		}
+		require.NoError(t, ts.accessorView(namespace.RootNamespace).Put(ctx, le), "failed to persist accessor index entry")
 	}
 
 	// Do the lookup again, should get same result
@@ -1576,9 +1546,7 @@ func TestTokenStore_CreateLookup_ProvidedID(t *testing.T) {
 	if ent.ID != "foobarbaz" {
 		t.Fatalf("bad: ent.ID: expected:\"foobarbaz\"\n actual:%s", ent.ID)
 	}
-	if err := ts.create(ctx, ent, true); err == nil {
-		t.Fatal("expected error creating token with the same ID")
-	}
+	require.Error(t, ts.create(ctx, ent, true), "expected error creating token with the same ID")
 
 	out, err := ts.Lookup(ctx, ent.ID)
 	require.NoError(t, err)
@@ -1604,9 +1572,7 @@ func TestTokenStore_CreateLookup_ExpirationInRestoreMode(t *testing.T) {
 		Path:        "test",
 		Policies:    []string{"dev", "ops"},
 	}
-	if err := ts.create(namespace.RootContext(t.Context()), ent, true); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, ts.create(namespace.RootContext(t.Context()), ent, true))
 	if ent.ID == "" {
 		t.Fatal("missing ID")
 	}
@@ -1625,9 +1591,7 @@ func TestTokenStore_CreateLookup_ExpirationInRestoreMode(t *testing.T) {
 		ExpireTime:  time.Now().Add(1 * time.Hour),
 		namespace:   namespace.RootNamespace,
 	}
-	if err := ts.expiration.persistEntry(namespace.RootContext(t.Context()), le); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, ts.expiration.persistEntry(namespace.RootContext(t.Context()), le))
 
 	out, err := ts.Lookup(namespace.RootContext(t.Context()), ent.ID)
 	require.NoError(t, err)
@@ -1635,9 +1599,7 @@ func TestTokenStore_CreateLookup_ExpirationInRestoreMode(t *testing.T) {
 
 	// Set to expired lease time
 	le.ExpireTime = time.Now().Add(-1 * time.Hour)
-	if err := ts.expiration.persistEntry(namespace.RootContext(t.Context()), le); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, ts.expiration.persistEntry(namespace.RootContext(t.Context()), le))
 
 	err = c.stopExpiration()
 	require.NoError(t, err)
@@ -1748,19 +1710,13 @@ func TestTokenStore_Revoke(t *testing.T) {
 
 	// Create a single token on root, ns1 and ns2
 	entRoot := &logical.TokenEntry{Path: "test", Policies: []string{"dev", "ops"}, NamespaceID: namespace.RootNamespaceID}
-	if err := ts.create(ctx, entRoot, true); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, ts.create(ctx, entRoot, true))
 
 	entNS1 := &logical.TokenEntry{Path: "test", Policies: []string{"dev", "ops"}, NamespaceID: ns1.ID}
-	if err := ts.create(namespace.ContextWithNamespace(ctx, ns1), entNS1, true); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, ts.create(namespace.ContextWithNamespace(ctx, ns1), entNS1, true))
 
 	entNS2 := &logical.TokenEntry{Path: "test", Policies: []string{"dev", "ops"}, NamespaceID: ns2.ID}
-	if err := ts.create(namespace.ContextWithNamespace(ctx, ns2), entNS2, true); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, ts.create(namespace.ContextWithNamespace(ctx, ns2), entNS2, true))
 
 	testTokenStore_VerifyNumOfTokens(t, ts, namespace.RootNamespace, 2)
 	testTokenStore_VerifyNumOfTokens(t, ts, ns1, 1)
@@ -1782,9 +1738,7 @@ func testTokenStore_Revoke(t *testing.T, ts *TokenStore, ns *namespace.Namespace
 	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 
 	ent := &logical.TokenEntry{Path: "test", Policies: []string{"dev", "ops"}, NamespaceID: ns.ID}
-	if err := ts.create(ctx, ent, true); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, ts.create(ctx, ent, true))
 	err := ts.revokeOrphan(ctx, "")
 	if err.Error() != "cannot revoke blank token" {
 		t.Fatalf("err: %v", err)
@@ -1826,9 +1780,7 @@ func TestTokenStore_Revoke_Leases(t *testing.T) {
 	require.NoError(t, err)
 
 	ent := &logical.TokenEntry{Path: "test", Policies: []string{"dev", "ops"}, NamespaceID: namespace.RootNamespaceID}
-	if err := ts.create(namespace.RootContext(t.Context()), ent, true); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, ts.create(namespace.RootContext(t.Context()), ent, true))
 
 	// Register a lease
 	req := &logical.Request{
@@ -1927,9 +1879,7 @@ func testTokenStore_RevokeTree_NonRecursive(t testing.TB, depth uint64, injectCy
 		cyclePaths = append(cyclePaths, key)
 		le := &logical.StorageEntry{Key: key}
 
-		if err := parentView.Put(ctx, le); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, parentView.Put(ctx, le))
 
 		// Make a deep child the parent of a shallow child
 		shallow, _ := ts.SaltID(ctx, children[0].ID)
@@ -1938,9 +1888,7 @@ func testTokenStore_RevokeTree_NonRecursive(t testing.TB, depth uint64, injectCy
 		cyclePaths = append(cyclePaths, key)
 		le = &logical.StorageEntry{Key: key}
 
-		if err := parentView.Put(ctx, le); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, parentView.Put(ctx, le))
 	}
 
 	err := ts.revokeTree(ctx, &leaseEntry{})
@@ -2438,9 +2386,7 @@ func TestTokenStore_HandleRequest_CreateToken_NonRoot_RootChild(t *testing.T) {
 
 	policy, _ := policy.ParseACLPolicy(namespace.RootNamespace, policytest.TokenCreationPolicy)
 	policy.Name = "test1"
-	if err := ps.SetPolicy(namespace.RootContext(t.Context()), policy, nil); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ps.SetPolicy(namespace.RootContext(t.Context()), policy, nil))
 
 	testMakeServiceTokenViaBackend(t, ts, root, "sudoClient", "", []string{"test1"})
 
@@ -2485,9 +2431,7 @@ func TestTokenStore_HandleRequest_CreateToken_Root_RootChild_NoExpiry_Expiry(t *
 		"ttl": "0",
 	}
 	resp, err := ts.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	expectedErr := "expiring root tokens cannot create non-expiring root tokens"
 	if resp.Data["error"].(string) != expectedErr {
 		t.Fatalf("got err=%v, expected=%v", resp.Data["error"], expectedErr)
@@ -3370,9 +3314,7 @@ func TestTokenStore_HandleRequest_CreateToken_NonExistingEntityAlias(t *testing.
 		t.Fatalf("expected only one alias but got %d; Aliases: %#v", len(aliases), aliases)
 	}
 	alias := &identity.Alias{}
-	if err := mapstructure.Decode(aliases[0], alias); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, mapstructure.Decode(aliases[0], alias))
 
 	// Validate
 	if alias.Name != entityAliasName {
@@ -3457,9 +3399,7 @@ func TestTokenStore_HandleRequest_CreateToken_GlobPatternWildcardEntityAlias(t *
 				t.Fatalf("expected only one alias but got %d; Aliases: %#v", len(aliases), aliases)
 			}
 			alias := &identity.Alias{}
-			if err := mapstructure.Decode(aliases[0], alias); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, mapstructure.Decode(aliases[0], alias))
 
 			// Validate
 			if alias.Name != test.aliasName {
@@ -3938,21 +3878,15 @@ func TestTokenStore_RoleDisallowedPolicies(t *testing.T) {
 	// Create 3 different policies
 	pol, _ := policy.ParseACLPolicy(namespace.RootNamespace, policytest.TokenCreationPolicy)
 	pol.Name = "test1"
-	if err := ps.SetPolicy(namespace.RootContext(t.Context()), pol, nil); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ps.SetPolicy(namespace.RootContext(t.Context()), pol, nil))
 
 	pol, _ = policy.ParseACLPolicy(namespace.RootNamespace, policytest.TokenCreationPolicy)
 	pol.Name = "test2"
-	if err := ps.SetPolicy(namespace.RootContext(t.Context()), pol, nil); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ps.SetPolicy(namespace.RootContext(t.Context()), pol, nil))
 
 	pol, _ = policy.ParseACLPolicy(namespace.RootNamespace, policytest.TokenCreationPolicy)
 	pol.Name = "test3"
-	if err := ps.SetPolicy(namespace.RootContext(t.Context()), pol, nil); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ps.SetPolicy(namespace.RootContext(t.Context()), pol, nil))
 
 	// Create roles with different disallowed_policies configuration
 	req = logical.TestRequest(t, logical.UpdateOperation, "roles/test1")
@@ -4095,9 +4029,7 @@ func TestTokenStore_RoleAllowedPolicies(t *testing.T) {
 	req.Path = "create/test"
 	req.Data["policies"] = []string{"foo"}
 	_, err = ts.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	req.Data["policies"] = []string{"test2"}
 	resp = testMakeTokenViaRequest(t, ts, req)
@@ -4123,15 +4055,11 @@ func TestTokenStore_RoleAllowedPolicies(t *testing.T) {
 	req.Path = "create/testnoglob"
 	req.Data["policies"] = []string{"test"}
 	_, err = ts.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	req.Data["policies"] = []string{"testfoo"}
 	_, err = ts.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	req.Data["policies"] = []string{"test*"}
 	resp = testMakeTokenViaRequest(t, ts, req)
@@ -4174,9 +4102,7 @@ func TestTokenStore_RoleAllowedPolicies(t *testing.T) {
 	req.Path = "create/test"
 	req.Data["policies"] = []string{"foo"}
 	_, err = ts.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	req.Data["policies"] = []string{"test2"}
 	resp = testMakeTokenViaRequest(t, ts, req)
@@ -4206,27 +4132,19 @@ func TestTokenStore_RoleDisallowedPoliciesGlob(t *testing.T) {
 	// Create 4 different policies
 	pol, _ := policy.ParseACLPolicy(namespace.RootNamespace, policytest.TokenCreationPolicy)
 	pol.Name = "test1"
-	if err := ps.SetPolicy(namespace.RootContext(t.Context()), pol, nil); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ps.SetPolicy(namespace.RootContext(t.Context()), pol, nil))
 
 	pol, _ = policy.ParseACLPolicy(namespace.RootNamespace, policytest.TokenCreationPolicy)
 	pol.Name = "test2"
-	if err := ps.SetPolicy(namespace.RootContext(t.Context()), pol, nil); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ps.SetPolicy(namespace.RootContext(t.Context()), pol, nil))
 
 	pol, _ = policy.ParseACLPolicy(namespace.RootNamespace, policytest.TokenCreationPolicy)
 	pol.Name = "test3"
-	if err := ps.SetPolicy(namespace.RootContext(t.Context()), pol, nil); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ps.SetPolicy(namespace.RootContext(t.Context()), pol, nil))
 
 	pol, _ = policy.ParseACLPolicy(namespace.RootNamespace, policytest.TokenCreationPolicy)
 	pol.Name = "test3b"
-	if err := ps.SetPolicy(namespace.RootContext(t.Context()), pol, nil); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ps.SetPolicy(namespace.RootContext(t.Context()), pol, nil))
 
 	// Create roles with different disallowed_policies configuration
 	req = logical.TestRequest(t, logical.UpdateOperation, "roles/test1")
@@ -4350,9 +4268,7 @@ func TestTokenStore_RoleAllowedPoliciesGlob(t *testing.T) {
 	req.Path = "create/test"
 	req.Data["policies"] = []string{"foo"}
 	_, err = ts.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	req.Data["policies"] = []string{"test2"}
 	resp = testMakeTokenViaRequest(t, ts, req)
@@ -4378,9 +4294,7 @@ func TestTokenStore_RoleAllowedPoliciesGlob(t *testing.T) {
 	req.Path = "create/test"
 	req.Data["policies"] = []string{"footest"}
 	_, err = ts.HandleRequest(namespace.RootContext(t.Context()), req)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	req.Data["policies"] = []string{"testfoo", "test2", "test"}
 	resp = testMakeTokenViaRequest(t, ts, req)
@@ -4790,9 +4704,7 @@ func TestTokenStore_RoleExplicitMaxTTL(t *testing.T) {
 			"increment": 300,
 		}
 		_, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
-		if err == nil {
-			t.Fatal("expected error")
-		}
+		require.Error(t, err)
 
 		time.Sleep(2 * time.Second)
 
@@ -4802,9 +4714,7 @@ func TestTokenStore_RoleExplicitMaxTTL(t *testing.T) {
 		if resp != nil && err == nil {
 			t.Fatalf("expected error, response is %#v", *resp)
 		}
-		if err == nil {
-			t.Fatal("expected error")
-		}
+		require.Error(t, err)
 	}
 }
 
@@ -4833,9 +4743,7 @@ func TestTokenStore_RoleTokenFields(t *testing.T) {
 		jsonEntry, err := logical.StorageEntryJSON("test", roleEntry)
 		require.NoError(t, err)
 
-		if err := ts.rolesView(ns).Put(rootContext, jsonEntry); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, ts.rolesView(ns).Put(rootContext, jsonEntry))
 		// Read it back
 		roleEntry, err = ts.tokenStoreRole(rootContext, "test")
 		require.NoError(t, err)
@@ -5452,9 +5360,7 @@ func TestTokenStore_NoDefaultPolicy(t *testing.T) {
 	ps := core.policyStore
 	policy, _ := policy.ParseACLPolicy(namespace.RootNamespace, policytest.TokenCreationPolicy)
 	policy.Name = "policy1"
-	if err := ps.SetPolicy(namespace.RootContext(t.Context()), policy, nil); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ps.SetPolicy(namespace.RootContext(t.Context()), policy, nil))
 
 	// Root token creates a token with desired policy. The created token
 	// should also have 'default' attached to it.
@@ -5684,9 +5590,7 @@ func TestTokenStore_AllowedDisallowedPolicies(t *testing.T) {
 		"policies": []string{"disallowed1"},
 	}
 	_, err = ts.HandleRequest(namespace.RootContext(t.Context()), tokenReq)
-	if err == nil {
-		t.Fatal("expected an error")
-	}
+	require.Error(t, err)
 
 	roleReq.Operation = logical.UpdateOperation
 	roleReq.Data = map[string]any{
@@ -5702,9 +5606,7 @@ func TestTokenStore_AllowedDisallowedPolicies(t *testing.T) {
 		"policies": []string{"allowed1", "common"},
 	}
 	_, err = ts.HandleRequest(namespace.RootContext(t.Context()), tokenReq)
-	if err == nil {
-		t.Fatal("expected an error")
-	}
+	require.Error(t, err)
 }
 
 // Issue 2189
@@ -5791,9 +5693,7 @@ func TestTokenStore_RevokeUseCountToken(t *testing.T) {
 	}
 
 	err = ts.revokeInternal(namespace.RootContext(t.Context()), saltTut, false)
-	if err == nil {
-		t.Fatal("expected err")
-	}
+	require.Error(t, err)
 
 	// Since revocation failed we should still be able to get a token
 	te, err = ts.lookupInternal(namespace.RootContext(t.Context()), saltTut, true, true)
@@ -5828,9 +5728,7 @@ func TestTokenStore_RevokeUseCountToken(t *testing.T) {
 	}
 
 	err = <-errCh
-	if err == nil {
-		t.Fatal("expected error on ts.revokeInternal() in anonymous goroutine")
-	}
+	require.Error(t, err, "expected error on ts.revokeInternal() in anonymous goroutine")
 
 	// Put back to normal
 	cubbyFuncLock.Lock()
@@ -6391,9 +6289,7 @@ func TestTokenStore_TokenID(t *testing.T) {
 				"id": "hvs.foobar",
 			},
 		})
-		if err == nil {
-			t.Fatal("expected an error")
-		}
+		require.Error(t, err)
 		if resp.Error().Error() != "custom token ID cannot have the 'hvs.' prefix" {
 			t.Fatal("expected input error not present in error response")
 		}
@@ -6411,9 +6307,7 @@ func TestTokenStore_TokenID(t *testing.T) {
 				"id": "foobar.baz",
 			},
 		})
-		if err == nil {
-			t.Fatal("expected an error")
-		}
+		require.Error(t, err)
 		if resp.Error().Error() != "custom token ID cannot have a '.' in the value" {
 			t.Fatal("expected input error not present in error response")
 		}

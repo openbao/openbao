@@ -87,11 +87,9 @@ func TestAuthTuneCommand_Run(t *testing.T) {
 			cmd.client = client
 
 			// Mount
-			if err := client.Sys().EnableAuthWithOptions("my-auth", &api.EnableAuthOptions{
+			require.NoError(t, client.Sys().EnableAuthWithOptions("my-auth", &api.EnableAuthOptions{
 				Type: "userpass",
-			}); err != nil {
-				t.Fatal(err)
-			}
+			}))
 
 			auths, err := client.Sys().ListAuth()
 			require.NoError(t, err)
@@ -178,12 +176,10 @@ func TestAuthTuneCommand_Run(t *testing.T) {
 				cmd.client = client
 
 				// Mount
-				if err := client.Sys().EnableAuthWithOptions("my-auth", &api.EnableAuthOptions{
+				require.NoError(t, client.Sys().EnableAuthWithOptions("my-auth", &api.EnableAuthOptions{
 					Type:        "userpass",
 					Description: "initial description",
-				}); err != nil {
-					t.Fatal(err)
-				}
+				}))
 
 				code := cmd.Run([]string{
 					"-default-lease-ttl", "30m",
@@ -219,12 +215,10 @@ func TestAuthTuneCommand_Run(t *testing.T) {
 				cmd.client = client
 
 				// Mount
-				if err := client.Sys().EnableAuthWithOptions("my-auth", &api.EnableAuthOptions{
+				require.NoError(t, client.Sys().EnableAuthWithOptions("my-auth", &api.EnableAuthOptions{
 					Type:        "userpass",
 					Description: "initial description",
-				}); err != nil {
-					t.Fatal(err)
-				}
+				}))
 
 				code := cmd.Run([]string{
 					"-description", "",

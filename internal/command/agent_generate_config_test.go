@@ -132,9 +132,7 @@ func TestConstructTemplates(t *testing.T) {
 			templates, err := constructTemplates(ctx, client, tc.paths)
 
 			if tc.expectedError {
-				if err == nil {
-					t.Fatal("an error was expected but the test succeeded")
-				}
+				require.Error(t, err, "an error was expected but the test succeeded")
 			} else {
 				require.NoError(t, err)
 
@@ -253,9 +251,7 @@ exec \{
 			c.WriteTo(&config)
 
 			if tc.expectedError {
-				if err == nil {
-					t.Fatal("an error was expected but the test succeeded")
-				}
+				require.Error(t, err, "an error was expected but the test succeeded")
 			} else {
 				require.NoError(t, err)
 

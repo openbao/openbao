@@ -104,9 +104,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	client := cluster.Cores[0].Client
 
 	// Enable the audit backend
-	if err := client.Sys().EnableAuditWithOptions("noop", &api.EnableAuditOptions{Type: "noop"}); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, client.Sys().EnableAuditWithOptions("noop", &api.EnableAuditOptions{Type: "noop"}))
 
 	testhelpers.SetupTOTPMount(t, client)
 	mountAccessor := testhelpers.SetupUserpassMountAccessor(t, client)
@@ -327,9 +325,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 			methodID: {totpPasscode1},
 		},
 	})
-	if err == nil {
-		t.Fatal("MFA succeeded with an already used passcode")
-	}
+	require.Error(t, err, "MFA succeeded with an already used passcode")
 	if !strings.Contains(err.Error(), vault.ErrBadMFACredentials.Error()) {
 		t.Fatalf("got: %v, expected: %v", err, vault.ErrBadMFACredentials)
 	}
@@ -350,9 +346,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 				methodID: {fmt.Sprintf("%d23456", i)},
 			},
 		})
-		if maxErr == nil {
-			t.Fatal("MFA succeeded with an invalid passcode")
-		}
+		require.Error(t, maxErr, "MFA succeeded with an invalid passcode")
 
 		rateLimited := strings.Contains(maxErr.Error(), "maximum TOTP validation attempts")
 		switch {

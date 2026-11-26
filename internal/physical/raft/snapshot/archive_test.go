@@ -36,31 +36,25 @@ func TestArchive(t *testing.T) {
 	var snap bytes.Buffer
 	var expected bytes.Buffer
 	both := io.MultiWriter(&snap, &expected)
-	if _, err := io.Copy(both, io.LimitReader(rand.Reader, 1024)); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	_, err := io.Copy(both, io.LimitReader(rand.Reader, 1024))
+	require.NoError(t, err)
 
 	// Write out the snapshot.
 	var archive bytes.Buffer
-	if err := write(&archive, &metadata, &snap, nil); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, write(&archive, &metadata, &snap, nil))
 
 	// Read the snapshot back.
 	var newMeta raft.SnapshotMeta
 	var newSnap bytes.Buffer
-	if err := read(&archive, &newMeta, &newSnap, nil); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, read(&archive, &newMeta, &newSnap, nil))
 
 	// Check the contents.
 	if !reflect.DeepEqual(newMeta, metadata) {
 		t.Fatalf("bad: %#v", newMeta)
 	}
 	var buf bytes.Buffer
-	if _, err := io.Copy(&buf, &newSnap); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	_, err = io.Copy(&buf, &newSnap)
+	require.NoError(t, err)
 	if !bytes.Equal(buf.Bytes(), expected.Bytes()) {
 		t.Fatalf("snapshot contents didn't match")
 	}
@@ -74,9 +68,7 @@ func TestArchive_GoodData(t *testing.T) {
 		f, err := os.Open(p)
 		require.NoError(t, err)
 		defer func() {
-			if err := f.Close(); err != nil {
-				t.Fatalf("failed to close: %v", err)
-			}
+			require.NoError(t, f.Close(), "failed to close")
 		}()
 
 		var metadata raft.SnapshotMeta
@@ -103,9 +95,7 @@ func TestArchive_BadData(t *testing.T) {
 		f, err := os.Open(c.Name)
 		require.NoError(t, err)
 		defer func() {
-			if err := f.Close(); err != nil {
-				t.Fatalf("failed to close: %v", err)
-			}
+			require.NoError(t, f.Close(), "failed to close")
 		}()
 
 		var metadata raft.SnapshotMeta
@@ -120,25 +110,18 @@ func TestArchive_hashList(t *testing.T) {
 	hl := newHashList()
 	for i := range 16 {
 		h := hl.Add(fmt.Sprintf("file-%d", i))
-		if _, err := io.CopyN(h, rand.Reader, 32); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		_, err := io.CopyN(h, rand.Reader, 32)
+		require.NoError(t, err)
 	}
 
 	// Do a normal round trip.
 	var buf bytes.Buffer
-	if err := hl.Encode(&buf); err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if err := hl.DecodeAndVerify(&buf); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, hl.Encode(&buf))
+	require.NoError(t, hl.DecodeAndVerify(&buf))
 
 	// Have a local hash that isn't in the file.
 	buf.Reset()
-	if err := hl.Encode(&buf); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, hl.Encode(&buf))
 	hl.Add("nope")
 	err := hl.DecodeAndVerify(&buf)
 	if err == nil || !strings.Contains(err.Error(), "file missing for \"nope\"") {
@@ -147,9 +130,7 @@ func TestArchive_hashList(t *testing.T) {
 
 	// Have a hash in the file that we haven't seen locally.
 	buf.Reset()
-	if err := hl.Encode(&buf); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, hl.Encode(&buf))
 	delete(hl.hashes, "nope")
 	err = hl.DecodeAndVerify(&buf)
 	if err == nil || !strings.Contains(err.Error(), "list missing hash for \"nope\"") {

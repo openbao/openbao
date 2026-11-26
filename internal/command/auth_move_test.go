@@ -87,11 +87,9 @@ func TestAuthMoveCommand_Run(t *testing.T) {
 		ui, cmd := testAuthMoveCommand(t)
 		cmd.client = client
 
-		if err := client.Sys().EnableAuthWithOptions("my-auth", &api.EnableAuthOptions{
+		require.NoError(t, client.Sys().EnableAuthWithOptions("my-auth", &api.EnableAuthOptions{
 			Type: "userpass",
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 
 		code := cmd.Run([]string{
 			"auth/my-auth/", "auth/my-auth-2/",

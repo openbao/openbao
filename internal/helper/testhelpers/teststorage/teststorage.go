@@ -27,17 +27,14 @@ import (
 	"github.com/openbao/openbao/v2/internal/physical/inmem"
 	"github.com/openbao/openbao/v2/internal/physical/raft"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func MakeInmemBackend(t testing.T, logger hclog.Logger) *vault.PhysicalBackendBundle {
 	inm, err := inmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	inmha, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return &vault.PhysicalBackendBundle{
 		Backend:   inm,
@@ -58,30 +55,22 @@ func MakeLatentInmemBackend(t testing.T, logger hclog.Logger) *vault.PhysicalBac
 
 func MakeFileBackend(t testing.T, logger hclog.Logger) *vault.PhysicalBackendBundle {
 	path, err := os.MkdirTemp("", "vault-integ-file-")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	fileConf := map[string]string{
 		"path": path,
 	}
 	fileBackend, err := physFile.NewFileBackend(fileConf, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	inmha, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return &vault.PhysicalBackendBundle{
 		Backend:   fileBackend,
 		HABackend: inmha.(physical.HABackend),
 		Cleanup: func() {
 			err := os.RemoveAll(path)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		},
 	}
 }
@@ -104,9 +93,7 @@ func MakeRaftBackend(t testing.T, coreIdx int, logger hclog.Logger, extraConf ma
 	}
 
 	backend, err := raft.NewRaftBackend(conf, logger.Named("raft"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return &vault.PhysicalBackendBundle{
 		Backend: backend,

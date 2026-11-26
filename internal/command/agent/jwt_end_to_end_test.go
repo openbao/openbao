@@ -130,11 +130,8 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 		Curve25519PublicKey: pub,
 	})
 	require.NoError(t, err)
-	if err := os.WriteFile(dhpath, mPubKey, 0o600); err != nil {
-		t.Fatal(err)
-	} else {
-		logger.Trace("wrote dh param file", "path", dhpath)
-	}
+	require.NoError(t, os.WriteFile(dhpath, mPubKey, 0o600))
+	logger.Trace("wrote dh param file", "path", dhpath)
 
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 
@@ -219,16 +216,12 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 
 	// Check that no jwt file exists
 	_, err = os.Lstat(in)
-	if err == nil {
-		t.Fatal("expected err")
-	}
+	require.Error(t, err)
 	if !os.IsNotExist(err) {
 		t.Fatal("expected notexist err")
 	}
 	_, err = os.Lstat(out)
-	if err == nil {
-		t.Fatal("expected err")
-	}
+	require.Error(t, err)
 	if !os.IsNotExist(err) {
 		t.Fatal("expected notexist err")
 	}
@@ -239,11 +232,8 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 	// Get a token
 	jwtToken, _ := GetTestJWT(t)
 
-	if err := os.WriteFile(in, []byte(jwtToken), 0o600); err != nil {
-		t.Fatal(err)
-	} else {
-		logger.Trace("wrote test jwt", "path", in)
-	}
+	require.NoError(t, os.WriteFile(in, []byte(jwtToken), 0o600))
+	logger.Trace("wrote test jwt", "path", in)
 
 	checkToken := func() string {
 		timeout := time.Now().Add(5 * time.Second)
@@ -261,9 +251,7 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 				// First, ensure JWT has been removed
 				if removeJWTAfterReading {
 					_, err = os.Stat(in)
-					if err == nil {
-						t.Fatal("no error returned from stat, indicating the jwt is still present")
-					}
+					require.Error(t, err, "no error returned from stat, indicating the jwt is still present")
 					if !os.IsNotExist(err) {
 						t.Fatalf("unexpected error: %v", err)
 					}
@@ -291,9 +279,7 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 
 				// Now unwrap it
 				wrapInfo := new(api.SecretWrapInfo)
-				if err := jsonutil.DecodeJSON(val, wrapInfo); err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, jsonutil.DecodeJSON(val, wrapInfo))
 				switch {
 				case wrapInfo.TTL != 10:
 					t.Fatalf("bad wrap info: %v", wrapInfo.TTL)
@@ -349,9 +335,7 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 	// Get another token to test the backend pushing the need to authenticate
 	// to the handler
 	jwtToken, _ = GetTestJWT(t)
-	if err := os.WriteFile(in, []byte(jwtToken), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(in, []byte(jwtToken), 0o600))
 
 	newToken := checkToken()
 	if newToken == origToken {
@@ -375,8 +359,6 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 
 		cloned.SetToken(origToken)
 		_, err = cloned.Auth().Token().LookupSelf()
-		if err == nil {
-			t.Fatal("expected error")
-		}
+		require.Error(t, err)
 	}
 }

@@ -30,11 +30,9 @@ func TestKvMetadataPutCommand_DeleteVersionAfter(t *testing.T) {
 	defer closer()
 
 	basePath := t.Name() + "/"
-	if err := client.Sys().Mount(basePath, &api.MountInput{
+	require.NoError(t, client.Sys().Mount(basePath, &api.MountInput{
 		Type: "kv-v2",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 
 	ui, cmd := testKVMetadataPutCommand(t)
 	cmd.client = client
@@ -87,11 +85,9 @@ func TestKvMetadataPutCommand_CustomMetadata(t *testing.T) {
 	basePath := t.Name() + "/"
 	secretPath := basePath + "secret/my-secret"
 
-	if err := client.Sys().Mount(basePath, &api.MountInput{
+	require.NoError(t, client.Sys().Mount(basePath, &api.MountInput{
 		Type: "kv-v2",
-	}); err != nil {
-		t.Fatalf("kv-v2 mount error: %#v", err)
-	}
+	}), "kv-v2 mount error")
 
 	ui, cmd := testKVMetadataPutCommand(t)
 	cmd.client = client
@@ -158,11 +154,9 @@ func TestKvMetadataPutCommand_UnprovidedFlags(t *testing.T) {
 	basePath := t.Name() + "/"
 	secretPath := basePath + "my-secret"
 
-	if err := client.Sys().Mount(basePath, &api.MountInput{
+	require.NoError(t, client.Sys().Mount(basePath, &api.MountInput{
 		Type: "kv-v2",
-	}); err != nil {
-		t.Fatalf("kv-v2 mount error: %#v", err)
-	}
+	}), "kv-v2 mount error")
 
 	_, cmd := testKVMetadataPutCommand(t)
 	cmd.client = client

@@ -371,9 +371,7 @@ func TestVersionedKV_Data_Delete(t *testing.T) {
 	}
 
 	updatedTime, err := time.Parse(time.RFC3339Nano, resp.Data["updated_time"].(string))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if !updatedTime.After(time.Now().Add(-1*time.Minute)) || !updatedTime.Before(time.Now()) {
 		t.Fatalf("Bad response: %#v", resp)
@@ -1225,14 +1223,10 @@ func TestVersionedKV_Data_Put_CleanupOldVersions_EntryLowerThanMount(t *testing.
 
 	for i := 1; i <= 6; i++ {
 		versionKey, err := b.(*versionedKVBackend).getVersionKey(t.Context(), "foo", uint64(i), storage)
-		if err != nil {
-			t.Fatalf("error getting version key for version %d, err: %#v\n", i, err)
-		}
+		require.NoErrorf(t, err, "error getting version key for version %d", i)
 
 		v, err := storage.Get(t.Context(), versionKey)
-		if err != nil {
-			t.Fatalf("error getting entry for key %s, err: %#v\n", versionKey, err)
-		}
+		require.NoErrorf(t, err, "error getting entry for key %s", versionKey)
 
 		// because max_versions is 2, only versions 5 and 6 should exist
 		if i <= 4 {
@@ -1305,14 +1299,10 @@ func TestVersionedKV_Data_Put_CleanupOldVersions_EntryGreaterThanMount(t *testin
 
 	for i := 1; i <= 6; i++ {
 		versionKey, err := b.(*versionedKVBackend).getVersionKey(t.Context(), "foo", uint64(i), storage)
-		if err != nil {
-			t.Fatalf("error getting version key for version %d, err: %#v\n", i, err)
-		}
+		require.NoErrorf(t, err, "error getting version key for version %d", i)
 
 		v, err := storage.Get(t.Context(), versionKey)
-		if err != nil {
-			t.Fatalf("error getting entry for key %s, err: %#v\n", versionKey, err)
-		}
+		require.NoErrorf(t, err, "error getting entry for key %s", versionKey)
 
 		if i <= 1 {
 			if v != nil {
@@ -1405,14 +1395,10 @@ func TestVersionedKV_Data_Patch_CleanupOldVersions_EntryLowerThanMount(t *testin
 
 	for i := 1; i <= 6; i++ {
 		versionKey, err := b.(*versionedKVBackend).getVersionKey(t.Context(), "foo", uint64(i), storage)
-		if err != nil {
-			t.Fatalf("error getting version key for version %d, err: %#v\n", i, err)
-		}
+		require.NoErrorf(t, err, "error getting version key for version %d", i)
 
 		v, err := storage.Get(t.Context(), versionKey)
-		if err != nil {
-			t.Fatalf("error getting entry for key %s, err: %#v\n", versionKey, err)
-		}
+		require.NoErrorf(t, err, "error getting entry for key %s", versionKey)
 
 		// because max_versions is 2, only versions 5 and 6 should exist
 		if i <= 4 {
@@ -1503,14 +1489,10 @@ func TestVersionedKV_Data_Patch_CleanupOldVersions_EntryGreaterThanMount(t *test
 
 	for i := 1; i <= 6; i++ {
 		versionKey, err := b.(*versionedKVBackend).getVersionKey(t.Context(), "foo", uint64(i), storage)
-		if err != nil {
-			t.Fatalf("error getting version key for version %d, err: %#v\n", i, err)
-		}
+		require.NoErrorf(t, err, "error getting version key for version %d", i)
 
 		v, err := storage.Get(t.Context(), versionKey)
-		if err != nil {
-			t.Fatalf("error getting entry for key %s, err: %#v\n", versionKey, err)
-		}
+		require.NoErrorf(t, err, "error getting entry for key %s", versionKey)
 
 		if i <= 1 {
 			if v != nil {

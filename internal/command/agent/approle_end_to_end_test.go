@@ -176,11 +176,8 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 		secretf.Close()
 		defer os.Remove(secretFromAgent)
 		// if the token is empty, auth.approle would fail reporting the error
-		if err := os.WriteFile(secretFromAgent, []byte("wrong-secret"), 0o600); err != nil {
-			t.Fatal(err)
-		} else {
-			logger.Trace("wrote secret_id_file_path with wrong-secret", "path", secretFromAgent)
-		}
+		require.NoError(t, os.WriteFile(secretFromAgent, []byte("wrong-secret"), 0o600))
+		logger.Trace("wrote secret_id_file_path with wrong-secret", "path", secretFromAgent)
 	}
 	conf := map[string]any{
 		"role_id_file_path":   role,
@@ -248,25 +245,17 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 
 	// Check that no sink file exists
 	_, err = os.Lstat(out)
-	if err == nil {
-		t.Fatal("expected err")
-	}
+	require.Error(t, err)
 	if !os.IsNotExist(err) {
 		t.Fatal("expected notexist err")
 	}
 
-	if err := os.WriteFile(role, []byte(roleID1), 0o600); err != nil {
-		t.Fatal(err)
-	} else {
-		logger.Trace("wrote test role 1", "path", role)
-	}
+	require.NoError(t, os.WriteFile(role, []byte(roleID1), 0o600))
+	logger.Trace("wrote test role 1", "path", role)
 
 	if bindSecretID {
-		if err := os.WriteFile(secret, []byte(secretID1), 0o600); err != nil {
-			t.Fatal(err)
-		} else {
-			logger.Trace("wrote test secret 1", "path", secret)
-		}
+		require.NoError(t, os.WriteFile(secret, []byte(secretID1), 0o600))
+		logger.Trace("wrote test secret 1", "path", secret)
 	} else {
 		logger.Trace("skipped writing test secret 1")
 	}
@@ -325,18 +314,12 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 	}
 
 	// Write new values
-	if err := os.WriteFile(role, []byte(roleID2), 0o600); err != nil {
-		t.Fatal(err)
-	} else {
-		logger.Trace("wrote test role 2", "path", role)
-	}
+	require.NoError(t, os.WriteFile(role, []byte(roleID2), 0o600))
+	logger.Trace("wrote test role 2", "path", role)
 
 	if bindSecretID {
-		if err := os.WriteFile(secret, []byte(secretID2), 0o600); err != nil {
-			t.Fatal(err)
-		} else {
-			logger.Trace("wrote test secret 2", "path", secret)
-		}
+		require.NoError(t, os.WriteFile(secret, []byte(secretID2), 0o600))
+		logger.Trace("wrote test secret 2", "path", secret)
 	} else {
 		logger.Trace("skipped writing test secret 2")
 	}
@@ -522,11 +505,8 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 		secretf.Close()
 		defer os.Remove(secretFromAgent)
 		// if the token is empty, auth.approle would fail reporting the error
-		if err := os.WriteFile(secretFromAgent, []byte("wrong-secret"), 0o600); err != nil {
-			t.Fatal(err)
-		} else {
-			logger.Trace("wrote secret_id_file_path with wrong-secret", "path", secretFromAgent)
-		}
+		require.NoError(t, os.WriteFile(secretFromAgent, []byte("wrong-secret"), 0o600))
+		logger.Trace("wrote secret_id_file_path with wrong-secret", "path", secretFromAgent)
 	}
 	conf := map[string]any{
 		"role_id_file_path":                   role,
@@ -594,27 +574,19 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 
 	// Check that no sink file exists
 	_, err = os.Lstat(out)
-	if err == nil {
-		t.Fatal("expected err")
-	}
+	require.Error(t, err)
 	if !os.IsNotExist(err) {
 		t.Fatal("expected notexist err")
 	}
 
-	if err := os.WriteFile(role, []byte(roleID1), 0o600); err != nil {
-		t.Fatal(err)
-	} else {
-		logger.Trace("wrote test role 1", "path", role)
-	}
+	require.NoError(t, os.WriteFile(role, []byte(roleID1), 0o600))
+	logger.Trace("wrote test role 1", "path", role)
 
 	if bindSecretID {
 		logger.Trace("WRITING TO auth.secret-id.test.", "secret", secret, "secretID1", secretID1)
 
-		if err := os.WriteFile(secret, []byte(secretID1), 0o600); err != nil {
-			t.Fatal(err)
-		} else {
-			logger.Trace("wrote test secret 1", "path", secret)
-		}
+		require.NoError(t, os.WriteFile(secret, []byte(secretID1), 0o600))
+		logger.Trace("wrote test secret 1", "path", secret)
 	} else {
 		logger.Trace("skipped writing test secret 1")
 	}
@@ -635,9 +607,8 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 					t.Fatal("written token was empty")
 				}
 				if !secretIDLess {
-					if _, err := os.Stat(secret); err == nil {
-						t.Fatal("secret ID file does not exist but was not supposed to be removed")
-					}
+					_, err = os.Stat(secret)
+					require.Error(t, err, "secret ID file does not exist but was not supposed to be removed")
 				}
 
 				client.SetToken(string(val))
@@ -679,11 +650,8 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 		resp, err = client.Logical().Write("auth/approle/role/test1/secret-id", nil)
 		require.NoError(t, err)
 		secretID2 := resp.WrapInfo.Token
-		if err := os.WriteFile(secret, []byte(secretID2), 0o600); err != nil {
-			t.Fatal(err)
-		} else {
-			logger.Trace("wrote test secret 2", "path", secret)
-		}
+		require.NoError(t, os.WriteFile(secret, []byte(secretID2), 0o600))
+		logger.Trace("wrote test secret 2", "path", secret)
 	} else {
 		logger.Trace("skipped writing test secret 2")
 	}

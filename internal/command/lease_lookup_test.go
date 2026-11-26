@@ -26,18 +26,15 @@ func testLeaseLookupCommand(tb testing.TB) (*cli.MockUi, *LeaseLookupCommand) {
 // testLeaseLookupCommandMountAndLease mounts a leased secret backend and returns
 // the leaseID of an item.
 func testLeaseLookupCommandMountAndLease(tb testing.TB, client *api.Client) string {
-	if err := client.Sys().Mount("testing", &api.MountInput{
+	require.NoError(tb, client.Sys().Mount("testing", &api.MountInput{
 		Type: "generic-leased",
-	}); err != nil {
-		tb.Fatal(err)
-	}
+	}))
 
-	if _, err := client.Logical().Write("testing/foo", map[string]any{
+	_, err := client.Logical().Write("testing/foo", map[string]any{
 		"key":   "value",
 		"lease": "5m",
-	}); err != nil {
-		tb.Fatal(err)
-	}
+	})
+	require.NoError(tb, err)
 
 	// Read the secret back to get the leaseID
 	secret, err := client.Logical().Read("testing/foo")

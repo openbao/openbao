@@ -15,24 +15,18 @@ import (
 func TestCertificateValidation(t *testing.T) {
 	// certificate should default to "" without error if it doesn't exist
 	config := testConfig(t)
-	if err := config.Validate(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, config.Validate())
 	if config.Certificate != "" {
 		t.Fatalf("expected no certificate but received %s", config.Certificate)
 	}
 
 	// certificate should cause an error if a bad one is provided
 	config.Certificate = "cats"
-	if err := config.Validate(); err == nil {
-		t.Fatal("should err due to bad cert")
-	}
+	require.Error(t, config.Validate(), "should err due to bad cert")
 
 	// valid certificates should pass inspection
 	config.Certificate = validCertificate
-	if err := config.Validate(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, config.Validate())
 }
 
 func TestNewConfigEntry(t *testing.T) {
@@ -90,9 +84,7 @@ func testJSONConfig(t *testing.T, rawJson []byte) *ConfigEntry {
 	t.Helper()
 
 	config := new(ConfigEntry)
-	if err := json.Unmarshal(rawJson, config); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, json.Unmarshal(rawJson, config))
 	return config
 }
 

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBackend_config_lease_RU(t *testing.T) {
@@ -16,9 +17,8 @@ func TestBackend_config_lease_RU(t *testing.T) {
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
 	b := Backend()
-	if err = b.Setup(t.Context(), config); err != nil {
-		t.Fatal(err)
-	}
+	err = b.Setup(t.Context(), config)
+	require.NoError(t, err)
 
 	configData := map[string]any{
 		"ttl":     "10h",

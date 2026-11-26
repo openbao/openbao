@@ -9,14 +9,13 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
+	"github.com/stretchr/testify/require"
 )
 
 func Raft_Configuration_Test(t *testing.T, cluster testcluster.VaultCluster) {
 	client := cluster.Nodes()[0].APIClient()
 	secret, err := client.Logical().Read("sys/storage/raft/configuration")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	servers := secret.Data["config"].(map[string]any)["servers"].([]any)
 	found := make(map[string]struct{})
 	for _, s := range servers {

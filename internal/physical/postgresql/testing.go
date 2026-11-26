@@ -22,9 +22,7 @@ func SetupDatabaseObjects(t *testing.T, pg *PostgreSQLBackend) {
 	}
 
 	err := SetupDatabaseObjectsWithClient(pg.client, pg.table, pg.tableConstraint, pg.index, haTable, pg.haTableConstraint)
-	if err != nil {
-		t.Fatalf("failed to setup database: %v", err)
-	}
+	require.NoError(t, err, "failed to setup database")
 }
 
 func SetupDatabaseObjectsWithClient(client *sql.DB, table string, constraint string, index string, haTable string, haTableConstraint string) error {

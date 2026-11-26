@@ -14,6 +14,7 @@ import (
 	hclog "github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLogger_levels(t *testing.T) {
@@ -34,9 +35,7 @@ func TestLogger_levels(t *testing.T) {
 
 	// Test trace
 	testLogger.Trace(expected)
-	if err := writer.Flush(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, writer.Flush())
 	result := buf.String()
 	buf.Reset()
 	if !strings.Contains(result, expected) {
@@ -45,9 +44,7 @@ func TestLogger_levels(t *testing.T) {
 
 	// Test debug
 	testLogger.Debug(expected)
-	if err := writer.Flush(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, writer.Flush())
 	result = buf.String()
 	buf.Reset()
 	if !strings.Contains(result, expected) {
@@ -56,9 +53,7 @@ func TestLogger_levels(t *testing.T) {
 
 	// Test debug
 	testLogger.Info(expected)
-	if err := writer.Flush(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, writer.Flush())
 	result = buf.String()
 	buf.Reset()
 	if !strings.Contains(result, expected) {
@@ -67,9 +62,7 @@ func TestLogger_levels(t *testing.T) {
 
 	// Test warn
 	testLogger.Warn(expected)
-	if err := writer.Flush(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, writer.Flush())
 	result = buf.String()
 	buf.Reset()
 	if !strings.Contains(result, expected) {
@@ -78,9 +71,7 @@ func TestLogger_levels(t *testing.T) {
 
 	// Test error
 	testLogger.Error(expected)
-	if err := writer.Flush(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, writer.Flush())
 	result = buf.String()
 	buf.Reset()
 	if !strings.Contains(result, expected) {
@@ -89,9 +80,7 @@ func TestLogger_levels(t *testing.T) {
 
 	// Test fatal
 	testLogger.Fatal(expected)
-	if err := writer.Flush(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, writer.Flush())
 	result = buf.String()
 	buf.Reset()
 	if result != "" {
@@ -134,9 +123,7 @@ func TestLogger_log(t *testing.T) {
 
 	// Test trace 6 = logxi.LevelInfo
 	testLogger.Log(6, expected, nil)
-	if err := writer.Flush(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, writer.Flush())
 	result := buf.String()
 	if !strings.Contains(result, expected) {
 		t.Fatalf("expected log to contain %s, got %s", expected, result)

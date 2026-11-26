@@ -46,9 +46,7 @@ func TestStreamLayer_UnspecifiedIP(t *testing.T) {
 	}
 
 	layer, err := NewRaftLayer(nil, raftTLS, m)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	if err.Error() != "cannot use unspecified IP with raft storage: 0.0.0.0:8200" {
 		t.Fatalf("unexpected error: %s", err.Error())

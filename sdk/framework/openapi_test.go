@@ -328,9 +328,7 @@ func TestOpenAPI_SpecialPaths(t *testing.T) {
 				Unauthenticated: test.unauthenticatedPaths,
 			}
 
-			if err := documentPath(&path, specialPaths, "kv", logical.TypeLogical, doc); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, documentPath(&path, specialPaths, "kv", logical.TypeLogical, doc))
 
 			actual := doc.Paths["/"+test.pattern].Sudo
 			if actual != test.rootExpected {
@@ -661,9 +659,7 @@ func TestOpenAPI_CustomDecoder(t *testing.T) {
 	docJSON := mustJSONMarshal(t, docOrig)
 
 	var intermediate map[string]any
-	if err := jsonutil.DecodeJSON(docJSON, &intermediate); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, jsonutil.DecodeJSON(docJSON, &intermediate))
 
 	docNew, err := NewOASDocumentFromMap(intermediate)
 	require.NoError(t, err)
@@ -922,22 +918,16 @@ func testPath(t *testing.T, path *Path, sp *logical.Paths, expectedJSON string) 
 	t.Helper()
 
 	doc := NewOASDocument("dummyversion")
-	if err := documentPath(path, sp, "kv", logical.TypeLogical, doc); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, documentPath(path, sp, "kv", logical.TypeLogical, doc))
 
 	docJSON, err := json.MarshalIndent(doc, "", "  ")
 	require.NoError(t, err)
 
 	// Compare json by first decoding, then comparing with a deep equality check.
 	var expected, actual any
-	if err := jsonutil.DecodeJSON(docJSON, &actual); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, jsonutil.DecodeJSON(docJSON, &actual))
 
-	if err := jsonutil.DecodeJSON([]byte(expectedJSON), &expected); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, jsonutil.DecodeJSON([]byte(expectedJSON), &expected))
 
 	if diff := deep.Equal(actual, expected); diff != nil {
 		// fmt.Println(string(docJSON)) // uncomment to debug generated JSON (very helpful when fixing tests)

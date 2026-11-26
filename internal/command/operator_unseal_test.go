@@ -80,14 +80,11 @@ func TestOperatorUnsealCommand_Run(t *testing.T) {
 		defer closer()
 
 		// Seal so we can unseal
-		if err := client.Sys().Seal(); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, client.Sys().Seal())
 
 		// Enter an unseal key
-		if _, err := client.Sys().Unseal(keys[0]); err != nil {
-			t.Fatal(err)
-		}
+		_, err := client.Sys().Unseal(keys[0])
+		require.NoError(t, err)
 
 		ui, cmd := testOperatorUnsealCommand(t)
 		cmd.client = client
@@ -114,9 +111,7 @@ func TestOperatorUnsealCommand_Run(t *testing.T) {
 		defer closer()
 
 		// Seal so we can unseal
-		if err := client.Sys().Seal(); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, client.Sys().Seal())
 
 		for _, key := range keys {
 			ui, cmd := testOperatorUnsealCommand(t)
@@ -179,9 +174,7 @@ func TestOperatorUnsealCommand_Format(t *testing.T) {
 	defer closer()
 
 	// Seal so we can unseal
-	if err := client.Sys().Seal(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, client.Sys().Seal())
 
 	stdout := bytes.NewBuffer(nil)
 	stderr := bytes.NewBuffer(nil)

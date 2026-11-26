@@ -540,9 +540,7 @@ func TestLeaseCache_Concurrent_NonCacheable(t *testing.T) {
 func TestLeaseCache_Concurrent_Cacheable(t *testing.T) {
 	lc := testNewLeaseCacheWithDelay(t, true, 50)
 
-	if err := lc.RegisterAutoAuthToken("autoauthtoken"); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, lc.RegisterAutoAuthToken("autoauthtoken"))
 
 	// We are going to send 100 requests, each taking 50ms to process. If these
 	// requests are processed serially, it will take ~5seconds to finish, so we

@@ -390,9 +390,7 @@ func TestLogin(t *testing.T) {
 	}
 
 	_, err = b.HandleRequest(t.Context(), req)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	if err.Error() != "service account name not authorized" {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -414,9 +412,8 @@ func TestLogin(t *testing.T) {
 	}
 
 	_, err = b.HandleRequest(t.Context(), req)
-	if err == nil {
-		t.Fatal("Expected error")
-	} else if !errors.Is(err, logical.ErrPermissionDenied) {
+	require.Error(t, err)
+	if !errors.Is(err, logical.ErrPermissionDenied) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 
@@ -584,9 +581,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 	}
 
 	_, err := b.HandleRequest(t.Context(), req)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	if err.Error() != "service account name not authorized" {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -763,9 +758,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	}
 
 	_, err := b.HandleRequest(t.Context(), req)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	if !errors.Is(err, logical.ErrPermissionDenied) {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -786,9 +779,8 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	}
 
 	_, err = b.HandleRequest(t.Context(), req)
-	if err == nil {
-		t.Fatal("Expected error")
-	} else if !errors.Is(err, logical.ErrPermissionDenied) {
+	require.Error(t, err)
+	if !errors.Is(err, logical.ErrPermissionDenied) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 
@@ -1145,9 +1137,7 @@ func TestLoginIssValidation(t *testing.T) {
 	}
 
 	_, err = b.HandleRequest(t.Context(), req)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	if err.Error() != `invalid issuer (iss) claim` {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -1287,9 +1277,7 @@ func TestLoginProjectedToken(t *testing.T) {
 				t.Fatalf("expected error but found none: (%s) resp: %#v\n", tc.e, resp)
 			}
 			if resp != nil && resp.IsError() {
-				if tc.e == nil {
-					t.Fatalf("unexpected err: (%s)\n", resp.Error())
-				}
+				require.Errorf(t, tc.e, "unexpected err: (%s)\n", resp.Error())
 				if tc.e.Error() != resp.Error().Error() {
 					t.Fatalf("error mismatch in response, expected (%s) got (%s)", tc.e, resp.Error())
 				}
@@ -1507,9 +1495,7 @@ func Test_kubeAuthBackend_getAliasName(t *testing.T) {
 			require.NoError(t, err)
 
 			sa := &serviceAccount{}
-			if err := mapstructure.Decode(claims, sa); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, mapstructure.Decode(claims, sa))
 
 			got, err := b.getAliasName(tt.role, sa)
 
@@ -1653,9 +1639,7 @@ func TestResolveRole(t *testing.T) {
 
 	entry, err := logical.StorageEntryJSON("role/"+role, validRoleStorageEntry)
 	require.NoError(t, err)
-	if err := storage.Put(t.Context(), entry); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, storage.Put(t.Context(), entry))
 
 	loginData := map[string]any{
 		"role": role,

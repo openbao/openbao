@@ -200,9 +200,7 @@ func setupClusterAndAgentCommon(ctx context.Context, t *testing.T, coreConfig *v
 	}
 
 	// Add an admin policy
-	if err := activeClient.Sys().PutPolicy("admin", policyAdmin); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, activeClient.Sys().PutPolicy("admin", policyAdmin))
 
 	// Set up the userpass auth backend and an admin user. Used for getting a token
 	// for the agent later down in this func.
@@ -275,9 +273,7 @@ func setupClusterAndAgentCommon(ctx context.Context, t *testing.T, coreConfig *v
 	testClient, err := activeClient.Clone()
 	require.NoError(t, err)
 
-	if err := testClient.SetAddress("http://" + listener.Addr().String()); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, testClient.SetAddress("http://"+listener.Addr().String()))
 
 	// Login via userpass method to derive a managed token. Set that token as the
 	// testClient's token

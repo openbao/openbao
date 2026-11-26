@@ -125,9 +125,9 @@ func TestTokenFileEndToEnd(t *testing.T) {
 	// timeout duration.
 	defer cancel()
 
-	if stat, err := os.Lstat(tokenSinkFileName); err == nil {
-		t.Fatalf("expected err but got %s", stat)
-	} else if !os.IsNotExist(err) {
+	stat, err := os.Lstat(tokenSinkFileName)
+	require.Errorf(t, err, "expected err but got %s", stat)
+	if !os.IsNotExist(err) {
 		t.Fatal("expected notexist err")
 	}
 

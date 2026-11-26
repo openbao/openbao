@@ -54,9 +54,7 @@ func TestHandler_XForwardedFor(t *testing.T) {
 
 		req := client.NewRequest("GET", "/")
 		_, err := client.RawRequest(req)
-		if err == nil {
-			t.Fatal("expected error")
-		}
+		require.Error(t, err)
 		if !strings.Contains(err.Error(), "missing x-forwarded-for") {
 			t.Fatalf("bad error message: %v", err)
 		}
@@ -131,9 +129,7 @@ func TestHandler_XForwardedFor(t *testing.T) {
 		req.Headers = make(http.Header)
 		req.Headers.Set("x-forwarded-for", "5.6.7.8")
 		_, err := client.RawRequest(req)
-		if err == nil {
-			t.Fatal("expected error")
-		}
+		require.Error(t, err)
 		if !strings.Contains(err.Error(), "not authorized for x-forwarded-for") {
 			t.Fatalf("bad error message: %v", err)
 		}
@@ -165,9 +161,7 @@ func TestHandler_XForwardedFor(t *testing.T) {
 		req.Headers = make(http.Header)
 		req.Headers.Set("x-forwarded-for", "2.3.4.5,3.4.5.6")
 		_, err := client.RawRequest(req)
-		if err == nil {
-			t.Fatal("expected error")
-		}
+		require.Error(t, err)
 		if !strings.Contains(err.Error(), "would skip before earliest") {
 			t.Fatalf("bad error message: %v", err)
 		}

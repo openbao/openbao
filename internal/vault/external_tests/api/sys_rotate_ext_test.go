@@ -144,16 +144,12 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 		SecretThreshold:     3,
 		RequireVerification: true,
 	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	// Sealing should clear state, so after this we should be able to perform
 	// the above again
 	cluster.EnsureCoresSealed(t)
-	if err := cluster.UnsealCoresWithError(recovery); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, cluster.UnsealCoresWithError(recovery))
 	doRekeyInitialSteps()
 
 	doStartVerify := func() {
@@ -196,9 +192,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 		SecretThreshold:     3,
 		RequireVerification: true,
 	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	vStatus, err := verificationStatusFunc()
 	require.NoError(t, err)
 	switch {
@@ -257,9 +251,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 		cluster.Start()
 		defer cluster.Cleanup()
 
-		if err := cluster.UnsealCoresWithError(false); err == nil {
-			t.Fatal("expected error")
-		}
+		require.Error(t, cluster.UnsealCoresWithError(false))
 
 		// Swap out the keys with our new ones and try again
 		var newKeyBytes [][]byte
@@ -269,15 +261,11 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 			newKeyBytes = append(newKeyBytes, val)
 		}
 		cluster.BarrierKeys = newKeyBytes
-		if err := cluster.UnsealCoresWithError(false); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, cluster.UnsealCoresWithError(false))
 	} else {
 		// The old keys should no longer work
 		_, err := testhelpers.GenerateRootWithError(t, cluster, testhelpers.GenerateRootRegular)
-		if err == nil {
-			t.Fatal("expected error")
-		}
+		require.Error(t, err)
 
 		// Put the new keys in place and run again
 		cluster.RecoveryKeys = nil
@@ -286,9 +274,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 			require.NoError(t, err)
 			cluster.RecoveryKeys = append(cluster.RecoveryKeys, dec)
 		}
-		if err := client.Sys().GenerateRootCancel(); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, client.Sys().GenerateRootCancel())
 		testhelpers.GenerateRoot(t, cluster, testhelpers.GenerateRootRegular)
 	}
 }

@@ -60,9 +60,7 @@ func testHttpData(t *testing.T, method string, token string, addr string, body a
 	bodyReader := new(bytes.Buffer)
 	if body != nil {
 		enc := json.NewEncoder(bodyReader)
-		if err := enc.Encode(body); err != nil {
-			t.Fatalf("err:%s", err)
-		}
+		require.NoError(t, enc.Encode(body))
 	}
 
 	req, err := http.NewRequest(method, addr, bodyReader)
@@ -142,7 +140,5 @@ func testResponseHeader(t *testing.T, resp *http.Response, expectedHeaders map[s
 func testResponseBody(t *testing.T, resp *http.Response, out any) {
 	defer resp.Body.Close() //nolint:errcheck
 
-	if err := jsonutil.DecodeJSONFromReader(resp.Body, out); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, jsonutil.DecodeJSONFromReader(resp.Body, out))
 }

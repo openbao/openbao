@@ -117,9 +117,7 @@ func TestFormatJSON_formatRequest(t *testing.T) {
 			Request:  tc.Req,
 			OuterErr: tc.Err,
 		}
-		if err := formatter.FormatRequest(namespace.RootContext(t.Context()), &buf, config, in); err != nil {
-			t.Fatalf("bad: %s\nerr: %s", name, err)
-		}
+		require.NoErrorf(t, formatter.FormatRequest(namespace.RootContext(t.Context()), &buf, config, in), "bad: %s", name)
 
 		if !strings.HasPrefix(buf.String(), tc.Prefix) {
 			t.Fatalf("no prefix: %s \n log: %s\nprefix: %s", name, expectedResultStr, tc.Prefix)
@@ -127,15 +125,11 @@ func TestFormatJSON_formatRequest(t *testing.T) {
 
 		expectedjson := new(AuditRequestEntry)
 
-		if err := jsonutil.DecodeJSON([]byte(expectedResultStr), &expectedjson); err != nil {
-			t.Fatalf("bad json: %s", err)
-		}
+		require.NoError(t, jsonutil.DecodeJSON([]byte(expectedResultStr), &expectedjson), "bad json")
 		expectedjson.Request.Namespace = &AuditNamespace{ID: "root"}
 
 		actualjson := new(AuditRequestEntry)
-		if err := jsonutil.DecodeJSON(buf.Bytes()[len(tc.Prefix):], &actualjson); err != nil {
-			t.Fatalf("bad json: %s", err)
-		}
+		require.NoError(t, jsonutil.DecodeJSON(buf.Bytes()[len(tc.Prefix):], &actualjson), "bad json")
 
 		expectedjson.Time = actualjson.Time
 

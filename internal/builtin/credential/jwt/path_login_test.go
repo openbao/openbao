@@ -874,9 +874,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		data["jwt"] = jwtData
 
 		resp, err = b.HandleRequest(t.Context(), req)
-		if err == nil {
-			t.Fatalf("expected non-nil err; got resp=%#v", resp)
-		}
+		require.Errorf(t, err, "expected non-nil err; got resp=%#v", resp)
 	}
 }
 
@@ -1460,9 +1458,7 @@ func TestLogin_JWKS_Concurrent(t *testing.T) {
 		})
 	}
 
-	if err := g.Wait(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, g.Wait())
 }
 
 func TestResolveRole(t *testing.T) {

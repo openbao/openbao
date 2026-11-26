@@ -83,14 +83,12 @@ func TestSecretsTuneCommand_Run(t *testing.T) {
 		cmd.client = client
 
 		// Mount
-		if err := client.Sys().Mount("kv", &api.MountInput{
+		require.NoError(t, client.Sys().Mount("kv", &api.MountInput{
 			Type: "kv",
 			Options: map[string]string{
 				"version": "2",
 			},
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 
 		// confirm default max_versions
 		mounts, err := client.Sys().ListMounts()
@@ -157,11 +155,9 @@ func TestSecretsTuneCommand_Run(t *testing.T) {
 			cmd.client = client
 
 			// Mount
-			if err := client.Sys().Mount("mount_tune_integration", &api.MountInput{
+			require.NoError(t, client.Sys().Mount("mount_tune_integration", &api.MountInput{
 				Type: "pki",
-			}); err != nil {
-				t.Fatal(err)
-			}
+			}))
 
 			mounts, err := client.Sys().ListMounts()
 			require.NoError(t, err)
@@ -245,12 +241,10 @@ func TestSecretsTuneCommand_Run(t *testing.T) {
 				cmd.client = client
 
 				// Mount
-				if err := client.Sys().Mount("mount_tune_integration", &api.MountInput{
+				require.NoError(t, client.Sys().Mount("mount_tune_integration", &api.MountInput{
 					Type:        "pki",
 					Description: "initial description",
-				}); err != nil {
-					t.Fatal(err)
-				}
+				}))
 
 				code := cmd.Run([]string{
 					"-default-lease-ttl", "30m",
@@ -286,12 +280,10 @@ func TestSecretsTuneCommand_Run(t *testing.T) {
 				cmd.client = client
 
 				// Mount
-				if err := client.Sys().Mount("mount_tune_integration", &api.MountInput{
+				require.NoError(t, client.Sys().Mount("mount_tune_integration", &api.MountInput{
 					Type:        "pki",
 					Description: "initial description",
-				}); err != nil {
-					t.Fatal(err)
-				}
+				}))
 
 				code := cmd.Run([]string{
 					"-description", "",

@@ -23,11 +23,9 @@ func TestTransitImport(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	if err := client.Sys().Mount("transit", &api.MountInput{
+	require.NoError(t, client.Sys().Mount("transit", &api.MountInput{
 		Type: "transit",
-	}); err != nil {
-		t.Fatalf("transit mount error: %#v", err)
-	}
+	}), "transit mount error")
 
 	rsa1, rsa2, aes128, aes256 := generateKeys(t)
 

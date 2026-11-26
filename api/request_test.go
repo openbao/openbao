@@ -6,14 +6,14 @@ package api
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestRequestSetJSONBody(t *testing.T) {
 	var r Request
 	raw := map[string]any{"foo": "bar"}
-	if err := r.SetJSONBody(raw); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, r.SetJSONBody(raw))
 
 	expected := `{"foo":"bar"}`
 	actual := strings.TrimSpace(string(r.BodyBytes))
@@ -25,13 +25,9 @@ func TestRequestSetJSONBody(t *testing.T) {
 func TestRequestResetJSONBody(t *testing.T) {
 	var r Request
 	raw := map[string]any{"foo": "bar"}
-	if err := r.SetJSONBody(raw); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, r.SetJSONBody(raw))
 
-	if err := r.ResetJSONBody(); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, r.ResetJSONBody())
 
 	buf := make([]byte, len(r.BodyBytes))
 	copy(buf, r.BodyBytes)

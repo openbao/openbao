@@ -443,9 +443,7 @@ func assertCredsExist(t testing.TB, address, username, password string) {
 func assertCredsDoNotExist(t testing.TB, address, username, password string) {
 	t.Helper()
 	err := testCredsExist(address, username, password)
-	if err == nil {
-		t.Fatalf("Able to log in as %q when it shouldn't", username)
-	}
+	require.Errorf(t, err, "Able to log in as %q when it shouldn't", username)
 }
 
 func testCredsExist(address, username, password string) error {

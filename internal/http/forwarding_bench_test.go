@@ -50,9 +50,7 @@ func BenchmarkHTTP_Forwarding_Stress(b *testing.B) {
 	transport := &http.Transport{
 		TLSClientConfig: cores[0].TLSConfig(),
 	}
-	if err := http2.ConfigureTransport(transport); err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, http2.ConfigureTransport(transport))
 
 	client := &http.Client{
 		Transport: transport,

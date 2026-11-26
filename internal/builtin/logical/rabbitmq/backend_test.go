@@ -259,9 +259,7 @@ func testAccStepReadCreds(t *testing.T, b logical.Backend, uri, name string) log
 			require.NoError(t, err)
 
 			_, err = client.ListQueues()
-			if err == nil {
-				t.Fatalf("expected to fail listing queues: %s", err)
-			}
+			require.Error(t, err, "expected to fail listing queues")
 
 			return nil
 		},

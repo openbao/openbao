@@ -72,9 +72,7 @@ func TestReconcileOCIPlugins(t *testing.T) {
 	ctx := t.Context()
 
 	// Download plugins.
-	if err := oci.NewPluginDownloader(tempDir, config, core.logger).Reconcile(ctx); err != nil {
-		t.Fatalf("OCI plugin download failed: %v", err)
-	}
+	require.NoError(t, oci.NewPluginDownloader(tempDir, config, core.logger).Reconcile(ctx), "OCI plugin download failed")
 
 	// Verify the plugin was downloaded and symlinked correctly
 	pluginPath := filepath.Join(tempDir, config.Plugins[0].FullName())
@@ -168,9 +166,7 @@ func TestReconcileOCIPlugins(t *testing.T) {
 	core.rawConfig.Store(config)
 
 	// Re-download.
-	if err := oci.NewPluginDownloader(tempDir, config, core.logger).Reconcile(ctx); err != nil {
-		t.Fatalf("OCI plugin reconciliation failed: %v", err)
-	}
+	require.NoError(t, oci.NewPluginDownloader(tempDir, config, core.logger).Reconcile(ctx), "OCI plugin reconciliation failed")
 
 	// Reconcile, but this time use the SIGHUP handler.
 	core.ReloadPlugins()

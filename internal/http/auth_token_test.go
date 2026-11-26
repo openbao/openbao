@@ -140,9 +140,7 @@ func TestAuthTokenRenew(t *testing.T) {
 
 	// The default root token is not renewable, so this should not work
 	_, err = client.Auth().Token().Renew(token, 0)
-	if err == nil {
-		t.Fatal("should not be allowed to renew root token")
-	}
+	require.Error(t, err, "should not be allowed to renew root token")
 	if !strings.Contains(err.Error(), "invalid lease ID") {
 		t.Fatalf("wrong error; got %v", err)
 	}

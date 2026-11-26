@@ -183,9 +183,8 @@ func TestClientHostHeader(t *testing.T) {
 
 	// Copy the response
 	var buf bytes.Buffer
-	if _, err := io.Copy(&buf, resp.Body); err != nil {
-		t.Fatalf("error copying response body to buffer: %s", err)
-	}
+	_, err = io.Copy(&buf, resp.Body)
+	require.NoError(t, err, "error copying response body to buffer")
 
 	// Verify we got the response from the primary
 	modifiedAddress := strings.ReplaceAll(config.Address, "http://", "")
@@ -289,9 +288,8 @@ func TestClientRedirect(t *testing.T) {
 
 	// Copy the response
 	var buf bytes.Buffer
-	if _, err := io.Copy(&buf, resp.Body); err != nil {
-		t.Fatalf("error copying response body to buffer: %s", err)
-	}
+	_, err = io.Copy(&buf, resp.Body)
+	require.NoError(t, err, "error copying response body to buffer")
 
 	// Verify we got the response from the primary
 	require.Equal(t, "test", buf.String())

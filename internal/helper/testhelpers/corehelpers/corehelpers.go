@@ -28,6 +28,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/audit"
 	"github.com/openbao/openbao/v2/internal/builtin/credential/approle"
 	"github.com/openbao/openbao/v2/internal/builtin/database/mysql"
+	"github.com/stretchr/testify/require"
 )
 
 var externalPlugins = []string{"transform", "kmip", "keymgmt"}
@@ -206,9 +207,7 @@ func (m *mockBuiltinRegistry) DeprecationStatus(name string, pluginType consts.P
 
 func TestNoopAudit(t testing.T, config map[string]string) *NoopAudit {
 	n, err := NewNoopAudit(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return n
 }
 
@@ -406,13 +405,9 @@ func NewTestLogger(t testing.T) *TestLogger {
 		// t.Name may include slashes.
 		dir, _ := filepath.Split(logPath)
 		err := os.MkdirAll(dir, 0o755)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		logFile, err = os.Create(logPath)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		output = logFile
 	}
 

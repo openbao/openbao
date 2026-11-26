@@ -98,9 +98,7 @@ ssl-key=/etc/mysql/certs/server-key.pem`
 	expected := fmt.Sprintf("%s@%%", username)
 
 	var result string
-	if err := results.Scan(&result); err != nil {
-		t.Fatalf("result could not be scanned from result set: %s", err)
-	}
+	require.NoError(t, results.Scan(&result), "result could not be scanned from result set")
 
 	if !reflect.DeepEqual(result, expected) {
 		t.Fatalf("Actual:%#v\nExpected:\n%#v", result, expected)
@@ -277,7 +275,5 @@ func Test_dialWithFailover(t *testing.T) {
 	defer cancel()
 
 	_, err := producer.dialWithFailover(ctx, "tcp", "ignored")
-	if err == nil {
-		t.Fatal("expected error when connecting to invalid hosts")
-	}
+	require.Error(t, err, "expected error when connecting to invalid hosts")
 }

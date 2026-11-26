@@ -10,6 +10,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster/docker"
 	rafttest "github.com/openbao/openbao/v2/internal/vault/external_tests/raft"
+	"github.com/stretchr/testify/require"
 )
 
 // TestRaft_Configuration_Docker is a variant of TestRaft_Configuration that
@@ -41,8 +42,6 @@ func TestRaft_Configuration_Docker(t *testing.T) {
 	defer cluster.Cleanup()
 	rafttest.Raft_Configuration_Test(t, cluster)
 
-	if err := cluster.AddNode(t.Context(), opts); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, cluster.AddNode(t.Context(), opts))
 	rafttest.Raft_Configuration_Test(t, cluster)
 }

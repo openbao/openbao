@@ -51,9 +51,7 @@ func TestRequestSource_ValidateMissingField(t *testing.T) {
 	source := &RequestSource{field: map[string]any{}}
 
 	_, _, err := source.Validate()
-	if err == nil {
-		t.Fatal("expected error for missing 'request_name' field, got nil")
-	}
+	require.Error(t, err, "expected error for missing 'request_name' field, got nil")
 
 	if !strings.HasPrefix(err.Error(), "request source is missing required field \"request_name\"") {
 		t.Fatalf("unexpected error: %v", err)
@@ -68,9 +66,7 @@ func TestRequestSource_Validate_MissingOuterNameField(t *testing.T) {
 
 	_, _, err := rs.Validate()
 	want := "request source is missing required field 'profile_name'"
-	if err == nil {
-		t.Fatalf("expected error %q, got nil", want)
-	}
+	require.Errorf(t, err, "expected error %q, got nil", want)
 	if err.Error() != want {
 		t.Fatalf("expected error %q, got %q", want, err.Error())
 	}
@@ -102,9 +98,7 @@ func TestRequestValidate_OuterNameWrongType(t *testing.T) {
 
 	_, _, err := rs.Validate()
 	want := "field 'profile_name' is of wrong type: expected 'string' got 'int'"
-	if err == nil {
-		t.Fatalf("expected error %q, got nil", want)
-	}
+	require.Errorf(t, err, "expected error %q, got nil", want)
 	if err.Error() != want {
 		t.Fatalf("expected error %q, got %q", want, err.Error())
 	}
@@ -148,16 +142,13 @@ func TestRequestSource_Evaluate_WithFieldSelector_String(t *testing.T) {
 		field: map[string]any{"request_name": "mount-userpass", "field_selector": "userPass"},
 	}
 
-	if _, _, err := source.Validate(); err != nil {
-		t.Fatalf("Validate error: %v", err)
-	}
+	_, _, err := source.Validate()
+	require.NoError(t, err, "Validate error")
 
 	requestData := map[string]any{
 		"userPass": "test",
 	}
-	if err := history.AddRequestData("", "mount-userpass", requestData); err != nil {
-		t.Fatalf("AddRequestData error: %v", err)
-	}
+	require.NoError(t, history.AddRequestData("", "mount-userpass", requestData), "AddRequestData error")
 
 	result, err := source.Evaluate(ctx, history)
 	require.NoError(t, err)

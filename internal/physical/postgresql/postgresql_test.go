@@ -65,9 +65,8 @@ func TestPostgreSQLBackend(t *testing.T) {
 
 	// Read postgres version to test basic connects works
 	var pgversion string
-	if err = pg.client.QueryRow("SELECT current_setting('server_version_num')").Scan(&pgversion); err != nil {
-		t.Fatalf("Failed to check for Postgres version: %v", err)
-	}
+	err = pg.client.QueryRow("SELECT current_setting('server_version_num')").Scan(&pgversion)
+	require.NoError(t, err, "Failed to check for Postgres version")
 	logger.Info(fmt.Sprintf("Postgres Version: %v", pgversion))
 
 	SetupDatabaseObjects(t, pg)
@@ -318,9 +317,7 @@ func testPostgresSQLLockRenewal(t *testing.T, ha physical.HABackend) {
 	}
 
 	// Release the lock, which will delete the stored item
-	if err := lock.Unlock(); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, lock.Unlock())
 
 	// Wait longer than the renewal time
 	time.Sleep(1500 * time.Millisecond)
@@ -408,9 +405,7 @@ func TestPostgreSQLBackend_NoCreateTables(t *testing.T) {
 	// Put should fail with an error.
 	entry := &physical.Entry{Key: "foo", Value: []byte("data")}
 	err = b.Put(t.Context(), entry)
-	if err == nil {
-		t.Fatal("expected put to fail due to missing tables")
-	}
+	require.Error(t, err, "expected put to fail due to missing tables")
 
 	pg := b.(*PostgreSQLBackend)
 	SetupDatabaseObjects(t, pg)
@@ -525,9 +520,7 @@ func TestPostgreSQLBackend_Parallel(t *testing.T) {
 	wg.Wait()
 
 	for j := range errors {
-		if errors[j] != nil {
-			t.Fatalf("process %v: %v", j, errors[j])
-		}
+		require.NoErrorf(t, errors[j], "process %v", j)
 	}
 
 	// Use transactions so we can sleep while holding a connection.
@@ -589,9 +582,7 @@ func TestPostgreSQLBackend_Parallel(t *testing.T) {
 	wg.Wait()
 
 	for j := range errors {
-		if errors[j] != nil {
-			t.Fatalf("process %v: %v", j, errors[j])
-		}
+		require.NoErrorf(t, errors[j], "process %v", j)
 	}
 }
 

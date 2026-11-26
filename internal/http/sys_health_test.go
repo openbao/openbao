@@ -80,9 +80,8 @@ func TestSysHealth_get(t *testing.T) {
 	}
 
 	for _, key := range keys {
-		if _, err := vault.TestCoreUnseal(core, vault.TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = vault.TestCoreUnseal(core, vault.TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 	resp, err = http.Get(addr + "/v1/sys/health")
 	require.NoError(t, err)
@@ -183,9 +182,8 @@ func TestSysHealth_customcodes(t *testing.T) {
 	}
 
 	for _, key := range keys {
-		if _, err := vault.TestCoreUnseal(core, vault.TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = vault.TestCoreUnseal(core, vault.TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 	resp, err = http.Get(queryurl.String())
 	require.NoError(t, err)

@@ -164,9 +164,7 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 	transport := &http.Transport{
 		TLSClientConfig: cores[0].TLSConfig(),
 	}
-	if err := http2.ConfigureTransport(transport); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, http2.ConfigureTransport(transport))
 
 	client := &http.Client{
 		Transport: transport,
@@ -459,9 +457,7 @@ func TestHTTP_Forwarding_ClientTLS(t *testing.T) {
 
 	transport := cleanhttp.DefaultTransport()
 	transport.TLSClientConfig = cores[0].TLSConfig()
-	if err := http2.ConfigureTransport(transport); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, http2.ConfigureTransport(transport))
 
 	client := &http.Client{
 		Transport: transport,
@@ -501,9 +497,7 @@ func TestHTTP_Forwarding_ClientTLS(t *testing.T) {
 		transport = cleanhttp.DefaultTransport()
 		// i starts at zero but cores in addrs start at 1
 		transport.TLSClientConfig = cores[i+1].TLSConfig()
-		if err := http2.ConfigureTransport(transport); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, http2.ConfigureTransport(transport))
 		httpClient := &http.Client{
 			Transport: transport,
 			CheckRedirect: func(*http.Request, []*http.Request) error {

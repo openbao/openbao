@@ -45,25 +45,20 @@ func TestShares_Has(t *testing.T) {
 func TestSplit_invalid(t *testing.T) {
 	secret := []byte("test")
 
-	if _, err := Split(secret, 0, 0); err == nil {
-		t.Fatal("expect error")
-	}
+	_, err := Split(secret, 0, 0)
+	require.Error(t, err)
 
-	if _, err := Split(secret, 2, 3); err == nil {
-		t.Fatal("expect error")
-	}
+	_, err = Split(secret, 2, 3)
+	require.Error(t, err)
 
-	if _, err := Split(secret, 1000, 3); err == nil {
-		t.Fatal("expect error")
-	}
+	_, err = Split(secret, 1000, 3)
+	require.Error(t, err)
 
-	if _, err := Split(secret, 10, 1); err == nil {
-		t.Fatal("expect error")
-	}
+	_, err = Split(secret, 10, 1)
+	require.Error(t, err)
 
-	if _, err := Split(nil, 3, 2); err == nil {
-		t.Fatal("expect error")
-	}
+	_, err = Split(nil, 3, 2)
+	require.Error(t, err)
 }
 
 func TestSplit(t *testing.T) {
@@ -85,35 +80,31 @@ func TestSplit(t *testing.T) {
 
 func TestCombine_invalid(t *testing.T) {
 	// Not enough parts
-	if _, err := Combine(nil); err == nil {
-		t.Fatal("should err")
-	}
+	_, err := Combine(nil)
+	require.Error(t, err)
 
 	// Mis-match in length
 	parts := [][]byte{
 		[]byte("foo"),
 		[]byte("ba"),
 	}
-	if _, err := Combine(parts); err == nil {
-		t.Fatal("should err")
-	}
+	_, err = Combine(parts)
+	require.Error(t, err)
 
 	// Too short
 	parts = [][]byte{
 		[]byte("f"),
 		[]byte("b"),
 	}
-	if _, err := Combine(parts); err == nil {
-		t.Fatal("should err")
-	}
+	_, err = Combine(parts)
+	require.Error(t, err)
 
 	parts = [][]byte{
 		[]byte("foo"),
 		[]byte("foo"),
 	}
-	if _, err := Combine(parts); err == nil {
-		t.Fatal("should err")
-	}
+	_, err = Combine(parts)
+	require.Error(t, err)
 }
 
 func TestCombine(t *testing.T) {

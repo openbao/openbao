@@ -372,9 +372,8 @@ func TestOperatorGenerateRootCommand_Run(t *testing.T) {
 		defer closer()
 
 		// Initialize a generation
-		if _, err := client.Sys().GenerateRootInit("", ""); err != nil {
-			t.Fatal(err)
-		}
+		_, err := client.Sys().GenerateRootInit("", "")
+		require.NoError(t, err)
 
 		ui, cmd := testOperatorGenerateRootCommand(t)
 		cmd.client = client

@@ -91,12 +91,9 @@ func TestMonitor_Start_Unbuffered(t *testing.T) {
 		Level: log.Debug,
 	})
 
-	if err == nil {
-		t.Fatal("expected to get an error, but didn't")
-	} else {
-		if !strings.Contains(err.Error(), "greater than zero") {
-			t.Fatal("expected an error about buf being greater than zero")
-		}
+	require.Error(t, err, "expected to get an error, but didn't")
+	if !strings.Contains(err.Error(), "greater than zero") {
+		t.Fatal("expected an error about buf being greater than zero")
 	}
 }
 

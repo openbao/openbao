@@ -110,9 +110,7 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 	// This call should now fail
 	client.SetToken(roleToken)
 	resp, err = client.Auth().Token().LookupSelf()
-	if err == nil {
-		t.Fatalf("expected error, got %#v", *resp)
-	}
+	require.Errorf(t, err, "expected error, got %#v", *resp)
 	if !strings.Contains(err.Error(), logical.ErrPermissionDenied.Error()) {
 		t.Fatalf("expected to see entity disabled error, got %v", err)
 	}
@@ -123,9 +121,7 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 		"role_id":   roleID,
 		"secret_id": secretID,
 	})
-	if err == nil {
-		t.Fatalf("expected error, got %#v", *resp)
-	}
+	require.Errorf(t, err, "expected error, got %#v", *resp)
 	if !strings.Contains(err.Error(), logical.ErrPermissionDenied.Error()) {
 		t.Fatalf("expected to see entity disabled error, got %v", err)
 	}

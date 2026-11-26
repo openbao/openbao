@@ -22,9 +22,7 @@ func SysPprof_Test(t *testing.T, cluster testcluster.VaultCluster) {
 
 	transport := cleanhttp.DefaultPooledTransport()
 	transport.TLSClientConfig = nodes[0].TLSConfig()
-	if err := http2.ConfigureTransport(transport); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, http2.ConfigureTransport(transport))
 	httpClient := &http.Client{
 		Transport: transport,
 	}
@@ -77,19 +75,13 @@ func SysPprof_Test(t *testing.T, cluster testcluster.VaultCluster) {
 			req.Params.Set("seconds", seconds)
 		}
 		httpReq, err := req.ToHTTP()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		resp, err := httpClient.Do(httpReq)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer resp.Body.Close() //nolint:errcheck
 
 		httpRespBody, err := io.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		httpResp := make(map[string]any)
 

@@ -136,15 +136,11 @@ func ExerciseBackend(t testing.TB, b Backend) {
 
 	// Delete should work if it does not exist
 	err := b.Delete(context.Background(), "foo")
-	if err != nil {
-		t.Fatalf("idempotent delete: %v", err)
-	}
+	require.NoError(t, err, "idempotent delete")
 
 	// Get should not fail, but be nil
 	out, err := b.Get(context.Background(), "foo")
-	if err != nil {
-		t.Fatalf("initial get failed: %v", err)
-	}
+	require.NoError(t, err, "initial get failed")
 	if out != nil {
 		t.Errorf("initial get was not nil: %v", out)
 	}
@@ -152,15 +148,11 @@ func ExerciseBackend(t testing.TB, b Backend) {
 	// Make an entry
 	e := &Entry{Key: "foo", Value: []byte("test")}
 	err = b.Put(context.Background(), e)
-	if err != nil {
-		t.Fatalf("put failed: %v", err)
-	}
+	require.NoError(t, err, "put failed")
 
 	// Get should work
 	out, err = b.Get(context.Background(), "foo")
-	if err != nil {
-		t.Fatalf("get failed: %v", err)
-	}
+	require.NoError(t, err, "get failed")
 	if !reflect.DeepEqual(out, e) {
 		t.Errorf("bad: %v expected: %v", out, e)
 	}
@@ -170,18 +162,14 @@ func ExerciseBackend(t testing.TB, b Backend) {
 
 	// Delete should work
 	err = b.Delete(context.Background(), "foo")
-	if err != nil {
-		t.Fatalf("delete: %v", err)
-	}
+	require.NoError(t, err, "delete")
 
 	// List should be empty
 	testListAndPage(t, b, "", nil)
 
 	// Get should not fail, but be nil again
 	out, err = b.Get(context.Background(), "foo")
-	if err != nil {
-		t.Fatalf("get after delete: %v", err)
-	}
+	require.NoError(t, err, "get after delete")
 	if out != nil {
 		t.Errorf("get after delete not nil: %v", out)
 	}
@@ -189,27 +177,19 @@ func ExerciseBackend(t testing.TB, b Backend) {
 	// Multiple Puts should work; GH-189
 	e = &Entry{Key: "foo", Value: []byte("test")}
 	err = b.Put(context.Background(), e)
-	if err != nil {
-		t.Fatalf("multi put 1 failed: %v", err)
-	}
+	require.NoError(t, err, "multi put 1 failed")
 	e = &Entry{Key: "foo", Value: []byte("test")}
 	err = b.Put(context.Background(), e)
-	if err != nil {
-		t.Fatalf("multi put 2 failed: %v", err)
-	}
+	require.NoError(t, err, "multi put 2 failed")
 
 	// Make a nested entry
 	e = &Entry{Key: "foo/bar", Value: []byte("baz")}
 	err = b.Put(context.Background(), e)
-	if err != nil {
-		t.Fatalf("nested put failed: %v", err)
-	}
+	require.NoError(t, err, "nested put failed")
 
 	// Get should work
 	out, err = b.Get(context.Background(), "foo/bar")
-	if err != nil {
-		t.Fatalf("get failed: %v", err)
-	}
+	require.NoError(t, err, "get failed")
 	if !reflect.DeepEqual(out, e) {
 		t.Errorf("bad: %v expected: %v", out, e)
 	}
@@ -219,15 +199,11 @@ func ExerciseBackend(t testing.TB, b Backend) {
 
 	// Delete with children should work
 	err = b.Delete(context.Background(), "foo")
-	if err != nil {
-		t.Fatalf("delete after multi: %v", err)
-	}
+	require.NoError(t, err, "delete after multi")
 
 	// Get should return the child
 	out, err = b.Get(context.Background(), "foo/bar")
-	if err != nil {
-		t.Fatalf("get after multi delete: %v", err)
-	}
+	require.NoError(t, err, "get after multi delete")
 	if out == nil {
 		t.Errorf("get after multi delete not nil: %v", out)
 	}
@@ -235,68 +211,48 @@ func ExerciseBackend(t testing.TB, b Backend) {
 	// Removal of nested secret should not leave artifacts
 	e = &Entry{Key: "foo/nested1/nested2/nested3", Value: []byte("baz")}
 	err = b.Put(context.Background(), e)
-	if err != nil {
-		t.Fatalf("deep nest: %v", err)
-	}
+	require.NoError(t, err, "deep nest")
 
 	err = b.Delete(context.Background(), "foo/nested1/nested2/nested3")
-	if err != nil {
-		t.Fatalf("failed to remove deep nest: %v", err)
-	}
+	require.NoError(t, err, "failed to remove deep nest")
 
 	testListAndPage(t, b, "foo/", []string{"bar"})
 
 	// Make a second nested entry to test prefix removal
 	e = &Entry{Key: "foo/zip", Value: []byte("zap")}
 	err = b.Put(context.Background(), e)
-	if err != nil {
-		t.Fatalf("failed to create second nested: %v", err)
-	}
+	require.NoError(t, err, "failed to create second nested")
 
 	// Delete should not remove the prefix
 	err = b.Delete(context.Background(), "foo/bar")
-	if err != nil {
-		t.Fatalf("failed to delete nested prefix: %v", err)
-	}
+	require.NoError(t, err, "failed to delete nested prefix")
 
 	testListAndPage(t, b, "", []string{"foo/"})
 
 	// Delete should remove the prefix
 	err = b.Delete(context.Background(), "foo/zip")
-	if err != nil {
-		t.Fatalf("failed to delete second prefix: %v", err)
-	}
+	require.NoError(t, err, "failed to delete second prefix")
 
 	testListAndPage(t, b, "", nil)
 
 	// When the root path is empty, adding and removing deep nested values should not break listing
 	e = &Entry{Key: "foo/nested1/nested2/value1", Value: []byte("baz")}
 	err = b.Put(context.Background(), e)
-	if err != nil {
-		t.Fatalf("deep nest: %v", err)
-	}
+	require.NoError(t, err, "deep nest")
 
 	e = &Entry{Key: "foo/nested1/nested2/value2", Value: []byte("baz")}
 	err = b.Put(context.Background(), e)
-	if err != nil {
-		t.Fatalf("deep nest: %v", err)
-	}
+	require.NoError(t, err, "deep nest")
 
 	err = b.Delete(context.Background(), "foo/nested1/nested2/value2")
-	if err != nil {
-		t.Fatalf("failed to remove deep nest: %v", err)
-	}
+	require.NoError(t, err, "failed to remove deep nest")
 
 	keys, err := b.List(context.Background(), "")
-	if err != nil {
-		t.Fatalf("listing of root failed after deletion: %v", err)
-	}
+	require.NoError(t, err, "listing of root failed after deletion")
 	if len(keys) == 0 {
 		t.Errorf("root is returning empty after deleting a single nested value, expected nested1/: %v", keys)
 		keys, err = b.List(context.Background(), "foo/nested1")
-		if err != nil {
-			t.Fatalf("listing of expected nested path 'foo/nested1' failed: %v", err)
-		}
+		require.NoError(t, err, "listing of expected nested path 'foo/nested1' failed")
 		// prove that the root should not be empty and that foo/nested1 exists
 		if len(keys) != 0 {
 			t.Logf("  keys can still be listed from nested1/ so it's not empty, expected nested2/: %v", keys)
@@ -306,9 +262,7 @@ func ExerciseBackend(t testing.TB, b Backend) {
 
 	// cleanup left over listing bug test value
 	err = b.Delete(context.Background(), "foo/nested1/nested2/value1")
-	if err != nil {
-		t.Fatalf("failed to remove deep nest: %v", err)
-	}
+	require.NoError(t, err, "failed to remove deep nest")
 
 	testListAndPage(t, b, "", nil)
 
@@ -319,18 +273,14 @@ func ExerciseBackend(t testing.TB, b Backend) {
 		name := fmt.Sprintf("key-%d", i)
 		e = &Entry{Key: "foo/" + name, Value: []byte("baz")}
 		err = b.Put(context.Background(), e)
-		if err != nil {
-			t.Fatalf("deep nest: %v", err)
-		}
+		require.NoError(t, err, "deep nest")
 
 		created = append(created, name)
 		testListAndPage(t, b, "foo/", created)
 	}
 	for _, name := range created {
 		err = b.Delete(context.Background(), "foo/"+name)
-		if err != nil {
-			t.Fatalf("failed to remove deep nest: %v", err)
-		}
+		require.NoError(t, err, "failed to remove deep nest")
 	}
 }
 
@@ -350,23 +300,15 @@ func ExerciseBackend_ListPrefix(t testing.TB, b Backend) {
 	}(e3, e2, e1)
 
 	err := b.Put(context.Background(), e1)
-	if err != nil {
-		t.Fatalf("failed to put entry 1: %v", err)
-	}
+	require.NoError(t, err, "failed to put entry 1")
 	err = b.Put(context.Background(), e2)
-	if err != nil {
-		t.Fatalf("failed to put entry 2: %v", err)
-	}
+	require.NoError(t, err, "failed to put entry 2")
 	err = b.Put(context.Background(), e3)
-	if err != nil {
-		t.Fatalf("failed to put entry 3: %v", err)
-	}
+	require.NoError(t, err, "failed to put entry 3")
 
 	// Scan the root
 	keys, err := b.List(context.Background(), "")
-	if err != nil {
-		t.Fatalf("list root: %v", err)
-	}
+	require.NoError(t, err, "list root")
 	sort.Strings(keys)
 	if len(keys) != 2 || keys[0] != "foo" || keys[1] != "foo/" {
 		t.Errorf("root expected [foo foo/]: %v", keys)
@@ -374,9 +316,7 @@ func ExerciseBackend_ListPrefix(t testing.TB, b Backend) {
 
 	// Scan foo/
 	keys, err = b.List(context.Background(), "foo/")
-	if err != nil {
-		t.Fatalf("list level 1: %v", err)
-	}
+	require.NoError(t, err, "list level 1")
 	sort.Strings(keys)
 	if len(keys) != 2 || keys[0] != "bar" || keys[1] != "bar/" {
 		t.Errorf("level 1 expected [bar bar/]: %v", keys)
@@ -384,9 +324,7 @@ func ExerciseBackend_ListPrefix(t testing.TB, b Backend) {
 
 	// Scan foo/bar/
 	keys, err = b.List(context.Background(), "foo/bar/")
-	if err != nil {
-		t.Fatalf("list level 2: %v", err)
-	}
+	require.NoError(t, err, "list level 2")
 	sort.Strings(keys)
 	if len(keys) != 1 || keys[0] != "baz" {
 		t.Errorf("level 1 expected [baz]: %v", keys)
@@ -398,24 +336,18 @@ func ExerciseHABackend(t testing.TB, b HABackend, b2 HABackend) {
 
 	// Get the lock
 	lock, err := b.LockWith("foo", "bar")
-	if err != nil {
-		t.Fatalf("initial lock: %v", err)
-	}
+	require.NoError(t, err, "initial lock")
 
 	// Attempt to lock
 	leaderCh, err := lock.Lock(nil)
-	if err != nil {
-		t.Fatalf("lock attempt 1: %v", err)
-	}
+	require.NoError(t, err, "lock attempt 1")
 	if leaderCh == nil {
 		t.Fatal("missing leaderCh")
 	}
 
 	// Check the value
 	held, val, err := lock.Value()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	if !held {
 		t.Error("should be held")
 	}
@@ -430,9 +362,7 @@ func ExerciseHABackend(t testing.TB, b HABackend, b2 HABackend) {
 
 	// Second acquisition should fail
 	lock2, err := b2.LockWith("foo", "baz")
-	if err != nil {
-		t.Fatalf("lock 2: %v", err)
-	}
+	require.NoError(t, err, "lock 2")
 
 	// Checking the lock from b2 should discover that the lock is held since held
 	// implies only that there is _some_ leader not that b2 is leader (this was
@@ -450,9 +380,7 @@ func ExerciseHABackend(t testing.TB, b HABackend, b2 HABackend) {
 
 	// Attempt to lock
 	leaderCh2, err := lock2.Lock(stopCh)
-	if err != nil {
-		t.Fatalf("stop lock 2: %v", err)
-	}
+	require.NoError(t, err, "stop lock 2")
 	if leaderCh2 != nil {
 		t.Errorf("should not have gotten leaderCh: %v", leaderCh2)
 	}
@@ -462,9 +390,7 @@ func ExerciseHABackend(t testing.TB, b HABackend, b2 HABackend) {
 
 	// Attempt to lock should work
 	leaderCh2, err = lock2.Lock(nil)
-	if err != nil {
-		t.Fatalf("lock 2 lock: %v", err)
-	}
+	require.NoError(t, err, "lock 2 lock")
 	if leaderCh2 == nil {
 		t.Error("should get leaderCh")
 	}
@@ -476,9 +402,7 @@ func ExerciseHABackend(t testing.TB, b HABackend, b2 HABackend) {
 
 	// Check the value
 	held, val, err = lock2.Value()
-	if err != nil {
-		t.Fatalf("value: %v", err)
-	}
+	require.NoError(t, err, "value")
 	if !held {
 		t.Error("should still be held")
 	}
@@ -1094,9 +1018,7 @@ func testTransactionalMixedWriters(t testing.TB, b TransactionalBackend) {
 	for i := 1; i <= numWriters; i++ {
 		for write := 1; write <= numWrites; write++ {
 			key := fmt.Sprintf("%d/%d", i, write)
-			if err := b.Delete(context.Background(), key); err != nil {
-				t.Fatalf("unable to perform cleanup of %v: %v", key, err)
-			}
+			require.NoErrorf(t, b.Delete(context.Background(), key), "unable to perform cleanup of %v", key)
 		}
 	}
 }

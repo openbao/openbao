@@ -25,12 +25,8 @@ func TestServiceRegistration(t *testing.T) {
 	client.Scheme = testConf.ClientScheme
 	client.TokenFile = testConf.PathToTokenFile
 	client.RootCAFile = testConf.PathToRootCAFile
-	if err := os.Setenv(client.EnvVarKubernetesServiceHost, testConf.ServiceHost); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Setenv(client.EnvVarKubernetesServicePort, testConf.ServicePort); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.Setenv(client.EnvVarKubernetesServiceHost, testConf.ServiceHost))
+	require.NoError(t, os.Setenv(client.EnvVarKubernetesServicePort, testConf.ServicePort))
 
 	if testState.NumPatches() != 0 {
 		t.Fatalf("expected 0 patches but have %d: %+v", testState.NumPatches(), testState)
@@ -50,9 +46,7 @@ func TestServiceRegistration(t *testing.T) {
 	}
 	reg, err := NewServiceRegistration(config, logger, state)
 	require.NoError(t, err)
-	if err := reg.Run(shutdownCh, &sync.WaitGroup{}, ""); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, reg.Run(shutdownCh, &sync.WaitGroup{}, ""))
 
 	// Test initial state.
 	if testState.NumPatches() != 5 {
@@ -75,57 +69,41 @@ func TestServiceRegistration(t *testing.T) {
 	}
 
 	// Test NotifyActiveStateChange.
-	if err := reg.NotifyActiveStateChange(false); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, reg.NotifyActiveStateChange(false))
 	if testState.Get(pathToLabels + labelActive)["value"] != strconv.FormatBool(false) {
 		t.Fatalf("expected %q but received %q", strconv.FormatBool(false), testState.Get(pathToLabels + labelActive)["value"])
 	}
-	if err := reg.NotifyActiveStateChange(true); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, reg.NotifyActiveStateChange(true))
 	if testState.Get(pathToLabels + labelActive)["value"] != strconv.FormatBool(true) {
 		t.Fatalf("expected %q but received %q", strconv.FormatBool(true), testState.Get(pathToLabels + labelActive)["value"])
 	}
 
 	// Test NotifySealedStateChange.
-	if err := reg.NotifySealedStateChange(false); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, reg.NotifySealedStateChange(false))
 	if testState.Get(pathToLabels + labelSealed)["value"] != strconv.FormatBool(false) {
 		t.Fatalf("expected %q but received %q", strconv.FormatBool(false), testState.Get(pathToLabels + labelSealed)["value"])
 	}
-	if err := reg.NotifySealedStateChange(true); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, reg.NotifySealedStateChange(true))
 	if testState.Get(pathToLabels + labelSealed)["value"] != strconv.FormatBool(true) {
 		t.Fatalf("expected %q but received %q", strconv.FormatBool(true), testState.Get(pathToLabels + labelSealed)["value"])
 	}
 
 	// Test NotifyPerformanceStandbyStateChange.
-	if err := reg.NotifyPerformanceStandbyStateChange(false); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, reg.NotifyPerformanceStandbyStateChange(false))
 	if testState.Get(pathToLabels + labelPerfStandby)["value"] != strconv.FormatBool(false) {
 		t.Fatalf("expected %q but received %q", strconv.FormatBool(false), testState.Get(pathToLabels + labelPerfStandby)["value"])
 	}
-	if err := reg.NotifyPerformanceStandbyStateChange(true); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, reg.NotifyPerformanceStandbyStateChange(true))
 	if testState.Get(pathToLabels + labelPerfStandby)["value"] != strconv.FormatBool(true) {
 		t.Fatalf("expected %q but received %q", strconv.FormatBool(true), testState.Get(pathToLabels + labelPerfStandby)["value"])
 	}
 
 	// Test NotifyInitializedStateChange.
-	if err := reg.NotifyInitializedStateChange(false); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, reg.NotifyInitializedStateChange(false))
 	if testState.Get(pathToLabels + labelInitialized)["value"] != strconv.FormatBool(false) {
 		t.Fatalf("expected %q but received %q", strconv.FormatBool(false), testState.Get(pathToLabels + labelInitialized)["value"])
 	}
-	if err := reg.NotifyInitializedStateChange(true); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, reg.NotifyInitializedStateChange(true))
 	if testState.Get(pathToLabels + labelInitialized)["value"] != strconv.FormatBool(true) {
 		t.Fatalf("expected %q but received %q", strconv.FormatBool(true), testState.Get(pathToLabels + labelInitialized)["value"])
 	}

@@ -11,6 +11,7 @@ import (
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/openbao/openbao/sdk/v2/helper/ldaputil"
+	"github.com/stretchr/testify/require"
 )
 
 func PrepareTestContainer(t *testing.T, version string) (cleanup func(), cfg *ldaputil.ConfigEntry) {
@@ -23,9 +24,7 @@ func PrepareTestContainer(t *testing.T, version string) (cleanup func(), cfg *ld
 		Ports:         []string{"389/tcp"},
 		// Env:        []string{"LDAP_DEBUG_LEVEL=384"},
 	})
-	if err != nil {
-		t.Fatalf("could not start local LDAP docker container: %s", err)
-	}
+	require.NoError(t, err, "could not start local LDAP docker container")
 
 	cfg = new(ldaputil.ConfigEntry)
 	cfg.UserDN = "ou=people,dc=planetexpress,dc=com"
@@ -59,9 +58,7 @@ func PrepareTestContainer(t *testing.T, version string) (cleanup func(), cfg *ld
 
 		return docker.NewServiceURLParse(connURL)
 	})
-	if err != nil {
-		t.Fatalf("could not start local LDAP docker container: %s", err)
-	}
+	require.NoError(t, err, "could not start local LDAP docker container")
 
 	return svc.Cleanup, cfg
 }

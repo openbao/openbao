@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/cli"
+	"github.com/stretchr/testify/require"
 )
 
 func testStatusCommand(tb testing.TB) (*cli.MockUi, *StatusCommand) {
@@ -83,9 +84,7 @@ func TestStatusCommand_Run(t *testing.T) {
 				defer closer()
 
 				if tc.sealed {
-					if err := client.Sys().Seal(); err != nil {
-						t.Fatal(err)
-					}
+					require.NoError(t, client.Sys().Seal())
 				}
 
 				ui, cmd := testStatusCommand(t)

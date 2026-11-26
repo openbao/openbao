@@ -596,9 +596,7 @@ func TestRaft_SnapshotAPI_MidstreamFailure(t *testing.T) {
 	if len(snap) == 0 && readErr == nil {
 		readErr = errors.New("no bytes read")
 	}
-	if readErr != nil {
-		t.Fatal(readErr)
-	}
+	require.NoError(t, readErr)
 }
 
 func TestRaft_SnapshotAPI_Rotate_Backward(t *testing.T) {
@@ -647,9 +645,7 @@ func TestRaft_SnapshotAPI_Rotate_Backward(t *testing.T) {
 
 			transport := cleanhttp.DefaultPooledTransport()
 			transport.TLSClientConfig = cluster.Cores[0].TLSConfig()
-			if err := http2.ConfigureTransport(transport); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, http2.ConfigureTransport(transport))
 			client := &http.Client{
 				Transport: transport,
 			}
@@ -790,9 +786,7 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 
 			transport := cleanhttp.DefaultPooledTransport()
 			transport.TLSClientConfig = cluster.Cores[0].TLSConfig()
-			if err := http2.ConfigureTransport(transport); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, http2.ConfigureTransport(transport))
 			client := &http.Client{
 				Transport: transport,
 			}
@@ -1015,9 +1009,7 @@ func TestRaft_SnapshotAPI_DifferentCluster(t *testing.T) {
 
 	transport := cleanhttp.DefaultPooledTransport()
 	transport.TLSClientConfig = cluster.Cores[0].TLSConfig()
-	if err := http2.ConfigureTransport(transport); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, http2.ConfigureTransport(transport))
 	client := &http.Client{
 		Transport: transport,
 	}
@@ -1045,9 +1037,7 @@ func TestRaft_SnapshotAPI_DifferentCluster(t *testing.T) {
 
 		transport := cleanhttp.DefaultPooledTransport()
 		transport.TLSClientConfig = cluster2.Cores[0].TLSConfig()
-		if err := http2.ConfigureTransport(transport); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, http2.ConfigureTransport(transport))
 		client := &http.Client{
 			Transport: transport,
 		}

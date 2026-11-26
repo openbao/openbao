@@ -86,9 +86,7 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add an kv-admin policy
-	if err := client.Sys().PutPolicy("test-autoauth", policyAutoAuthAppRole); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, client.Sys().PutPolicy("test-autoauth", policyAutoAuthAppRole))
 
 	// Enable approle
 	err = client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
@@ -230,24 +228,16 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 
 	// Check that no sink file exists
 	_, err = os.Lstat(out)
-	if err == nil {
-		t.Fatal("expected err")
-	}
+	require.Error(t, err)
 	if !os.IsNotExist(err) {
 		t.Fatal("expected notexist err")
 	}
 
-	if err := os.WriteFile(role, []byte(roleID1), 0o600); err != nil {
-		t.Fatal(err)
-	} else {
-		logger.Trace("wrote test role 1", "path", role)
-	}
+	require.NoError(t, os.WriteFile(role, []byte(roleID1), 0o600))
+	logger.Trace("wrote test role 1", "path", role)
 
-	if err := os.WriteFile(secret, []byte(secretID1), 0o600); err != nil {
-		t.Fatal(err)
-	} else {
-		logger.Trace("wrote test secret 1", "path", secret)
-	}
+	require.NoError(t, os.WriteFile(secret, []byte(secretID1), 0o600))
+	logger.Trace("wrote test secret 1", "path", secret)
 
 	getToken := func() string {
 		timeout := time.Now().Add(10 * time.Second)
@@ -263,9 +253,7 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 				}
 
 				_, err = os.Stat(secret)
-				if err == nil {
-					t.Fatal("secret file exists but was supposed to be removed")
-				}
+				require.Error(t, err, "secret file exists but was supposed to be removed")
 
 				return string(val)
 			}
@@ -298,9 +286,7 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 	testClient, err := api.NewClient(api.DefaultConfig())
 	require.NoError(t, err)
 
-	if err := testClient.SetAddress("http://" + listener.Addr().String()); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, testClient.SetAddress("http://"+listener.Addr().String()))
 
 	// Wait for listeners to come up
 	time.Sleep(2 * time.Second)

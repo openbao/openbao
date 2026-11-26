@@ -21,6 +21,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/http"
 	"github.com/openbao/openbao/v2/internal/physical/raft"
 	"github.com/openbao/openbao/v2/internal/vault"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -136,9 +137,7 @@ func ParamTestSealMigrationShamirToTransit_Post14(t *testing.T, logger hclog.Log
 	// Migrate the backend from shamir to transit.
 	opts.SealFunc = func() vault.Seal {
 		seal, err := tss.MakeSeal(t, sealKeyName)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		return seal
 	}
 
@@ -181,9 +180,7 @@ func ParamTestSealMigration_TransitToTransit(t *testing.T, logger hclog.Logger,
 	opts.UnwrapSealFunc = opts.SealFunc
 	opts.SealFunc = func() vault.Seal {
 		seal, err := tss2.MakeSeal(t, "transit-seal-key-2")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		return seal
 	}
 	leaderIdx := migratePost14(t, storage, cluster, opts, cluster.RecoveryKeys)
@@ -247,9 +244,7 @@ func migrateFromTransitToShamir_Pre14(t *testing.T, logger hclog.Logger, storage
 
 	// Read the secret
 	secret, err := client.Logical().Read("kv-wrapped/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(secret.Data, map[string]any{"zork": "quux"}); len(diff) > 0 {
 		t.Fatal(diff)
 	}
@@ -258,15 +253,11 @@ func migrateFromTransitToShamir_Pre14(t *testing.T, logger hclog.Logger, storage
 	_, err = leader.Client.Logical().Write("kv-wrapped/test", map[string]any{
 		"zork": "quux",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Make sure the seal configs were updated correctly.
 	b, r, err := cluster.Cores[0].PhysicalSealConfigs(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	verifyBarrierConfig(t, b, "shamir", keyShares, keyThreshold, 1)
 	if r != nil {
 		t.Fatalf("expected nil recovery config, got: %#v", r)
@@ -291,9 +282,7 @@ func migrateFromShamirToTransit_Pre14(t *testing.T, logger hclog.Logger, storage
 		// N.B. Providing a transit seal puts us in migration mode.
 		SealFunc: func() vault.Seal {
 			seal, err := tss.MakeSeal(t, "transit-seal-key")
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			return seal
 		},
 	}
@@ -318,9 +307,7 @@ func migrateFromShamirToTransit_Pre14(t *testing.T, logger hclog.Logger, storage
 
 	// Read the secrets
 	secret, err := leader.Client.Logical().Read("kv-wrapped/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(secret.Data, map[string]any{"zork": "quux"}); len(diff) > 0 {
 		t.Fatal(diff)
 	}
@@ -329,9 +316,7 @@ func migrateFromShamirToTransit_Pre14(t *testing.T, logger hclog.Logger, storage
 	_, err = leader.Client.Logical().Write("kv-wrapped/test", map[string]any{
 		"zork": "quux",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return opts.SealFunc
 }
@@ -342,9 +327,7 @@ func validateMigration(t *testing.T, storage teststorage.ReusableStorage,
 	leader := cluster.Cores[leaderIdx]
 
 	secret, err := leader.Client.Logical().Read("kv-wrapped/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(secret.Data, map[string]any{"zork": "quux"}); len(diff) > 0 {
 		t.Fatal(diff)
 	}
@@ -382,17 +365,13 @@ func migratePost14(t *testing.T, storage teststorage.ReusableStorage, cluster *v
 	// Step down the active node which will kick off the migration on one of the
 	// other nodes.
 	err := cluster.Cores[0].Client.Sys().StepDown()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Wait for the followers to establish a new leader
 	var leaderIdx int
 	for range 30 {
 		leaderIdx, err = testhelpers.AwaitLeader(t, cluster)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if leaderIdx != 0 {
 			break
 		}
@@ -428,20 +407,14 @@ func migratePost14(t *testing.T, storage teststorage.ReusableStorage, cluster *v
 	_, err = leader.Client.Logical().Write("kv-wrapped/test", map[string]any{
 		"zork": "quux",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return leaderIdx
 }
 
 func unsealMigrate(t *testing.T, client *api.Client, keys [][]byte, transitServerAvailable bool) {
-	if err := attemptUnseal(client, keys); err == nil {
-		t.Fatal("expected error due to lack of migrate parameter")
-	}
-	if err := attemptUnsealMigrate(client, keys, transitServerAvailable); err != nil {
-		t.Fatal(err)
-	}
+	require.Error(t, attemptUnseal(client, keys), "expected error due to lack of migrate parameter")
+	require.NoError(t, attemptUnsealMigrate(client, keys, transitServerAvailable))
 }
 
 func attemptUnsealMigrate(client *api.Client, keys [][]byte, transitServerAvailable bool) error {
@@ -482,9 +455,7 @@ func awaitMigration(t *testing.T, client *api.Client) {
 	timeout := time.Now().Add(120 * time.Second)
 	for time.Now().Before(timeout) {
 		resp, err := client.Sys().SealStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !resp.Migration {
 			return
 		}
@@ -496,9 +467,7 @@ func awaitMigration(t *testing.T, client *api.Client) {
 }
 
 func unseal(t *testing.T, client *api.Client, keys [][]byte) {
-	if err := attemptUnseal(client, keys); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, attemptUnseal(client, keys))
 }
 
 func attemptUnseal(client *api.Client, keys [][]byte) error {
@@ -526,9 +495,7 @@ func attemptUnseal(client *api.Client, keys [][]byte) error {
 
 func verifySealConfigShamir(t *testing.T, core *vault.TestClusterCore) {
 	b, r, err := core.PhysicalSealConfigs(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	verifyBarrierConfig(t, b, "shamir", keyShares, keyThreshold, 1)
 	if r != nil {
 		t.Fatal("should not have recovery config for shamir")
@@ -537,9 +504,7 @@ func verifySealConfigShamir(t *testing.T, core *vault.TestClusterCore) {
 
 func verifySealConfigTransit(t *testing.T, core *vault.TestClusterCore) {
 	b, r, err := core.PhysicalSealConfigs(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	verifyBarrierConfig(t, b, "transit", 1, 1, 1)
 	verifyBarrierConfig(t, r, "shamir", keyShares, keyThreshold, 0)
 }
@@ -582,9 +547,7 @@ func initializeShamir(t *testing.T, logger hclog.Logger, storage teststorage.Reu
 	// Unseal
 	if storage.IsRaft {
 		joinRaftFollowers(t, cluster, false)
-		if err := testhelpers.VerifyRaftConfiguration(leader, len(cluster.Cores)); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, testhelpers.VerifyRaftConfiguration(leader, len(cluster.Cores)))
 	} else {
 		cluster.UnsealCores(t)
 	}
@@ -594,17 +557,13 @@ func initializeShamir(t *testing.T, logger hclog.Logger, storage teststorage.Reu
 		SealWrap: true,
 		Type:     "kv",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Write a secret that we will read back out later.
 	_, err = client.Logical().Write("kv-wrapped/foo", map[string]any{
 		"zork": "quux",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return cluster, &opts
 }
@@ -660,9 +619,7 @@ func runShamir(t *testing.T, logger hclog.Logger, storage teststorage.ReusableSt
 				}
 			}
 		}
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	} else {
 		cluster.UnsealCores(t)
 	}
@@ -670,24 +627,18 @@ func runShamir(t *testing.T, logger hclog.Logger, storage teststorage.ReusableSt
 
 	// Ensure that we always use the leader's client for this read check
 	leaderIdx, err := testhelpers.AwaitLeader(t, cluster)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client := cluster.Cores[leaderIdx].Client
 	client.SetToken(rootToken)
 
 	// Read the secrets
 	secret, err := client.Logical().Read("kv-wrapped/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(secret.Data, map[string]any{"zork": "quux"}); len(diff) > 0 {
 		t.Fatal(diff)
 	}
 	secret, err = client.Logical().Read("kv-wrapped/test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(secret.Data, map[string]any{"zork": "quux"}); len(diff) > 0 {
 		t.Fatal(diff)
 	}
@@ -711,9 +662,7 @@ func InitializeTransit(t *testing.T, logger hclog.Logger, storage teststorage.Re
 		BaseClusterListenPort: baseClusterPort,
 		SealFunc: func() vault.Seal {
 			seal, err := tss.MakeSeal(t, sealKeyName)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			return seal
 		},
 	}
@@ -728,9 +677,7 @@ func InitializeTransit(t *testing.T, logger hclog.Logger, storage teststorage.Re
 	if storage.IsRaft {
 		joinRaftFollowers(t, cluster, true)
 
-		if err := testhelpers.VerifyRaftConfiguration(leader, len(cluster.Cores)); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, testhelpers.VerifyRaftConfiguration(leader, len(cluster.Cores)))
 	}
 	testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
 
@@ -738,17 +685,13 @@ func InitializeTransit(t *testing.T, logger hclog.Logger, storage teststorage.Re
 		SealWrap: true,
 		Type:     "kv",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Write a secret that we will read back out later.
 	_, err = client.Logical().Write("kv-wrapped/foo", map[string]any{
 		"zork": "quux",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return cluster, &opts
 }
@@ -808,13 +751,9 @@ func runAutoseal(t *testing.T, logger hclog.Logger, storage teststorage.Reusable
 				}
 			}
 		}
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	} else {
-		if err := cluster.UnsealCoresWithError(true); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, cluster.UnsealCoresWithError(true))
 	}
 	testhelpers.WaitForNCoresUnsealed(t, cluster, len(cluster.Cores))
 
@@ -825,16 +764,12 @@ func runAutoseal(t *testing.T, logger hclog.Logger, storage teststorage.Reusable
 
 	// Read the secrets
 	secret, err := client.Logical().Read("kv-wrapped/foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if diff := deep.Equal(secret.Data, map[string]any{"zork": "quux"}); len(diff) > 0 {
 		t.Fatal(diff)
 	}
 	secret, err = client.Logical().Read("kv-wrapped/test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if secret == nil {
 		t.Fatal("secret is nil")
 	}
@@ -863,9 +798,7 @@ func joinRaftFollowers(t *testing.T, cluster *vault.TestCluster, useStoredKeys b
 	for i := 1; i < len(cluster.Cores); i++ {
 		core := cluster.Cores[i]
 		_, err := core.JoinRaftCluster(namespace.RootContext(context.Background()), nil, leaderInfos, false)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if useStoredKeys {
 			// For autounseal, the raft backend is not initialized right away

@@ -95,12 +95,9 @@ func TestPolicyWriteCommand_Run(t *testing.T) {
 		policy := testPolicyWritePolicyContents(t)
 		f, err := os.CreateTemp("", "vault-policy-write")
 		require.NoError(t, err)
-		if _, err := f.Write(policy); err != nil {
-			t.Fatal(err)
-		}
-		if err := f.Close(); err != nil {
-			t.Fatal(err)
-		}
+		_, err = f.Write(policy)
+		require.NoError(t, err)
+		require.NoError(t, f.Close())
 		defer os.Remove(f.Name())
 
 		client, closer := testVaultServer(t)

@@ -20,18 +20,15 @@ func testPluginCreate(tb testing.TB, dir, name string) (string, string) {
 	tb.Helper()
 
 	pth := dir + "/" + name
-	if err := os.WriteFile(pth, nil, 0o755); err != nil {
-		tb.Fatal(err)
-	}
+	require.NoError(tb, os.WriteFile(pth, nil, 0o755))
 
 	f, err := os.Open(pth)
 	require.NoError(tb, err)
 	defer f.Close()
 
 	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		tb.Fatal(err)
-	}
+	_, err = io.Copy(h, f)
+	require.NoError(tb, err)
 	sha256Sum := fmt.Sprintf("%x", h.Sum(nil))
 
 	return pth, sha256Sum
@@ -43,15 +40,13 @@ func testPluginCreateAndRegister(tb testing.TB, client *api.Client, dir, name st
 
 	pth, sha256Sum := testPluginCreate(tb, dir, name)
 
-	if err := client.Sys().RegisterPlugin(&api.RegisterPluginInput{
+	require.NoError(tb, client.Sys().RegisterPlugin(&api.RegisterPluginInput{
 		Name:    name,
 		Type:    pluginType,
 		Command: name,
 		SHA256:  sha256Sum,
 		Version: version,
-	}); err != nil {
-		tb.Fatal(err)
-	}
+	}))
 
 	return pth, sha256Sum
 }
@@ -62,15 +57,13 @@ func testPluginCreateAndRegisterVersioned(tb testing.TB, client *api.Client, dir
 
 	pth, sha256Sum := testPluginCreate(tb, dir, name)
 
-	if err := client.Sys().RegisterPlugin(&api.RegisterPluginInput{
+	require.NoError(tb, client.Sys().RegisterPlugin(&api.RegisterPluginInput{
 		Name:    name,
 		Type:    pluginType,
 		Command: name,
 		SHA256:  sha256Sum,
 		Version: "v1.0.0",
-	}); err != nil {
-		tb.Fatal(err)
-	}
+	}))
 
 	return pth, sha256Sum, "v1.0.0"
 }

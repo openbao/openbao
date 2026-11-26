@@ -1661,9 +1661,7 @@ func getAcmeClientForCluster(t *testing.T, cluster *vault.TestCluster, baseUrl s
 
 	transport := cleanhttp.DefaultPooledTransport()
 	transport.TLSClientConfig = tlsConfig.Clone()
-	if err := http2.ConfigureTransport(transport); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, http2.ConfigureTransport(transport))
 	httpClient := &http.Client{Transport: transport}
 	if baseUrl[0] == '/' {
 		baseUrl = baseUrl[1:]

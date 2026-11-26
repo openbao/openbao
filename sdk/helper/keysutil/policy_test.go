@@ -193,9 +193,7 @@ func testArchivingUpgradeCommon(t *testing.T, lm *LockManager) {
 
 	// First we'll do this wrong, by not setting the deletion flag
 	err = lm.DeletePolicy(ctx, storage, "test")
-	if err == nil {
-		t.Fatal("got nil error, but should not have been able to delete since we didn't set the deletion flag on the policy")
-	}
+	require.Error(t, err, "got nil error, but should not have been able to delete since we didn't set the deletion flag on the policy")
 
 	// The policy should still be in there
 	if lm.useCache {
@@ -359,9 +357,7 @@ func Test_StorageErrorSafety(t *testing.T) {
 	priorLen := len(p.Keys)
 
 	err = p.Rotate(ctx, storage, rand.Reader)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	if len(p.Keys) != priorLen {
 		t.Fatal("length of keys should not have changed")
@@ -391,9 +387,7 @@ func Test_BadUpgrade(t *testing.T) {
 	p.Keys = nil
 	p.MinDecryptionVersion = 0
 
-	if err := p.Upgrade(ctx, storage, rand.Reader); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, p.Upgrade(ctx, storage, rand.Reader))
 
 	k := p.Keys["1"]
 	o := orig.(*Policy).Keys["1"]
@@ -413,9 +407,7 @@ func Test_BadUpgrade(t *testing.T) {
 	p.Keys = nil
 	p.MinDecryptionVersion = 0
 
-	if err := p.Upgrade(ctx, storage, rand.Reader); err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, p.Upgrade(ctx, storage, rand.Reader))
 
 	if p.MinDecryptionVersion == 1 {
 		t.Fatal("min decryption version was changed")
@@ -449,9 +441,7 @@ func Test_BadArchive(t *testing.T) {
 	}
 
 	p.MinDecryptionVersion = 5
-	if err := p.Persist(ctx, storage); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, p.Persist(ctx, storage))
 	if p.ArchiveVersion != 10 {
 		t.Fatalf("unexpected archive version %d", p.ArchiveVersion)
 	}
@@ -461,9 +451,7 @@ func Test_BadArchive(t *testing.T) {
 
 	// Set back
 	p.MinDecryptionVersion = 1
-	if err := p.Persist(ctx, storage); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, p.Persist(ctx, storage))
 	if p.ArchiveVersion != 10 {
 		t.Fatalf("unexpected archive version %d", p.ArchiveVersion)
 	}
@@ -473,9 +461,7 @@ func Test_BadArchive(t *testing.T) {
 
 	// Run it again but we'll turn off storage along the way
 	p.MinDecryptionVersion = 5
-	if err := p.Persist(ctx, storage); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, p.Persist(ctx, storage))
 	if p.ArchiveVersion != 10 {
 		t.Fatalf("unexpected archive version %d", p.ArchiveVersion)
 	}
@@ -488,9 +474,7 @@ func Test_BadArchive(t *testing.T) {
 	// Set back, which should cause p.Keys to be changed if the persist works,
 	// but it doesn't
 	p.MinDecryptionVersion = 1
-	if err := p.Persist(ctx, storage); err == nil {
-		t.Fatal("expected error during put")
-	}
+	require.Error(t, p.Persist(ctx, storage), "expected error during put")
 	if p.ArchiveVersion != 10 {
 		t.Fatalf("unexpected archive version %d", p.ArchiveVersion)
 	}

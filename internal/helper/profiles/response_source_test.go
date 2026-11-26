@@ -47,9 +47,7 @@ func TestWithResponseSource(t *testing.T) {
 func TestValidate_MissingField(t *testing.T) {
 	source := &ResponseSource{field: map[string]any{}}
 	_, _, err := source.Validate()
-	if err == nil {
-		t.Fatal("expected error for missing 'response_name', got nil")
-	}
+	require.Error(t, err, "expected error for missing 'response_name', got nil")
 }
 
 func TestValidate_MissingOuterNameField(t *testing.T) {
@@ -69,9 +67,7 @@ func TestValidate_MissingOuterNameField(t *testing.T) {
 func TestValidate_WrongType(t *testing.T) {
 	source := &ResponseSource{field: map[string]any{"response_name": 1}}
 	_, _, err := source.Validate()
-	if err == nil {
-		t.Fatal("expected type error for 'response_name', got nil")
-	}
+	require.Error(t, err, "expected type error for 'response_name', got nil")
 }
 
 func TestValidate_OuterNameWrongType(t *testing.T) {
@@ -95,17 +91,14 @@ func TestEvaluate_WithFieldSelector_String(t *testing.T) {
 		field: map[string]any{"response_name": "mount-userpass", "field_selector": "status"},
 	}
 
-	if _, _, err := source.Validate(); err != nil {
-		t.Fatalf("Validate error: %v", err)
-	}
+	_, _, err := source.Validate()
+	require.NoError(t, err, "Validate error")
 
 	history := &EvaluationHistory{}
 	data := map[string]any{
 		"status": "active",
 	}
-	if err := history.AddResponseData("", "mount-userpass", data); err != nil {
-		t.Fatalf("AddResponseData error: %v", err)
-	}
+	require.NoError(t, history.AddResponseData("", "mount-userpass", data), "AddResponseData error")
 
 	result, err := source.Evaluate(ctx, history)
 	require.NoError(t, err)

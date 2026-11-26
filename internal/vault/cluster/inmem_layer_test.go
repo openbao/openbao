@@ -107,9 +107,7 @@ func TestInmemCluster_Disconnect(t *testing.T) {
 
 	// Make sure node1 cannot connect in
 	conn, err := cluster.layers[1].DialContext(t.Context(), server.addr, nil)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	if conn != nil {
 		t.Fatal("expected nil conn")
@@ -144,18 +142,14 @@ func TestInmemCluster_DisconnectAll(t *testing.T) {
 
 	// Make sure nodes cannot connect in
 	conn, err := cluster.layers[1].DialContext(t.Context(), server.addr, nil)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	if conn != nil {
 		t.Fatal("expected nil conn")
 	}
 
 	conn, err = cluster.layers[2].DialContext(t.Context(), server.addr, nil)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	if conn != nil {
 		t.Fatal("expected nil conn")

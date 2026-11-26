@@ -85,9 +85,8 @@ path "secret" {
 		f, err := os.CreateTemp("", "")
 		require.NoError(t, err)
 		defer os.Remove(f.Name())
-		if _, err := f.Write([]byte(policy)); err != nil {
-			t.Fatal(err)
-		}
+		_, err = f.Write([]byte(policy))
+		require.NoError(t, err)
 		f.Close()
 
 		client, closer := testVaultServer(t)
@@ -124,9 +123,8 @@ path "secret" {
 		f, err := os.CreateTemp("", "")
 		require.NoError(t, err)
 		defer os.Remove(f.Name())
-		if _, err := f.Write([]byte(policy)); err != nil {
-			t.Fatal(err)
-		}
+		_, err = f.Write([]byte(policy))
+		require.NoError(t, err)
 		f.Close()
 
 		client, closer := testVaultServer(t)
@@ -157,9 +155,8 @@ path "secret" {
 		f, err := os.CreateTemp("", "")
 		require.NoError(t, err)
 		defer os.Remove(f.Name())
-		if _, err := f.Write([]byte(policy)); err != nil {
-			t.Fatal(err)
-		}
+		_, err = f.Write([]byte(policy))
+		require.NoError(t, err)
 		f.Close()
 
 		client, closer := testVaultServer(t)
@@ -190,9 +187,8 @@ path "secret" {
 		f, err := os.CreateTemp("", "")
 		require.NoError(t, err)
 		defer os.Remove(f.Name())
-		if _, err := f.Write([]byte(policy)); err != nil {
-			t.Fatal(err)
-		}
+		_, err = f.Write([]byte(policy))
+		require.NoError(t, err)
 		f.Close()
 
 		client, closer := testVaultServer(t)

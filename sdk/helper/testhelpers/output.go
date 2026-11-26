@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/mitchellh/go-testing-interface"
+	"github.com/stretchr/testify/require"
 )
 
 // ToMap renders an input value of any type as a map.  This is intended for
@@ -77,8 +78,6 @@ func ToString(in any) string {
 func StringOrDie(t testing.T, in any) string {
 	t.Helper()
 	m, err := ToMap(in)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return fmt.Sprintf("%v", m)
 }

@@ -79,9 +79,7 @@ func TestKVHelpers(t *testing.T) {
 
 	//// v1 ////
 	t.Run("kv v1: put, get, and delete data", func(t *testing.T) {
-		if err := client.KVv1(v1MountPath).Put(t.Context(), secretPath, secretData); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, client.KVv1(v1MountPath).Put(t.Context(), secretPath, secretData))
 
 		secret, err := client.KVv1(v1MountPath).Get(t.Context(), secretPath)
 		require.NoError(t, err)
@@ -90,9 +88,7 @@ func TestKVHelpers(t *testing.T) {
 			t.Fatal("kv v1 secret did not contain expected value")
 		}
 
-		if err := client.KVv1(v1MountPath).Delete(t.Context(), secretPath); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, client.KVv1(v1MountPath).Delete(t.Context(), secretPath))
 
 		_, err = client.KVv1(v1MountPath).Get(t.Context(), secretPath)
 		if !errors.Is(err, api.ErrSecretNotFound) {
@@ -102,9 +98,7 @@ func TestKVHelpers(t *testing.T) {
 
 	t.Run("kv v1: get secret that does not exist", func(t *testing.T) {
 		_, err = client.KVv1(v1MountPath).Get(t.Context(), "does/not/exist")
-		if err == nil {
-			t.Fatal("KVv1.Get is expected to return an error for a missing secret")
-		}
+		require.Error(t, err, "KVv1.Get is expected to return an error for a missing secret")
 		if !errors.Is(err, api.ErrSecretNotFound) {
 			t.Fatalf("KVv1.Get is expected to return an api.ErrSecretNotFound wrapped error for a missing secret; got %v", err)
 		}
@@ -190,9 +184,8 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// delete that version
-		if err = client.KVv2(v2MountPath).DeleteVersions(t.Context(), secretPath, []int{1}); err != nil {
-			t.Fatal(err)
-		}
+		err = client.KVv2(v2MountPath).DeleteVersions(t.Context(), secretPath, []int{1})
+		require.NoError(t, err)
 
 		s1AfterDelete, err := client.KVv2(v2MountPath).GetVersion(t.Context(), secretPath, 1)
 		require.NoError(t, err)
@@ -242,18 +235,14 @@ func TestKVHelpers(t *testing.T) {
 			"meow": "woof",
 		}, api.WithCheckAndSet(99))
 		// should fail
-		if err == nil {
-			t.Fatal("expected error from trying to update different version from check-and-set value using WithCheckAndSet")
-		}
+		require.Error(t, err, "expected error from trying to update different version from check-and-set value using WithCheckAndSet")
 
 		// WithOption (generic)
 		_, err = client.KVv2(v2MountPath).Put(t.Context(), secretPath, map[string]any{
 			"bow": "wow",
 		}, api.WithOption("cas", 99))
 		// should fail
-		if err == nil {
-			t.Fatal("expected error from trying to update different version from check-and-set value using generic WithOption")
-		}
+		require.Error(t, err, "expected error from trying to update different version from check-and-set value using generic WithOption")
 	})
 
 	t.Run("kv v2: patch", func(t *testing.T) {
@@ -397,9 +386,7 @@ func TestKVHelpers(t *testing.T) {
 
 		// roll back but fail
 		_, err = client.KVv2(v2MountPath).Rollback(t.Context(), secretPath, 1)
-		if err == nil {
-			t.Fatal("expected error from trying to rollback to destroyed version")
-		}
+		require.Error(t, err, "expected error from trying to rollback to destroyed version")
 	})
 
 	t.Run("kv v2: delete all versions of a secret", func(t *testing.T) {
@@ -417,9 +404,7 @@ func TestKVHelpers(t *testing.T) {
 		require.NoError(t, err)
 
 		versions, err := client.KVv2(v2MountPath).GetVersionsAsList(t.Context(), secretPath)
-		if err == nil {
-			t.Fatal("expected to be unable to get list of versions since all metadata was destroyed")
-		}
+		require.Error(t, err, "expected to be unable to get list of versions since all metadata was destroyed")
 		if len(versions) > 0 {
 			t.Fatal("expected no versions of secret after deleting all metadata")
 		}

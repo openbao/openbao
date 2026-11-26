@@ -42,9 +42,7 @@ const (
 func GenerateRoot(t testing.T, cluster *vault.TestCluster, kind GenerateRootKind) string {
 	t.Helper()
 	token, err := GenerateRootWithError(t, cluster, kind)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return token
 }
 
@@ -154,18 +152,14 @@ func EnsureCoresUnsealed(t testing.T, c *vault.TestCluster) {
 	t.Helper()
 	for i, core := range c.Cores {
 		err := AttemptUnsealCore(c, core)
-		if err != nil {
-			t.Fatalf("failed to unseal core %d: %v", i, err)
-		}
+		require.NoErrorf(t, err, "failed to unseal core %d", i)
 	}
 }
 
 func EnsureCoreUnsealed(t testing.T, c *vault.TestCluster, core *vault.TestClusterCore) {
 	t.Helper()
 	err := AttemptUnsealCore(c, core)
-	if err != nil {
-		t.Fatalf("failed to unseal core: %v", err)
-	}
+	require.NoError(t, err, "failed to unseal core")
 }
 
 func AttemptUnsealCores(c *vault.TestCluster) error {
@@ -241,9 +235,7 @@ func deriveStableActiveCore(t testing.T, cluster *vault.TestCluster) *vault.Test
 
 	for range 60 {
 		leaderResp, err := activeCore.Client.Sys().Leader()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !leaderResp.IsSelf {
 			minDuration.Reset(3 * time.Second)
 		}
@@ -271,9 +263,7 @@ func DeriveActiveCore(t testing.T, cluster *vault.TestCluster) *vault.TestCluste
 			core.Client.ClearNamespace()
 			leaderResp, err := core.Client.Sys().Leader()
 			core.Client.SetNamespace(oldNS)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			if leaderResp.IsSelf {
 				return core
 			}
@@ -292,9 +282,7 @@ func DeriveStandbyCores(t testing.T, cluster *vault.TestCluster) []*vault.TestCl
 		core.Client.ClearNamespace()
 		leaderResp, err := core.Client.Sys().Leader()
 		core.Client.SetNamespace(oldNS)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !leaderResp.IsSelf {
 			cores = append(cores, core)
 		}
@@ -325,9 +313,7 @@ func WaitForNCoresUnsealed(t testing.T, cluster *vault.TestCluster, n int) {
 func SealCores(t testing.T, cluster *vault.TestCluster) {
 	t.Helper()
 	for _, core := range cluster.Cores {
-		if err := core.Shutdown(); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, core.Shutdown())
 		timeout := time.Now().Add(3 * time.Second)
 		for {
 			if time.Now().After(timeout) {
@@ -405,9 +391,7 @@ func RotateClusterKeys(t testing.T, cluster *vault.TestCluster, recovery bool) [
 		SecretShares:    5,
 		SecretThreshold: 3,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	var statusResp *api.RotateUpdateResponse
 	keys := cluster.BarrierKeys

@@ -23,28 +23,20 @@ func TestBarrierView_BadKeysKeys(t *testing.T) {
 	view := NewView(barrier, "foo/")
 
 	_, err := view.List(t.Context(), "../")
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	_, err = view.Get(t.Context(), "../")
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	err = view.Delete(t.Context(), "../foo")
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	le := &logical.StorageEntry{
 		Key:   "../foo",
 		Value: []byte("test"),
 	}
 	err = view.Put(t.Context(), le)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 }
 
 func TestBarrierView(t *testing.T) {
@@ -53,9 +45,7 @@ func TestBarrierView(t *testing.T) {
 
 	// Write a key outside of foo/
 	entry := &logical.StorageEntry{Key: "test", Value: []byte("test")}
-	if err := barrier.Put(t.Context(), entry); err != nil {
-		t.Fatalf("bad: %v", err)
-	}
+	require.NoError(t, barrier.Put(t.Context(), entry))
 
 	// List should have no visibility
 	keys, err := view.List(t.Context(), "")
@@ -72,9 +62,7 @@ func TestBarrierView(t *testing.T) {
 	}
 
 	// Try to put the same entry via the view
-	if err := view.Put(t.Context(), entry); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, view.Put(t.Context(), entry))
 
 	// Check it is nested
 	entry, err = barrier.Get(t.Context(), "foo/test")
@@ -84,9 +72,7 @@ func TestBarrierView(t *testing.T) {
 	}
 
 	// Delete nested
-	if err := view.Delete(t.Context(), "test"); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, view.Delete(t.Context(), "test"))
 
 	// Check the nested key
 	entry, err = barrier.Get(t.Context(), "foo/test")
@@ -124,9 +110,7 @@ func TestBarrierView_SubView(t *testing.T) {
 
 	// Try to put the same entry via the view
 	entry := &logical.StorageEntry{Key: "test", Value: []byte("test")}
-	if err := view.Put(t.Context(), entry); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, view.Put(t.Context(), entry))
 
 	// Check it is nested
 	bout, err := barrier.Get(t.Context(), "foo/bar/test")
@@ -143,9 +127,7 @@ func TestBarrierView_SubView(t *testing.T) {
 	}
 
 	// Delete nested
-	if err := view.Delete(t.Context(), "test"); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, view.Delete(t.Context(), "test"))
 
 	// Check the nested key
 	bout, err = barrier.Get(t.Context(), "foo/bar/test")
@@ -171,9 +153,7 @@ func TestBarrierView_Scan(t *testing.T) {
 
 	for _, e := range ent {
 		expect = append(expect, e.Key)
-		if err := view.Put(t.Context(), e); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, view.Put(t.Context(), e))
 	}
 
 	var out []string
@@ -182,9 +162,7 @@ func TestBarrierView_Scan(t *testing.T) {
 	}
 
 	// Collect the keys
-	if err := logical.ScanView(t.Context(), view, cb); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, logical.ScanView(t.Context(), view, cb))
 
 	sort.Strings(out)
 	sort.Strings(expect)
@@ -209,9 +187,7 @@ func TestBarrierView_CollectKeys(t *testing.T) {
 
 	for _, e := range ent {
 		expect = append(expect, e.Key)
-		if err := view.Put(t.Context(), e); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, view.Put(t.Context(), e))
 	}
 
 	// Collect the keys
@@ -239,15 +215,11 @@ func TestBarrierView_ClearView(t *testing.T) {
 	}
 
 	for _, e := range ent {
-		if err := view.Put(t.Context(), e); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, view.Put(t.Context(), e))
 	}
 
 	// Clear the keys
-	if err := logical.ClearView(t.Context(), view); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, logical.ClearView(t.Context(), view))
 
 	// Collect the keys
 	out, err := logical.CollectKeys(t.Context(), view)
@@ -263,9 +235,7 @@ func TestBarrierView_Readonly(t *testing.T) {
 
 	// Add a key before enabling read-only
 	entry := &logical.StorageEntry{Key: "test", Value: []byte("test")}
-	if err := view.Put(t.Context(), entry); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, view.Put(t.Context(), entry))
 
 	// Enable read only mode
 	view.SetReadOnlyErr(logical.ErrReadOnly)

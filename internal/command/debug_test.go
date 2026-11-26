@@ -414,9 +414,7 @@ func TestDebugCommand_IndexFile(t *testing.T) {
 	require.NoError(t, err)
 
 	index := &debugIndex{}
-	if err := json.Unmarshal(content, index); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, json.Unmarshal(content, index))
 	if len(index.Output) == 0 {
 		t.Fatalf("expected valid index file: got: %v", index)
 	}
@@ -528,9 +526,7 @@ func TestDebugCommand_NoConnection(t *testing.T) {
 	client, err := api.NewClient(nil)
 	require.NoError(t, err)
 
-	if err := client.SetAddress(""); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, client.SetAddress(""))
 
 	_, cmd := testDebugCommand(t)
 	cmd.client = client
@@ -781,9 +777,7 @@ func TestDebugCommand_InsecureUmask(t *testing.T) {
 
 				header, err := unarchived.Next()
 				for err == nil {
-					if err := isValidFilePermissions(fs.FileMode(header.Mode), header.Name); err != nil {
-						t.Fatalf("%v", err)
-					}
+					require.NoError(t, isValidFilePermissions(fs.FileMode(header.Mode), header.Name))
 
 					header, err = unarchived.Next()
 				}

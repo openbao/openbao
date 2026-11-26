@@ -27,9 +27,7 @@ import (
 
 func addPeer(t *testing.T, leader, follower *RaftBackend) {
 	t.Helper()
-	if err := leader.AddPeer(t.Context(), follower.NodeID(), follower.NodeID(), true); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, leader.AddPeer(t.Context(), follower.NodeID(), follower.NodeID(), true))
 
 	peers, err := leader.Peers(t.Context())
 	require.NoError(t, err)
@@ -91,9 +89,7 @@ func TestRaft_Snapshot_Loading(t *testing.T) {
 	}
 
 	snapFuture := raft.raft.Snapshot()
-	if err := snapFuture.Error(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, snapFuture.Error())
 
 	meta, reader, err := snapFuture.Open()
 	require.NoError(t, err)
@@ -157,9 +153,7 @@ func TestRaft_Snapshot_Index(t *testing.T) {
 
 	// Take a snapshot
 	snapFuture := raft.raft.Snapshot()
-	if err := snapFuture.Error(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, snapFuture.Error())
 
 	meta, reader, err := snapFuture.Open()
 	require.NoError(t, err)
@@ -212,9 +206,7 @@ func TestRaft_Snapshot_Peers(t *testing.T) {
 
 	// Force a snapshot
 	snapFuture := raft1.raft.Snapshot()
-	if err := snapFuture.Error(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, snapFuture.Error())
 
 	commitIdx := raft1.CommittedIndex()
 
@@ -224,9 +216,7 @@ func TestRaft_Snapshot_Peers(t *testing.T) {
 	ensureCommitApplied(t, commitIdx, raft2)
 
 	// Make sure the snapshot was applied correctly on the follower
-	if err := compareDBs(t, raft1.fsm.getDB(), raft2.fsm.getDB(), false); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, compareDBs(t, raft1.fsm.getDB(), raft2.fsm.getDB(), false))
 
 	// Write some more data
 	for i := 1000; i < 2000; i++ {
@@ -238,9 +228,7 @@ func TestRaft_Snapshot_Peers(t *testing.T) {
 	}
 
 	snapFuture = raft1.raft.Snapshot()
-	if err := snapFuture.Error(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, snapFuture.Error())
 
 	commitIdx = raft1.CommittedIndex()
 
@@ -288,9 +276,7 @@ func TestRaft_Snapshot_Restart(t *testing.T) {
 
 	// Take a snapshot
 	snapFuture := raft1.raft.Snapshot()
-	if err := snapFuture.Error(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, snapFuture.Error())
 
 	// Advance FSM's index past configuration change
 	require.NoError(t, raft1.Put(t.Context(), &physical.Entry{
@@ -310,9 +296,7 @@ func TestRaft_Snapshot_Restart(t *testing.T) {
 	}
 
 	// Finalize raft1
-	if err := raft1.TeardownCluster(nil); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, raft1.TeardownCluster(nil))
 
 	// Start Raft
 	err = raft1.SetupCluster(t.Context(), SetupOpts{})
@@ -646,13 +630,9 @@ func TestBoltSnapshotStore_CreateInstallSnapshot(t *testing.T) {
 
 	// Make sure config data is different
 	err = compareDBs(t, fsm.getDB(), newFSM.getDB(), false)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
-	if err := newFSM.Close(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, newFSM.Close())
 
 	err = fsm.Restore(installer)
 	require.NoError(t, err)
@@ -727,9 +707,7 @@ func TestBoltSnapshotStore_CancelSnapshot(t *testing.T) {
 
 	// Make sure future writes fail
 	_, err = sink.Write([]byte("test"))
-	if err == nil {
-		t.Fatal("expected write to fail")
-	}
+	require.Error(t, err, "expected write to fail")
 }
 
 func TestBoltSnapshotStore_BadPerm(t *testing.T) {
@@ -746,9 +724,8 @@ func TestBoltSnapshotStore_BadPerm(t *testing.T) {
 	var dir2 string
 	dir2, err = os.MkdirTemp(dir1, "badperm")
 	require.NoError(t, err)
-	if err = os.Chmod(dir2, 0o00); err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	err = os.Chmod(dir2, 0o00)
+	require.NoError(t, err)
 	defer os.Chmod(dir2, 0o777) // Set perms back for delete
 
 	logger := hclog.New(&hclog.LoggerOptions{
@@ -757,9 +734,7 @@ func TestBoltSnapshotStore_BadPerm(t *testing.T) {
 	})
 
 	_, err = NewBoltSnapshotStore(dir2, logger, nil)
-	if err == nil {
-		t.Fatal("should fail to use dir with bad perms")
-	}
+	require.Error(t, err, "should fail to use dir with bad perms")
 }
 
 func TestBoltSnapshotStore_CloseFailure(t *testing.T) {
@@ -785,9 +760,7 @@ func TestBoltSnapshotStore_CloseFailure(t *testing.T) {
 
 	// Cancel the snapshot! Should delete
 	err = sink.Close()
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	// Ensure the snapshot file does not exist
 	_, err = os.Stat(filepath.Join(snap.path, sink.ID()+tmpSuffix, databaseFilename))
@@ -797,7 +770,5 @@ func TestBoltSnapshotStore_CloseFailure(t *testing.T) {
 
 	// Make sure future writes fail
 	_, err = sink.Write([]byte("test"))
-	if err == nil {
-		t.Fatal("expected write to fail")
-	}
+	require.Error(t, err, "expected write to fail")
 }

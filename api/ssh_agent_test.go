@@ -64,9 +64,7 @@ func TestParseSSHHelperConfig(t *testing.T) {
 
 func TestParseSSHHelperConfig_missingVaultAddr(t *testing.T) {
 	_, err := ParseSSHHelperConfig("")
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	if !strings.Contains(err.Error(), `missing config "vault_addr"`) {
 		t.Errorf("bad error: %s", err)
@@ -78,9 +76,7 @@ func TestParseSSHHelperConfig_badKeys(t *testing.T) {
 vault_addr = "1.2.3.4"
 nope = "bad"
 `)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 
 	if !strings.Contains(err.Error(), `ssh_helper: invalid key "nope" on line 3`) {
 		t.Errorf("bad error: %s", err)

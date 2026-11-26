@@ -194,9 +194,7 @@ func TestStringGenerator_Generate_errors(t *testing.T) {
 			defer cancel()
 
 			actual, err := test.generator.Generate(ctx, test.rng)
-			if err == nil {
-				t.Fatal("Expected error but none found")
-			}
+			require.Error(t, err, "Expected error but none found")
 			if actual != "" {
 				t.Fatalf("Random string returned: %s", actual)
 			}
@@ -357,9 +355,7 @@ func TestRandomRunes_errors(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			actual, err := randomRunes(test.rng, test.charset, test.length)
-			if err == nil {
-				t.Fatal("Expected error but none found")
-			}
+			require.Error(t, err, "Expected error but none found")
 			if actual != nil {
 				t.Fatalf("Expected no value, but found [%s]", string(actual))
 			}

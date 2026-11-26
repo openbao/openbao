@@ -90,11 +90,9 @@ func TestSecretsDisableCommand_Run(t *testing.T) {
 		client, closer := testVaultServer(t)
 		defer closer()
 
-		if err := client.Sys().Mount("my-secret/", &api.MountInput{
+		require.NoError(t, client.Sys().Mount("my-secret/", &api.MountInput{
 			Type: "generic",
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 
 		ui, cmd := testSecretsDisableCommand(t)
 		cmd.client = client

@@ -800,16 +800,13 @@ func TestPath_Read(t *testing.T) {
 	raw, err := storage.Get(t.Context(), rolePath)
 
 	var role map[string]any
-	if err := raw.DecodeJSON(&role); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, raw.DecodeJSON(&role))
 	delete(role, "role_type")
 	entry, err := logical.StorageEntryJSON(rolePath, role)
 	require.NoError(t, err)
 
-	if err = req.Storage.Put(t.Context(), entry); err != nil {
-		t.Fatal(err)
-	}
+	err = req.Storage.Put(t.Context(), entry)
+	require.NoError(t, err)
 
 	// Run read test for "upgrade" case. The legacy role is not changed in storage, but
 	// reads will populate the `role_type` with "jwt".
@@ -818,16 +815,13 @@ func TestPath_Read(t *testing.T) {
 	// Remove the 'bound_claims_type' parameter in stored role to simulate a legacy role
 	raw, err = storage.Get(t.Context(), rolePath)
 
-	if err := raw.DecodeJSON(&role); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, raw.DecodeJSON(&role))
 	delete(role, "bound_claims_type")
 	entry, err = logical.StorageEntryJSON(rolePath, role)
 	require.NoError(t, err)
 
-	if err = req.Storage.Put(t.Context(), entry); err != nil {
-		t.Fatal(err)
-	}
+	err = req.Storage.Put(t.Context(), entry)
+	require.NoError(t, err)
 
 	// Run read test for "upgrade" case. The legacy role is not changed in storage, but
 	// reads will populate the `bound_claims_type` with "string".

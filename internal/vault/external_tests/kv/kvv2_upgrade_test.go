@@ -74,12 +74,10 @@ func TestKVv2_UpgradePaths(t *testing.T) {
 	t.Log(pretty.Sprint(beforeList))
 
 	// Delete policy/archive
-	if err = logical.ClearView(ctx, physical.NewView(core.UnderlyingRawStorage, "logical/"+kvMount+basePath+"policy/")); err != nil {
-		t.Fatal(err)
-	}
-	if err = logical.ClearView(ctx, physical.NewView(core.UnderlyingRawStorage, "logical/"+kvMount+basePath+"archive/")); err != nil {
-		t.Fatal(err)
-	}
+	err = logical.ClearView(ctx, physical.NewView(core.UnderlyingRawStorage, "logical/"+kvMount+basePath+"policy/"))
+	require.NoError(t, err)
+	err = logical.ClearView(ctx, physical.NewView(core.UnderlyingRawStorage, "logical/"+kvMount+basePath+"archive/"))
+	require.NoError(t, err)
 
 	afterList, err := core.UnderlyingRawStorage.List(ctx, "logical/"+kvMount+basePath)
 	require.NoError(t, err)

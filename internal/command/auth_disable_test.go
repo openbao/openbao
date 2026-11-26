@@ -77,9 +77,7 @@ func TestAuthDisableCommand_Run(t *testing.T) {
 		client, closer := testVaultServer(t)
 		defer closer()
 
-		if err := client.Sys().EnableAuth("my-auth", "userpass", ""); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, client.Sys().EnableAuth("my-auth", "userpass", ""))
 
 		ui, cmd := testAuthDisableCommand(t)
 		cmd.client = client

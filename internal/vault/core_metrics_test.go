@@ -101,9 +101,7 @@ func TestCoreMetrics_KvSecretGauge(t *testing.T) {
 				}
 				t.Fatalf("err: %v", err)
 			}
-			if resp.Error() != nil {
-				t.Fatalf("bad: %#v", resp)
-			}
+			require.NoErrorf(t, resp.Error(), "bad: %#v", resp)
 			break
 		}
 	}

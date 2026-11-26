@@ -766,9 +766,7 @@ func TestWALsDeletedOnRoleCreationFailed(t *testing.T) {
 				"rotation_period": "5s",
 			},
 		})
-		if err == nil {
-			t.Fatal("expected error from DB")
-		}
+		require.Error(t, err, "expected error from DB")
 		if !strings.Contains(err.Error(), "forced error") {
 			t.Fatal("expected forced error message", resp, err)
 		}

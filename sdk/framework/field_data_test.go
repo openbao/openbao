@@ -1126,9 +1126,7 @@ func TestFieldDataGet_Error(t *testing.T) {
 			}
 
 			got, _, err := data.GetOkErr(tc.Key)
-			if err == nil {
-				t.Fatalf("error expected, none received, got result: %#v", got)
-			}
+			require.Errorf(t, err, "error expected, none received, got result: %#v", got)
 		})
 	}
 }

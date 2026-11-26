@@ -43,9 +43,7 @@ func newK8sClient(t *testing.T, token string) kubernetes.Interface {
 	config.CAData = append(config.CAData, []byte(os.Getenv("KUBERNETES_CA"))...)
 
 	client, err := kubernetes.NewForConfig(&config)
-	if err != nil {
-		t.Fatalf("error creating k8s client: %s", err)
-	}
+	require.NoError(t, err, "error creating k8s client")
 	return client
 }
 

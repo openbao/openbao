@@ -18,6 +18,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 type CertBuilder struct {
@@ -101,9 +103,7 @@ func NewCert(t *testing.T, opts ...CertOpt) (cert Certificate) {
 
 	for _, opt := range opts {
 		err := opt(&builder)
-		if err != nil {
-			t.Fatalf("Failed to set up certificate builder: %s", err)
-		}
+		require.NoError(t, err, "Failed to set up certificate builder")
 	}
 
 	key := NewPrivateKey(t)
@@ -132,18 +132,14 @@ func NewCert(t *testing.T, opts ...CertOpt) (cert Certificate) {
 	}
 
 	certBytes, err := x509.CreateCertificate(rand.Reader, tmpl, parent, publicKey, signingKey)
-	if err != nil {
-		t.Fatalf("Unable to generate certificate: %s", err)
-	}
+	require.NoError(t, err, "Unable to generate certificate")
 	certPem := pem.EncodeToMemory(&pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: certBytes,
 	})
 
 	tlsCert, err := tls.X509KeyPair(certPem, key.Pem)
-	if err != nil {
-		t.Fatalf("Unable to parse X509 key pair: %s", err)
-	}
+	require.NoError(t, err, "Unable to parse X509 key pair")
 
 	return Certificate{
 		Template: tmpl,
@@ -167,9 +163,7 @@ func NewPrivateKey(t *testing.T) (key KeyWrapper) {
 	t.Helper()
 
 	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatalf("Unable to generate key for cert: %s", err)
-	}
+	require.NoError(t, err, "Unable to generate key for cert")
 
 	privKeyPem := pem.EncodeToMemory(
 		&pem.Block{
@@ -218,9 +212,7 @@ func makeSerial(t *testing.T) *big.Int {
 	v := &big.Int{}
 	serialNumberLimit := v.Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	if err != nil {
-		t.Fatalf("Unable to generate serial number: %s", err)
-	}
+	require.NoError(t, err, "Unable to generate serial number")
 	return serialNumber
 }
 
@@ -233,9 +225,7 @@ func getSubjKeyID(t *testing.T, privateKey crypto.Signer) []byte {
 	}
 
 	marshaledKey, err := x509.MarshalPKIXPublicKey(privateKey.Public())
-	if err != nil {
-		t.Fatalf("error marshalling public key: %s", err)
-	}
+	require.NoError(t, err, "error marshalling public key")
 
 	subjKeyID := sha1.Sum(marshaledKey)
 

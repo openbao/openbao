@@ -66,9 +66,8 @@ func TestPassthroughBackend_Read(t *testing.T) {
 		req.Data[ttlType] = reqTTL
 		storage := req.Storage
 
-		if _, err := b.HandleRequest(t.Context(), req); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		_, err := b.HandleRequest(t.Context(), req)
+		require.NoError(t, err)
 
 		req = logical.TestRequest(t, logical.ReadOperation, "foo")
 		req.Storage = storage
@@ -126,9 +125,8 @@ func TestPassthroughBackend_Delete(t *testing.T) {
 		req.Data["raw"] = "test"
 		storage := req.Storage
 
-		if _, err := b.HandleRequest(t.Context(), req); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		_, err := b.HandleRequest(t.Context(), req)
+		require.NoError(t, err)
 
 		req = logical.TestRequest(t, logical.DeleteOperation, "foo")
 		req.Storage = storage
@@ -158,9 +156,8 @@ func TestPassthroughBackend_List(t *testing.T) {
 		req.Data["raw"] = "test"
 		storage := req.Storage
 
-		if _, err := b.HandleRequest(t.Context(), req); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		_, err := b.HandleRequest(t.Context(), req)
+		require.NoError(t, err)
 
 		req = logical.TestRequest(t, logical.ListOperation, "")
 		req.Storage = storage
@@ -193,9 +190,8 @@ func TestPassthroughBackend_Revoke(t *testing.T) {
 			},
 		}
 
-		if _, err := b.HandleRequest(t.Context(), req); err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		_, err := b.HandleRequest(t.Context(), req)
+		require.NoError(t, err)
 	}
 	t.Run("passthrough", func(t *testing.T) {
 		test(t, testPassthroughBackend(t))

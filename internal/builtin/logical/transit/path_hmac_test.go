@@ -192,9 +192,8 @@ func TestTransit_batchHMAC(t *testing.T) {
 	keyEntry := p.Keys[latestVersion]
 	keyEntry.HMACKey = []byte("01234567890123456789012345678901")
 	p.Keys[latestVersion] = keyEntry
-	if err = p.Persist(t.Context(), storage); err != nil {
-		t.Fatal(err)
-	}
+	err = p.Persist(t.Context(), storage)
+	require.NoError(t, err)
 	p.Unlock()
 
 	req.Path = "hmac/foo"
@@ -287,15 +286,13 @@ func TestTransit_batchHMAC(t *testing.T) {
 	// Set to another value we control
 	keyEntry.HMACKey = []byte("12345678901234567890123456789012")
 	p.Keys["2"] = keyEntry
-	if err = p.Persist(t.Context(), storage); err != nil {
-		t.Fatal(err)
-	}
+	err = p.Persist(t.Context(), storage)
+	require.NoError(t, err)
 
 	// Set min decryption version, attempt to verify
 	p.MinDecryptionVersion = 2
-	if err = p.Persist(t.Context(), storage); err != nil {
-		t.Fatal(err)
-	}
+	err = p.Persist(t.Context(), storage)
+	require.NoError(t, err)
 
 	// supply a good hmac, but with expired key version
 	verifyBatch[0]["hmac"] = good_hmac

@@ -139,7 +139,7 @@ func TestCore_EnableAudit_MixedFailures(t *testing.T) {
 		return nil, errors.New("failing enabling")
 	}
 
-	if err := c.persistAudit(t.Context(), c.barrier, &routing.MountTable{
+	require.NoError(t, c.persistAudit(t.Context(), c.barrier, &routing.MountTable{
 		Type: auditTableType,
 		Entries: []*routing.MountEntry{
 			{
@@ -155,9 +155,7 @@ func TestCore_EnableAudit_MixedFailures(t *testing.T) {
 				UUID:  "bcde",
 			},
 		},
-	}, false); err != nil {
-		t.Fatal(err)
-	}
+	}, false))
 
 	// Both should set up successfully
 	err := c.setupAudits(t.Context(), false)
@@ -165,9 +163,7 @@ func TestCore_EnableAudit_MixedFailures(t *testing.T) {
 
 	// We expect this to work because the other entry is still valid
 	c.audit.Entries[0].Type = "fail"
-	if err := c.persistAudit(t.Context(), c.barrier, c.audit, false); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.persistAudit(t.Context(), c.barrier, c.audit, false))
 
 	c.audit = nil
 
@@ -176,16 +172,12 @@ func TestCore_EnableAudit_MixedFailures(t *testing.T) {
 
 	// No audit backend set up successfully, so expect error
 	c.audit.Entries[1].Type = "fail"
-	if err := c.persistAudit(t.Context(), c.barrier, c.audit, false); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.persistAudit(t.Context(), c.barrier, c.audit, false))
 
 	c.audit = nil
 
 	err = c.setupAudits(t.Context(), false)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 }
 
 // Test that the local table actually gets populated as expected with local
@@ -198,7 +190,7 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 		return nil, errors.New("failing enabling")
 	}
 
-	if err := c.persistAudit(t.Context(), c.barrier, &routing.MountTable{
+	require.NoError(t, c.persistAudit(t.Context(), c.barrier, &routing.MountTable{
 		Type: auditTableType,
 		Entries: []*routing.MountEntry{
 			{
@@ -220,9 +212,7 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 				Namespace:   namespace.RootNamespace,
 			},
 		},
-	}, false); err != nil {
-		t.Fatal(err)
-	}
+	}, false))
 
 	// Both should set up successfully
 	err := c.setupAudits(t.Context(), false)
@@ -234,17 +224,13 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 		t.Fatal("expected non-nil local audit")
 	}
 	localAuditTable := &routing.MountTable{}
-	if err := jsonutil.DecodeJSON(rawLocal.Value, localAuditTable); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, jsonutil.DecodeJSON(rawLocal.Value, localAuditTable))
 	if len(localAuditTable.Entries) > 0 {
 		t.Fatalf("expected no entries in local audit table, got %#v", localAuditTable)
 	}
 
 	c.audit.Entries[1].Local = true
-	if err := c.persistAudit(t.Context(), c.barrier, c.audit, false); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.persistAudit(t.Context(), c.barrier, c.audit, false))
 
 	rawLocal, err = c.barrier.Get(t.Context(), coreLocalAuditConfigPath)
 	require.NoError(t, err)
@@ -252,17 +238,13 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 		t.Fatal("expected non-nil local audit")
 	}
 	localAuditTable = &routing.MountTable{}
-	if err := jsonutil.DecodeJSON(rawLocal.Value, localAuditTable); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, jsonutil.DecodeJSON(rawLocal.Value, localAuditTable))
 	if len(localAuditTable.Entries) != 1 {
 		t.Fatalf("expected one entry in local audit table, got %#v", localAuditTable)
 	}
 
 	oldAudit := c.audit
-	if err := c.loadAudits(t.Context(), false); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.loadAudits(t.Context(), false))
 
 	if !reflect.DeepEqual(oldAudit, c.audit) {
 		t.Fatalf("expected\n%#v\ngot\n%#v\n", oldAudit, c.audit)
@@ -434,9 +416,7 @@ func TestAuditBroker_LogRequest(t *testing.T) {
 		Auth:    auth,
 		Request: req,
 	}
-	if err := b.LogRequest(ctx, logInput, headersConf); err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, b.LogRequest(ctx, logInput, headersConf))
 
 	// Should FAIL work with both failing backends
 	a2.ReqErr = errors.New("failed")

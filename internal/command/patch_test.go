@@ -84,22 +84,18 @@ func TestPatchCommand_Run(t *testing.T) {
 			client, closer := testVaultServer(t)
 			defer closer()
 
-			if err := client.Sys().Mount("pki", &api.MountInput{
+			require.NoError(t, client.Sys().Mount("pki", &api.MountInput{
 				Type: "pki",
-			}); err != nil {
-				t.Fatalf("pki mount error: %#v", err)
-			}
+			}), "pki mount error")
 
-			if _, err := client.Logical().Write("pki/roles/example", nil); err != nil {
-				t.Fatalf("failed to prime role: %v", err)
-			}
+			_, err := client.Logical().Write("pki/roles/example", nil)
+			require.NoError(t, err, "failed to prime role")
 
-			if _, err := client.Logical().Write("pki/root/generate/internal", map[string]any{
+			_, err = client.Logical().Write("pki/root/generate/internal", map[string]any{
 				"key_type":    "ec",
 				"common_name": "Root X1",
-			}); err != nil {
-				t.Fatalf("failed to prime CA: %v", err)
-			}
+			})
+			require.NoError(t, err, "failed to prime CA")
 
 			ui, cmd := testPatchCommand(t)
 			cmd.client = client
@@ -122,22 +118,18 @@ func TestPatchCommand_Run(t *testing.T) {
 		client, closer := testVaultServer(t)
 		defer closer()
 
-		if err := client.Sys().Mount("pki", &api.MountInput{
+		require.NoError(t, client.Sys().Mount("pki", &api.MountInput{
 			Type: "pki",
-		}); err != nil {
-			t.Fatalf("pki mount error: %#v", err)
-		}
+		}), "pki mount error")
 
-		if _, err := client.Logical().Write("pki/roles/example", nil); err != nil {
-			t.Fatalf("failed to prime role: %v", err)
-		}
+		_, err := client.Logical().Write("pki/roles/example", nil)
+		require.NoError(t, err, "failed to prime role")
 
-		if _, err := client.Logical().Write("pki/root/generate/internal", map[string]any{
+		_, err = client.Logical().Write("pki/root/generate/internal", map[string]any{
 			"key_type":    "ec",
 			"common_name": "Root X1",
-		}); err != nil {
-			t.Fatalf("failed to prime CA: %v", err)
-		}
+		})
+		require.NoError(t, err, "failed to prime CA")
 
 		stdinR, stdinW := io.Pipe()
 		go func() {

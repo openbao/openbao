@@ -42,9 +42,7 @@ func TestFileSink(t *testing.T) {
 	path := filepath.Join(tmpDir, "token")
 
 	uuidStr, _ := uuid.GenerateUUID()
-	if err := fs.WriteToken(uuidStr); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, fs.WriteToken(uuidStr))
 
 	file, err := os.Open(path)
 	require.NoError(t, err)
@@ -92,9 +90,7 @@ func TestFileSinkMode(t *testing.T) {
 	path := filepath.Join(tmpDir, "token")
 
 	uuidStr, _ := uuid.GenerateUUID()
-	if err := fs.WriteToken(uuidStr); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, fs.WriteToken(uuidStr))
 
 	file, err := os.Open(path)
 	require.NoError(t, err)
@@ -141,9 +137,7 @@ func TestFileSinkChown(t *testing.T) {
 	path := filepath.Join(tmpDir, "token")
 
 	uuidStr, _ := uuid.GenerateUUID()
-	if err := fs.WriteToken(uuidStr); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, fs.WriteToken(uuidStr))
 
 	file, err := os.Open(path)
 	require.NoError(t, err)

@@ -36,9 +36,7 @@ func CreateBackendWithStorage(t testing.TB) (*backend, logical.Storage) {
 	var err error
 	b := Backend(config)
 	err = b.Setup(context.Background(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// Assume for our tests we have performed the migration already.
 	b.pkiStorageVersion.Store(true)
 	return b, config.StorageView
@@ -61,9 +59,7 @@ func mountPKIEndpoint(t testing.TB, client *api.Client, path string) {
 func requireSignedBy(t *testing.T, cert *x509.Certificate, signingCert *x509.Certificate) {
 	t.Helper()
 
-	if err := cert.CheckSignatureFrom(signingCert); err != nil {
-		t.Fatalf("signature verification failed: %v", err)
-	}
+	require.NoError(t, cert.CheckSignatureFrom(signingCert), "signature verification failed")
 }
 
 func requireSignedByAtPath(t *testing.T, client *api.Client, leaf *x509.Certificate, path string) {
@@ -96,13 +92,9 @@ func parseCert(t *testing.T, pemCert string) *x509.Certificate {
 func getSelfSigned(t *testing.T, subject, issuer *x509.Certificate, key *rsa.PrivateKey) (string, *x509.Certificate) {
 	t.Helper()
 	selfSigned, err := x509.CreateCertificate(rand.Reader, subject, issuer, key.Public(), key)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cert, err := x509.ParseCertificate(selfSigned)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	pemSS := strings.TrimSpace(string(pem.EncodeToMemory(&pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: selfSigned,
@@ -163,23 +155,17 @@ func getParsedCrlAtPath(t *testing.T, client *api.Client, path string) *x509.Rev
 	t.Helper()
 
 	resp, err := client.Logical().ReadRaw(path)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer resp.Body.Close() //nolint:errcheck
 
 	crlBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
+	require.NoError(t, err)
 	if len(crlBytes) == 0 {
 		t.Fatal("expected CRL in response body")
 	}
 
 	crl, err := x509.ParseRevocationList(crlBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return crl
 }
 
@@ -187,14 +173,10 @@ func getParsedCrlFromBackend(t *testing.T, b *backend, s logical.Storage, path s
 	t.Helper()
 
 	resp, err := CBRead(b, s, path)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	crl, err := x509.ParseRevocationList(resp.Data[logical.HTTPRawBody].([]byte))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return crl
 }
 

@@ -91,14 +91,12 @@ func TestPluginDeregisterCommand_Run(t *testing.T) {
 		ui, cmd := testPluginDeregisterCommand(t)
 		cmd.client = client
 
-		if err := client.Sys().RegisterPlugin(&api.RegisterPluginInput{
+		require.NoError(t, client.Sys().RegisterPlugin(&api.RegisterPluginInput{
 			Name:    pluginName,
 			Type:    api.PluginTypeCredential,
 			Command: pluginName,
 			SHA256:  sha256Sum,
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 
 		code := cmd.Run([]string{
 			consts.PluginTypeCredential.String(),

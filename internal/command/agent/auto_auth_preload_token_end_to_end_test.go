@@ -44,11 +44,9 @@ func TestTokenPreload_UsingAutoAuth(t *testing.T) {
 	client := cluster.Cores[0].Client
 
 	// Setup Vault
-	if err := client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
+	require.NoError(t, client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
 		Type: "approle",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 
 	// Setup Approle
 	_, err := client.Logical().Write("auth/approle/role/test1", map[string]any{
@@ -88,17 +86,11 @@ func TestTokenPreload_UsingAutoAuth(t *testing.T) {
 		"secret_id_file_path": secret,
 	}
 
-	if err := os.WriteFile(role, []byte(roleID1), 0o600); err != nil {
-		t.Fatal(err)
-	} else {
-		logger.Trace("wrote test role 1", "path", role)
-	}
+	require.NoError(t, os.WriteFile(role, []byte(roleID1), 0o600))
+	logger.Trace("wrote test role 1", "path", role)
 
-	if err := os.WriteFile(secret, []byte(secretID1), 0o600); err != nil {
-		t.Fatal(err)
-	} else {
-		logger.Trace("wrote test secret 1", "path", secret)
-	}
+	require.NoError(t, os.WriteFile(secret, []byte(secretID1), 0o600))
+	logger.Trace("wrote test secret 1", "path", secret)
 
 	// Setup Preload Token
 	tokenRespRaw, err := client.Logical().Write("auth/token/create", map[string]any{
@@ -182,9 +174,9 @@ func TestTokenPreload_UsingAutoAuth(t *testing.T) {
 	// timeout duration.
 	defer cancel()
 
-	if stat, err := os.Lstat(tokenSinkFileName); err == nil {
-		t.Fatalf("expected err but got %s", stat)
-	} else if !os.IsNotExist(err) {
+	stat, err := os.Lstat(tokenSinkFileName)
+	require.Errorf(t, err, "expected err but got %s", stat)
+	if !os.IsNotExist(err) {
 		t.Fatal("expected notexist err")
 	}
 

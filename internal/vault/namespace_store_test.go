@@ -388,9 +388,8 @@ func TestNamespaceStore_LockNamespace(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, key := range keys {
-		if _, err := TestCoreUnseal(c, TestKeyCopy(key)); err != nil {
-			t.Fatalf("unseal err: %s", err)
-		}
+		_, err = TestCoreUnseal(c, TestKeyCopy(key))
+		require.NoError(t, err, "unseal err")
 	}
 
 	// verify the persistence of the lock and ensure unlock key is not

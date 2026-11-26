@@ -152,70 +152,58 @@ func TestBackend_CA_Steps(t *testing.T) {
 	// Setup backends
 	var rsaRoot, rsaInt, ecRoot, ecInt, edRoot, edInt *backend
 	{
-		if err := client.Sys().Mount("rsaroot", &api.MountInput{
+		require.NoError(t, client.Sys().Mount("rsaroot", &api.MountInput{
 			Type: "pki",
 			Config: api.MountConfigInput{
 				DefaultLeaseTTL: "16h",
 				MaxLeaseTTL:     "60h",
 			},
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 		rsaRoot = b
 
-		if err := client.Sys().Mount("rsaint", &api.MountInput{
+		require.NoError(t, client.Sys().Mount("rsaint", &api.MountInput{
 			Type: "pki",
 			Config: api.MountConfigInput{
 				DefaultLeaseTTL: "16h",
 				MaxLeaseTTL:     "60h",
 			},
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 		rsaInt = b
 
-		if err := client.Sys().Mount("ecroot", &api.MountInput{
+		require.NoError(t, client.Sys().Mount("ecroot", &api.MountInput{
 			Type: "pki",
 			Config: api.MountConfigInput{
 				DefaultLeaseTTL: "16h",
 				MaxLeaseTTL:     "60h",
 			},
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 		ecRoot = b
 
-		if err := client.Sys().Mount("ecint", &api.MountInput{
+		require.NoError(t, client.Sys().Mount("ecint", &api.MountInput{
 			Type: "pki",
 			Config: api.MountConfigInput{
 				DefaultLeaseTTL: "16h",
 				MaxLeaseTTL:     "60h",
 			},
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 		ecInt = b
 
-		if err := client.Sys().Mount("ed25519root", &api.MountInput{
+		require.NoError(t, client.Sys().Mount("ed25519root", &api.MountInput{
 			Type: "pki",
 			Config: api.MountConfigInput{
 				DefaultLeaseTTL: "16h",
 				MaxLeaseTTL:     "60h",
 			},
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 		edRoot = b
 
-		if err := client.Sys().Mount("ed25519int", &api.MountInput{
+		require.NoError(t, client.Sys().Mount("ed25519int", &api.MountInput{
 			Type: "pki",
 			Config: api.MountConfigInput{
 				DefaultLeaseTTL: "16h",
 				MaxLeaseTTL:     "60h",
 			},
-		}); err != nil {
-			t.Fatal(err)
-		}
+		}))
 		edInt = b
 	}
 
@@ -567,16 +555,14 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 		}
 
 		var count int64
-		if count, err = tidyStatus.Data["cert_store_deleted_count"].(json.Number).Int64(); err != nil {
-			t.Fatal(err)
-		}
+		count, err = tidyStatus.Data["cert_store_deleted_count"].(json.Number).Int64()
+		require.NoError(t, err)
 		if int64(expectedCertStoreDeleteCount) != count {
 			t.Fatalf("Expected %d for cert_store_deleted_count, but got %d", expectedCertStoreDeleteCount, count)
 		}
 
-		if count, err = tidyStatus.Data["revoked_cert_deleted_count"].(json.Number).Int64(); err != nil {
-			t.Fatal(err)
-		}
+		count, err = tidyStatus.Data["revoked_cert_deleted_count"].(json.Number).Int64()
+		require.NoError(t, err)
 		if int64(expectedRevokedCertDeletedCount) != count {
 			t.Fatalf("Expected %d for revoked_cert_deleted_count, but got %d", expectedRevokedCertDeletedCount, count)
 		}

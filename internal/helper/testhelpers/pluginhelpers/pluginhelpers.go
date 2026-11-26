@@ -16,6 +16,7 @@ import (
 
 	"github.com/mitchellh/go-testing-interface"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -81,15 +82,11 @@ func CompilePlugin(t testing.T, typ consts.PluginType, pluginVersion string, plu
 	var err error
 	for {
 		dir, err = os.Getwd()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		// detect if we are in a subdirectory or the root directory and compensate
 		if _, err := os.Stat("builtin"); os.IsNotExist(err) {
 			err := os.Chdir("..")
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		} else {
 			break
 		}
@@ -118,9 +115,7 @@ func CompilePlugin(t testing.T, typ consts.PluginType, pluginVersion string, plu
 			t.Fatal(fmt.Errorf("error running go build %v output: %s", err, output))
 		}
 		testPluginCache[key], err = os.ReadFile(pluginPath)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		pluginBytes = testPluginCache[key]
 	}
 
@@ -128,15 +123,11 @@ func CompilePlugin(t testing.T, typ consts.PluginType, pluginVersion string, plu
 	if _, err = os.Stat(pluginPath); os.IsNotExist(err) {
 		err = os.WriteFile(pluginPath, pluginBytes, 0o755)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	sha := sha256.New()
 	_, err = sha.Write(pluginBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return TestPlugin{
 		Name:     pluginName,
 		Typ:      typ,

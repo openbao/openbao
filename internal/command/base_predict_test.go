@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPredictVaultPaths(t *testing.T) {
@@ -21,27 +22,18 @@ func TestPredictVaultPaths(t *testing.T) {
 	defer closer()
 
 	data := map[string]any{"a": "b"}
-	if _, err := client.Logical().Write("secret/bar", data); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.Logical().Write("secret/foo", data); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.Logical().Write("secret/zip/zap", data); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.Logical().Write("secret/zip/zonk", data); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.Logical().Write("secret/zip/twoot", data); err != nil {
-		t.Fatal(err)
-	}
-	if err := client.Sys().Mount("level1a/level2a/level3a", &api.MountInput{Type: "kv"}); err != nil {
-		t.Fatal(err)
-	}
-	if err := client.Sys().Mount("level1a/level2a/level3b", &api.MountInput{Type: "kv"}); err != nil {
-		t.Fatal(err)
-	}
+	_, err := client.Logical().Write("secret/bar", data)
+	require.NoError(t, err)
+	_, err = client.Logical().Write("secret/foo", data)
+	require.NoError(t, err)
+	_, err = client.Logical().Write("secret/zip/zap", data)
+	require.NoError(t, err)
+	_, err = client.Logical().Write("secret/zip/zonk", data)
+	require.NoError(t, err)
+	_, err = client.Logical().Write("secret/zip/twoot", data)
+	require.NoError(t, err)
+	require.NoError(t, client.Sys().Mount("level1a/level2a/level3a", &api.MountInput{Type: "kv"}))
+	require.NoError(t, client.Sys().Mount("level1a/level2a/level3b", &api.MountInput{Type: "kv"}))
 
 	cases := []struct {
 		name         string
@@ -234,14 +226,12 @@ func TestPredict_Audits(t *testing.T) {
 	badClient, badCloser := testVaultServerBad(t)
 	defer badCloser()
 
-	if err := client.Sys().EnableAuditWithOptions("file", &api.EnableAuditOptions{
+	require.NoError(t, client.Sys().EnableAuditWithOptions("file", &api.EnableAuditOptions{
 		Type: "file",
 		Options: map[string]string{
 			"file_path": "discard",
 		},
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 
 	cases := []struct {
 		name   string
@@ -461,15 +451,12 @@ func TestPredict_Paths(t *testing.T) {
 	defer closer()
 
 	data := map[string]any{"a": "b"}
-	if _, err := client.Logical().Write("secret/bar", data); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.Logical().Write("secret/foo", data); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.Logical().Write("secret/zip/zap", data); err != nil {
-		t.Fatal(err)
-	}
+	_, err := client.Logical().Write("secret/bar", data)
+	require.NoError(t, err)
+	_, err = client.Logical().Write("secret/foo", data)
+	require.NoError(t, err)
+	_, err = client.Logical().Write("secret/zip/zap", data)
+	require.NoError(t, err)
 
 	cases := []struct {
 		name         string
@@ -535,15 +522,12 @@ func TestPredict_PathsKVv2(t *testing.T) {
 	time.Sleep(250 * time.Millisecond)
 
 	data := map[string]any{"data": map[string]any{"a": "b"}}
-	if _, err := client.Logical().Write("secret/data/bar", data); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.Logical().Write("secret/data/foo", data); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.Logical().Write("secret/data/zip/zap", data); err != nil {
-		t.Fatal(err)
-	}
+	_, err := client.Logical().Write("secret/data/bar", data)
+	require.NoError(t, err)
+	_, err = client.Logical().Write("secret/data/foo", data)
+	require.NoError(t, err)
+	_, err = client.Logical().Write("secret/data/zip/zap", data)
+	require.NoError(t, err)
 
 	cases := []struct {
 		name         string
@@ -610,12 +594,10 @@ func TestPredict_ListPaths(t *testing.T) {
 	defer badCloser()
 
 	data := map[string]any{"a": "b"}
-	if _, err := client.Logical().Write("secret/bar", data); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.Logical().Write("secret/foo", data); err != nil {
-		t.Fatal(err)
-	}
+	_, err := client.Logical().Write("secret/bar", data)
+	require.NoError(t, err)
+	_, err = client.Logical().Write("secret/foo", data)
+	require.NoError(t, err)
 
 	cases := []struct {
 		name   string

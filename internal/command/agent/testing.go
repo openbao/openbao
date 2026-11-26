@@ -17,6 +17,7 @@ import (
 	"github.com/go-jose/go-jose/v4/jwt"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func GetTestJWT(t *testing.T) (string, *ecdsa.PrivateKey) {
@@ -41,20 +42,14 @@ func GetTestJWT(t *testing.T) (string, *ecdsa.PrivateKey) {
 	if block != nil {
 		var err error
 		key, err = x509.ParseECPrivateKey(block.Bytes)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: key}, (&jose.SignerOptions{}).WithType("JWT"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	raw, err := jwt.Signed(sig).Claims(cl).Claims(privateCl).Serialize()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return raw, key
 }

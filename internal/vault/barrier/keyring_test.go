@@ -56,9 +56,7 @@ func TestKeyring(t *testing.T) {
 	testConflict := []byte("nope")
 	key1Conf := &Key{Term: 1, Version: 1, Value: testConflict, InstallTime: time.Now()}
 	_, err = k.AddKey(key1Conf)
-	if err == nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.Error(t, err)
 
 	// Add a new key
 	testSecond := []byte("second")
@@ -99,9 +97,7 @@ func TestKeyring(t *testing.T) {
 
 	// Remove the active key should fail
 	_, err = k.RemoveKey(2)
-	if err == nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.Error(t, err)
 }
 
 func TestKeyring_RootKey(t *testing.T) {

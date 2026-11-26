@@ -236,9 +236,7 @@ func TestLifetimeWatcher(t *testing.T) {
 
 func TestLifetimeWatcher_RenewErrorsBackOff(t *testing.T) {
 	client, err := NewClient(DefaultConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	watcher, err := client.NewLifetimeWatcher(&LifetimeWatcherInput{
 		Secret: &Secret{
@@ -249,9 +247,7 @@ func TestLifetimeWatcher_RenewErrorsBackOff(t *testing.T) {
 			},
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	const initialRetryInterval = 200 * time.Millisecond
 	attempts := make(chan time.Time, 2)
@@ -289,9 +285,7 @@ func TestLifetimeWatcher_RenewErrorsBackOff(t *testing.T) {
 	watcher.Stop()
 	select {
 	case err := <-doneCh:
-		if err != nil {
-			t.Fatalf("expected watcher to stop without an error, got: %v", err)
-		}
+		require.NoError(t, err, "expected watcher to stop without an error")
 	case <-time.After(time.Second):
 		t.Fatal("watcher didn't stop")
 	}

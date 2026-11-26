@@ -173,9 +173,7 @@ func TestTransit_Import(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err == nil {
-				t.Fatal("import prior to wrapping key generation incorrectly succeeded")
-			}
+			require.Error(t, err, "import prior to wrapping key generation incorrectly succeeded")
 		},
 	)
 
@@ -214,9 +212,7 @@ func TestTransit_Import(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err == nil {
-				t.Fatal("import into an existing key incorrectly succeeded")
-			}
+			require.Error(t, err, "import into an existing key incorrectly succeeded")
 		},
 	)
 
@@ -303,9 +299,7 @@ func TestTransit_Import(t *testing.T) {
 					req.Data["hash_function"] = tt.hashFn
 				}
 				_, err = b.HandleRequest(t.Context(), req)
-				if err == nil {
-					t.Fatal("invalid import request incorrectly succeeded")
-				}
+				require.Error(t, err, "invalid import request incorrectly succeeded")
 			},
 		)
 	}
@@ -327,9 +321,7 @@ func TestTransit_Import(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err == nil {
-				t.Fatal("import of convergent key incorrectly succeeded")
-			}
+			require.Error(t, err, "import of convergent key incorrectly succeeded")
 		},
 	)
 
@@ -393,9 +385,7 @@ func TestTransit_Import(t *testing.T) {
 				Path:      fmt.Sprintf("keys/%s/rotate", keyID),
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err == nil {
-				t.Fatal("rotation of key with allow_rotation incorrectly succeeded")
-			}
+			require.Error(t, err, "rotation of key with allow_rotation incorrectly succeeded")
 		},
 	)
 
@@ -477,9 +467,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err == nil {
-				t.Fatal("import_version prior to wrapping key generation incorrectly succeeded")
-			}
+			require.Error(t, err, "import_version prior to wrapping key generation incorrectly succeeded")
 		},
 	)
 
@@ -507,9 +495,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err == nil {
-				t.Fatal("import_version into a non-existent key incorrectly succeeded")
-			}
+			require.Error(t, err, "import_version into a non-existent key incorrectly succeeded")
 		},
 	)
 
@@ -540,9 +526,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err == nil {
-				t.Fatal("import_version into an internally-generated key incorrectly succeeded")
-			}
+			require.Error(t, err, "import_version into an internally-generated key incorrectly succeeded")
 		},
 	)
 
@@ -579,9 +563,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 				},
 			}
 			_, err = b.HandleRequest(t.Context(), req)
-			if err == nil {
-				t.Fatal("import_version into a key of a different type incorrectly succeeded")
-			}
+			require.Error(t, err, "import_version into a key of a different type incorrectly succeeded")
 		},
 	)
 

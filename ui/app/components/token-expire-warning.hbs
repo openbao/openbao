@@ -6,7 +6,7 @@
         {{date-format @expirationDate 'MMMM do yyyy, h:mm:ss a'}}
          . You will need to re-authenticate."
     >
-      <LinkTo @route="vault.cluster.logout" class="button link">
+      <LinkTo @route="vault.cluster.logout" @query={{hash redirect_to=this.router.currentURL}} class="button link">
         Reauthenticate
       </LinkTo>
     </AlertBanner>

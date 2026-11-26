@@ -251,7 +251,7 @@ func (b *databaseBackend) pathRotateRoleCredentialsUpdate() framework.OperationF
 			}
 
 			// Tell the scheduler that the last rotation has happened
-			next := sched.Occurrence()
+			next := sched.MarkOccurredNow()
 
 			// Update priority and push updated Item to the queue
 			item.Priority = next.Unix()

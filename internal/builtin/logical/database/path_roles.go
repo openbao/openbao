@@ -724,7 +724,7 @@ func (b *databaseBackend) pathStaticRoleCreateUpdate(ctx context.Context, req *l
 	switch req.Operation {
 	case logical.CreateOperation:
 		// Role creation counts as a first rotation
-		next = sched.Occurrence()
+		next = sched.MarkOccurredNow()
 		// setStaticAccount calls Storage.Put and saves the role to storage
 		resp, err := b.setStaticAccount(ctx, req.Storage, &setStaticAccountInput{
 			RoleName: name,

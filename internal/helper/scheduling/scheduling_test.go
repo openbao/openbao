@@ -47,7 +47,7 @@ func newTestScheduler(t *testing.T) *DefaultScheduler {
 // the real clock.
 func happenAt(d *DefaultScheduler, when time.Time) {
 	d.now = func() time.Time { return when }
-	d.Occurrence()
+	d.MarkOccurredNow()
 }
 
 // fixClock sets the scheduler clock to when.
@@ -494,7 +494,7 @@ func TestIsDue_AfterHapening(t *testing.T) {
 	d.SetNext(time.Now().Add(-time.Hour))
 	require.True(t, d.IsDue())
 
-	d.Occurrence()
+	d.MarkOccurredNow()
 	require.False(t, d.IsDue())
 }
 

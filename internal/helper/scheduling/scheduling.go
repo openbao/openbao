@@ -31,7 +31,7 @@ type Scheduler interface {
 	IsDue() bool
 
 	// Called when occurrence happens, returns next expected occurrence.
-	Occurrence() time.Time
+	MarkOccurredNow() time.Time
 }
 
 type Schedulable interface {
@@ -263,9 +263,9 @@ func (d *DefaultScheduler) IsDue() bool {
 	return false
 }
 
-// Occurrence records that the occurrence takes place now it becomes the
+// MarkOccurredNow records that the occurrence takes place now it becomes the
 // last occurrence, and the next occurrence is computed from it.
-func (d *DefaultScheduler) Occurrence() time.Time {
+func (d *DefaultScheduler) MarkOccurredNow() time.Time {
 	now := d.now()
 
 	// compute next occurrence before changing last to avoid drift

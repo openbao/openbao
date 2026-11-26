@@ -288,7 +288,7 @@ func (b *databaseBackend) rotateCredential(ctx context.Context, s logical.Storag
 	var next time.Time
 	if sched != nil {
 		// Tell the scheduler that the rotation is happening
-		next = sched.Occurrence()
+		next = sched.MarkOccurredNow()
 	}
 
 	resp, err := b.setStaticAccount(ctx, s, input)

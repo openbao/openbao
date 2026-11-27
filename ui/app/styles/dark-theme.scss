@@ -451,6 +451,21 @@
       color: #c4c8cc;
     }
   }
+
+  // Tags
+  .tag:not(body) {
+    background-color: #2e2f31;
+    color: #c4c8cc;
+
+    code {
+      color: #c4c8cc;
+    }
+  }
+
+  .tag.is-light {
+    background-color: #2e2f31;
+    color: #c4c8cc;
+  }
 }
 
 :root[data-theme='dark'] {

@@ -10,13 +10,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestDefaultSeal_Config exercises Shamir SetBarrierConfig and BarrierConfig.
+// TestDefaultSeal_Config exercises Shamir SetConfig and Config.
 // Note that this is a little questionable, because we're doing an init and
 // unseal, then changing the barrier config using an internal function instead
-// of an API.  In other words if your change break this test, it might be more
+// of an API. In other words if your change break this test, it might be more
 // the test's fault than your changes.
 func TestDefaultSeal_Config(t *testing.T) {
 	bc := &SealConfig{
+		Type:            "shamir",
+		Purpose:         Primary,
 		SecretShares:    4,
 		SecretThreshold: 2,
 	}
@@ -24,10 +26,10 @@ func TestDefaultSeal_Config(t *testing.T) {
 
 	defSeal := NewDefaultSeal(nil)
 	defSeal.SetCore(core)
-	err := defSeal.SetBarrierConfig(t.Context(), bc)
+	err := defSeal.SetConfig(t.Context(), bc)
 	require.NoError(t, err)
 
-	newBc, err := defSeal.BarrierConfig(t.Context())
+	newBc, err := defSeal.Config(t.Context())
 	require.NoError(t, err)
 	if !reflect.DeepEqual(*bc, *newBc) {
 		t.Fatal("config mismatch")
@@ -36,7 +38,7 @@ func TestDefaultSeal_Config(t *testing.T) {
 	// Now, test without the benefit of the cached value in the seal
 	defSeal = NewDefaultSeal(nil)
 	defSeal.SetCore(core)
-	newBc, err = defSeal.BarrierConfig(t.Context())
+	newBc, err = defSeal.Config(t.Context())
 	require.NoError(t, err)
 	if !reflect.DeepEqual(*bc, *newBc) {
 		t.Fatal("config mismatch")

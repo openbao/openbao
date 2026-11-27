@@ -154,7 +154,7 @@ func TestAutoSeal_UpgradeKeys(t *testing.T) {
 
 	t.Run("no recovery key", func(t *testing.T) {
 		// Emulate a recovery config with zero key shares and no recovery key stored.
-		require.NoError(t, autoSeal.SetRecoveryConfig(ctx, &SealConfig{Type: "static"}))
+		require.NoError(t, autoSeal.SetConfig(ctx, &SealConfig{Type: "static"}))
 
 		// Nothing to upgrade while the encryption key hasn't changed.
 		require.NoError(t, autoSeal.UpgradeKeys(ctx))

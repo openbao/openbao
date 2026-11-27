@@ -31,8 +31,8 @@ var protectedPaths = []string{
 // These paths use the "upper" barrier, which is the direct physical layer
 // for the root namespace.
 var specialPaths = []string{
-	barrierSealConfigPath,
-	recoverySealConfigPath,
+	sealConfigPath,
+	legacyRecoverySealConfigPath,
 	coreBarrierUnsealKeysBackupPath,
 	coreRecoveryUnsealKeysBackupPath,
 }

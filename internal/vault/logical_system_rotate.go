@@ -563,12 +563,11 @@ func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 			return handleError(ErrNotSealable)
 		}
 
-		var config *SealConfig
-		if recovery || seal.RecoveryKeySupported() {
-			config, err = seal.RecoveryConfig(ctx)
-		} else {
-			config, err = seal.BarrierConfig(ctx)
+		if recovery && !seal.RecoveryKeySupported() {
+			return handleError(logical.CodedError(http.StatusBadRequest, "seal doesn't support recovery option"))
 		}
+
+		config, err := seal.Config(ctx)
 		if err != nil {
 			return handleError(logical.CodedError(http.StatusInternalServerError, "unable to look up config: %w", err))
 		}

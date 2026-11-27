@@ -78,8 +78,6 @@ func TestSysInit_pgpKeysEntriesForRecovery(t *testing.T) {
 	defer ln.Close()
 
 	resp := testHttpPut(t, "", addr+"/v1/sys/init", map[string]any{
-		"secret_shares":      1,
-		"secret_threshold":   1,
 		"recovery_shares":    5,
 		"recovery_threshold": 3,
 		"recovery_pgp_keys":  []string{"pgpkey1"},

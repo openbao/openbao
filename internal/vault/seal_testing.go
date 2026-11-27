@@ -25,7 +25,7 @@ func NewTestSeal(t testing.T, opts *seal.TestSealOpts) Seal {
 	switch opts.Wrapper {
 	case seal.WrapperTypeShamir:
 		newSeal := NewDefaultSeal(seal.NewAccess(seal.NewShamirWrapper()))
-		newSeal.SetCachedBarrierConfig(&SealConfig{
+		newSeal.SetCachedConfig(&SealConfig{
 			SecretThreshold: 1,
 			SecretShares:    1,
 		})
@@ -40,23 +40,18 @@ func NewTestSeal(t testing.T, opts *seal.TestSealOpts) Seal {
 	}
 }
 
-func TestCoreUnsealedWithConfigs(t testing.T, barrierConf, recoveryConf *SealConfig) (*Core, [][]byte, [][]byte, string) {
+func TestCoreUnsealedWithConfigs(t testing.T, conf *SealConfig) (*Core, [][]byte, string) {
 	t.Helper()
-	opts := &seal.TestSealOpts{}
-	if recoveryConf == nil {
-		opts.Wrapper = seal.WrapperTypeShamir
-	}
-	return TestCoreUnsealedWithConfigSealOpts(t, barrierConf, recoveryConf, opts)
+	return TestCoreUnsealedWithConfigSealOpts(t, conf, &seal.TestSealOpts{Wrapper: seal.WrapperTypeShamir})
 }
 
-func TestCoreUnsealedWithConfigSealOpts(t testing.T, barrierConf, recoveryConf *SealConfig, sealOpts *seal.TestSealOpts) (*Core, [][]byte, [][]byte, string) {
+func TestCoreUnsealedWithConfigSealOpts(t testing.T, conf *SealConfig, sealOpts *seal.TestSealOpts) (*Core, [][]byte, string) {
 	t.Helper()
 	seal := NewTestSeal(t, sealOpts)
 	core := TestCoreWithSeal(t, seal, false)
 	ctx := namespace.RootContext(context.Background())
 	result, err := core.Initialize(ctx, &InitParams{
-		BarrierConfig:  barrierConf,
-		RecoveryConfig: recoveryConf,
+		SealConfig: conf,
 	})
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -77,5 +72,9 @@ func TestCoreUnsealedWithConfigSealOpts(t testing.T, barrierConf, recoveryConf *
 		}
 	}
 
-	return core, result.SecretShares, result.RecoveryShares, result.RootToken
+	if seal.RecoveryKeySupported() {
+		return core, result.RecoveryShares, result.RootToken
+	}
+
+	return core, result.SecretShares, result.RootToken
 }

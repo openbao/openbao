@@ -349,17 +349,6 @@ func TestNewCore_badRedirectAddr(t *testing.T) {
 	}
 }
 
-func TestSealConfig_Invalid(t *testing.T) {
-	s := &SealConfig{
-		SecretShares:    2,
-		SecretThreshold: 1,
-	}
-	err := s.Validate()
-	if err == nil {
-		t.Fatal("expected err")
-	}
-}
-
 // TestCore_HasVaultVersion checks that versionHistory is correct and initialized
 // after a core has been unsealed.
 func TestCore_HasVaultVersion(t *testing.T) {
@@ -388,13 +377,11 @@ func TestCore_Unseal_MultiShare(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	sealConf := &SealConfig{
-		SecretShares:    5,
-		SecretThreshold: 3,
-	}
 	res, err := c.Initialize(namespace.RootContext(t.Context()), &InitParams{
-		BarrierConfig:  sealConf,
-		RecoveryConfig: nil,
+		SealConfig: &SealConfig{
+			SecretShares:    5,
+			SecretThreshold: 3,
+		},
 	})
 	require.NoError(t, err)
 
@@ -545,13 +532,11 @@ func TestCore_Unseal_Single(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	sealConf := &SealConfig{
-		SecretShares:    1,
-		SecretThreshold: 1,
-	}
 	res, err := c.Initialize(namespace.RootContext(t.Context()), &InitParams{
-		BarrierConfig:  sealConf,
-		RecoveryConfig: nil,
+		SealConfig: &SealConfig{
+			SecretShares:    1,
+			SecretThreshold: 1,
+		},
 	})
 	require.NoError(t, err)
 
@@ -580,11 +565,6 @@ func TestCore_Unseal_Single(t *testing.T) {
 
 func TestCore_Route_Sealed(t *testing.T) {
 	c := TestCore(t)
-	sealConf := &SealConfig{
-		SecretShares:    1,
-		SecretThreshold: 1,
-	}
-
 	ctx := namespace.RootContext(t.Context())
 
 	// Should not route anything
@@ -598,8 +578,10 @@ func TestCore_Route_Sealed(t *testing.T) {
 	}
 
 	res, err := c.Initialize(ctx, &InitParams{
-		BarrierConfig:  sealConf,
-		RecoveryConfig: nil,
+		SealConfig: &SealConfig{
+			SecretShares:    1,
+			SecretThreshold: 1,
+		},
 	})
 	require.NoError(t, err)
 

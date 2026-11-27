@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
 	"strings"
 	"sync"
 	"time"
@@ -175,7 +176,8 @@ func (c *cassandraConnectionProducer) Close() error {
 	return nil
 }
 
-func (c *cassandraConnectionProducer) createSession(ctx context.Context) (*gocql.Session, error) {
+// newClusterConfig builds the gocql cluster configuration from the connection settings.
+func (c *cassandraConnectionProducer) newClusterConfig() *gocql.ClusterConfig {
 	hosts := strings.Split(c.Hosts, ",")
 	clusterConfig := gocql.NewCluster(hosts...)
 	clusterConfig.Authenticator = gocql.PasswordAuthenticator{
@@ -186,6 +188,7 @@ func (c *cassandraConnectionProducer) createSession(ctx context.Context) (*gocql
 	if c.Port != 0 {
 		clusterConfig.Port = c.Port
 	}
+	clusterConfig.AddressTranslator = newPortAddressTranslator(c.Port)
 
 	clusterConfig.ProtoVersion = c.ProtocolVersion
 	if clusterConfig.ProtoVersion == 0 {
@@ -200,6 +203,12 @@ func (c *cassandraConnectionProducer) createSession(ctx context.Context) (*gocql
 	if c.LocalDatacenter != "" {
 		clusterConfig.PoolConfig.HostSelectionPolicy = gocql.DCAwareRoundRobinPolicy(c.LocalDatacenter)
 	}
+
+	return clusterConfig
+}
+
+func (c *cassandraConnectionProducer) createSession(ctx context.Context) (*gocql.Session, error) {
+	clusterConfig := c.newClusterConfig()
 
 	session, err := clusterConfig.CreateSession()
 	if err != nil {
@@ -242,4 +251,22 @@ func (c *cassandraConnectionProducer) secretValues() map[string]string {
 		c.PemBundle: "[pem_bundle]",
 		c.PemJSON:   "[pem_json]",
 	}
+}
+
+// newPortAddressTranslator returns a translator that pins every host to port, or nil if port is 0.
+//
+// Cassandra advertises its plain native port (native_port in system.peers_v2) for every peer, and gocql uses
+// that for discovered hosts instead of the configured port. With TLS on a different port the discovered hosts
+// are then unreachable. Keeping the configured port for all of them avoids that.
+//
+// gocql only reads native_port when it queries system.peers_v2, which it does for Cassandra servers >= 4.0
+// (the choice depends on the server version, not on protocol_version). Against older servers the peer port
+// already comes from the cluster config, so the translator changes nothing.
+func newPortAddressTranslator(port int) gocql.AddressTranslator {
+	if port == 0 {
+		return nil
+	}
+	return gocql.AddressTranslatorFunc(func(addr net.IP, _ int) (net.IP, int) {
+		return addr, port
+	})
 }

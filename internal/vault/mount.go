@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-uuid"
@@ -115,7 +116,7 @@ func (c *Core) generateMountAccessor(entryType string) (string, error) {
 	return accessor, nil
 }
 
-func (c *Core) decodeMountEntries(ctx context.Context, entry *logical.StorageEntry) ([]*routing.MountEntry, error) {
+func (c *Core) decodeMountEntries(entry *logical.StorageEntry, ns *namespace.Namespace, allNamespaces []*namespace.Namespace) ([]*routing.MountEntry, error) {
 	mountTable := new(routing.MountTable)
 	if err := jsonutil.DecodeJSON(entry.Value, mountTable); err != nil {
 		return nil, err
@@ -127,17 +128,29 @@ func (c *Core) decodeMountEntries(ctx context.Context, entry *logical.StorageEnt
 			entry.NamespaceID = namespace.RootNamespaceID
 		}
 
-		ns, err := c.NamespaceByID(ctx, entry.NamespaceID)
-		if err != nil {
-			return nil, err
-		}
-
-		if ns == nil {
+		switch {
+		case entry.NamespaceID == ns.ID:
+			// Happy case, stored namespace ID matches the namespace we read
+			// this mount table in.
+			entry.Namespace = ns
+		case ns.ID == namespace.RootNamespaceID:
+			if i := slices.IndexFunc(allNamespaces, func(ns *namespace.Namespace) bool {
+				return ns.ID == entry.NamespaceID
+			}); i > -1 {
+				entry.Namespace = allNamespaces[i]
+				break
+			}
+			fallthrough
+		default:
 			c.logger.Error("namespace on mount entry not found", "namespace_id", entry.NamespaceID, "mount_path", entry.Path, "mount_description", entry.Description)
-			continue
 		}
-		entry.Namespace = ns
 	}
+
+	// Remove entries that failed namespace resolution above so we don't leave
+	// nil pointers.
+	mountTable.Entries = slices.DeleteFunc(mountTable.Entries, func(entry *routing.MountEntry) bool {
+		return entry.Namespace == nil
+	})
 
 	return mountTable.Entries, nil
 }
@@ -165,16 +178,6 @@ func (c *Core) fetchAndDecodeMountTableEntry(ctx context.Context, barrier logica
 	if entry.NamespaceID == "" {
 		entry.NamespaceID = namespace.RootNamespaceID
 	}
-	ns, err := c.NamespaceByID(ctx, entry.NamespaceID)
-	if err != nil {
-		return nil, err
-	}
-	if ns == nil {
-		c.logger.Error("namespace on mount entry not found", "path", mountPath, "uuid", uuid, "namespace_id", entry.NamespaceID, "mount_path", entry.Path, "mount_description", entry.Description)
-		return nil, nil
-	}
-
-	entry.Namespace = ns
 
 	return entry, nil
 }
@@ -823,6 +826,11 @@ func (c *Core) splitNamespaceAndMountFromPath(currNs, path string) namespace.Mou
 
 // loadMounts is invoked as part of postUnseal to load the mount table
 func (c *Core) loadMounts(ctx context.Context, standby bool) error {
+	allNamespaces, err := c.ListNamespaces(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list namespaces: %w", err)
+	}
+
 	// Previously, this lock would be held after attempting to read the
 	// storage entries. While we could never read corrupted entries,
 	// we now need to ensure we can gracefully failover from legacy to
@@ -848,7 +856,7 @@ func (c *Core) loadMounts(ctx context.Context, standby bool) error {
 	// to not) is not possible without manual reconstruction.
 	txnableBarrier, ok := c.barrier.(logical.TransactionalStorage)
 	if !ok {
-		_, err := c.loadLegacyMounts(ctx, c.barrier, standby)
+		_, err := c.loadLegacyMounts(ctx, c.barrier, allNamespaces, standby)
 		return err
 	}
 
@@ -864,7 +872,7 @@ func (c *Core) loadMounts(ctx context.Context, standby bool) error {
 	// error.
 	defer txn.Rollback(ctx) //nolint:errcheck
 
-	legacy, err := c.loadLegacyMounts(ctx, txn, standby)
+	legacy, err := c.loadLegacyMounts(ctx, txn, allNamespaces, standby)
 	if err != nil {
 		return fmt.Errorf("failed to load legacy mounts in transaction: %w", err)
 	}
@@ -873,7 +881,7 @@ func (c *Core) loadMounts(ctx context.Context, standby bool) error {
 	// we need to fetch the new mount table.
 	if !legacy {
 		c.logger.Info("reading transactional mount table")
-		if err := c.loadTransactionalMounts(ctx, txn, standby); err != nil {
+		if err := c.loadTransactionalMounts(ctx, txn, allNamespaces, standby); err != nil {
 			return fmt.Errorf("failed to load transactional mount table: %w", err)
 		}
 	}
@@ -894,21 +902,21 @@ func (c *Core) loadMountsForNamespace(ctx context.Context, ns *namespace.Namespa
 
 	// Check if we're on a non-transactional storage
 	if _, ok := c.barrier.(logical.TransactionalStorage); !ok {
-		return c.loadLegacyMountsForNamespace(ctx, ns)
+		return c.loadLegacyMountsForNamespace(ctx, ns, nil)
 	}
-	return c.loadTransactionalMountsForNamespace(ctx, ns)
+	return c.loadTransactionalMountsForNamespace(ctx, ns, nil)
 }
 
 // loadTransactionalMounts reads the transactional split mount table
 // populates the storage if there are no existing entries.
-func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Storage, standby bool) error {
-	allNamespaces, err := c.ListNamespaces(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to list namespaces: %w", err)
-	}
-
+func (c *Core) loadTransactionalMounts(
+	ctx context.Context,
+	barrier logical.Storage,
+	allNamespaces []*namespace.Namespace,
+	standby bool,
+) error {
 	for _, ns := range allNamespaces {
-		if err = c.loadTransactionalMountsForNamespace(ctx, ns); err != nil {
+		if err := c.loadTransactionalMountsForNamespace(ctx, ns, allNamespaces); err != nil {
 			return err
 		}
 	}
@@ -922,7 +930,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 		needPersist = true
 	}
 
-	if err = c.runMountUpdates(ctx, barrier, needPersist, standby); err != nil {
+	if err := c.runMountUpdates(ctx, barrier, needPersist, standby); err != nil {
 		c.logger.Error("failed to run legacy mount table upgrades", "error", err)
 		return err
 	}
@@ -931,7 +939,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 }
 
 // loadTransactionalMountsForNamespace loads the mounts of a single namespace.
-func (c *Core) loadTransactionalMountsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
+func (c *Core) loadTransactionalMountsForNamespace(ctx context.Context, ns *namespace.Namespace, allNamespaces []*namespace.Namespace) error {
 	if c.NamespaceSealed(ns) {
 		return barrier.ErrNamespaceSealed
 	}
@@ -942,7 +950,7 @@ func (c *Core) loadTransactionalMountsForNamespace(ctx context.Context, ns *name
 	}
 
 	for _, prefix := range []string{coreMountConfigPath, coreLocalMountConfigPath} {
-		if entries, err := c.collectMountEntries(ctx, ns, prefix); err != nil {
+		if entries, err := c.collectMountEntries(ctx, ns, prefix, allNamespaces); err != nil {
 			return err
 		} else {
 			c.mounts.Entries = append(c.mounts.Entries, entries...)
@@ -955,13 +963,12 @@ func (c *Core) loadTransactionalMountsForNamespace(ctx context.Context, ns *name
 // loadLegacyMounts reads the legacy, single-entry combined mount table,
 // returning true if it was used. This will let us know (if we're inside
 // a transaction) if we need to do an upgrade.
-func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage, standby bool) (bool, error) {
-	// Load the existing mount table per namespace
-	allNamespaces, err := c.ListNamespaces(ctx)
-	if err != nil {
-		return false, fmt.Errorf("failed to list namespaces: %w", err)
-	}
-
+func (c *Core) loadLegacyMounts(
+	ctx context.Context,
+	barrier logical.Storage,
+	allNamespaces []*namespace.Namespace,
+	standby bool,
+) (bool, error) {
 	if c.mounts == nil {
 		// Create the mount table if it doesn't exist.
 		c.mounts = &routing.MountTable{
@@ -970,7 +977,7 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage, st
 	}
 
 	for _, ns := range allNamespaces {
-		if err = c.loadLegacyMountsForNamespace(ctx, ns); err != nil {
+		if err := c.loadLegacyMountsForNamespace(ctx, ns, allNamespaces); err != nil {
 			return false, err
 		}
 	}
@@ -1000,7 +1007,7 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage, st
 	//    backend.
 	// 2. We may have had a legacy mount table and need to upgrade into the
 	//    new format. runMountUpdates will handle this for us.
-	if err = c.runMountUpdates(ctx, barrier, needPersist, standby); err != nil {
+	if err := c.runMountUpdates(ctx, barrier, needPersist, standby); err != nil {
 		c.logger.Error("failed to run legacy mount table upgrades", "error", err)
 		return false, err
 	}
@@ -1012,7 +1019,7 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage, st
 
 // loadLegacyMountsForNamespace reads the legacy, single-entry combined
 // mount table of a provided namespace and loads it to memory.
-func (c *Core) loadLegacyMountsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
+func (c *Core) loadLegacyMountsForNamespace(ctx context.Context, ns *namespace.Namespace, allNamespaces []*namespace.Namespace) error {
 	if c.NamespaceSealed(ns) {
 		return barrier.ErrNamespaceSealed
 	}
@@ -1030,7 +1037,7 @@ func (c *Core) loadLegacyMountsForNamespace(ctx context.Context, ns *namespace.N
 	}
 
 	if entry != nil {
-		mEntries, err := c.decodeMountEntries(ctx, entry)
+		mEntries, err := c.decodeMountEntries(entry, ns, allNamespaces)
 		if err != nil {
 			c.logger.Error("failed to decompress and/or decode the legacy mount table", "error", err)
 			return err
@@ -1039,7 +1046,7 @@ func (c *Core) loadLegacyMountsForNamespace(ctx context.Context, ns *namespace.N
 	}
 
 	if localEntry != nil {
-		mEntries, err := c.decodeMountEntries(ctx, localEntry)
+		mEntries, err := c.decodeMountEntries(localEntry, ns, allNamespaces)
 		if err != nil {
 			c.logger.Error("failed to decompress and/or decode the legacy local mount table", "error", err)
 			return err
@@ -1066,7 +1073,7 @@ func getLegacyMountsForNamespace(ctx context.Context, barrier logical.Storage) (
 	return globalEntry, localEntry, nil
 }
 
-func (c *Core) collectMountEntries(ctx context.Context, ns *namespace.Namespace, prefix string) ([]*routing.MountEntry, error) {
+func (c *Core) collectMountEntries(ctx context.Context, ns *namespace.Namespace, prefix string, allNamespaces []*namespace.Namespace) ([]*routing.MountEntry, error) {
 	view := c.NamespaceView(ns)
 	keys, err := view.List(ctx, prefix+"/")
 	if err != nil {
@@ -1077,13 +1084,36 @@ func (c *Core) collectMountEntries(ctx context.Context, ns *namespace.Namespace,
 	for index, uuid := range keys {
 		path := fmt.Sprintf("%s/%s", prefix, uuid)
 		entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, path, uuid)
-		if err != nil {
+		switch {
+		case err != nil:
 			return nil, fmt.Errorf("error loading mount table entry ([%v] %v/%v): %w", ns.ID, index, uuid, err)
+		case entry == nil:
+			continue
 		}
 
-		if entry != nil {
-			collectedEntries = append(collectedEntries, entry)
+		switch {
+		case entry.NamespaceID == ns.ID:
+			// Happy case, namespace matches.
+			entry.Namespace = ns
+		case ns.ID == namespace.RootNamespaceID:
+			// If we're provided a list of other namespaces, try finding the
+			// correct one in there and potentially reconcile the mount entry.
+			// This is to accommodate for earlier versions of OpenBao that
+			// unintendedly wrote a child namespace's transactional mount table
+			// into the root namespace when migrating from legacy mounts.
+			if i := slices.IndexFunc(allNamespaces, func(ns *namespace.Namespace) bool {
+				return ns.ID == entry.NamespaceID
+			}); i > -1 {
+				entry.Namespace = allNamespaces[i]
+				break
+			}
+			fallthrough
+		default:
+			c.logger.Error("namespace on mount entry not found", "path", path, "uuid", uuid, "namespace_id", entry.NamespaceID, "mount_path", entry.Path, "mount_description", entry.Description)
+			continue
 		}
+
+		collectedEntries = append(collectedEntries, entry)
 	}
 	return collectedEntries, nil
 }
@@ -1158,20 +1188,6 @@ func (c *Core) runMountUpdates(ctx context.Context, barrier logical.Storage, nee
 			entry.BackendAwareUUID = bUUID
 			needPersist = true
 		}
-
-		if entry.NamespaceID == "" {
-			entry.NamespaceID = namespace.RootNamespaceID
-			needPersist = true
-		}
-
-		ns, err := c.NamespaceByID(ctx, entry.NamespaceID)
-		if err != nil {
-			return err
-		}
-		if ns == nil {
-			return namespace.ErrNoNamespace
-		}
-		entry.Namespace = ns
 
 		// Don't store built-in version in the mount table, to make upgrades smoother.
 		if versions.IsBuiltinVersion(entry.Version) {
@@ -1259,15 +1275,18 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 		entry.SyncCache()
 	}
 
+	allNamespaces := sync.OnceValue(func() map[string]*namespace.Namespace {
+		m := make(map[string]*namespace.Namespace)
+		for _, entry := range table.Entries {
+			m[entry.NamespaceID] = entry.Namespace
+		}
+		return m
+	})
+
 	// Handle writing the legacy mount table by default.
 	writeTable := func(mt *routing.MountTable, path string) (int, error) {
-		allNamespaces, err := c.ListNamespaces(ctx)
-		if err != nil {
-			return -1, fmt.Errorf("failed to list namespaces: %w", err)
-		}
-
 		var size int
-		for _, ns := range allNamespaces {
+		for _, ns := range allNamespaces() {
 			mountCopy := mt.ShallowClone()
 			mountCopy.Entries = slices.DeleteFunc(mountCopy.Entries, func(e *routing.MountEntry) bool {
 				return e.NamespaceID != ns.ID
@@ -1358,16 +1377,12 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 			}
 
 			if mount == "" {
-				allNamespaces, err := c.ListNamespaces(ctx)
-				if err != nil {
-					return -1, fmt.Errorf("failed to list namespaces: %w", err)
-				}
-				for nsIndex, ns := range allNamespaces {
+				for _, ns := range allNamespaces() {
 					view := NamespaceScopedView(barrier, ns)
 					// List all entries and remove any deleted ones.
 					presentEntries, err := view.List(ctx, prefix+"/")
 					if err != nil {
-						return -1, fmt.Errorf("failed to list entries in namespace %v (%v) for removal: %w", ns.ID, nsIndex, err)
+						return -1, fmt.Errorf("failed to list entries in namespace %v for removal: %w", ns.ID, err)
 					}
 
 					for index, presentEntry := range presentEntries {
@@ -1376,7 +1391,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 						}
 
 						if err := view.Delete(ctx, prefix+"/"+presentEntry); err != nil {
-							return -1, fmt.Errorf("failed to remove deleted mount %v (%v) in namespace %v (%v): %w", presentEntry, index, ns.ID, nsIndex, err)
+							return -1, fmt.Errorf("failed to remove deleted mount %v (%v) in namespace %v: %w", presentEntry, index, ns.ID, err)
 						}
 					}
 
@@ -1705,6 +1720,8 @@ func (c *Core) defaultMountTable(ctx context.Context) *routing.MountTable {
 			Options: map[string]string{
 				"version": "2",
 			},
+			NamespaceID:    namespace.RootNamespaceID,
+			Namespace:      namespace.RootNamespace,
 			RunningVersion: versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
 		}
 		table.Entries = append(table.Entries, kvMount)
@@ -1949,10 +1966,15 @@ func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
 
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
-		if err != namespace.ErrNoNamespace {
-			return fmt.Errorf("failed to extract namespace from context: %w", err)
+		return err
+	}
+
+	var allNamespaces []*namespace.Namespace
+	if ns.ID == namespace.RootNamespaceID {
+		allNamespaces, err = c.ListNamespaces(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to list namespaces: %w", err)
 		}
-		ns = namespace.RootNamespace
 	}
 
 	type invalidation struct {
@@ -1975,7 +1997,7 @@ func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
 		}
 
 		if raw != nil {
-			entries, err := c.decodeMountEntries(ctx, raw)
+			entries, err := c.decodeMountEntries(raw, ns, allNamespaces)
 			if err != nil {
 				return fmt.Errorf("failed to decompress and/or decode the legacy mount table: %w", err)
 			}
@@ -2055,23 +2077,33 @@ func (c *Core) reloadMount(ctx context.Context, key string) error {
 	}
 
 	path := fmt.Sprintf("%s/%s", prefix, uuid)
-	desiredMountEntry, err := c.fetchAndDecodeMountTableEntry(ctx, c.NamespaceView(ns), path, uuid)
+	entry, err := c.fetchAndDecodeMountTableEntry(ctx, c.NamespaceView(ns), path, uuid)
 	if err != nil {
 		if err.Error() != "unexpected empty storage entry for mount" {
 			return err
 		}
-		desiredMountEntry = nil
+		entry = nil
 	}
 
-	if desiredMountEntry != nil && ns.Tainted {
-		// The desired state of this mount is deleted, because we've tainted
-		// this namespace. Because we're on a standby node, we don't actually
-		// write to storage but let the active node handle deletion.
-		c.logger.Debug("cache invalidation: marking mount as deleted due to tainted namespace", "mount_uuid", uuid, "ns_uuid", ns.UUID)
-		desiredMountEntry = nil
+	if entry != nil {
+		if entry.NamespaceID != ns.ID {
+			return fmt.Errorf("namespace ID of reloaded mount (%v) does not match expected namespace (%v)",
+				entry.NamespaceID, ns.ID)
+		}
+
+		entry.Namespace = ns
+
+		if ns.Tainted {
+			// The desired state of this mount is deleted, because we've
+			// tainted this namespace. Because we're on a standby node, we
+			// don't actually write to storage but let the active node handle
+			// deletion.
+			c.logger.Debug("cache invalidation: marking mount as deleted due to tainted namespace", "mount_uuid", uuid, "ns_uuid", ns.UUID)
+			entry = nil
+		}
 	}
 
-	return c.reloadMountInternal(ctx, table, uuid, desiredMountEntry)
+	return c.reloadMountInternal(ctx, table, uuid, entry)
 }
 
 func (c *Core) reloadMountInternal(ctx context.Context, table, uuid string, desiredMountEntry *routing.MountEntry) error {

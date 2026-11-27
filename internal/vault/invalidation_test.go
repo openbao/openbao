@@ -866,8 +866,10 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				c.mountsLock.RLock()
-				defer c.mountsLock.RUnlock()
-				require.Equal(collect, mountTableCount+1, len(c.mounts.Entries), "expected mount table to grew by one")
+				entryCount := len(c.mounts.Entries)
+				c.mountsLock.RUnlock()
+
+				require.Equal(collect, mountTableCount+1, entryCount, "expected mount table to grow by one")
 				require.EqualValues(collect, 2, factoryCallCount.Load(), "expected factory to be called exactly twice")
 				triggerReadCall(collect)
 			}, 10*time.Second, 10*time.Millisecond)
@@ -1078,8 +1080,10 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				c.mountsLock.RLock()
-				defer c.mountsLock.RUnlock()
-				require.Equal(collect, mountTableCount+1, len(c.mounts.Entries), "expected mount table to grew by one")
+				entryCount := len(c.mounts.Entries)
+				c.mountsLock.RUnlock()
+
+				require.Equal(collect, mountTableCount+1, entryCount, "expected mount table to grow by one")
 				require.EqualValues(collect, 2, factoryCallCount.Load(), "expected factory to be called exactly twice")
 				triggerReadCall(collect)
 			}, 10*time.Second, 10*time.Millisecond)
@@ -1214,8 +1218,10 @@ func TestCore_Invalidate_AuthMount(t *testing.T) {
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				c.authLock.RLock()
-				defer c.authLock.RUnlock()
-				require.Equal(collect, mountTableCount+1, len(c.auth.Entries), "expected mount table to grew by one")
+				entryCount := len(c.auth.Entries)
+				c.authLock.RUnlock()
+
+				require.Equal(collect, mountTableCount+1, entryCount, "expected mount table to grow by one")
 				require.EqualValues(collect, 2, factoryCallCount.Load(), "expected factory to be called exactly twice")
 				callLogin(collect)
 			}, 10*time.Second, 10*time.Millisecond)
@@ -1379,8 +1385,10 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				c.authLock.RLock()
-				defer c.authLock.RUnlock()
-				require.Equal(collect, mountTableCount+1, len(c.auth.Entries), "expected mount table to grew by one")
+				entryCount := len(c.auth.Entries)
+				c.authLock.RUnlock()
+
+				require.Equal(collect, mountTableCount+1, entryCount, "expected mount table to grow by one")
 				require.EqualValues(collect, 2, factoryCallCount.Load(), "expected factory to be called exactly twice")
 				callLogin(collect)
 			}, 10*time.Second, 10*time.Millisecond)

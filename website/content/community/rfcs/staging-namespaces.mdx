@@ -1,0 +1,204 @@
+---
+sidebar_label: Staging Namespaces
+description: |-
+  Staging namespaces for replacement operations
+---
+
+# Staging Namespaces
+
+## Summary
+
+Instead of overwriting existing namespaces in case of migration, replication or 
+backup/restore, we should write to staging namespaces and switch the namespace 
+from old to new storage location after writing to the new location was successful. 
+With this approach, we will avoid leaving namespaces in inconsistent states, if 
+overwriting fails with an unrecoverable error. 
+
+## Problem Statement
+
+The following operations should use staging namespaces to preserve a consistent
+namespace view during replacement operations.
+
+- Migration of namespaces from system-seal to namespace-seal (PR 
+  [#3660](https://github.com/openbao/openbao/pull/3660)). If we face an unrecoverable
+  error when overwriting an existing namespace, then we will end up with a broken
+  namespace which is partially system-sealed and partially namespace-sealed.
+- Replication of namespaces (PR [#4034](https://github.com/openbao/openbao/pull/4034)).
+  If we face an unrecoverable error when replicating a namespace (per re-sync), then 
+  the target namespace might have an inconsistent state.
+- Backup/restore: If we face an unrecoverable error when restoring a namespace,
+  then the namespace might have an inconsistent state.
+
+Instead of overwriting existing namespaces, we should write to staging namespaces
+and then switch from old to new namespace location. In case of an unrecoverable error
+before switching the storage, we may simply delete the staging namespace and keep 
+the existing namespace in a consistent state.
+
+## User-facing description
+
+Staging namespaces shall be invisible to end users. They provide a mechanism for
+internal storage generation to enable atomic switches from old namespace storage
+to new namespace storage.
+
+However, when writing to a staging namespace, we should block all write operations 
+to the existing namespace. Thus, we should introduce a new **read-only flag** on
+namespaces. In addition, we should pause jobs writing to namespaces.
+
+## Technical Description
+
+### Physical UUID
+
+In addition to the existing ("logical") UUID of namespaces, we propose to add
+a "physical" UUID and a "staging" UUID to namespace records. If the physical UUID 
+is empty for legacy namespaces, then use the logical UUID as fallback ("effective"
+physical UUID). If the physical UUID is not empty, then the physical UUID **must** 
+start with the logical UUID and end with a version number, for example:
+`12345678-abcd-abcd-abef-123456789012-v1`.
+Thus, from the namespace record, we get a mapping logical UUID -> 
+physical UUID.  In addition, we should add a field "stagingStatus" which 
+contains status information like "locked", "failed", "completed" or "retired".
+For reading the namespace record, the parent namespace must be unsealed, which is
+considered as prerequisite for namespace replacement operations.
+
+By splitting the physical UUID, we can provide a mapping function `getLogicalUUID(physicalUUID)`.
+For convenience, we may also create a reverse mapping function `getPhysicalUUID(logicalUUID)`,
+which looks up the namespace record and returns the physical UUID. If the physical UUID in the 
+namespace record is empty, then return the logical UUID as fallback, as "effective" physical UUID.
+
+We may create staging namespaces with empty logical UUID (as staging namespaces are invisible 
+namespaces) and new physical UUID. When switching an existing namespace "old" to a staging namespace 
+"stage", we should replace the old physical UUID p_old with the new physical UUID p_stage of the 
+staging namespace while keeping the logical UUID, accessor ID and  path of the old namespace. 
+After switching the physical UUID was successful, we may wipe the stale storage with physical UUID p_old.
+
+Switching from an old to a staging namespace shall be an atomic operation.
+Before creating the staging namespace for a regular namespace, first check that 
+the status is empty. Then set the status to "locked" and generate a new physical UUID 
+"p_stage" (by increasing the version number of p_old). Flag the old namespace as read-only.
+Then add p_stage as staging UUID to the existing namespace. Thus, we can guarantee that at
+any time only one staging operation is possible. After writing to the staging namespace 
+has been completed, check the staging namespace, then set the status to "completed"
+and swap physical UUID and staging UUID in the record of the old namespace. 
+Then check the namespace with new physical UUID. If the check is successful, then set the 
+status of the staging namespace to "retired", as it now contains the old storage of the 
+namespace. Then we should wipe the stale storage of the namespace with old physical UUID,
+clear the staging UUID (which contains the old physical UUID), clear the staging status in 
+the namespace record and finally clear the read-only flag of the old namespace. If any error 
+occurs when writing the staging namespace, then set the status to "failed" and keep the old 
+physical UUID in the namespace record and try to resume or cleanup the staging namespace.
+
+### Logical UUID
+
+The logical UUID remains the primary identifier of namespaces. If we pass the logical UUID 
+to API functions, then we should get the physicalUUID to determine the storage location.
+
+The function 
+[NamespaceByStoragePath](https://github.com/openbao/openbao/blob/main/internal/vault/namespace_store.go#L1746) 
+must be changed. The UUID from the path is the physical UUID. In this case, we may get 
+the logicalUUID of the namespace from the function `getLogicalUUID(physicalUUID)`.
+
+### Further Changes
+
+After switching a namespace from old to new storage, we must update dependent
+structures like barriers or router storage views.
+
+The function Namespace.Clone should copy physical UUID, staging UUID, status
+and the read-only flag. All other lifecycle functions like Create, Delete, Load
+or Invalidate should be adapted to use physical UUIDs when accessing storage,
+while logical access continue to use logical UUIDs.
+
+The function 
+[NamespaceStoragePathPrefix](https://github.com/openbao/openbao/blob/main/internal/vault/namespace_store.go#L139) 
+must use the physical UUID to construct the path prefix.
+
+The function 
+[NewAESGCMBarrier](https://github.com/openbao/openbao/blob/main/internal/vault/barrier/aes_gcm.go#L142) 
+should use the physical UUID to construct the 
+[metaPrefix](https://github.com/openbao/openbao/blob/main/internal/vault/barrier/aes_gcm.go#L155). 
+The physical UUID is used to construct the 
+[AAD](https://github.com/openbao/openbao/blob/main/internal/vault/barrier/aes_gcm.go#L1040) 
+(Additional Authenticated Data).
+
+The function 
+[splitNamespaceFromKey](https://github.com/openbao/openbao/blob/main/internal/vault/invalidation.go#L677) 
+must treat the UUID from the key as physical UUID and return the corresponding logical UUID.
+
+Storage keys of child namespaces look like follows, as the child namespace definition
+is stored inside the parent namespace under its logical UUID.
+
+`namespaces/<parent-physical-UUID>/core/namespaces/<child-logical-UUID>`
+
+The function 
+[wipeStorageTree](https://github.com/openbao/openbao/blob/main/internal/vault/namespace_store.go#L1519) 
+should use the logical UUID to search all matching physical UUIDs, i.e. all physical UUIDs with the logical
+UUID as prefix.
+
+## Future work
+
+This RFC forms the basis for robust implementations of namespace
+
+- migration
+- replication
+- backup/restore
+
+## Rationale and alternatives
+
+The following alternatives have been considered:
+
+- Overwriting namespaces in-place could require transactions 
+  to provide reliable failure recovery. As these transactions 
+  might be very large, PR
+  [#3660](https://github.com/openbao/openbao/pull/3660) 
+  on namespace migration was changed to *not* using transactions,
+  because of size limits in the Raft backend.
+- Journaling and checkpointing: writing a durable journal would
+  help to resume after an error has occurred, but would be complex
+  if we want to support rollbacks.
+
+## Downsides
+
+During copying, we need double storage for each namespace and
+its child namespaces. Decryption and re-encryption require 
+additional CPU time.
+
+Adding a physical UUID is an (downwards) incompatible change,
+i.e. after generating namespaces with distinct physical UUID 
+one cannot downgrade the cluster to an old version. On the other 
+hand, we do not officially support downgrades of OpenBao. 
+We may mention this "restriction" in the documentation.
+
+## Security Implications
+
+Because the AES-GCM implementation provides
+Authenticated Encryption with Associated Data (AEAD) based on the 
+storage path, we cannot simply copy encrypted data from 
+`namespaces/<old-physical-UUID>` to `namespaces/<new-physical-UUID>`.
+Instead, we must decrypt the data and encrypt again with new AAD
+(Additional Authenticated Data).
+
+## Unresolved Questions
+
+Should we exclude the root namespace from using staging namespaces?
+The root namespace has no storage prefix, and it seems that we
+don't need replacement operations for the root namespace.
+
+Should we recursively create staging namespaces for child namespaces?
+We propose to restrict replacement operations to one namespace. 
+The caller shall decide whether to loop over a subtree of namespaces.
+
+## Related Issues
+
+* https://github.com/openbao/openbao/pull/3660
+* https://github.com/openbao/openbao/pull/4034
+
+## Proof of Concept
+
+A POC should consist of two stages:
+
+- Add physical UUID (and staging UUID) to the namespace record
+  and check that current namespace operations work both with
+  empty physical UUID as well as with distinct physical UUID.
+- Then add functions for creating staging namespaces, for 
+  switching namespaces from old storage to new storage and for
+  wiping stale namespaces.
+

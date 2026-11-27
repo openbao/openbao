@@ -1,4 +1,9 @@
-<button type="button" class="button is-transparent has-text-info" {{on "click" (fn @onClick (not @isOpen))}} ...attributes>
+<button
+  type="button"
+  class="button is-transparent has-text-interactive"
+  {{on "click" (fn @onClick (not @isOpen))}}
+  ...attributes
+>
   {{#if @isOpen}}
     <Icon @name="chevron-up" />{{this.openLabel}}
   {{else}}

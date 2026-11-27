@@ -107,7 +107,7 @@ div > .ember-power-select-options {
 
     &:hover,
     &:focus {
-      color: $blue;
+      color: $interactive;
     }
   }
 }
@@ -137,4 +137,10 @@ div > .ember-power-select-options {
 
 .search-select.display-inherit {
   display: inherit;
+}
+
+.ember-power-select-search-input:focus,
+.ember-power-select-search-input:focus-visible {
+  outline: 1px solid $interactive;
+  outline-offset: -1px;
 }

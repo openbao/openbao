@@ -1,0 +1,3 @@
+```release-note:improvement
+ui: Prefill namespace saved with token on logout redirect instead of current UI namespace.
+```

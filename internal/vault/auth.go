@@ -558,7 +558,7 @@ func (c *Core) loadCredentialsForNamespace(ctx context.Context, ns *namespace.Na
 
 	// Check if we're on a non-transactional storage
 	if _, ok := c.barrier.(logical.TransactionalStorage); !ok {
-		return c.loadLegacyCredentialsForNamespace(ctx, ns)
+		return c.loadLegacyCredentialsForNamespace(ctx, ns, nil)
 	}
 
 	return c.loadTransactionalCredentialsForNamespace(ctx, ns, nil)
@@ -638,7 +638,7 @@ func (c *Core) loadLegacyCredentials(
 	}
 
 	for _, ns := range allNamespaces {
-		if err := c.loadLegacyCredentialsForNamespace(ctx, ns); err != nil {
+		if err := c.loadLegacyCredentialsForNamespace(ctx, ns, allNamespaces); err != nil {
 			return false, err
 		}
 	}
@@ -684,7 +684,7 @@ func (c *Core) loadLegacyCredentials(
 
 // loadLegacyCredentialsForNamespace reads the legacy, single-entry combined
 // auth mount table of a provided namespace and loads it to memory.
-func (c *Core) loadLegacyCredentialsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
+func (c *Core) loadLegacyCredentialsForNamespace(ctx context.Context, ns *namespace.Namespace, allNamespaces []*namespace.Namespace) error {
 	if c.NamespaceSealed(ns) {
 		return barrier.ErrNamespaceSealed
 	}
@@ -702,7 +702,7 @@ func (c *Core) loadLegacyCredentialsForNamespace(ctx context.Context, ns *namesp
 	}
 
 	if entry != nil {
-		mEntries, err := c.decodeMountEntries(ctx, entry)
+		mEntries, err := c.decodeMountEntries(entry, ns, allNamespaces)
 		if err != nil {
 			c.logger.Error("failed to decompress and/or decode the legacy auth table", "error", err)
 			return err
@@ -711,7 +711,7 @@ func (c *Core) loadLegacyCredentialsForNamespace(ctx context.Context, ns *namesp
 	}
 
 	if localEntry != nil {
-		mEntries, err := c.decodeMountEntries(ctx, localEntry)
+		mEntries, err := c.decodeMountEntries(localEntry, ns, allNamespaces)
 		if err != nil {
 			c.logger.Error("failed to decompress and/or decode the local legacy auth table", "error", err)
 			return err

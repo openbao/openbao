@@ -116,7 +116,7 @@ func (c *Core) generateMountAccessor(entryType string) (string, error) {
 	return accessor, nil
 }
 
-func (c *Core) decodeMountEntries(ctx context.Context, entry *logical.StorageEntry) ([]*routing.MountEntry, error) {
+func (c *Core) decodeMountEntries(entry *logical.StorageEntry, ns *namespace.Namespace, allNamespaces []*namespace.Namespace) ([]*routing.MountEntry, error) {
 	mountTable := new(routing.MountTable)
 	if err := jsonutil.DecodeJSON(entry.Value, mountTable); err != nil {
 		return nil, err
@@ -128,17 +128,29 @@ func (c *Core) decodeMountEntries(ctx context.Context, entry *logical.StorageEnt
 			entry.NamespaceID = namespace.RootNamespaceID
 		}
 
-		ns, err := c.NamespaceByID(ctx, entry.NamespaceID)
-		if err != nil {
-			return nil, err
-		}
-
-		if ns == nil {
+		switch {
+		case entry.NamespaceID == ns.ID:
+			// Happy case, stored namespace ID matches the namespace we read
+			// this mount table in.
+			entry.Namespace = ns
+		case ns.ID == namespace.RootNamespaceID:
+			if i := slices.IndexFunc(allNamespaces, func(ns *namespace.Namespace) bool {
+				return ns.ID == entry.NamespaceID
+			}); i > -1 {
+				entry.Namespace = allNamespaces[i]
+				break
+			}
+			fallthrough
+		default:
 			c.logger.Error("namespace on mount entry not found", "namespace_id", entry.NamespaceID, "mount_path", entry.Path, "mount_description", entry.Description)
-			continue
 		}
-		entry.Namespace = ns
 	}
+
+	// Remove entries that failed namespace resolution above so we don't leave
+	// nil pointers.
+	mountTable.Entries = slices.DeleteFunc(mountTable.Entries, func(entry *routing.MountEntry) bool {
+		return entry.Namespace == nil
+	})
 
 	return mountTable.Entries, nil
 }
@@ -890,7 +902,7 @@ func (c *Core) loadMountsForNamespace(ctx context.Context, ns *namespace.Namespa
 
 	// Check if we're on a non-transactional storage
 	if _, ok := c.barrier.(logical.TransactionalStorage); !ok {
-		return c.loadLegacyMountsForNamespace(ctx, ns)
+		return c.loadLegacyMountsForNamespace(ctx, ns, nil)
 	}
 	return c.loadTransactionalMountsForNamespace(ctx, ns, nil)
 }
@@ -965,7 +977,7 @@ func (c *Core) loadLegacyMounts(
 	}
 
 	for _, ns := range allNamespaces {
-		if err := c.loadLegacyMountsForNamespace(ctx, ns); err != nil {
+		if err := c.loadLegacyMountsForNamespace(ctx, ns, allNamespaces); err != nil {
 			return false, err
 		}
 	}
@@ -1007,7 +1019,7 @@ func (c *Core) loadLegacyMounts(
 
 // loadLegacyMountsForNamespace reads the legacy, single-entry combined
 // mount table of a provided namespace and loads it to memory.
-func (c *Core) loadLegacyMountsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
+func (c *Core) loadLegacyMountsForNamespace(ctx context.Context, ns *namespace.Namespace, allNamespaces []*namespace.Namespace) error {
 	if c.NamespaceSealed(ns) {
 		return barrier.ErrNamespaceSealed
 	}
@@ -1025,7 +1037,7 @@ func (c *Core) loadLegacyMountsForNamespace(ctx context.Context, ns *namespace.N
 	}
 
 	if entry != nil {
-		mEntries, err := c.decodeMountEntries(ctx, entry)
+		mEntries, err := c.decodeMountEntries(entry, ns, allNamespaces)
 		if err != nil {
 			c.logger.Error("failed to decompress and/or decode the legacy mount table", "error", err)
 			return err
@@ -1034,7 +1046,7 @@ func (c *Core) loadLegacyMountsForNamespace(ctx context.Context, ns *namespace.N
 	}
 
 	if localEntry != nil {
-		mEntries, err := c.decodeMountEntries(ctx, localEntry)
+		mEntries, err := c.decodeMountEntries(localEntry, ns, allNamespaces)
 		if err != nil {
 			c.logger.Error("failed to decompress and/or decode the legacy local mount table", "error", err)
 			return err
@@ -1966,10 +1978,15 @@ func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
 
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
-		if err != namespace.ErrNoNamespace {
-			return fmt.Errorf("failed to extract namespace from context: %w", err)
+		return err
+	}
+
+	var allNamespaces []*namespace.Namespace
+	if ns.ID == namespace.RootNamespaceID {
+		allNamespaces, err = c.ListNamespaces(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to list namespaces: %w", err)
 		}
-		ns = namespace.RootNamespace
 	}
 
 	type invalidation struct {
@@ -1992,7 +2009,7 @@ func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
 		}
 
 		if raw != nil {
-			entries, err := c.decodeMountEntries(ctx, raw)
+			entries, err := c.decodeMountEntries(raw, ns, allNamespaces)
 			if err != nil {
 				return fmt.Errorf("failed to decompress and/or decode the legacy mount table: %w", err)
 			}

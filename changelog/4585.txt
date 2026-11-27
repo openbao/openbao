@@ -1,0 +1,3 @@
+```release-note:bug
+core/policy: Validate that `control_group` `controlled_capabilities` entries are granted in the path's `capabilities`.
+```

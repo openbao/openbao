@@ -166,16 +166,6 @@ func (c *Core) fetchAndDecodeMountTableEntry(ctx context.Context, barrier logica
 	if entry.NamespaceID == "" {
 		entry.NamespaceID = namespace.RootNamespaceID
 	}
-	ns, err := c.NamespaceByID(ctx, entry.NamespaceID)
-	if err != nil {
-		return nil, err
-	}
-	if ns == nil {
-		c.logger.Error("namespace on mount entry not found", "path", mountPath, "uuid", uuid, "namespace_id", entry.NamespaceID, "mount_path", entry.Path, "mount_description", entry.Description)
-		return nil, nil
-	}
-
-	entry.Namespace = ns
 
 	return entry, nil
 }
@@ -902,7 +892,7 @@ func (c *Core) loadMountsForNamespace(ctx context.Context, ns *namespace.Namespa
 	if _, ok := c.barrier.(logical.TransactionalStorage); !ok {
 		return c.loadLegacyMountsForNamespace(ctx, ns)
 	}
-	return c.loadTransactionalMountsForNamespace(ctx, ns)
+	return c.loadTransactionalMountsForNamespace(ctx, ns, nil)
 }
 
 // loadTransactionalMounts reads the transactional split mount table
@@ -914,7 +904,7 @@ func (c *Core) loadTransactionalMounts(
 	standby bool,
 ) error {
 	for _, ns := range allNamespaces {
-		if err := c.loadTransactionalMountsForNamespace(ctx, ns); err != nil {
+		if err := c.loadTransactionalMountsForNamespace(ctx, ns, allNamespaces); err != nil {
 			return err
 		}
 	}
@@ -937,7 +927,7 @@ func (c *Core) loadTransactionalMounts(
 }
 
 // loadTransactionalMountsForNamespace loads the mounts of a single namespace.
-func (c *Core) loadTransactionalMountsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
+func (c *Core) loadTransactionalMountsForNamespace(ctx context.Context, ns *namespace.Namespace, allNamespaces []*namespace.Namespace) error {
 	if c.NamespaceSealed(ns) {
 		return barrier.ErrNamespaceSealed
 	}
@@ -948,7 +938,7 @@ func (c *Core) loadTransactionalMountsForNamespace(ctx context.Context, ns *name
 	}
 
 	for _, prefix := range []string{coreMountConfigPath, coreLocalMountConfigPath} {
-		if entries, err := c.collectMountEntries(ctx, ns, prefix); err != nil {
+		if entries, err := c.collectMountEntries(ctx, ns, prefix, allNamespaces); err != nil {
 			return err
 		} else {
 			c.mounts.Entries = append(c.mounts.Entries, entries...)
@@ -1071,7 +1061,7 @@ func getLegacyMountsForNamespace(ctx context.Context, barrier logical.Storage) (
 	return globalEntry, localEntry, nil
 }
 
-func (c *Core) collectMountEntries(ctx context.Context, ns *namespace.Namespace, prefix string) ([]*routing.MountEntry, error) {
+func (c *Core) collectMountEntries(ctx context.Context, ns *namespace.Namespace, prefix string, allNamespaces []*namespace.Namespace) ([]*routing.MountEntry, error) {
 	view := c.NamespaceView(ns)
 	keys, err := view.List(ctx, prefix+"/")
 	if err != nil {
@@ -1082,13 +1072,36 @@ func (c *Core) collectMountEntries(ctx context.Context, ns *namespace.Namespace,
 	for index, uuid := range keys {
 		path := fmt.Sprintf("%s/%s", prefix, uuid)
 		entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, path, uuid)
-		if err != nil {
+		switch {
+		case err != nil:
 			return nil, fmt.Errorf("error loading mount table entry ([%v] %v/%v): %w", ns.ID, index, uuid, err)
+		case entry == nil:
+			continue
 		}
 
-		if entry != nil {
-			collectedEntries = append(collectedEntries, entry)
+		switch {
+		case entry.NamespaceID == ns.ID:
+			// Happy case, namespace matches.
+			entry.Namespace = ns
+		case ns.ID == namespace.RootNamespaceID:
+			// If we're provided a list of other namespaces, try finding the
+			// correct one in there and potentially reconcile the mount entry.
+			// This is to accommodate for earlier versions of OpenBao that
+			// unintendedly wrote a child namespace's transactional mount table
+			// into the root namespace when migrating from legacy mounts.
+			if i := slices.IndexFunc(allNamespaces, func(ns *namespace.Namespace) bool {
+				return ns.ID == entry.NamespaceID
+			}); i > -1 {
+				entry.Namespace = allNamespaces[i]
+				break
+			}
+			fallthrough
+		default:
+			c.logger.Error("namespace on mount entry not found", "path", path, "uuid", uuid, "namespace_id", entry.NamespaceID, "mount_path", entry.Path, "mount_description", entry.Description)
+			continue
 		}
+
+		collectedEntries = append(collectedEntries, entry)
 	}
 	return collectedEntries, nil
 }
@@ -2059,23 +2072,33 @@ func (c *Core) reloadMount(ctx context.Context, key string) error {
 	}
 
 	path := fmt.Sprintf("%s/%s", prefix, uuid)
-	desiredMountEntry, err := c.fetchAndDecodeMountTableEntry(ctx, c.NamespaceView(ns), path, uuid)
+	entry, err := c.fetchAndDecodeMountTableEntry(ctx, c.NamespaceView(ns), path, uuid)
 	if err != nil {
 		if err.Error() != "unexpected empty storage entry for mount" {
 			return err
 		}
-		desiredMountEntry = nil
+		entry = nil
 	}
 
-	if desiredMountEntry != nil && ns.Tainted {
-		// The desired state of this mount is deleted, because we've tainted
-		// this namespace. Because we're on a standby node, we don't actually
-		// write to storage but let the active node handle deletion.
-		c.logger.Debug("cache invalidation: marking mount as deleted due to tainted namespace", "mount_uuid", uuid, "ns_uuid", ns.UUID)
-		desiredMountEntry = nil
+	if entry != nil {
+		if entry.NamespaceID != ns.ID {
+			return fmt.Errorf("namespace ID of reloaded mount (%v) does not match expected namespace (%v)",
+				entry.NamespaceID, ns.ID)
+		}
+
+		entry.Namespace = ns
+
+		if ns.Tainted {
+			// The desired state of this mount is deleted, because we've
+			// tainted this namespace. Because we're on a standby node, we
+			// don't actually write to storage but let the active node handle
+			// deletion.
+			c.logger.Debug("cache invalidation: marking mount as deleted due to tainted namespace", "mount_uuid", uuid, "ns_uuid", ns.UUID)
+			entry = nil
+		}
 	}
 
-	return c.reloadMountInternal(ctx, table, uuid, desiredMountEntry)
+	return c.reloadMountInternal(ctx, table, uuid, entry)
 }
 
 func (c *Core) reloadMountInternal(ctx context.Context, table, uuid string, desiredMountEntry *routing.MountEntry) error {

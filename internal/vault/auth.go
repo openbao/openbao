@@ -561,7 +561,7 @@ func (c *Core) loadCredentialsForNamespace(ctx context.Context, ns *namespace.Na
 		return c.loadLegacyCredentialsForNamespace(ctx, ns)
 	}
 
-	return c.loadTransactionalCredentialsForNamespace(ctx, ns)
+	return c.loadTransactionalCredentialsForNamespace(ctx, ns, nil)
 }
 
 // loadTransactionalCredentials reads the transactional split auth (credential)
@@ -573,7 +573,7 @@ func (c *Core) loadTransactionalCredentials(
 	standby bool,
 ) error {
 	for _, ns := range allNamespaces {
-		if err := c.loadTransactionalCredentialsForNamespace(ctx, ns); err != nil {
+		if err := c.loadTransactionalCredentialsForNamespace(ctx, ns, allNamespaces); err != nil {
 			return err
 		}
 	}
@@ -600,7 +600,7 @@ func (c *Core) loadTransactionalCredentials(
 }
 
 // loadTransactionalCredentialsForNamespace loads the auth mounts of a single namespace.
-func (c *Core) loadTransactionalCredentialsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
+func (c *Core) loadTransactionalCredentialsForNamespace(ctx context.Context, ns *namespace.Namespace, allNamespaces []*namespace.Namespace) error {
 	if c.NamespaceSealed(ns) {
 		return barrier.ErrNamespaceSealed
 	}
@@ -611,7 +611,7 @@ func (c *Core) loadTransactionalCredentialsForNamespace(ctx context.Context, ns 
 	}
 
 	for _, prefix := range []string{coreAuthConfigPath, coreLocalAuthConfigPath} {
-		if entries, err := c.collectMountEntries(ctx, ns, prefix); err != nil {
+		if entries, err := c.collectMountEntries(ctx, ns, prefix, allNamespaces); err != nil {
 			return err
 		} else {
 			c.auth.Entries = append(c.auth.Entries, entries...)

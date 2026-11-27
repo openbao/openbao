@@ -333,8 +333,11 @@
     }
   }
 
-  // Radio and checkbox
+  // Browser-drawn controls (ex: radio buttons)
   accent-color: #79c0ab;
+
+  // Browser-drawn UI (ex: date pickers)
+  color-scheme: dark;
 
   // Show/hide toggle buttons
   .button.has-text-info {

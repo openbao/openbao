@@ -1,0 +1,3 @@
+```release-note:bug
+core/mounts, core/namespaces: Resolve various scenarios where a combination of mount and namespace updates would lead to deadlocks.
+```

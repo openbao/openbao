@@ -23,7 +23,10 @@ export default Route.extend({
 
   beforeModel({ to: { queryParams } }) {
     const authType = this.auth.getAuthType();
-    const ns = this.namespaceService.path;
+    // Look up namespace at login
+    const userRootNamespace = this.auth.authData?.userRootNamespace;
+    // Prefilled namespace is namespace at previous login, if found. Else, current namespace.
+    const ns = typeof userRootNamespace === 'string' ? userRootNamespace : this.namespaceService.path;
     this.auth.deleteCurrentToken();
     this.namespaceService.reset();
     this.console.set('isOpen', false);
@@ -34,6 +37,8 @@ export default Route.extend({
     queryParams.with = authType;
     if (ns) {
       queryParams.namespace = ns;
+    } else {
+      delete queryParams.namespace;
     }
     if (Ember.testing) {
       // Don't redirect on the test

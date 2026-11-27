@@ -24,7 +24,7 @@ var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("dummy"), bcrypt.DefaultCo
 
 func pathLogin(b *backend) *framework.Path {
 	return &framework.Path{
-		Pattern: "login/" + usernamePathRegex(),
+		Pattern: "login/" + usernamePathRegex,
 
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixUserpass,

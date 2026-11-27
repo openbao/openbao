@@ -17,7 +17,7 @@ import (
 
 func pathUserPassword(b *backend) *framework.Path {
 	return &framework.Path{
-		Pattern: "users/" + usernamePathRegex() + "/password$",
+		Pattern: "users/" + usernamePathRegex + "/password$",
 
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixUserpass,

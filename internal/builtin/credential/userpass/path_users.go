@@ -52,7 +52,7 @@ func pathUsersList(b *backend) *framework.Path {
 
 func pathUsers(b *backend) *framework.Path {
 	p := &framework.Path{
-		Pattern: "users/" + usernamePathRegex(),
+		Pattern: "users/" + usernamePathRegex,
 
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixUserpass,

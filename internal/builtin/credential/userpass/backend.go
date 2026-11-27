@@ -58,9 +58,7 @@ type backend struct {
 var validUsername = regexp.MustCompile("^" + framework.GenericNameWithAtRegex("username") + "$")
 
 // During routing, anything except "/" is acceptable in a username. Routing only checks for endpoint matches. Username rules are checked separately.
-func usernamePathRegex() string {
-	return `(?P<username>[^/]+)`
-}
+const usernamePathRegex = `(?P<username>[^/]+)`
 
 // Read username and reinforce actual rules
 func getUsername(d *framework.FieldData) (string, error) {

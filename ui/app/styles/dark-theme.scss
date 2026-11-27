@@ -474,6 +474,23 @@
   .selectable-card .title-number {
     color: #ffffff;
   }
+
+  // Secondary buttons
+  .button.is-secondary {
+    background-color: #242526;
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #e3e3e3;
+    box-shadow: none;
+
+    &:hover:not([disabled]) {
+      background-color: #2e2f31;
+    }
+
+    &:disabled {
+      background-color: #242526;
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+  }
 }
 
 :root[data-theme='dark'] {

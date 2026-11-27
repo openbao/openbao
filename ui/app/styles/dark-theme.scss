@@ -360,6 +360,97 @@
     border-color: #79c0ab !important;
     box-shadow: 0 0 0.125em rgba(121, 192, 171, 0.35);
   }
+
+  // Alerts
+  .message {
+    background: #1f2a3a;
+    border-color: #2f4466;
+    color: #e3e3e3;
+
+    .message-title,
+    .message-icon {
+      color: #8fb4f5;
+    }
+
+    .message-body,
+    .message-actions,
+    .alert-banner-message-body {
+      color: #e3e3e3;
+    }
+
+    code {
+      color: #ffffff;
+    }
+
+    &.is-info {
+      background: #1f2a3a;
+      border-color: #2f4466;
+
+      .message-icon,
+      .message-title {
+        color: #8fb4f5;
+      }
+    }
+
+    &.is-highlight {
+      background: #3a3220;
+      border-color: #6b5a1e;
+
+      .message-icon,
+      .message-title {
+        color: #f2d36b;
+      }
+    }
+
+    &.is-danger {
+      background: #3a2224;
+      border-color: #6e2b30;
+
+      .message-icon,
+      .message-title {
+        color: #f4a7a2;
+      }
+    }
+
+    &.is-success {
+      background: #1f3326;
+      border-color: #2f5c3b;
+
+      .message-icon,
+      .message-title {
+        color: #8fd19e;
+      }
+    }
+  }
+
+  // HDS alerts
+  .hds-alert {
+    --token-color-surface-warning: #3a3220;
+    --token-color-border-warning: #6b5a1e;
+    --token-color-foreground-warning-on-surface: #f2d36b;
+
+    --token-color-surface-critical: #3a2224;
+    --token-color-border-critical: #6e2b30;
+    --token-color-foreground-critical-on-surface: #f4a7a2;
+
+    --token-color-surface-success: #1f3326;
+    --token-color-border-success: #2f5c3b;
+    --token-color-foreground-success-on-surface: #8fd19e;
+
+    --token-color-surface-highlight: #2e2640;
+    --token-color-border-highlight: #4b3d6e;
+    --token-color-foreground-highlight-on-surface: #c4b0f5;
+
+    --token-color-palatte-neutral-200: rgba(255, 255, 255, 0.15);
+
+    .hds-alert__title {
+      color: #ffffff;
+    }
+
+    code {
+      color: #c4c8cc;
+    }
+  }
 }
 
 :root[data-theme='dark'] {
@@ -374,4 +465,9 @@
 // Links (excluding button text)
 :where(:root[data-theme='dark']) a:where(:not(.button)):hover {
   color: #e3e3e3;
+}
+
+// Inline code
+:where(:root[data-theme='dark']) code {
+  color: #c4c8cc;
 }

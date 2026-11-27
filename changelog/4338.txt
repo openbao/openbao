@@ -1,2 +1,3 @@
 ```release-note:improvement
-credential/userpass: Allow emails to be used as usernames. 
+credential/userpass: Allow emails to be used as usernames.
+```

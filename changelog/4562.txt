@@ -1,0 +1,3 @@
+```release-note:bug
+core/wrapping: Resolve and preserve the wrapping token's namespace in `sys/wrapping/rewrap` when called with a token from another namespace.
+```

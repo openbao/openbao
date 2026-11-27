@@ -3748,18 +3748,15 @@ func (b *SystemBackend) handleWrappingRewrap(ctx context.Context, req *logical.R
 		return nil, errors.New("token is not a valid unwrap token")
 	}
 
-	if thirdParty {
-		// Use the token to decrement the use count to avoid a second operation on the token.
-		_, err := b.Core.tokenStore.UseTokenByID(ctx, token)
-		if err != nil {
-			return nil, fmt.Errorf("error decrementing wrapping token's use-count: %w", err)
-		}
-		defer func() {
-			if err := b.Core.tokenStore.revokeOrphan(ctx, token); err != nil {
-				b.Core.logger.Error("error revoking wrapping token", "error", err)
-			}
-		}()
+	rewrapNS, err := b.Core.NamespaceByID(ctx, te.NamespaceID)
+	if err != nil {
+		return nil, err
 	}
+	if rewrapNS == nil {
+		return nil, errors.New("token is not from a valid namespace")
+	}
+
+	rewrapCtx := namespace.ContextWithNamespace(ctx, rewrapNS)
 
 	// Fetch the original TTL
 	cubbyReq := &logical.Request{
@@ -3768,7 +3765,7 @@ func (b *SystemBackend) handleWrappingRewrap(ctx context.Context, req *logical.R
 		ClientToken: token,
 	}
 	cubbyReq.SetTokenEntry(te)
-	cubbyResp, err := b.Core.router.Route(ctx, cubbyReq)
+	cubbyResp, err := b.Core.router.Route(rewrapCtx, cubbyReq)
 	if err != nil {
 		return nil, fmt.Errorf("error looking up wrapping information: %w", err)
 	}
@@ -3806,7 +3803,7 @@ func (b *SystemBackend) handleWrappingRewrap(ctx context.Context, req *logical.R
 		ClientToken: token,
 	}
 	cubbyReq.SetTokenEntry(te)
-	cubbyResp, err = b.Core.router.Route(ctx, cubbyReq)
+	cubbyResp, err = b.Core.router.Route(rewrapCtx, cubbyReq)
 	if err != nil {
 		return nil, fmt.Errorf("error looking up response: %w", err)
 	}
@@ -3825,11 +3822,25 @@ func (b *SystemBackend) handleWrappingRewrap(ctx context.Context, req *logical.R
 		return nil, errors.New("no response found inside the cubbyhole")
 	}
 
+	if thirdParty {
+		// Use the token to decrement the use count to avoid a second operation on the token.
+		_, err := b.Core.tokenStore.UseToken(rewrapCtx, te)
+		if err != nil {
+			return nil, fmt.Errorf("error decrementing wrapping token's use-count: %w", err)
+		}
+		defer func() {
+			if err := b.Core.tokenStore.revokeOrphan(rewrapCtx, token); err != nil {
+				b.Core.logger.Error("error revoking wrapping token", "error", err)
+			}
+		}()
+	}
+
 	// Return response in "response"; wrapping code will detect the rewrap and
 	// slot in instead of nesting
 	return &logical.Response{
 		Data: map[string]any{
-			"response": response,
+			"response":  response,
+			"namespace": rewrapNS,
 		},
 		WrapInfo: &wrapping.ResponseWrapInfo{
 			TTL:          time.Duration(creationTTL),

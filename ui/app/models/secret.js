@@ -68,24 +68,11 @@ export default Model.extend({
   secretKeyAndValue: computed('secretData', function () {
     const data = this.secretData;
 
-    return Object.keys(data).map((key) => {
-      const leading = key !== key.trimStart();
-      const trailing = key !== key.trimEnd();
-
-      let spaceWarning = null;
-      if (leading && trailing) {
-        spaceWarning = 'key starts and ends with a whitespace';
-      } else if (leading) {
-        spaceWarning = 'key starts with a whitespace';
-      } else if (trailing) {
-        spaceWarning = 'key ends with a whitespace';
-      }
-      return {
-        key,
-        value: data[key],
-        spaceWarning,
-      };
-    });
+    return Object.keys(data).map((key) => ({
+      key,
+      value: data[key],
+      spaceWarning: utils.keyWhitespaceWarning(key),
+    }));
   }),
 
   dataAsJSONString: computed('secretData', function () {

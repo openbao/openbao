@@ -14,6 +14,7 @@
     <Textarea
       id={{this.textareaId}}
       name={{@name}}
+      aria-label={{@ariaLabel}}
       @value={{@value}}
       class="input masked-value {{unless this.showValue 'masked-font'}}"
       rows={{1}}
@@ -43,6 +44,7 @@
   <button
     onclick={{this.toggleMask}}
     type="button"
+    disabled={{this.isRevealing}}
     aria-label={{if this.showValue "mask value" "show value"}}
     title={{if this.showValue "mask value" "show value"}}
     class="{{if (eq @value '') 'has-text-grey'}} masked-input-toggle button"
@@ -50,7 +52,11 @@
   >
     <Icon @name={{if this.showValue "eye" "eye-off"}} />
   </button>
+  {{yield}}
 </div>
+{{#if this.revealError}}
+  <AlertInline @type="danger" @message={{this.revealError}} data-test-secret-value-read-error />
+{{/if}}
 
 {{! CONFIRM DOWNLOAD MODAL }}
 {{#if @allowDownload}}

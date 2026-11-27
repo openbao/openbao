@@ -10,6 +10,8 @@
       @htmlTag="button"
       class={{concat @buttonClasses " popup-menu-trigger" (if d.isOpen " is-active")}}
       type="button"
+      aria-label={{@triggerLabel}}
+      title={{@triggerLabel}}
       disabled={{this.disabled}}
       data-test-confirm-action-trigger="true"
     >

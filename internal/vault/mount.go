@@ -1189,20 +1189,6 @@ func (c *Core) runMountUpdates(ctx context.Context, barrier logical.Storage, nee
 			needPersist = true
 		}
 
-		if entry.NamespaceID == "" {
-			entry.NamespaceID = namespace.RootNamespaceID
-			needPersist = true
-		}
-
-		ns, err := c.NamespaceByID(ctx, entry.NamespaceID)
-		if err != nil {
-			return err
-		}
-		if ns == nil {
-			return namespace.ErrNoNamespace
-		}
-		entry.Namespace = ns
-
 		// Don't store built-in version in the mount table, to make upgrades smoother.
 		if versions.IsBuiltinVersion(entry.Version) {
 			entry.Version = ""
@@ -1734,6 +1720,8 @@ func (c *Core) defaultMountTable(ctx context.Context) *routing.MountTable {
 			Options: map[string]string{
 				"version": "2",
 			},
+			NamespaceID:    namespace.RootNamespaceID,
+			Namespace:      namespace.RootNamespace,
 			RunningVersion: versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
 		}
 		table.Entries = append(table.Entries, kvMount)

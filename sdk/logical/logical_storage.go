@@ -120,6 +120,23 @@ func WithTransaction(ctx context.Context, originalStorage Storage, callback func
 	return nil
 }
 
+// WithReadOnlyTransaction will begin and end a read-only transaction around the execution
+// of the `callback` function. If transactions are unsupported, it executes callback with
+// the original storage.
+func WithReadOnlyTransaction(ctx context.Context, originalStorage Storage, callback func(Storage) error) error {
+	if txnStorage, ok := originalStorage.(TransactionalStorage); ok {
+		txn, err := txnStorage.BeginReadOnlyTx(ctx)
+		if err != nil {
+			return err
+		}
+		defer txn.Rollback(ctx) //nolint:errcheck
+
+		return callback(txn)
+	}
+
+	return callback(originalStorage)
+}
+
 // StartTxStorage can begin a longer-running transaction by modifying the `Storage` field of the `req` param.
 // It returns a rollback function to defer in the calling context.
 func StartTxStorage(ctx context.Context, req *Request) (func(), error) {

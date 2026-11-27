@@ -469,6 +469,11 @@
     background-color: #2e2f31;
     color: #c4c8cc;
   }
+
+  // Numbers on cards
+  .selectable-card .title-number {
+    color: #ffffff;
+  }
 }
 
 :root[data-theme='dark'] {

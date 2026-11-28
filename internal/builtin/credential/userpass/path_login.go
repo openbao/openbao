@@ -60,7 +60,7 @@ func pathLogin(b *backend) *framework.Path {
 func (b *backend) pathLoginAliasLookahead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	username, err := getUsername(d)
 	if err != nil {
-		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+		return nil, fmt.Errorf("%w: %v", logical.ErrInvalidRequest, err)
 	}
 
 	return &logical.Response{

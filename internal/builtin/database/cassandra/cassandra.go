@@ -67,6 +67,40 @@ func (c *Cassandra) getConnection(ctx context.Context) (*gocql.Session, error) {
 	return session.(*gocql.Session), nil
 }
 
+// isNoHosts reports whether err means gocql's pool has no usable host left. Such a session is never reported
+// as Closed(), so Connection() would keep returning it and every call would fail until a manual reset.
+func isNoHosts(err error) bool {
+	if err == nil {
+		return false
+	}
+	return errors.Is(err, gocql.ErrNoConnections) || strings.Contains(err.Error(), gocql.ErrNoConnections.Error())
+}
+
+// withSession runs fn on the current session. If fn fails because the pool lost all its hosts (for example after
+// every Cassandra node was replaced and got a new IP), the broken session is closed and dropped and fn is retried
+// ONCE on a new session, which resolves the configured host name again. The caller must hold c's lock (as
+// NewUser and DeleteUser do); Close() is not used here because it takes the same lock.
+func (c *Cassandra) withSession(ctx context.Context, fn func(session *gocql.Session) error) error {
+	session, err := c.getConnection(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = fn(session)
+	if !isNoHosts(err) {
+		return err
+	}
+
+	session.Close()
+	c.session = nil
+
+	session, connErr := c.getConnection(ctx)
+	if connErr != nil {
+		return multierror.Append(err, connErr)
+	}
+	return fn(session)
+}
+
 func (c *Cassandra) Initialize(ctx context.Context, req dbplugin.InitializeRequest) (dbplugin.InitializeResponse, error) {
 	usernameTemplate, err := strutil.GetString(req.Config, "username_template")
 	if err != nil {
@@ -104,11 +138,6 @@ func (c *Cassandra) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (d
 	c.Lock()
 	defer c.Unlock()
 
-	session, err := c.getConnection(ctx)
-	if err != nil {
-		return dbplugin.NewUserResponse{}, err
-	}
-
 	creationCQL := req.Statements.Commands
 	if len(creationCQL) == 0 {
 		creationCQL = []string{defaultUserCreationCQL}
@@ -124,29 +153,35 @@ func (c *Cassandra) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (d
 		return dbplugin.NewUserResponse{}, err
 	}
 
-	for _, stmt := range creationCQL {
-		for _, query := range strutil.ParseArbitraryStringSlice(stmt, ";") {
-			query = strings.TrimSpace(query)
-			if len(query) == 0 {
-				continue
-			}
-
-			m := map[string]string{
-				"username": username,
-				"password": req.Password,
-			}
-			err = session.
-				Query(dbutil.QueryHelper(query, m)).
-				WithContext(ctx).
-				Exec()
-			if err != nil {
-				rollbackErr := rollbackUser(ctx, session, username, rollbackCQL)
-				if rollbackErr != nil {
-					err = multierror.Append(err, rollbackErr)
+	err = c.withSession(ctx, func(session *gocql.Session) error {
+		for _, stmt := range creationCQL {
+			for _, query := range strutil.ParseArbitraryStringSlice(stmt, ";") {
+				query = strings.TrimSpace(query)
+				if len(query) == 0 {
+					continue
 				}
-				return dbplugin.NewUserResponse{}, err
+
+				m := map[string]string{
+					"username": username,
+					"password": req.Password,
+				}
+				err := session.
+					Query(dbutil.QueryHelper(query, m)).
+					WithContext(ctx).
+					Exec()
+				if err != nil {
+					rollbackErr := rollbackUser(ctx, session, username, rollbackCQL)
+					if rollbackErr != nil {
+						err = multierror.Append(err, rollbackErr)
+					}
+					return err
+				}
 			}
 		}
+		return nil
+	})
+	if err != nil {
+		return dbplugin.NewUserResponse{}, err
 	}
 
 	resp := dbplugin.NewUserResponse{
@@ -230,35 +265,33 @@ func (c *Cassandra) DeleteUser(ctx context.Context, req dbplugin.DeleteUserReque
 	c.Lock()
 	defer c.Unlock()
 
-	session, err := c.getConnection(ctx)
-	if err != nil {
-		return dbplugin.DeleteUserResponse{}, err
-	}
-
 	revocationCQL := req.Statements.Commands
 	if len(revocationCQL) == 0 {
 		revocationCQL = []string{defaultUserDeletionCQL}
 	}
 
-	var result *multierror.Error
-	for _, stmt := range revocationCQL {
-		for _, query := range strutil.ParseArbitraryStringSlice(stmt, ";") {
-			query = strings.TrimSpace(query)
-			if len(query) == 0 {
-				continue
-			}
+	err := c.withSession(ctx, func(session *gocql.Session) error {
+		var result *multierror.Error
+		for _, stmt := range revocationCQL {
+			for _, query := range strutil.ParseArbitraryStringSlice(stmt, ";") {
+				query = strings.TrimSpace(query)
+				if len(query) == 0 {
+					continue
+				}
 
-			m := map[string]string{
-				"username": req.Username,
-			}
-			err := session.
-				Query(dbutil.QueryHelper(query, m)).
-				WithContext(ctx).
-				Exec()
+				m := map[string]string{
+					"username": req.Username,
+				}
+				err := session.
+					Query(dbutil.QueryHelper(query, m)).
+					WithContext(ctx).
+					Exec()
 
-			result = multierror.Append(result, err)
+				result = multierror.Append(result, err)
+			}
 		}
-	}
+		return result.ErrorOrNil()
+	})
 
-	return dbplugin.DeleteUserResponse{}, result.ErrorOrNil()
+	return dbplugin.DeleteUserResponse{}, err
 }

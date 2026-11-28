@@ -1,0 +1,3 @@
+```release-note:bug
+database/cassandra: Reconnect with a new session when the connection pool has lost all hosts, for example after every Cassandra node got a new IP address, instead of failing until the connection is reset.
+```

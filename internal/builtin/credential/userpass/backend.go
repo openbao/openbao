@@ -5,6 +5,10 @@ package userpass
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -48,6 +52,25 @@ func Backend() *backend {
 
 type backend struct {
 	*framework.Backend
+}
+
+// Enforce username rules
+var validUsername = regexp.MustCompile("^" + framework.GenericNameWithAtRegex("username") + "$")
+
+// During routing, anything except "/" is acceptable in a username. Routing only checks for endpoint matches. Username rules are checked separately.
+const usernamePathRegex = `(?P<username>[^/]+)`
+
+// Read username and reinforce rules
+func getUsername(d *framework.FieldData) (string, error) {
+	username := d.Get("username").(string)
+	if username == "" {
+		return "", errors.New("missing username")
+	}
+
+	if !validUsername.MatchString(username) {
+		return "", fmt.Errorf("invalid username: %q", username)
+	}
+	return strings.ToLower(username), nil
 }
 
 const backendHelp = `

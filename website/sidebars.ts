@@ -122,6 +122,7 @@ const sidebars: SidebarsConfig = {
                         "guides/integrations/gitlab"
                     ],
                 },
+                "guides/containers",
             ],
             Configuration: [
                 "configuration/index",

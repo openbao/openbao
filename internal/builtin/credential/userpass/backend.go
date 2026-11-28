@@ -60,18 +60,17 @@ var validUsername = regexp.MustCompile("^" + framework.GenericNameWithAtRegex("u
 // During routing, anything except "/" is acceptable in a username. Routing only checks for endpoint matches. Username rules are checked separately.
 const usernamePathRegex = `(?P<username>[^/]+)`
 
-// Read username and reinforce actual rules
+// Read username and reinforce rules
 func getUsername(d *framework.FieldData) (string, error) {
-	username := strings.ToLower(d.Get("username").(string))
-	// Reject empty username
+	username := d.Get("username").(string)
 	if username == "" {
 		return "", errors.New("missing username")
 	}
-	// Check against username rules
+
 	if !validUsername.MatchString(username) {
 		return "", fmt.Errorf("invalid username: %q", username)
 	}
-	return username, nil
+	return strings.ToLower(username), nil
 }
 
 const backendHelp = `

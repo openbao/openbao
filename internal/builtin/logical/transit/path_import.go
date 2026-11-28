@@ -250,7 +250,7 @@ func (b *backend) pathImportWrite(ctx context.Context, req *logical.Request, d *
 		return resp, err
 	}
 
-	err = b.lm.ImportPolicy(ctx, polReq, key, b.GetRandomReader())
+	err = b.lm.ImportPolicy(ctx, polReq, key, b.GetRandomReader(), false)
 	if err != nil {
 		return nil, err
 	}

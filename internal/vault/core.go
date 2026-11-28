@@ -2395,6 +2395,11 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 		seal.StartHealthCheck()
 	}
 
+	// Retry unsealing child namespaces whose KMS provider was unavailable at
+	// boot. The goroutine exits once all queued namespaces recover or the
+	// server shuts down.
+	c.namespaceStore.startSealedAtBootRetry()
+
 	// This is intentionally (almost) the last block in this function. We want
 	// to allow writes just before allowing client requests, to ensure
 	// everything has been set up properly before any writes happen.

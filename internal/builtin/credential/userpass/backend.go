@@ -54,7 +54,7 @@ type backend struct {
 	*framework.Backend
 }
 
-// Define username rules. Usernames are allowed to contain alphanumeric characters, -, ., and @
+// Enforce username rules
 var validUsername = regexp.MustCompile("^" + framework.GenericNameWithAtRegex("username") + "$")
 
 // During routing, anything except "/" is acceptable in a username. Routing only checks for endpoint matches. Username rules are checked separately.

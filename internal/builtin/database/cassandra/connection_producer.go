@@ -41,6 +41,10 @@ type cassandraConnectionProducer struct {
 	PemJSON            string `json:"pem_json" mapstructure:"pem_json"`
 	SkipVerification   bool   `json:"skip_verification" mapstructure:"skip_verification"`
 
+	// AllowedAuthenticators overrides gocql's built-in allow-list of server authenticator
+	// class names. Needed for clusters announcing e.g. LDAPAuthenticator. Empty = gocql default.
+	AllowedAuthenticators []string `json:"allowed_authenticators" mapstructure:"allowed_authenticators"`
+
 	connectTimeout  time.Duration
 	socketKeepAlive time.Duration
 	sslOpts         *gocql.SslOptions
@@ -175,13 +179,23 @@ func (c *cassandraConnectionProducer) Close() error {
 	return nil
 }
 
-func (c *cassandraConnectionProducer) createSession(ctx context.Context) (*gocql.Session, error) {
-	hosts := strings.Split(c.Hosts, ",")
-	clusterConfig := gocql.NewCluster(hosts...)
-	clusterConfig.Authenticator = gocql.PasswordAuthenticator{
+// authenticator returns the gocql authenticator for the configured credentials. AllowedAuthenticators replaces
+// gocql's built-in allow-list of server authenticator class names when set.
+func (c *cassandraConnectionProducer) authenticator() gocql.PasswordAuthenticator {
+	authenticator := gocql.PasswordAuthenticator{
 		Username: c.Username,
 		Password: c.Password,
 	}
+	if len(c.AllowedAuthenticators) > 0 {
+		authenticator.AllowedAuthenticators = c.AllowedAuthenticators
+	}
+	return authenticator
+}
+
+func (c *cassandraConnectionProducer) createSession(ctx context.Context) (*gocql.Session, error) {
+	hosts := strings.Split(c.Hosts, ",")
+	clusterConfig := gocql.NewCluster(hosts...)
+	clusterConfig.Authenticator = c.authenticator()
 
 	if c.Port != 0 {
 		clusterConfig.Port = c.Port

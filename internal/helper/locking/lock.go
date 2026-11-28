@@ -22,6 +22,8 @@ type RWMutex interface {
 	RLocker() sync.Locker
 	RUnlock()
 	Unlock()
+	TryLock() bool
+	TryRLock() bool
 }
 
 // DeadlockMutex (used when requested via config option `detact_deadlocks`),

@@ -429,6 +429,8 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 			ctx = forwarding.WithRequestLimits(ctx, limits)
 		}
 
+		ctx = configutil.AddListenerConfigToContext(ctx, props.ListenerConfig)
+
 		r = r.WithContext(ctx)
 
 		// Set some response headers with raft node id (if applicable) and hostname, if available
